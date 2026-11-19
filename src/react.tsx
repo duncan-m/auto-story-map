@@ -3,26 +3,68 @@ import type { InternalStoryCard, StoryMapView } from "./view.js";
 
 const labels = { planned: "Planned", "in-progress": "In progress", shipped: "Shipped" };
 
-function Card({ story, internal }: { story: InternalStoryCard; internal: boolean }) {
+function findEngineeringOverview(sources: readonly string[] | undefined, sourceBaseUrl?: string) {
+  for (const source of sources ?? []) {
+    let url: URL;
+    try {
+      url = new URL(source, sourceBaseUrl);
+    } catch {
+      continue;
+    }
+    const isWebUrl = url.protocol === "https:" || url.protocol === "http:";
+    if (isWebUrl && url.pathname.toLowerCase().endsWith(".md") && url.hash) {
+      return url.href;
+    }
+  }
+}
+
+function Card({ story, activityTitle, releaseTitle, internal, sourceBaseUrl }: {
+  story: InternalStoryCard;
+  activityTitle: string;
+  releaseTitle: string;
+  internal: boolean;
+  sourceBaseUrl?: string;
+}) {
+  const titleId = useId();
+  const overview = internal ? findEngineeringOverview(story.sources, sourceBaseUrl) : undefined;
+  const references = overview ? undefined : story.sources;
+
   return (
-    <article className="esm-card">
-      {internal && <span className="esm-id">{story.id}</span>}
-      <h3>{story.title}</h3>
-      {story.summary && <p>{story.summary}</p>}
-      <span className="esm-status" data-status={story.status}>{labels[story.status]}</span>
-      {internal && story.updatedBy && <p className="esm-updater">Last updated by {story.updatedBy}</p>}
-      {internal && (story.notes || story.sources?.length) ? (
-        <details className="esm-notes">
-          <summary>Engineering details</summary>
-          {story.notes && <p>{story.notes}</p>}
-          {!!story.sources?.length && <ul>{story.sources.map((source, index) => <li key={index}><code>{source}</code></li>)}</ul>}
-        </details>
-      ) : null}
+    <article className="esm-card" aria-labelledby={titleId}>
+      <details>
+        <summary className="esm-card-toggle">
+          {internal && <span className="esm-id">{story.id}</span>}
+          <span className="esm-card-title" id={titleId}>{story.title}</span>
+          {story.summary && <span className="esm-card-summary">{story.summary}</span>}
+          <span className="esm-status" data-status={story.status}>{labels[story.status]}</span>
+          {internal && story.updatedBy && <span className="esm-updater">Last updated by {story.updatedBy}</span>}
+        </summary>
+        <div className="esm-card-content">
+          <dl className="esm-card-context">
+            <dt>Activity</dt>
+            <dd>{activityTitle}</dd>
+            <dt>Release</dt>
+            <dd>{releaseTitle}</dd>
+          </dl>
+          {overview && (
+            <a className="esm-overview-link" href={overview} aria-label={`Engineering overview for ${story.title}`}>
+              Engineering overview
+            </a>
+          )}
+          {internal && (story.notes || references?.length) ? (
+            <div className="esm-notes">
+              <h3>{overview ? "Engineering notes" : "Engineering details"}</h3>
+              {story.notes && <p>{story.notes}</p>}
+              {!!references?.length && <ul>{references.map((source, index) => <li key={index}><code>{source}</code></li>)}</ul>}
+            </div>
+          ) : null}
+        </div>
+      </details>
     </article>
   );
 }
 
-export function StoryMapBoard({ map }: { map: StoryMapView }) {
+export function StoryMapBoard({ map, sourceBaseUrl }: { map: StoryMapView; sourceBaseUrl?: string }) {
   const headingId = useId();
   const internal = map.audience === "internal";
 
@@ -64,7 +106,14 @@ export function StoryMapBoard({ map }: { map: StoryMapView }) {
                   {map.activities.map(activity => (
                     <td key={activity.id}>
                       {(cells.get(`${release.id}:${activity.id}`) ?? []).map(story => (
-                        <Card key={story.id} story={story} internal={internal} />
+                        <Card
+                          key={story.id}
+                          story={story}
+                          activityTitle={activity.title}
+                          releaseTitle={release.title}
+                          internal={internal}
+                          sourceBaseUrl={sourceBaseUrl}
+                        />
                       ))}
                     </td>
                   ))}
