@@ -4,7 +4,7 @@ A TypeScript library for displaying a Git-backed user story map inside a product
 
 ## Try the builder estimates example
 
-Use Node.js 20 or newer. From this directory, run:
+Use Node.js 20 or newer. Run these commands from a checkout of the [source repository][source].
 
 ```sh
 npm ci
@@ -17,7 +17,7 @@ Open [the local story map](http://127.0.0.1:4173/story-map). Switch between **Re
 
 ## Embed it in a product
 
-Run `npm pack` in this directory and install the resulting `.tgz` in a host product, or publish the package to your organisation’s package registry. The core can run in a TypeScript or JavaScript backend. A React host can also use the board and stylesheet.
+Run `npm ci` and `npm pack` in the source checkout. From your host product, install the resulting tarball with `npm install /path/to/embedded-story-map-0.1.0.tgz`. You can also publish the tarball to your organisation’s registry. The core can run in a TypeScript or JavaScript backend. A React host can also use the board and stylesheet.
 
 | Import | Use |
 | --- | --- |
@@ -25,6 +25,13 @@ Run `npm pack` in this directory and install the resulting `.tgz` in a host prod
 | `embedded-story-map/react` | Render a view with `<StoryMapBoard map={view} />`. |
 | `embedded-story-map/styles.css` | Style the board using namespaced CSS. |
 
-Copy [the example map](product/story-map.yaml), [the engineer and AI guide](docs/story-map.md), and [the AGENTS.md rule](AGENTS.md) into the host repo. [The example delivery plan](docs/example-builder-estimate-plan.md) shows how plans reference stories by ID. [The host integration](example/host.mjs) shows how a product can serve the board and JSON with the same audience rules.
+Copy [the example map][example-map], [the story map guide][guide], and [the AGENTS.md rule][agents] into the host repo. [The example delivery plan][delivery-plan] shows how plans reference stories by ID. [The host integration][host] shows how a product can serve the board and JSON with the same audience rules.
 
 The map lives in the product repo. The deployed product renders the file included in that revision. Use the host app’s verified session to resolve the viewer on the server and supply the projected view to the board.
+
+[source]: https://github.com/duncan-m/embedable-story-map
+[example-map]: https://github.com/duncan-m/embedable-story-map/blob/db4194d4e7fbc23498b6d5e0c1e66f3d0dcc2d47/product/story-map.yaml
+[guide]: https://github.com/duncan-m/embedable-story-map/blob/db4194d4e7fbc23498b6d5e0c1e66f3d0dcc2d47/docs/story-map.md
+[agents]: https://github.com/duncan-m/embedable-story-map/blob/db4194d4e7fbc23498b6d5e0c1e66f3d0dcc2d47/AGENTS.md
+[delivery-plan]: https://github.com/duncan-m/embedable-story-map/blob/db4194d4e7fbc23498b6d5e0c1e66f3d0dcc2d47/docs/example-builder-estimate-plan.md
+[host]: https://github.com/duncan-m/embedable-story-map/blob/db4194d4e7fbc23498b6d5e0c1e66f3d0dcc2d47/example/host.mjs

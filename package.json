@@ -2,6 +2,11 @@
   "name": "embedded-story-map",
   "version": "0.1.0",
   "description": "Git-backed user story maps embedded in product applications",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/duncan-m/embedable-story-map.git"
+  },
   "type": "module",
   "engines": { "node": ">=20" },
   "exports": {
