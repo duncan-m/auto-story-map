@@ -1,0 +1,9 @@
+* { box-sizing: border-box; }
+body { margin: 0; font: 1rem system-ui, sans-serif; background: #f2f6f8; color: #202938; }
+.product-header { display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: .9rem clamp(1rem, 4vw, 3rem); background: #183947; color: white; }
+.product-header h1 { margin: 0; font-size: 1.2rem; }
+.product-header nav { display: flex; flex-wrap: wrap; gap: .35rem; }
+.product-header a { color: inherit; padding: .42rem .6rem; border-radius: 6px; text-decoration: none; font-size: .9rem; }
+.product-header a:hover, .product-header a[aria-current="page"] { background: #e3f1f6; color: #183947; }
+.product-header a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+main { max-width: 82rem; margin: 0 auto; padding: clamp(1.2rem, 4vw, 3.5rem) clamp(.85rem, 4vw, 3rem); }
