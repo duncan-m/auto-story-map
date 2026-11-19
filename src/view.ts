@@ -17,6 +17,7 @@ export interface StoryCard extends StoryMapLabel {
 }
 
 export interface InternalStoryCard extends StoryCard {
+  updatedBy?: string;
   notes?: string;
   sources?: string[];
 }
@@ -54,6 +55,7 @@ export function getStoryMapForViewer(
         activity: story.activity,
         release: story.release,
         status: story.status,
+        updatedBy: story.updatedBy,
         notes: story.notes,
         sources: story.sources,
       })),

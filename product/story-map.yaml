@@ -42,6 +42,7 @@ stories:
     activity: prepare
     release: builder-mvp
     status: in-progress
+    updatedBy: Alex Morgan
     summary: Record material quantities and units against a project.
     customer:
       title: Draft a project estimate
@@ -51,6 +52,7 @@ stories:
     activity: prepare
     release: builder-mvp
     status: planned
+    updatedBy: Sam Patel
     notes: Confirm how a catalogue price is carried into a submitted estimate.
     sources:
       - docs/example-builder-estimate-plan.md
@@ -62,6 +64,7 @@ stories:
     activity: submit
     release: builder-mvp
     status: planned
+    updatedBy: Alex Morgan
     customer:
       title: Submit an estimate for approval
   - id: FINANCE-201
@@ -69,6 +72,7 @@ stories:
     activity: purchase
     release: finance-follow-up
     status: planned
+    updatedBy: Taylor Reed
     customer:
       title: Track approved purchases
   - id: FINANCE-202
@@ -76,4 +80,5 @@ stories:
     activity: finance-ops
     release: reconciliation-internal
     status: planned
+    updatedBy: Taylor Reed
     notes: Agree a single owner when an approval is retried.

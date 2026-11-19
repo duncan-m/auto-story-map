@@ -16,6 +16,7 @@ const story = z.object({
   release: id,
   summary,
   status: z.enum(storyStatuses).default("planned"),
+  updatedBy: z.string().trim().min(1).max(120).optional(),
   notes: z.string().trim().max(4000).optional(),
   sources: z.array(z.string().trim().min(1).max(250)).max(20).optional(),
   customer: customerCopy.optional(),

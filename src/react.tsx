@@ -1,16 +1,17 @@
 import { useId } from "react";
-import type { InternalStoryCard, StoryCard, StoryMapView } from "./view.js";
+import type { InternalStoryCard, StoryMapView } from "./view.js";
 
 const labels = { planned: "Planned", "in-progress": "In progress", shipped: "Shipped" };
 
-function Card({ story, internal }: { story: StoryCard | InternalStoryCard; internal: boolean }) {
+function Card({ story, internal }: { story: InternalStoryCard; internal: boolean }) {
   return (
     <article className="esm-card">
       {internal && <span className="esm-id">{story.id}</span>}
       <h3>{story.title}</h3>
       {story.summary && <p>{story.summary}</p>}
       <span className="esm-status" data-status={story.status}>{labels[story.status]}</span>
-      {internal && "notes" in story && (story.notes || story.sources?.length) ? (
+      {internal && story.updatedBy && <p className="esm-updater">Last updated by {story.updatedBy}</p>}
+      {internal && (story.notes || story.sources?.length) ? (
         <details className="esm-notes">
           <summary>Engineering details</summary>
           {story.notes && <p>{story.notes}</p>}
@@ -25,7 +26,7 @@ export function StoryMapBoard({ map }: { map: StoryMapView }) {
   const headingId = useId();
   const internal = map.audience === "internal";
 
-  const cells = new Map<string, StoryCard[]>();
+  const cells = new Map<string, InternalStoryCard[]>();
   for (const story of map.stories) {
     const key = `${story.release}:${story.activity}`;
     const cell = cells.get(key);

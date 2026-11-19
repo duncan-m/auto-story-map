@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { stringify } from "yaml";
 import { getStoryMapForViewer, parseStoryMap } from "embedded-story-map";
+import { StoryMapBoard } from "embedded-story-map/react";
 import { makeStoryMapResponse } from "../example/host.mjs";
 
 const sample = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
@@ -52,6 +55,7 @@ test("customer HTML and JSON only contain the customer projection", async () => 
     const payload = await response.text();
     assert.match(payload, /Find material prices/);
     assert.doesNotMatch(payload, /BUILDER-102|FINANCE-202|Reconciliation discovery|Finance exception|Confirm how|docs\/example-builder|Look up prices/);
+    assert.doesNotMatch(payload, /updatedBy|Last updated by|Alex Morgan|Sam Patel|Taylor Reed/);
   }
   const internal = await makeStoryMapResponse("/story-map", map, engineer).text();
   assert.match(internal, /BUILDER-102/);
@@ -63,6 +67,35 @@ test("customer HTML and JSON only contain the customer projection", async () => 
   assert.equal(view.activities.length, 3);
   assert.equal(view.releases.length, 2);
   assert.ok(view.stories.every(story => view.activities.some(activity => activity.id === story.activity)));
+});
+
+test("shows the recorded editor on internal cards and accepts older records", async () => {
+  const document = structuredClone(map);
+  delete document.stories[0].updatedBy;
+  document.stories[1].updatedBy = "  Jamie Chen  ";
+  const parsed = parseStoryMap(stringify(document));
+
+  for (const viewer of [engineer, superAdmin]) {
+    const view = await makeStoryMapResponse("/api/story-map", parsed, viewer).json();
+    assert.equal(Object.hasOwn(view.stories[0], "updatedBy"), false);
+    assert.equal(view.stories[1].updatedBy, "Jamie Chen");
+    const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+    const cards = html.match(/<article\b[\s\S]*?<\/article>/g);
+    assert.doesNotMatch(cards.find(card => card.includes("BUILDER-101")), /Last updated by/);
+    assert.match(cards.find(card => card.includes("BUILDER-102")), /Last updated by Jamie Chen/);
+  }
+});
+
+test("renders source-only engineering details after a JSON round trip", async () => {
+  const document = structuredClone(map);
+  const story = document.stories.find(story => story.sources?.length);
+  delete story.notes;
+  const view = await makeStoryMapResponse("/api/story-map", document, engineer).json();
+  const card = view.stories.find(card => card.id === story.id);
+  assert.equal(Object.hasOwn(card, "notes"), false);
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+  assert.match(html, /<summary>Engineering details<\/summary>/);
+  assert.ok(html.includes(story.sources[0]));
 });
 
 test("React renders story text as text", async () => {

@@ -36,6 +36,7 @@
 .esm-status { display: inline-block; padding: .2rem .5rem; border-radius: 6px; font-size: .8125rem; font-weight: 640; background: #e8eef5; color: #37475d; }
 .esm-status[data-status="shipped"] { background: #e1f4ea; color: #045b40; }
 .esm-status[data-status="in-progress"] { background: #fff0d7; color: #744907; }
+.esm-card .esm-updater { margin: .55rem 0 0; }
 .esm-notes { margin-top: .55rem; color: var(--esm-muted); font-size: .875rem; }
 .esm-notes summary { cursor: pointer; }
 .esm-notes p, .esm-notes ul { margin: .45rem 0 0; }

@@ -15,6 +15,8 @@ The product shows the map at `/story-map`. The source is `product/story-map.yaml
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
 
+When you add or edit a story, record the editor’s display name in `updatedBy`. This field is optional, so stories with no recorded editor can omit it.
+
 ## Example
 
 When price catalogue lookup is agreed for the builder workflow, put the story under the estimate activity and the builder release. Its YAML can look like this:
@@ -27,6 +29,7 @@ When price catalogue lookup is agreed for the builder workflow, put the story un
   status: planned
   sources:
     - docs/example-builder-estimate-plan.md
+  updatedBy: Sam Patel
 ```
 
 If the agreed release changes, edit `release` on this story. If implementation starts, set its status to `in-progress`. Once deployed and available to builders, set it to `shipped`.
@@ -41,7 +44,7 @@ If the agreed release changes, edit `release` on this story. If implementation s
 
 Set the map’s `visibility` to `internal` or `all-users`. The default is `internal`. To show a story to signed-in users, add its `customer.title` and optional `customer.summary`. Add customer-facing copy to its activity and release, and to the map itself. Review the wording and verify that the story’s displayed status is suitable for this audience before merging.
 
-The customer view includes the approved copy and story status. It excludes engineering notes, source paths, internal IDs and activities or releases with no published stories. Story records without a `customer` section stay internal.
+The customer view includes the approved copy and story status. It excludes engineering notes, source paths, editor names, internal IDs and activities or releases with no published stories. Story records without a `customer` section stay internal. Engineers and super admins can see the recorded editor on the card and in the JSON view.
 
 ## Validate a change
 
