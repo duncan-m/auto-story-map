@@ -1,6 +1,6 @@
 {
   "name": "embedded-story-map",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Git-backed user story maps embedded in product applications",
   "license": "Apache-2.0",
   "repository": {

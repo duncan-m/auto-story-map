@@ -1,13 +1,15 @@
 import { z } from "zod";
 import { parseDocument } from "yaml";
+import { storyStatuses } from "./status.js";
+
+export { storyStatuses };
+export type { StoryStatus } from "./status.js";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
 const title = z.string().trim().min(1).max(120);
 const summary = z.string().trim().max(500).optional();
 const customerCopy = z.object({ title, summary }).strict();
 const group = z.object({ id, title, summary, customer: customerCopy.optional() }).strict();
-
-export const storyStatuses = ["planned", "in-progress", "shipped"] as const;
 
 const story = z.object({
   id,
@@ -67,7 +69,6 @@ export const storyMapSchema = z.object({
 });
 
 export type StoryMapDocument = z.infer<typeof storyMapSchema>;
-export type StoryStatus = (typeof storyStatuses)[number];
 
 export function parseStoryMap(source: string): StoryMapDocument {
   const parsed = parseDocument(source, { uniqueKeys: true });

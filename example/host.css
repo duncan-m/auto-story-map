@@ -1,9 +1,10 @@
 * { box-sizing: border-box; }
-body { margin: 0; font: 1rem system-ui, sans-serif; background: #f2f6f8; color: #202938; }
-.product-header { display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap; padding: .9rem clamp(1rem, 4vw, 3rem); background: #183947; color: white; }
-.product-header h1 { margin: 0; font-size: 1.2rem; }
+body { margin: 0; min-width: 320px; font: 1rem Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fb; color: #19223a; }
+.product-header { display: flex; flex-wrap: wrap; gap: .75rem 1rem; align-items: center; justify-content: space-between; min-height: 68px; padding: .7rem clamp(1rem, 4vw, 3.75rem); background: #fff; border-bottom: 1px solid #dfe4ed; }
+.product-header h1 { margin: 0; font-size: 1.09rem; font-weight: 750; letter-spacing: -.025em; }
 .product-header nav { display: flex; flex-wrap: wrap; gap: .35rem; }
-.product-header a { color: inherit; padding: .42rem .6rem; border-radius: 6px; text-decoration: none; font-size: .9rem; }
-.product-header a:hover, .product-header a[aria-current="page"] { background: #e3f1f6; color: #183947; }
-.product-header a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-main { max-width: 82rem; margin: 0 auto; padding: clamp(1.2rem, 4vw, 3.5rem) clamp(.85rem, 4vw, 3rem); }
+.product-header a { padding: .45rem .7rem; border: 1px solid transparent; border-radius: 8px; color: #52617a; font-size: .875rem; font-weight: 650; text-decoration: none; }
+.product-header a:hover { background: #eef0f8; color: #19223a; }
+.product-header a[aria-current="page"] { border-color: #dfe4ed; background: #fff; color: #4b43a8; }
+.product-header a:focus-visible { outline: 2px solid #5046d5; outline-offset: 2px; }
+main { max-width: 1700px; margin: 0 auto; padding: 34px clamp(1rem, 4vw, 3.75rem) 44px; }

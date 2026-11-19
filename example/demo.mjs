@@ -47,7 +47,11 @@ const server = createServer(async (request, response) => {
     );
 
     const map = parseStoryMap(await readFile(mapFile, "utf8"));
-    const result = makeStoryMapResponse(url.pathname, map, viewer, navigation, sourceBaseUrl);
+    const result = makeStoryMapResponse(url, map, viewer, {
+      navigation,
+      sourceBaseUrl,
+      preservedParams: { as: selected },
+    });
     response.writeHead(result.status, Object.fromEntries(result.headers)).end(await result.text());
   } catch (error) {
     console.error(error);

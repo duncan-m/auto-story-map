@@ -1,4 +1,5 @@
-import type { StoryMapDocument, StoryStatus } from "./schema.js";
+import type { StoryMapDocument } from "./schema.js";
+import type { StoryStatus } from "./status.js";
 
 export interface StoryMapViewer {
   roles: readonly string[];
@@ -22,11 +23,20 @@ export interface InternalStoryCard extends StoryCard {
   sources?: string[];
 }
 
+/** Present when the host has applied `filterStoryMapView`. The board shows its search toolbar only then. */
+export interface StoryMapFilterState {
+  query?: string;
+  status?: StoryStatus;
+  /** Number of stories in the view before filtering. */
+  total: number;
+}
+
 interface StoryMapBaseView {
   title: string;
   summary?: string;
   activities: StoryMapLabel[];
   releases: StoryMapLabel[];
+  filter?: StoryMapFilterState;
 }
 
 export type StoryMapView =

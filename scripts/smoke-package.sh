@@ -20,7 +20,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createElement, version } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { getStoryMapForViewer, parseStoryMap } from "embedded-story-map";
+import { filterStoryMapView, getStoryMapForViewer, parseStoryMap } from "embedded-story-map";
 import { StoryMapBoard } from "embedded-story-map/react";
 
 const [, , mapPath, reactMajor] = process.argv;
@@ -29,9 +29,25 @@ const view = getStoryMapForViewer(map, { roles: [] });
 assert.equal(view?.audience, "all-users");
 assert.ok(view.stories.length > 0);
 
+const reactErrors = [];
+const consoleError = console.error;
+console.error = (...args) => reactErrors.push(args.join(" "));
 const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+const internal = filterStoryMapView(getStoryMapForViewer(map, { roles: ["engineer"] }), { status: "planned" });
+const internalHtml = renderToStaticMarkup(createElement(StoryMapBoard, { map: internal, preservedParams: { tab: "map" } }));
+console.error = consoleError;
+assert.deepEqual(reactErrors, []);
 assert.match(html, /class="esm-board"/);
 assert.match(html, /class="esm-card"/);
+assert.match(internalHtml, /<form class="esm-filters"/);
+
+// Every card must open its panel without client JavaScript, whichever React version renders it.
+const targets = [...internalHtml.matchAll(/class="esm-card"[^>]*popovertarget="([^"]+)"/gi)].map(match => match[1]);
+assert.ok(targets.length > 0);
+for (const target of targets) {
+  assert.ok(internalHtml.includes(`id="${target}" popover="auto"`), `missing panel ${target}`);
+}
+assert.match(internalHtml, /autofocus=""[^>]*popovertargetaction="hide"/i);
 
 const resolve = createRequire(import.meta.url).resolve;
 const css = readFileSync(resolve("embedded-story-map/styles.css"), "utf8");
