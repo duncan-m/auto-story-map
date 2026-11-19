@@ -1,17 +1,23 @@
 #!/usr/bin/env node
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { relative, resolve, sep } from "node:path";
+import { promisify } from "node:util";
+import { diffStoryMaps, formatStoryMapDiff } from "./diff.js";
 import { initStoryMap } from "./init.js";
+import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
 import {
   describeIssueTarget,
+  loadStoryMap,
   parseStoryMap,
   StoryMapValidationError,
-  type StoryMapIssue,
+  type StoryMapDocument,
 } from "./schema.js";
 
 const usage = `Usage:
   story-map init [--no-ci] [--dir <path>]
-  story-map validate [--format text|github] <map.yaml> [other-map.yaml ...]
+  story-map validate [--format text|github] [--check-sources] [--plans <path>] <map.yaml> [...]
+  story-map diff [--format markdown|json] [--map <path>] <base-ref>
 
 init
   Sets up a host repository: a starter product/story-map.yaml, the story map
@@ -22,27 +28,84 @@ init
   --dir <path>     Repository root. Defaults to the current directory.
 
 validate
-  --format text    Print file:line:column: problem (default).
-  --format github  Print GitHub Actions annotations so problems appear on the PR diff.`;
+  --format text      Print file:line:column: problem (default).
+  --format github    Print GitHub Actions annotations so problems appear on the PR diff.
+  --check-sources    Check that repository-relative sources exist and that
+                     Markdown #heading fragments match a heading.
+  --plans <path>     Check that story IDs mentioned in Markdown files under
+                     <path> exist in the map. Repeat for several paths.
+  --root <path>      Repository root for sources and plans. Defaults to the
+                     current directory.
+
+diff
+  Compares the map with its version at <base-ref>, such as origin/main, and
+  prints a Markdown summary for a pull request. Customer-facing changes come first.
+
+  --map <path>       Map to compare. Defaults to product/story-map.yaml.
+  --format json      Print the comparison as JSON instead.`;
 
 type Format = "text" | "github";
 
+/** Reads `--name value` and `--name=value`. Returns undefined when the value is missing. */
+function optionValue(rest: string[], index: number, name: string): [string | undefined, number] {
+  const arg = rest[index];
+  if (arg === name) return [rest[index + 1], index + 1];
+  return [arg.slice(name.length + 1), index];
+}
+
 function parseValidateArgs(rest: string[]) {
   let format: Format = "text";
+  let checkSourceFiles = false;
+  let root = ".";
+  const plans: string[] = [];
   const paths: string[] = [];
   for (let index = 0; index < rest.length; index++) {
     const arg = rest[index];
-    if (arg === "--format" || arg.startsWith("--format=")) {
-      const value = arg === "--format" ? rest[++index] : arg.slice("--format=".length);
-      if (value !== "text" && value !== "github") return null;
-      format = value;
+    const name = arg.split("=")[0];
+    if (name === "--format" || name === "--plans" || name === "--root") {
+      const [value, next] = optionValue(rest, index, name);
+      if (!value) return null;
+      index = next;
+      if (name === "--format") {
+        if (value !== "text" && value !== "github") return null;
+        format = value;
+      } else if (name === "--plans") {
+        plans.push(value);
+      } else {
+        root = value;
+      }
+    } else if (arg === "--check-sources") {
+      checkSourceFiles = true;
     } else if (arg.startsWith("-")) {
       return null;
     } else {
       paths.push(arg);
     }
   }
-  return paths.length > 0 ? { format, paths } : null;
+  return paths.length > 0 ? { format, paths, checkSourceFiles, plans, root: resolve(root) } : null;
+}
+
+function parseDiffArgs(rest: string[]) {
+  let format: "markdown" | "json" = "markdown";
+  let map = "product/story-map.yaml";
+  const refs: string[] = [];
+  for (let index = 0; index < rest.length; index++) {
+    const arg = rest[index];
+    const name = arg.split("=")[0];
+    if (name === "--format" || name === "--map") {
+      const [value, next] = optionValue(rest, index, name);
+      if (!value) return null;
+      index = next;
+      if (name === "--map") map = value;
+      else if (value === "markdown" || value === "json") format = value;
+      else return null;
+    } else if (arg.startsWith("-")) {
+      return null;
+    } else {
+      refs.push(arg);
+    }
+  }
+  return refs.length === 1 ? { format, map, base: refs[0] } : null;
 }
 
 function parseInitArgs(rest: string[]) {
@@ -66,7 +129,8 @@ function escapeProperty(value: string) {
   return escapeData(value).replace(/:/g, "%3A").replace(/,/g, "%2C");
 }
 
-function report(path: string, issue: StoryMapIssue, format: Format) {
+function report(mapPath: string, issue: ReferenceIssue, format: Format) {
+  const path = issue.file ?? mapPath;
   const message = issue.path.length ? `${describeIssueTarget(issue)}: ${issue.message}` : issue.message;
   if (format === "github") {
     const properties = [`file=${escapeProperty(path)}`];
@@ -81,11 +145,21 @@ function report(path: string, issue: StoryMapIssue, format: Format) {
 }
 
 async function validate(options: NonNullable<ReturnType<typeof parseValidateArgs>>) {
+  const count = (n: number, noun: string, plural: string) => `${n} ${n === 1 ? noun : plural}`;
   for (const path of options.paths) {
     try {
-      const map = parseStoryMap(await readFile(path, "utf8"));
-      const count = (n: number, noun: string, plural: string) => `${n} ${n === 1 ? noun : plural}`;
-      console.log(`${path}: valid (${count(map.activities.length, "activity", "activities")}, ${count(map.releases.length, "release", "releases")}, ${count(map.stories.length, "story", "stories")})`);
+      const loaded = loadStoryMap(await readFile(path, "utf8"));
+      const issues: ReferenceIssue[] = [];
+      if (options.checkSourceFiles) issues.push(...await checkSources(loaded, options.root));
+      if (options.plans.length) issues.push(...await checkPlanReferences(loaded, options.root, options.plans));
+      if (issues.length) {
+        process.exitCode = 1;
+        for (const issue of issues) report(path, issue, options.format);
+        continue;
+      }
+      const { map } = loaded;
+      const checked = [options.checkSourceFiles && "sources", options.plans.length && "plan references"].filter(Boolean);
+      console.log(`${path}: valid (${count(map.activities.length, "activity", "activities")}, ${count(map.releases.length, "release", "releases")}, ${count(map.stories.length, "story", "stories")})${checked.length ? `; checked ${checked.join(" and ")}` : ""}`);
     } catch (error) {
       process.exitCode = 1;
       if (error instanceof StoryMapValidationError) {
@@ -94,6 +168,49 @@ async function validate(options: NonNullable<ReturnType<typeof parseValidateArgs
         report(path, { path: [], message: error instanceof Error ? error.message : String(error) }, options.format);
       }
     }
+  }
+}
+
+class UsageError extends Error {}
+
+async function readMapAt(ref: string, mapPath: string): Promise<StoryMapDocument | null> {
+  if (ref.startsWith("-")) throw new UsageError(`'${ref}' is not a Git reference.`);
+  const gitPath = `./${relative(process.cwd(), resolve(mapPath)).split(sep).join("/")}`;
+  let source: string;
+  try {
+    ({ stdout: source } = await promisify(execFile)("git", ["show", `${ref}:${gitPath}`], { maxBuffer: 16 * 1024 * 1024 }));
+  } catch (error) {
+    const stderr = String((error as { stderr?: unknown }).stderr ?? "");
+    if (/does not exist in|exists on disk, but not in/.test(stderr)) return null;
+    throw new UsageError(stderr.trim() || `Could not read ${mapPath} at ${ref}.`);
+  }
+  try {
+    return parseStoryMap(source);
+  } catch (error) {
+    throw new Error(`The map at ${ref} is not valid, so it cannot be compared:\n${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function diff(options: NonNullable<ReturnType<typeof parseDiffArgs>>) {
+  let after: StoryMapDocument;
+  try {
+    after = parseStoryMap(await readFile(options.map, "utf8"));
+  } catch (error) {
+    if (error instanceof StoryMapValidationError) {
+      for (const issue of error.issues) report(options.map, issue, "text");
+    } else {
+      console.error(`${options.map}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const before = await readMapAt(options.base, options.map);
+    const result = diffStoryMaps(before, after);
+    console.log(options.format === "json" ? JSON.stringify(result, null, 2) : formatStoryMapDiff(result));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = error instanceof UsageError ? 2 : 1;
   }
 }
 
@@ -114,8 +231,11 @@ Next, ask an agent in this repository to populate the map:
 const [command, ...rest] = process.argv.slice(2);
 const validateOptions = command === "validate" ? parseValidateArgs(rest) : null;
 const initOptions = command === "init" ? parseInitArgs(rest) : null;
+const diffOptions = command === "diff" ? parseDiffArgs(rest) : null;
 if (validateOptions) {
   await validate(validateOptions);
+} else if (diffOptions) {
+  await diff(diffOptions);
 } else if (initOptions) {
   await init(initOptions);
 } else if (command === "help" || command === "--help" || command === "-h") {

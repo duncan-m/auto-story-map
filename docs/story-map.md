@@ -9,7 +9,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id` and `title`, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
 3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Flag uncertain statuses for review. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Record `updatedBy` when you know the editor’s display name. Add customer-facing copy only after approval.
-4. **Validate and hand off.** Run `npx --no-install story-map validate product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
+4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
 ## Upgrade to 0.3.0
 
@@ -20,7 +20,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 3. To turn on search and the status filter, pass the projected view through `filterStoryMapView` with `readStoryMapFilters(url.searchParams)`, as described in [Integrate with a product](#integrate-with-a-product). Without this step the board renders without a toolbar.
 4. To add an **Engineering overview** link, append a verified heading fragment such as `#payment-controls` to an existing Markdown source. Use an absolute Markdown URL or configure [`sourceBaseUrl`](#link-an-engineering-overview) for repository-relative paths.
 5. If the host mapped its own roles to `engineer` or `super-admin` only to unlock the internal map, consider passing `canViewInternal` instead. See [Integrate with a product](#integrate-with-a-product).
-6. Add the [schema comment](#check-the-map-as-you-edit) to the top of the map, and add `--format github` to the CI validation step. Running `npx story-map init` adds the CI workflow and any missing guide or `AGENTS.md` section without touching existing files. It does not update a guide you already copied, so compare yours with `node_modules/embedded-story-map/docs/story-map.md`.
+6. Add the [schema comment](#check-the-map-as-you-edit) to the top of the map, and add `--format github --check-sources` to the CI validation step. Consider adding the [change summary](#review-a-map-change) to PRs. Running `npx story-map init` adds the CI workflow and any missing guide or `AGENTS.md` section without touching existing files. It does not update a guide you already copied, so compare yours with `node_modules/embedded-story-map/docs/story-map.md`.
 7. If host code catches errors from `parseStoryMap`, it can now read `error.issues`. Each message line now includes the source line and item ID. If host code uses the exported `storyMapSchema` directly, note that it is now a Zod 4 schema.
 8. Run `npx --no-install story-map validate product/story-map.yaml`. In React hosts, open a card using an internal account and verify any overview links. Try a search and a status filter. For all-users maps, check that the customer view shows its approved activity and release labels and that its panels show no engineering details.
 
@@ -99,10 +99,19 @@ product/story-map.yaml:74:14: stories.3.release (FINANCE-201): Unknown release '
 
 The checks cover YAML syntax, duplicate keys and IDs, missing and unknown fields, invalid statuses, broken references and missing customer-facing labels. All problems are reported in one run.
 
+Two optional checks look beyond the map file. Run them from the repository root, or pass `--root`:
+
+- `--check-sources` checks that each repository-relative source exists and that each Markdown `#heading` fragment matches a heading in that file, using GitHub’s anchor rules. Absolute URLs and free text such as “Agreed in planning” are not checked.
+- `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. Repeat the option for several folders.
+
+```sh
+npx --no-install story-map validate --check-sources --plans docs product/story-map.yaml
+```
+
 Run the validator in CI for story map changes. In GitHub Actions, add `--format github` so each problem appears as an annotation on the PR diff:
 
 ```yaml
-- run: npx --no-install story-map validate --format github product/story-map.yaml
+- run: npx --no-install story-map validate --format github --check-sources product/story-map.yaml
 ```
 
 In code, `parseStoryMap` throws a `StoryMapValidationError`. Its `issues` list gives each problem’s `path`, `message`, `line`, `column` and the `itemId` of the activity, release or story it belongs to.
@@ -116,6 +125,27 @@ The package includes a JSON Schema with a description for every field. Editors t
 ```
 
 The schema covers the shape of each field. Run the validator for the checks that span the file, such as duplicate IDs and references to unknown activities or releases.
+
+## Review a map change
+
+`story-map diff` compares the map with an earlier version and prints a Markdown summary for the PR. Pass the base branch:
+
+```sh
+npx --no-install story-map diff origin/main
+```
+
+The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Then it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
+
+The workflow from `npx story-map init` adds the summary to each PR’s job summary. In your own workflow, check out with `fetch-depth: 0` so the base branch is available:
+
+```yaml
+- name: Summarise story map changes
+  env:
+    BASE_REF: ${{ github.base_ref }}
+  run: npx --no-install story-map diff "origin/$BASE_REF" >> "$GITHUB_STEP_SUMMARY"
+```
+
+In code, `diffStoryMaps(before, after)` returns the same comparison and `formatStoryMapDiff` renders it.
 
 ## Integrate with a product
 

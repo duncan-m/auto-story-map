@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,7 +11,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { stringify } from "yaml";
 import { z } from "zod";
 import {
+  diffStoryMaps,
   filterStoryMapView,
+  formatStoryMapDiff,
+  hasStoryMapChanges,
   getStoryMapForViewer,
   parseStoryMap,
   readStoryMapFilters,
@@ -351,7 +354,7 @@ test("init sets up a host repository without overwriting anything", async t => {
   const agents = await readFile(join(root, "AGENTS.md"), "utf8");
   assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- embedded-story-map:start -->\n## Story map\n/);
   assert.match(agents, /<!-- embedded-story-map:end -->\n$/);
-  assert.match(await readFile(join(root, ".github/workflows/story-map.yml"), "utf8"), /story-map validate --format github product\/story-map\.yaml/);
+  assert.match(await readFile(join(root, ".github/workflows/story-map.yml"), "utf8"), /story-map validate --format github --check-sources product\/story-map\.yaml/);
 
   await writeFile(join(root, "product/story-map.yaml"), sample);
   const second = await initStoryMap(root);
@@ -378,4 +381,153 @@ test("init skips the workflow without npm or when asked", async t => {
   const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
   assert.doesNotMatch(noCi.stdout, /workflows/);
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
+});
+
+function editedSample(edit) {
+  const document = structuredClone(map);
+  edit(document);
+  return parseStoryMap(stringify(document));
+}
+
+test("diffs list story, structure and customer-facing changes", () => {
+  const after = editedSample(document => {
+    const [draft, lookup, submit] = document.stories;
+    draft.status = "shipped";
+    lookup.release = "finance-follow-up";
+    delete submit.customer;
+    document.stories.find(story => story.id === "FINANCE-202").title = "Handle duplicate approvals";
+    document.stories.splice(4, 0, { id: "BUILDER-104", title: "Check the total", activity: "prepare", release: "builder-mvp", status: "planned", customer: { title: "See your total" } });
+    document.stories = document.stories.filter(story => story.id !== "FINANCE-201");
+    document.releases.push({ id: "later", title: "Later" });
+    document.activities[0].title = "Prepare an estimate";
+  });
+  const diff = diffStoryMaps(map, after);
+
+  assert.deepEqual(diff.stories.added.map(story => [story.id, story.activity, story.release, story.status]), [["BUILDER-104", "Prepare an estimate", "Builder workflow", "planned"]]);
+  assert.deepEqual(diff.stories.removed, [{ id: "FINANCE-201", title: "Approve an estimate and create a purchase order" }]);
+  const updates = Object.fromEntries(diff.stories.updated.map(update => [update.id, update]));
+  assert.deepEqual(updates["BUILDER-101"].status, { from: "in-progress", to: "shipped" });
+  assert.deepEqual(updates["BUILDER-102"].release, { from: "Builder workflow", to: "Finance follow-up" });
+  assert.deepEqual(updates["BUILDER-103"].details, ["customer"]);
+  assert.deepEqual(updates["FINANCE-202"].titleChange, { from: "Explore duplicate approval handling", to: "Handle duplicate approvals" });
+  assert.deepEqual(diff.releases.added, [{ id: "later", title: "Later" }]);
+  assert.deepEqual(diff.activities.renamed, [{ id: "prepare", title: "Prepare an estimate", from: "Prepare estimate" }]);
+
+  assert.deepEqual(diff.customer.map(change => [change.id, change.change, change.details]), [
+    ["BUILDER-104", "now-visible", []],
+    ["BUILDER-101", "updated", ["status In progress → Shipped"]],
+    ["BUILDER-102", "updated", ["release Builder workflow → Finance updates"]],
+    ["BUILDER-103", "no-longer-visible", []],
+    ["FINANCE-201", "no-longer-visible", []],
+  ]);
+
+  const markdown = formatStoryMapDiff(diff);
+  assert.ok(markdown.indexOf("### Customer-facing changes") < markdown.indexOf("### Stories"));
+  assert.match(markdown, /- \*\*Now visible:\*\* `BUILDER-104` “See your total”/);
+  assert.match(markdown, /\| `BUILDER-101` Draft an estimate against a project \| Status: In progress → \*\*Shipped\*\* \|/);
+  assert.match(markdown, /- Added release `later` Later/);
+});
+
+test("diffs flag visibility switches and escape Markdown from the map", () => {
+  const internal = { ...map, visibility: "internal" };
+  const opened = diffStoryMaps(internal, map);
+  assert.deepEqual(opened.visibility, { from: "internal", to: "all-users" });
+  assert.equal(opened.customer.length, 4);
+  assert.ok(opened.customer.every(change => change.change === "now-visible"));
+  assert.match(formatStoryMapDiff(opened), /\[!IMPORTANT\]\n> The map is now visible to all signed-in users/);
+
+  const renamed = editedSample(document => { document.stories[4].title = "Pipe | <img src=x> [link](https://x.test)"; });
+  const markdown = formatStoryMapDiff(diffStoryMaps(map, renamed));
+  assert.match(markdown, /Pipe \\\| &lt;img src=x&gt; \\\[link\\\]\(https:\/\/x\.test\)/);
+  assert.doesNotMatch(markdown, /<img/);
+
+  assert.equal(hasStoryMapChanges(diffStoryMaps(map, map)), false);
+  assert.equal(formatStoryMapDiff(diffStoryMaps(map, map)), "## Story map changes\n\nNo story map changes.\n");
+  const created = diffStoryMaps(null, map);
+  assert.equal(created.created, true);
+  assert.equal(created.stories.added.length, 5);
+});
+
+test("Markdown anchors follow GitHub’s heading rules", async () => {
+  const { markdownAnchors, slugify } = await import("../dist/references.js");
+  assert.equal(slugify("Builder workflow"), "builder-workflow");
+  assert.equal(slugify("What's `new` in [v0.3](https://x.test)? 🎉"), "whats-new-in-v03-");
+  assert.equal(slugify("Upgrade to 0.3.0"), "upgrade-to-030");
+  assert.equal(slugify("snake_case & Ünïcode"), "snake_case--ünïcode");
+  const anchors = markdownAnchors([
+    "# Overview", "## Overview", "Setext heading", "--------------",
+    "```md", "## Not a heading", "```", "<a id=\"Custom-Anchor\"></a>", "- list item", "---",
+  ].join("\n"));
+  assert.deepEqual([...anchors].sort(), ["custom-anchor", "overview", "overview-1", "setext-heading"]);
+});
+
+test("source and plan checks report missing files, headings and story IDs", async t => {
+  const { checkPlanReferences, checkSources } = await import("../dist/references.js");
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const root = await mkdtemp(join(tmpdir(), "story-map-refs-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, "docs/plans"), { recursive: true });
+  await writeFile(join(root, "docs/plans/estimates.md"), "# Plan\n\n## Builder workflow\n\nBUILDER-101 and BUILDER-999. Not ABUILDER-1, UTF-8 or BUILDER-1x.\n");
+  await mkdir(join(root, "src"));
+  await writeFile(join(root, "src/estimate.ts"), "");
+
+  const source = sample.replace("      - docs/example-builder-estimate-plan.md#builder-workflow\n", [
+    "      - docs/plans/estimates.md#builder-workflow",
+    "      - ./src/estimate.ts#L10",
+    "      - docs/plans/estimates.md#missing-heading",
+    "      - docs/nothing.md",
+    "      - ../outside.md",
+    "      - https://example.test/doc.md#anything",
+    "      - Agreed in the planning call",
+    "",
+  ].join("\n"));
+  const loaded = loadStoryMap(source);
+  const lineOf = text => source.split("\n").findIndex(line => line.includes(text)) + 1;
+
+  const sourceIssues = await checkSources(loaded, root);
+  assert.deepEqual(sourceIssues.map(issue => [issue.path.join("."), issue.itemId, issue.line, issue.message]), [
+    ["stories.1.sources.2", "BUILDER-102", lineOf("#missing-heading"), "'docs/plans/estimates.md' has no heading for '#missing-heading'."],
+    ["stories.1.sources.3", "BUILDER-102", lineOf("docs/nothing.md"), "Source file 'docs/nothing.md' does not exist."],
+    ["stories.1.sources.4", "BUILDER-102", lineOf("../outside.md"), "Source '../outside.md' points outside the repository."],
+  ]);
+
+  const planIssues = await checkPlanReferences(loaded, root, ["docs", "missing-folder"]);
+  assert.deepEqual(planIssues.map(issue => [issue.file, issue.line, issue.column, issue.message]), [
+    ["docs/plans/estimates.md", 5, 17, "Unknown story ID 'BUILDER-999'. Add it to the map or correct the reference."],
+    ["missing-folder", undefined, undefined, "No Markdown files found."],
+  ]);
+});
+
+test("the CLI diffs the map against a Git reference", async t => {
+  const root = await mkdtemp(join(tmpdir(), "story-map-git-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const git = (...args) => {
+    const result = spawnSync("git", ["-c", "user.name=Test", "-c", "user.email=test@example.test", ...args], { cwd: root, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const run = (...args) => spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8" });
+
+  git("init", "-q", "-b", "main");
+  await mkdir(join(root, "product"));
+  await writeFile(join(root, "README.md"), "Before the map.\n");
+  git("add", "-A");
+  git("commit", "-q", "-m", "start");
+  await writeFile(join(root, "product/story-map.yaml"), sample);
+  assert.match(run("diff", "main").stdout, /The story map is new in this change\./);
+
+  git("add", "-A");
+  git("commit", "-q", "-m", "add map");
+  assert.match(run("diff", "HEAD").stdout, /No story map changes\./);
+  await writeFile(join(root, "product/story-map.yaml"), sample.replace("status: in-progress", "status: shipped"));
+  const markdown = run("diff", "HEAD");
+  assert.equal(markdown.status, 0);
+  assert.match(markdown.stdout, /\*\*Updated:\*\* `BUILDER-101` “Draft a project estimate”: status In progress → Shipped/);
+  const json = JSON.parse(run("diff", "--format", "json", "HEAD").stdout);
+  assert.deepEqual(json.stories.updated[0].status, { from: "in-progress", to: "shipped" });
+
+  assert.equal(run("diff", "no-such-ref").status, 2);
+  assert.equal(run("diff", "--upload-pack=x").status, 2);
+  await writeFile(join(root, "product/story-map.yaml"), "version: 2\n");
+  assert.equal(run("diff", "HEAD").status, 1);
 });

@@ -19,12 +19,17 @@ Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/embedable-story-ma
 - New `canViewInternal` option on `getStoryMapForViewer` lets the host decide who sees the internal map. The default is unchanged: the `engineer` and `super-admin` roles.
 - `parseStoryMap` throws `StoryMapValidationError`. Its `issues` give the path, message, line, column and containing item ID. Every problem is reported in one run, including reference checks when another field is invalid.
 - `story-map validate` prints `file:line:column` and supports `--format github` for PR annotations.
+- New `--check-sources` validator option checks that repository-relative sources exist and that Markdown `#heading` links match a heading. New `--plans <folder>` checks that story IDs mentioned in delivery plans exist in the map.
 - The package ships `story-map.schema.json` (also exported as `embedded-story-map/schema.json`) for editor autocomplete and inline checks.
 - **Breaking:** `storyMapSchema` is now a Zod 4 schema.
 
+### Reviewing changes
+
+- New `story-map diff <base-ref>` prints a Markdown summary of a map change for the PR, starting with what signed-in customers will see. `diffStoryMaps` and `formatStoryMapDiff` expose the same comparison in code.
+
 ### Setup
 
-- New `story-map init` command creates a starter map, the story map guide, an `AGENTS.md` section and a GitHub Actions validation workflow. It never overwrites existing files.
+- New `story-map init` command creates a starter map, the story map guide, an `AGENTS.md` section and a GitHub Actions workflow that validates the map and its sources and adds the change summary to each PR. It never overwrites existing files.
 - The package is published to npm.
 
 ## 0.2.0

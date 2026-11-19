@@ -171,6 +171,17 @@ function itemIdAt(data: unknown, path: (string | number)[]) {
  * `issues` give the path, item ID and source line of each problem.
  */
 export function parseStoryMap(source: string): StoryMapDocument {
+  return loadStoryMap(source).map;
+}
+
+export interface LoadedStoryMap {
+  map: StoryMapDocument;
+  /** Finds the source position of a path in the map, such as `["stories", 2, "sources", 0]`. */
+  locate(path: (string | number)[]): { line?: number; column?: number };
+}
+
+/** Like `parseStoryMap`, but keeps source positions for reporting problems found later. */
+export function loadStoryMap(source: string): LoadedStoryMap {
   const lineCounter = new LineCounter();
   const document = parseDocument(source, { uniqueKeys: true, lineCounter });
   if (document.errors.length) {
@@ -195,7 +206,9 @@ export function parseStoryMap(source: string): StoryMapDocument {
       return undefined;
     },
   });
-  if (result.success) return result.data;
+  if (result.success) {
+    return { map: result.data, locate: path => locate(document, lineCounter, path) };
+  }
 
   // Zod skips the cross-reference checks once a field fails, so run them here
   // too and report every problem in one pass.

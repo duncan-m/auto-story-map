@@ -20,3 +20,5 @@ export type {
 } from "./view.js";
 export { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 export type { StoryMapFilters } from "./filter.js";
+export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
+export type { CustomerStoryChange, GroupChanges, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";

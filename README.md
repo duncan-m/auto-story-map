@@ -50,7 +50,7 @@ Run `npx story-map init` in the host repo. It creates:
 - a starter `product/story-map.yaml` that points editors at the JSON Schema,
 - [the story map guide][guide] in `docs/story-map.md`,
 - a story map section at the end of `AGENTS.md`, keeping any existing instructions,
-- a GitHub Actions workflow in `.github/workflows/story-map.yml` that validates the map on each PR. Pass `--no-ci` to skip it. The workflow is written only when the repo uses npm.
+- a GitHub Actions workflow in `.github/workflows/story-map.yml` that validates the map and its sources on each PR and adds a summary of the story changes, starting with what customers will see. Pass `--no-ci` to skip it. The workflow is written only when the repo uses npm.
 
 It never overwrites an existing file, so it is safe to run again. [The example map][example-map] shows a fuller map.
 

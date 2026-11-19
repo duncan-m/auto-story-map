@@ -14,4 +14,4 @@ When a change affects a user journey, story scope, release assignment or deliver
 
 Keep new stories internal by default. Add customer-facing copy only when the story is approved for that audience. Mark a story as shipped when it is available to its intended users. If release assignment or availability is unclear, keep the existing value and flag the question in the PR.
 
-Run `npm run validate` in this source repo. In a product that installs the package, run `npx --no-install story-map validate product/story-map.yaml`. Use the same validation in CI, adding `--format github` so problems appear on the PR diff.
+Run `npm run validate` in this source repo. It also checks sources and the story IDs in `docs/`. In a product that installs the package, run `npx --no-install story-map validate product/story-map.yaml`. Add `--check-sources` to check that sources and `#heading` links exist. Use the same validation in CI, adding `--format github` so problems appear on the PR diff. In the PR description, include the summary from `story-map diff origin/<base branch>` and call out any customer-facing changes.
