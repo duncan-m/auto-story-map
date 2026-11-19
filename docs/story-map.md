@@ -2,6 +2,15 @@
 
 The product shows the map at `/story-map`. The source is `product/story-map.yaml`. Change the file in the same PR as a feature or delivery decision that affects the map. Reviewers can see exactly which stories moved, which changed status and which became visible to other users.
 
+## Populate the first map
+
+Run this workflow in the host product repository when `product/story-map.yaml` is missing or still contains the builder estimates demo. Use the sample YAML for its structure and replace the demo content with evidence from the host product. If the host product already has its own map, follow the editing rules below.
+
+1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
+2. **Draft the map structure.** Create `product/story-map.yaml` with `version: 1`, a product-specific `id` and `title`, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
+3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Flag uncertain statuses for review. Cite supporting docs or tests in `sources`. Record `updatedBy` when you know the editor’s display name. Add customer-facing copy only after approval.
+4. **Validate and hand off.** From the host repo, run `npx --no-install story-map validate product/story-map.yaml` with the package installed. Resolve validation errors and review the activity and release order against the evidence. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
+
 ## Where an edit belongs
 
 | If you are changing | Update |
