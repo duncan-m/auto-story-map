@@ -19,7 +19,14 @@ Cards show the story ID, title and status. Selecting a card opens a panel with i
 
 ## Embed it in a product
 
-Run `npm ci` and `npm pack` in the source checkout. From your host product, install the resulting tarball with `npm install /path/to/embedded-story-map-0.3.0.tgz`. You can also publish the tarball to your organisation’s registry. The core can run in a TypeScript or JavaScript backend. A React host can also use the board and stylesheet.
+Install the package in your host product, then set it up:
+
+```sh
+npm install embedded-story-map
+npx story-map init
+```
+
+The core can run in a TypeScript or JavaScript backend. A React host can also use the board and stylesheet. To try unreleased changes, run `npm ci` and `npm pack` in a source checkout and install the resulting tarball instead.
 
 | Import | Use |
 | --- | --- |
@@ -34,22 +41,34 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Install the 0.3.0 tarball from your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. The board markup and class names changed in 0.3.0, so remove any host CSS that targets the old table or `<details>` cards. Follow the [upgrade steps][upgrade] to validate the map, turn on search, and check the story panels.
+Run `npm install embedded-story-map@0.3.0` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. The board markup and class names changed in 0.3.0, so remove any host CSS that targets the old table or `<details>` cards. Follow the [upgrade steps][upgrade] to validate the map, turn on search, and check the story panels.
 
 ## Populate the first map
 
-In the host repo, copy [the story map guide][guide] to `docs/story-map.md` and add [the story map agent instructions][agents] to `AGENTS.md`, preserving any existing instructions. Use [the example map][example-map] as a template for the YAML structure.
+Run `npx story-map init` in the host repo. It creates:
+
+- a starter `product/story-map.yaml` that points editors at the JSON Schema,
+- [the story map guide][guide] in `docs/story-map.md`,
+- a story map section at the end of `AGENTS.md`, keeping any existing instructions,
+- a GitHub Actions workflow in `.github/workflows/story-map.yml` that validates the map on each PR. Pass `--no-ci` to skip it. The workflow is written only when the repo uses npm.
+
+It never overwrites an existing file, so it is safe to run again. [The example map][example-map] shows a fuller map.
 
 Start an agent in the host repo and give it this task.
 
 > Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, open a few story cards if the host renders the board, and flag any uncertain release or status decisions for review.
 
+## Changes and releases
+
+See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one.
+
 [source]: https://github.com/duncan-m/embedable-story-map
 [example-map]: https://github.com/duncan-m/embedable-story-map/blob/main/product/story-map.yaml
 [guide]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md
-[agents]: https://github.com/duncan-m/embedable-story-map/blob/main/AGENTS.md
 [first-run]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#populate-the-first-map
 [upgrade]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030
 [engineering-overview]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#link-an-engineering-overview
 [delivery-plan]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/example-builder-estimate-plan.md
 [host]: https://github.com/duncan-m/embedable-story-map/blob/main/example/host.mjs
+[changelog]: https://github.com/duncan-m/embedable-story-map/blob/main/CHANGELOG.md
+[releasing]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/releasing.md

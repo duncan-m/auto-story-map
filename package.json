@@ -3,11 +3,15 @@
   "version": "0.3.0",
   "description": "Git-backed user story maps embedded in product applications",
   "license": "Apache-2.0",
+  "keywords": ["story-map", "user-story-mapping", "roadmap", "product-management", "react", "yaml"],
+  "homepage": "https://github.com/duncan-m/embedable-story-map#readme",
+  "bugs": "https://github.com/duncan-m/embedable-story-map/issues",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/duncan-m/embedable-story-map.git"
   },
   "type": "module",
+  "publishConfig": { "access": "public" },
   "engines": { "node": ">=20" },
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
@@ -16,7 +20,7 @@
     "./schema.json": "./story-map.schema.json"
   },
   "bin": { "story-map": "./dist/cli.js" },
-  "files": ["dist", "styles.css", "story-map.schema.json", "docs/story-map.md"],
+  "files": ["dist", "styles.css", "story-map.schema.json", "templates", "docs/story-map.md", "CHANGELOG.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-schema.mjs",
     "prepare": "npm run build",

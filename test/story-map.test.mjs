@@ -325,3 +325,57 @@ test("the published JSON Schema matches the validator", async () => {
   assert.match(schema.properties.stories.items.properties.status.description, /shipped: available to its intended users/);
   assert.match(sample, /^# yaml-language-server: \$schema=\.\.\/story-map\.schema\.json\n/);
 });
+
+test("init sets up a host repository without overwriting anything", async t => {
+  const { initStoryMap, describeProduct } = await import("../dist/init.js");
+  const root = await mkdtemp(join(tmpdir(), "story-map-host-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "@acme/Field Ops!" }));
+  await writeFile(join(root, "package-lock.json"), "{}");
+  await writeFile(join(root, "AGENTS.md"), "# House rules\n\nUse British English.");
+
+  const first = await initStoryMap(root);
+  assert.deepEqual(first.map(step => [step.path, step.action]), [
+    ["product/story-map.yaml", "created"],
+    ["docs/story-map.md", "created"],
+    ["AGENTS.md", "updated"],
+    [".github/workflows/story-map.yml", "created"],
+  ]);
+
+  const starter = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
+  assert.equal(starter.id, "field-ops");
+  assert.equal(starter.title, "Field ops story map");
+  assert.equal(starter.visibility, "internal");
+  assert.match(starter.summary, /^Starter map/);
+  assert.equal(await readFile(join(root, "docs/story-map.md"), "utf8"), await readFile(new URL("../docs/story-map.md", import.meta.url), "utf8"));
+  const agents = await readFile(join(root, "AGENTS.md"), "utf8");
+  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- embedded-story-map:start -->\n## Story map\n/);
+  assert.match(agents, /<!-- embedded-story-map:end -->\n$/);
+  assert.match(await readFile(join(root, ".github/workflows/story-map.yml"), "utf8"), /story-map validate --format github product\/story-map\.yaml/);
+
+  await writeFile(join(root, "product/story-map.yaml"), sample);
+  const second = await initStoryMap(root);
+  assert.ok(second.every(step => step.action === "skipped"));
+  assert.equal(await readFile(join(root, "product/story-map.yaml"), "utf8"), sample);
+  assert.equal(await readFile(join(root, "AGENTS.md"), "utf8"), agents);
+
+  assert.deepEqual(describeProduct("!!!"), { id: "product", title: "Product story map" });
+  assert.equal(describeProduct("x".repeat(100)).id.length, 64);
+});
+
+test("init skips the workflow without npm or when asked", async t => {
+  const root = await mkdtemp(join(tmpdir(), "story-map-host-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+
+  const run = spawnSync(process.execPath, [cli, "init", "--dir", root], { encoding: "utf8" });
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /skipped  \.github\/workflows\/story-map\.yml \(no package-lock\.json/);
+  assert.match(run.stdout, /Next, ask an agent/);
+  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- embedded-story-map:start -->/);
+
+  await writeFile(join(root, "package-lock.json"), "{}");
+  const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
+  assert.doesNotMatch(noCi.stdout, /workflows/);
+  assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
+});

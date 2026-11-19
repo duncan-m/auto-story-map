@@ -13,6 +13,9 @@ cd "$consumer_dir"
 npm init --yes >/dev/null
 npm install --no-audit --no-fund "./$archive" "react@$react_major" "react-dom@$react_major"
 ./node_modules/.bin/story-map validate "$repo_dir/product/story-map.yaml"
+./node_modules/.bin/story-map init
+./node_modules/.bin/story-map validate product/story-map.yaml
+test -s docs/story-map.md && test -s AGENTS.md && test -s .github/workflows/story-map.yml
 
 node --input-type=module - "$repo_dir/product/story-map.yaml" "$react_major" <<'NODE'
 import assert from "node:assert/strict";
