@@ -1,6 +1,6 @@
 # Embedded Story Map
 
-A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using the roles from its existing sign-in.
+A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
 
 
 ## Screenshot
@@ -18,17 +18,27 @@ npm test
 npm run demo
 ```
 
-Open [the local story map](http://127.0.0.1:4173/story-map). Choose **Engineer**, expand **Look up prices in the material catalogue**, and follow its **Engineering overview** link. Switch to **Regular user** to see the customer-facing activity and release labels. The demo also offers **Super admin** and **Guest** views. It listens on loopback and serves sample JSON at `/api/story-map`.
+Open [the local story map](http://127.0.0.1:4173/story-map). Choose **Engineer**, select **Look up prices in the material catalogue** to open its details, and follow the **Engineering overview** link. Search for “estimate” or filter by status. Switch to **Regular user** to see the customer-facing activity and release labels. The demo also offers **Product manager**, **Super admin** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves sample JSON at `/api/story-map`.
+
+Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. The panel and the search form work without client-side JavaScript.
 
 ## Embed it in a product
 
-Run `npm ci` and `npm pack` in the source checkout. From your host product, install the resulting tarball with `npm install /path/to/embedded-story-map-0.2.0.tgz`. You can also publish the tarball to your organisation’s registry. The core can run in a TypeScript or JavaScript backend. A React host can also use the board and stylesheet.
+Install the package in your host product, then set it up:
+
+```sh
+npm install embedded-story-map
+npx story-map init
+```
+
+The core can run in a TypeScript or JavaScript backend. A React host can also use the board and stylesheet. To try unreleased changes, run `npm ci` and `npm pack` in a source checkout and install the resulting tarball instead.
 
 | Import | Use |
 | --- | --- |
-| `embedded-story-map` | Parse the YAML and select the view on the server. |
+| `embedded-story-map` | Parse the YAML, select the viewer’s view and apply search filters on the server. |
 | `embedded-story-map/react` | Render a view with `<StoryMapBoard map={view} />`. |
 | `embedded-story-map/styles.css` | Style the board using namespaced CSS. |
+| `embedded-story-map/schema.json` | Give editors autocomplete and inline checks for the YAML. |
 
 [The host integration][host] shows how a product can serve the board and JSON with the same audience rules. [The example delivery plan][delivery-plan] shows how plans reference stories by ID.
 
@@ -36,22 +46,34 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Install the 0.2.0 tarball from your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. Follow the [upgrade steps][upgrade] to validate the map and add Markdown section links where you have engineering docs.
+Run `npm install embedded-story-map@0.3.0` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. The board markup and class names changed in 0.3.0, so remove any host CSS that targets the old table or `<details>` cards. Follow the [upgrade steps][upgrade] to validate the map, turn on search, and check the story panels.
 
 ## Populate the first map
 
-In the host repo, copy [the story map guide][guide] to `docs/story-map.md` and add [the story map agent instructions][agents] to `AGENTS.md`, preserving any existing instructions. Use [the example map][example-map] as a template for the YAML structure.
+Run `npx story-map init` in the host repo. It creates:
+
+- a starter `product/story-map.yaml` that points editors at the JSON Schema,
+- [the story map guide][guide] in `docs/story-map.md`,
+- a story map section at the end of `AGENTS.md`, keeping any existing instructions,
+- a GitHub Actions workflow in `.github/workflows/story-map.yml` that validates the map and its sources on each PR and adds a summary of the story changes, starting with what customers will see. Pass `--no-ci` to skip it. The workflow is written only when the repo uses npm.
+
+It never overwrites an existing file, so it is safe to run again. [The example map][example-map] shows a fuller map.
 
 Start an agent in the host repo and give it this task.
 
-> Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, check the expanded cards if the host renders the board, and flag any uncertain release or status decisions for review.
+> Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, open a few story cards if the host renders the board, and flag any uncertain release or status decisions for review.
+
+## Changes and releases
+
+See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one.
 
 [source]: https://github.com/duncan-m/embedable-story-map
-[example-map]: https://github.com/duncan-m/embedable-story-map/blob/ca4e4bf75388932f1c3cc79c489df3d14f7c4df2/product/story-map.yaml
-[guide]: https://github.com/duncan-m/embedable-story-map/blob/e68adb6d8186c464d9b71d54375c7fc2ac35e9f9/docs/story-map.md
-[agents]: https://github.com/duncan-m/embedable-story-map/blob/e68adb6d8186c464d9b71d54375c7fc2ac35e9f9/AGENTS.md
-[first-run]: https://github.com/duncan-m/embedable-story-map/blob/e68adb6d8186c464d9b71d54375c7fc2ac35e9f9/docs/story-map.md#populate-the-first-map
-[upgrade]: https://github.com/duncan-m/embedable-story-map/blob/e68adb6d8186c464d9b71d54375c7fc2ac35e9f9/docs/story-map.md#upgrade-from-010
-[engineering-overview]: https://github.com/duncan-m/embedable-story-map/blob/e68adb6d8186c464d9b71d54375c7fc2ac35e9f9/docs/story-map.md#link-an-engineering-overview
-[delivery-plan]: https://github.com/duncan-m/embedable-story-map/blob/db4194d4e7fbc23498b6d5e0c1e66f3d0dcc2d47/docs/example-builder-estimate-plan.md
-[host]: https://github.com/duncan-m/embedable-story-map/blob/ca4e4bf75388932f1c3cc79c489df3d14f7c4df2/example/host.mjs
+[example-map]: https://github.com/duncan-m/embedable-story-map/blob/main/product/story-map.yaml
+[guide]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md
+[first-run]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#populate-the-first-map
+[upgrade]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030
+[engineering-overview]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#link-an-engineering-overview
+[delivery-plan]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/example-builder-estimate-plan.md
+[host]: https://github.com/duncan-m/embedable-story-map/blob/main/example/host.mjs
+[changelog]: https://github.com/duncan-m/embedable-story-map/blob/main/CHANGELOG.md
+[releasing]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/releasing.md

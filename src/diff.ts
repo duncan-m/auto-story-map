@@ -1,0 +1,256 @@
+import type { StoryMapDocument } from "./schema.js";
+import { storyStatusLabels, type StoryStatus } from "./status.js";
+
+type Story = StoryMapDocument["stories"][number];
+type Group = StoryMapDocument["activities"][number];
+type Change<T> = { from: T; to: T };
+
+export interface StoryDiffRef {
+  id: string;
+  title: string;
+}
+
+export interface StoryAddition extends StoryDiffRef {
+  activity: string;
+  release: string;
+  status: StoryStatus;
+}
+
+export interface StoryUpdate extends StoryDiffRef {
+  title: string;
+  titleChange?: Change<string>;
+  status?: Change<StoryStatus>;
+  /** Activity titles before and after a move. */
+  activity?: Change<string>;
+  /** Release titles before and after a move. */
+  release?: Change<string>;
+  /** Other fields that changed, such as `summary`, `notes` or `sources`. */
+  details: string[];
+}
+
+export interface CustomerStoryChange {
+  id: string;
+  /** Customer-facing title. */
+  title: string;
+  change: "now-visible" | "no-longer-visible" | "updated";
+  /** For `updated`: what customers will see change. */
+  details: string[];
+}
+
+export interface GroupChanges {
+  added: StoryDiffRef[];
+  removed: StoryDiffRef[];
+  renamed: (StoryDiffRef & { from: string })[];
+  reordered: boolean;
+  /** Groups whose customer-facing label was added, changed or removed. */
+  customerLabelChanged: StoryDiffRef[];
+}
+
+export interface StoryMapDiff {
+  /** True when the earlier map did not exist. */
+  created: boolean;
+  visibility?: Change<StoryMapDocument["visibility"]>;
+  titleChange?: Change<string>;
+  /** True when the customer-facing map title or summary changed. */
+  customerCopyChanged: boolean;
+  /** Changes that signed-in customers will see. Empty unless a version of the map is visible to all users. */
+  customer: CustomerStoryChange[];
+  stories: { added: StoryAddition[]; removed: StoryDiffRef[]; updated: StoryUpdate[] };
+  activities: GroupChanges;
+  releases: GroupChanges;
+}
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+function customerVisible(map: StoryMapDocument | null, story: Story | undefined) {
+  return !!(map && story?.customer && map.visibility === "all-users" && map.customer);
+}
+
+function groupChanges(before: Group[], after: Group[]): GroupChanges {
+  const old = new Map(before.map(group => [group.id, group]));
+  const current = new Map(after.map(group => [group.id, group]));
+  const kept = after.filter(group => old.has(group.id)).map(group => group.id);
+  const keptBefore = before.filter(group => current.has(group.id)).map(group => group.id);
+  return {
+    added: after.filter(group => !old.has(group.id)).map(({ id, title }) => ({ id, title })),
+    removed: before.filter(group => !current.has(group.id)).map(({ id, title }) => ({ id, title })),
+    renamed: after.flatMap(({ id, title }) => {
+      const previous = old.get(id);
+      return previous && previous.title !== title ? [{ id, title, from: previous.title }] : [];
+    }),
+    reordered: !same(kept, keptBefore),
+    customerLabelChanged: after.flatMap(({ id, title, customer }) =>
+      old.has(id) && !same(old.get(id)!.customer, customer) ? [{ id, title }] : []),
+  };
+}
+
+/** Compares two versions of a map. Pass `null` for `before` when the map is new. */
+export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDocument): StoryMapDiff {
+  const empty: StoryMapDocument = { ...after, visibility: "internal", customer: undefined, activities: [], releases: [], stories: [] };
+  const base = before ?? empty;
+  const titles = (map: StoryMapDocument, field: "activities" | "releases") =>
+    new Map(map[field].map(group => [group.id, group.title]));
+  const activityTitles = [titles(base, "activities"), titles(after, "activities")];
+  const releaseTitles = [titles(base, "releases"), titles(after, "releases")];
+
+  const oldStories = new Map(base.stories.map(story => [story.id, story]));
+  const newStories = new Map(after.stories.map(story => [story.id, story]));
+
+  const added: StoryAddition[] = [];
+  const updated: StoryUpdate[] = [];
+  for (const story of after.stories) {
+    const previous = oldStories.get(story.id);
+    if (!previous) {
+      added.push({
+        id: story.id,
+        title: story.title,
+        activity: activityTitles[1].get(story.activity) ?? story.activity,
+        release: releaseTitles[1].get(story.release) ?? story.release,
+        status: story.status,
+      });
+      continue;
+    }
+    const update: StoryUpdate = { id: story.id, title: story.title, details: [] };
+    if (previous.title !== story.title) update.titleChange = { from: previous.title, to: story.title };
+    if (previous.status !== story.status) update.status = { from: previous.status, to: story.status };
+    if (previous.activity !== story.activity) {
+      update.activity = {
+        from: activityTitles[0].get(previous.activity) ?? previous.activity,
+        to: activityTitles[1].get(story.activity) ?? story.activity,
+      };
+    }
+    if (previous.release !== story.release) {
+      update.release = {
+        from: releaseTitles[0].get(previous.release) ?? previous.release,
+        to: releaseTitles[1].get(story.release) ?? story.release,
+      };
+    }
+    for (const field of ["summary", "notes", "sources", "customer", "updatedBy"] as const) {
+      if (!same(previous[field], story[field])) update.details.push(field);
+    }
+    if (update.titleChange || update.status || update.activity || update.release || update.details.length) {
+      updated.push(update);
+    }
+  }
+  const removed = base.stories.filter(story => !newStories.has(story.id)).map(({ id, title }) => ({ id, title }));
+
+  const customer: CustomerStoryChange[] = [];
+  const customerLabel = (map: StoryMapDocument, field: "activities" | "releases", id: string) =>
+    map[field].find(group => group.id === id)?.customer?.title;
+  for (const id of new Set([...oldStories.keys(), ...newStories.keys()])) {
+    const previous = oldStories.get(id);
+    const story = newStories.get(id);
+    const wasVisible = customerVisible(before, previous);
+    const isVisible = customerVisible(after, story);
+    if (isVisible && !wasVisible) {
+      customer.push({ id, title: story!.customer!.title, change: "now-visible", details: [] });
+    } else if (wasVisible && !isVisible) {
+      customer.push({ id, title: previous!.customer!.title, change: "no-longer-visible", details: [] });
+    } else if (wasVisible && isVisible) {
+      const details: string[] = [];
+      if (previous!.customer!.title !== story!.customer!.title) details.push(`title was “${previous!.customer!.title}”`);
+      if (!same(previous!.customer!.summary, story!.customer!.summary)) details.push("summary changed");
+      if (previous!.status !== story!.status) {
+        details.push(`status ${storyStatusLabels[previous!.status]} → ${storyStatusLabels[story!.status]}`);
+      }
+      const activityBefore = customerLabel(before!, "activities", previous!.activity);
+      const activityAfter = customerLabel(after, "activities", story!.activity);
+      if (activityBefore !== activityAfter) details.push(`activity ${activityBefore} → ${activityAfter}`);
+      const releaseBefore = customerLabel(before!, "releases", previous!.release);
+      const releaseAfter = customerLabel(after, "releases", story!.release);
+      if (releaseBefore !== releaseAfter) details.push(`release ${releaseBefore} → ${releaseAfter}`);
+      if (details.length) customer.push({ id, title: story!.customer!.title, change: "updated", details });
+    }
+  }
+
+  const order = { "now-visible": 0, updated: 1, "no-longer-visible": 2 };
+  customer.sort((a, b) => order[a.change] - order[b.change]);
+
+  return {
+    created: before === null,
+    visibility: before && before.visibility !== after.visibility ? { from: before.visibility, to: after.visibility } : undefined,
+    titleChange: before && before.title !== after.title ? { from: before.title, to: after.title } : undefined,
+    customerCopyChanged: !!before && !same(before.customer, after.customer),
+    customer,
+    stories: { added, removed, updated },
+    activities: groupChanges(base.activities, after.activities),
+    releases: groupChanges(base.releases, after.releases),
+  };
+}
+
+export function hasStoryMapChanges(diff: StoryMapDiff) {
+  const groups = (changes: GroupChanges) =>
+    changes.added.length || changes.removed.length || changes.renamed.length || changes.reordered || changes.customerLabelChanged.length;
+  return !!(diff.created || diff.visibility || diff.titleChange || diff.customerCopyChanged || diff.customer.length
+    || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
+    || groups(diff.activities) || groups(diff.releases));
+}
+
+/** Escapes text from the map so it renders literally in GitHub Markdown, including inside table cells. */
+function text(value: string) {
+  return value
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/[\\`*_[\]|#~]/g, character => `\\${character}`)
+    .replace(/\s+/g, " ");
+}
+
+function story(ref: StoryDiffRef) {
+  return `\`${ref.id}\` ${text(ref.title)}`;
+}
+
+/** Renders a diff as Markdown for a pull request comment or job summary. */
+export function formatStoryMapDiff(diff: StoryMapDiff): string {
+  if (!hasStoryMapChanges(diff)) return "## Story map changes\n\nNo story map changes.\n";
+  const lines: string[] = ["## Story map changes", ""];
+  const status = (value: StoryStatus) => storyStatusLabels[value];
+
+  if (diff.created) lines.push("The story map is new in this change.", "");
+  if (diff.visibility) {
+    lines.push(diff.visibility.to === "all-users"
+      ? "> [!IMPORTANT]\n> The map is now visible to all signed-in users. Check the customer-facing copy before merging."
+      : "> [!NOTE]\n> The map is now internal only. Signed-in customers will no longer see it.", "");
+  }
+
+  if (diff.customer.length || diff.customerCopyChanged) {
+    lines.push("### Customer-facing changes", "", "Signed-in customers will see these changes once this is deployed.", "");
+    if (diff.customerCopyChanged) lines.push("- The customer-facing map title or summary changed.");
+    for (const change of diff.customer) {
+      const label = `\`${change.id}\` “${text(change.title)}”`;
+      if (change.change === "now-visible") lines.push(`- **Now visible:** ${label}`);
+      else if (change.change === "no-longer-visible") lines.push(`- **No longer visible:** ${label}`);
+      else lines.push(`- **Updated:** ${label}: ${change.details.map(text).join("; ")}`);
+    }
+    lines.push("");
+  }
+
+  const rows: [string, string][] = [];
+  for (const added of diff.stories.added) {
+    rows.push([story(added), `Added to ${text(added.activity)} / ${text(added.release)} as ${status(added.status)}`]);
+  }
+  for (const update of diff.stories.updated) {
+    const changes: string[] = [];
+    if (update.status) changes.push(`Status: ${status(update.status.from)} → **${status(update.status.to)}**`);
+    if (update.activity) changes.push(`Activity: ${text(update.activity.from)} → ${text(update.activity.to)}`);
+    if (update.release) changes.push(`Release: ${text(update.release.from)} → ${text(update.release.to)}`);
+    if (update.titleChange) changes.push(`Renamed from “${text(update.titleChange.from)}”`);
+    if (update.details.length) changes.push(`Edited ${update.details.map(field => `\`${field}\``).join(", ")}`);
+    rows.push([story(update), changes.join("<br>")]);
+  }
+  for (const removed of diff.stories.removed) rows.push([story(removed), "Removed"]);
+  if (rows.length) {
+    lines.push("### Stories", "", "| Story | Change |", "| --- | --- |", ...rows.map(([name, change]) => `| ${name} | ${change} |`), "");
+  }
+
+  const groupLines = (label: string, changes: GroupChanges) => [
+    ...changes.added.map(group => `- Added ${label} ${story(group)}`),
+    ...changes.renamed.map(group => `- Renamed ${label} \`${group.id}\` from “${text(group.from)}” to “${text(group.title)}”`),
+    ...changes.removed.map(group => `- Removed ${label} ${story(group)}`),
+    ...changes.customerLabelChanged.map(group => `- Changed the customer-facing label of ${label} ${story(group)}`),
+    ...(changes.reordered ? [`- Reordered the ${label === "activity" ? "activities" : "releases"}`] : []),
+  ];
+  const structure = [...groupLines("activity", diff.activities), ...groupLines("release", diff.releases)];
+  if (diff.titleChange) structure.unshift(`- Renamed the map from “${text(diff.titleChange.from)}” to “${text(diff.titleChange.to)}”`);
+  if (structure.length) lines.push("### Activities and releases", "", ...structure, "");
+
+  return lines.join("\n");
+}

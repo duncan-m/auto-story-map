@@ -4,19 +4,25 @@ The product shows the map at `/story-map`. The source is `product/story-map.yaml
 
 ## Populate the first map
 
-Run this workflow in the host product repository when `product/story-map.yaml` is missing or still contains the builder estimates demo. Use the sample YAML for its structure and replace the demo content with evidence from the host product. If the host product already has its own map, follow the editing rules below.
+Run this workflow in the host product repository when `product/story-map.yaml` is missing, still contains the builder estimates demo, or is the starter map from `npx story-map init` (its summary begins “Starter map”). Use the sample YAML for its structure and replace the demo content with evidence from the host product. If the host product already has its own map, follow the editing rules below.
 
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
-2. **Draft the map structure.** Create `product/story-map.yaml` with `version: 1`, a product-specific `id` and `title`, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
+2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id` and `title`, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
 3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Flag uncertain statuses for review. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Record `updatedBy` when you know the editor’s display name. Add customer-facing copy only after approval.
-4. **Validate and hand off.** Run `npx --no-install story-map validate product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, expand a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
+4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
-## Upgrade from 0.1.0
+## Upgrade to 0.3.0
 
-1. From the 0.2.0 source checkout, run `npm ci` and `npm pack` to create `embedded-story-map-0.2.0.tgz`. From your host repo, run `npm install /path/to/embedded-story-map-0.2.0.tgz`. If your organisation has published the release to a registry you use, run `npm install embedded-story-map@0.2.0` instead. Commit the dependency and lockfile changes together.
-2. Keep your existing `version: 1` map, story IDs, and visibility settings. React hosts should load the updated `embedded-story-map/styles.css` and rebuild or restart the app. Refresh the stylesheet from the new package if the host keeps a local copy. The existing board integration renders the expandable cards.
-3. To add an **Engineering overview** link, append a verified heading fragment such as `#payment-controls` to an existing Markdown source. Use an absolute Markdown URL or configure [`sourceBaseUrl`](#link-an-engineering-overview) for repository-relative paths. Existing source entries still work as references.
-4. Run `npx --no-install story-map validate product/story-map.yaml`. In React hosts, open a card using an internal account and verify any overview links. For all-users maps, check that the customer view shows its approved activity and release labels.
+These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
+
+1. From your host repo, run `npm install embedded-story-map@0.3.0`. If you installed an earlier version from a tarball, this replaces it with the npm release. Commit the dependency and lockfile changes together.
+2. Keep your existing `version: 1` map, story IDs, and visibility settings. React hosts should load the updated `embedded-story-map/styles.css` and rebuild or restart the app. Refresh the stylesheet from the new package if the host keeps a local copy. The board is now a grid of release lanes, and each card opens a detail panel. Remove any host CSS that targets the old `.esm-table`, `.esm-card-toggle` or `<details>` markup.
+3. To turn on search and the status filter, pass the projected view through `filterStoryMapView` with `readStoryMapFilters(url.searchParams)`, as described in [Integrate with a product](#integrate-with-a-product). Without this step the board renders without a toolbar.
+4. To add an **Engineering overview** link, append a verified heading fragment such as `#payment-controls` to an existing Markdown source. Use an absolute Markdown URL or configure [`sourceBaseUrl`](#link-an-engineering-overview) for repository-relative paths.
+5. If the host mapped its own roles to `engineer` or `super-admin` only to unlock the internal map, consider passing `canViewInternal` instead. See [Integrate with a product](#integrate-with-a-product).
+6. Add the [schema comment](#check-the-map-as-you-edit) to the top of the map, and add `--format github --check-sources` to the CI validation step. Consider adding the [change summary](#review-a-map-change) to PRs. Running `npx story-map init` adds the CI workflow and any missing guide or `AGENTS.md` section without touching existing files. It does not update a guide you already copied, so compare yours with `node_modules/embedded-story-map/docs/story-map.md`.
+7. If host code catches errors from `parseStoryMap`, it can now read `error.issues`. Each message line now includes the source line and item ID. If host code uses the exported `storyMapSchema` directly, note that it is now a Zod 4 schema.
+8. Run `npx --no-install story-map validate product/story-map.yaml`. In React hosts, open a card using an internal account and verify any overview links. Try a search and a status filter. For all-users maps, check that the customer view shows its approved activity and release labels and that its panels show no engineering details.
 
 ## Where an edit belongs
 
@@ -63,7 +69,7 @@ Render the projected view with the repository URL in the board props.
 />
 ```
 
-Open a card to see its activity and release. In the internal view, the card also shows engineering notes and uses the first Markdown section that resolves to a web URL as its **Engineering overview** link. Other sources stay in the internal JSON view for reference. Stories without a section link show their existing references under **Engineering details**.
+Cards show only the story ID, title and status. Select a card to open its panel, which shows the summary, activity and release. In the internal view, the panel also has an **Engineering** section. The first Markdown section that resolves to a web URL becomes its **Engineering overview** link, followed by the notes and the remaining sources. Sources that resolve to a web URL are links. Anything else, such as a note about a meeting, is shown as text. The panel ends with the recorded editor.
 
 ## Audience settings
 
@@ -71,11 +77,11 @@ Open a card to see its activity and release. In the internal view, the card also
 | --- | --- | --- |
 | Guest | Sign-in required | Sign-in required |
 | Signed-in user | Access denied | Customer-facing view |
-| Engineer or super admin | Full map | Full map |
+| Internal viewer (engineer or super admin by default) | Full map | Full map |
 
 Set the map’s `visibility` to `internal` or `all-users`. The default is `internal`. To show a story to signed-in users, add its `customer.title` and optional `customer.summary`. Add customer-facing copy to its activity and release, and to the map itself. Review the wording and verify that the story’s displayed status is suitable for this audience before merging.
 
-The customer view includes the approved copy and story status. It excludes engineering notes, source paths, editor names, internal IDs and activities or releases with no published stories. Story records without a `customer` section stay internal. Engineers and super admins can see the recorded editor on the card and in the JSON view.
+The customer view includes the approved copy and story status, and its story panels show only that copy with the customer-facing activity and release labels. It excludes engineering notes, source paths, editor names, internal IDs and activities or releases with no published stories. Customer searches match only the approved title and summary. Story records without a `customer` section stay internal. Engineers and super admins can see the recorded editor on the card and in the JSON view.
 
 ## Validate a change
 
@@ -85,13 +91,68 @@ In the library source repo, run `npm run build && npm run validate` or `npm test
 npx --no-install story-map validate product/story-map.yaml
 ```
 
-Run the validator in CI for story map changes. The checks cover YAML syntax, duplicate IDs, unknown fields, broken references and missing customer-facing labels.
+Each problem is reported as `file:line:column` with the item it belongs to, for example:
+
+```text
+product/story-map.yaml:74:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'.
+```
+
+The checks cover YAML syntax, duplicate keys and IDs, missing and unknown fields, invalid statuses, broken references and missing customer-facing labels. All problems are reported in one run.
+
+Two optional checks look beyond the map file. Run them from the repository root, or pass `--root`:
+
+- `--check-sources` checks that each repository-relative source exists and that each Markdown `#heading` fragment matches a heading in that file, using GitHub’s anchor rules. Absolute URLs and free text such as “Agreed in planning” are not checked.
+- `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. Repeat the option for several folders.
+
+```sh
+npx --no-install story-map validate --check-sources --plans docs product/story-map.yaml
+```
+
+Run the validator in CI for story map changes. In GitHub Actions, add `--format github` so each problem appears as an annotation on the PR diff:
+
+```yaml
+- run: npx --no-install story-map validate --format github --check-sources product/story-map.yaml
+```
+
+In code, `parseStoryMap` throws a `StoryMapValidationError`. Its `issues` list gives each problem’s `path`, `message`, `line`, `column` and the `itemId` of the activity, release or story it belongs to.
+
+### Check the map as you edit
+
+The package includes a JSON Schema with a description for every field. Editors that use the YAML language server, such as VS Code with the Red Hat YAML extension, use it for autocomplete, hover help and inline errors. Add this comment as the first line of `product/story-map.yaml`:
+
+```yaml
+# yaml-language-server: $schema=../node_modules/embedded-story-map/story-map.schema.json
+```
+
+The schema covers the shape of each field. Run the validator for the checks that span the file, such as duplicate IDs and references to unknown activities or releases.
+
+## Review a map change
+
+`story-map diff` compares the map with an earlier version and prints a Markdown summary for the PR. Pass the base branch:
+
+```sh
+npx --no-install story-map diff origin/main
+```
+
+The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Then it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
+
+The workflow from `npx story-map init` adds the summary to each PR’s job summary. In your own workflow, check out with `fetch-depth: 0` so the base branch is available:
+
+```yaml
+- name: Summarise story map changes
+  env:
+    BASE_REF: ${{ github.base_ref }}
+  run: npx --no-install story-map diff "origin/$BASE_REF" >> "$GITHUB_STEP_SUMMARY"
+```
+
+In code, `diffStoryMaps(before, after)` returns the same comparison and `formatStoryMapDiff` renders it.
 
 ## Integrate with a product
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.
-2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapForViewer(document, viewer)` with roles from the verified session. Map the product’s role names to `engineer` and `super-admin`. Pass `null` for a guest. A null result indicates denied access.
-3. Render `StoryMapBoard` using the returned view and import `embedded-story-map/styles.css` through the host’s CSS pipeline. Pass `sourceBaseUrl` if the map uses [repository-relative Markdown links](#link-an-engineering-overview). Use the same server-side projection if adding a JSON endpoint.
-4. Set `Cache-Control: private, no-store` for the page and endpoint. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
+2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapForViewer(document, viewer)` with roles from the verified session. Pass `null` for a guest. A null result indicates denied access. By default, viewers whose roles include `engineer` or `super-admin` see the internal map. To use your own rule, pass `canViewInternal`, for example `getStoryMapForViewer(document, viewer, { canViewInternal: viewer => viewer.roles.includes("product") })`. The rule receives the viewer object you passed, so it can check permissions as well as roles. Only a return value of `true` grants the internal view.
+3. To offer search, pass the view to `filterStoryMapView(view, readStoryMapFilters(url.searchParams))`. Always filter after `getStoryMapForViewer`, so a search only sees what the viewer may see. The board then shows a search box and status filter. They submit a GET form with `q` and `status` parameters to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs.
+4. Render `StoryMapBoard` using the returned view and import `embedded-story-map/styles.css` through the host’s CSS pipeline. Pass `sourceBaseUrl` if the map uses [repository-relative Markdown links](#link-an-engineering-overview). The board is light by default. Pass `theme="dark"` for a dark host, or `theme="auto"` to follow the viewer’s system setting. Colours are CSS custom properties on `.esm-board`, such as `--esm-accent`, so a host can override them. Use the same server-side projection and filters if adding a JSON endpoint.
+5. Set `Cache-Control: private, no-store` for the page and endpoint. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
 
 The map is edited through a PR and ships with the product. The example JSON endpoint is read-only. An app that needs in-app authoring can submit a PR against the same YAML file.

@@ -1,31 +1,36 @@
 {
   "name": "embedded-story-map",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Git-backed user story maps embedded in product applications",
   "license": "Apache-2.0",
+  "keywords": ["story-map", "user-story-mapping", "roadmap", "product-management", "react", "yaml"],
+  "homepage": "https://github.com/duncan-m/embedable-story-map#readme",
+  "bugs": "https://github.com/duncan-m/embedable-story-map/issues",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/duncan-m/embedable-story-map.git"
   },
   "type": "module",
+  "publishConfig": { "access": "public" },
   "engines": { "node": ">=20" },
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
     "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js" },
-    "./styles.css": "./styles.css"
+    "./styles.css": "./styles.css",
+    "./schema.json": "./story-map.schema.json"
   },
   "bin": { "story-map": "./dist/cli.js" },
-  "files": ["dist", "styles.css", "docs/story-map.md"],
+  "files": ["dist", "styles.css", "story-map.schema.json", "templates", "docs/story-map.md", "CHANGELOG.md"],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/build-schema.mjs",
     "prepare": "npm run build",
-    "validate": "node dist/cli.js validate product/story-map.yaml",
+    "validate": "node dist/cli.js validate --check-sources --plans docs product/story-map.yaml",
     "test": "npm run build && node --test",
     "demo": "npm run build && node example/demo.mjs"
   },
   "dependencies": {
     "yaml": "^2.8.0",
-    "zod": "^3.25.0"
+    "zod": "^4.6.7"
   },
   "peerDependencies": { "react": "^18.2.0 || ^19.0.0" },
   "peerDependenciesMeta": { "react": { "optional": true } },

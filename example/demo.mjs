@@ -7,6 +7,7 @@ import { makeStoryMapResponse } from "./host.mjs";
 // Local-only role switch for checking the example views.
 const demoRoles = new Map([
   ["user", []],
+  ["product", ["product-manager"]],
   ["engineer", ["engineer"]],
   ["super-admin", ["super-admin"]],
 ]);
@@ -16,6 +17,9 @@ const styles = new Map([
 ]);
 const mapFile = new URL("../product/story-map.yaml", import.meta.url);
 const sourceBaseUrl = "https://github.com/duncan-m/embedable-story-map/blob/main/";
+// This product also gives product managers the internal view.
+const internalRoles = new Set(["engineer", "super-admin", "product-manager"]);
+const canViewInternal = viewer => viewer.roles.some(role => internalRoles.has(role));
 
 const server = createServer(async (request, response) => {
   try {
@@ -37,7 +41,7 @@ const server = createServer(async (request, response) => {
     const selected = url.searchParams.get("as") ?? "user";
     const roles = demoRoles.get(selected);
     const viewer = roles ? { roles } : null;
-    const views = [["user", "Regular user"], ["engineer", "Engineer"], ["super-admin", "Super admin"], ["guest", "Guest"]];
+    const views = [["user", "Regular user"], ["product", "Product manager"], ["engineer", "Engineer"], ["super-admin", "Super admin"], ["guest", "Guest"]];
     const navigation = h("nav", { "aria-label": "Demo roles" },
       views.map(([role, label]) => h("a", {
         key: role,
@@ -47,7 +51,12 @@ const server = createServer(async (request, response) => {
     );
 
     const map = parseStoryMap(await readFile(mapFile, "utf8"));
-    const result = makeStoryMapResponse(url.pathname, map, viewer, navigation, sourceBaseUrl);
+    const result = makeStoryMapResponse(url, map, viewer, {
+      navigation,
+      sourceBaseUrl,
+      canViewInternal,
+      preservedParams: { as: selected },
+    });
     response.writeHead(result.status, Object.fromEntries(result.headers)).end(await result.text());
   } catch (error) {
     console.error(error);

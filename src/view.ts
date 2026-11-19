@@ -1,7 +1,23 @@
-import type { StoryMapDocument, StoryStatus } from "./schema.js";
+import type { StoryMapDocument } from "./schema.js";
+import type { StoryStatus } from "./status.js";
 
 export interface StoryMapViewer {
-  roles: readonly string[];
+  roles?: readonly string[];
+}
+
+export interface StoryMapAccessOptions<Viewer extends StoryMapViewer = StoryMapViewer> {
+  /**
+   * Decides who sees the full internal map: IDs, engineering notes, sources and
+   * editors. Everyone else gets the customer view when the map allows it.
+   * Defaults to viewers with the `engineer` or `super-admin` role.
+   */
+  canViewInternal?: (viewer: Viewer) => boolean;
+}
+
+export const defaultInternalRoles: readonly string[] = ["engineer", "super-admin"];
+
+function hasDefaultInternalRole(viewer: StoryMapViewer) {
+  return defaultInternalRoles.some(role => viewer.roles?.includes(role));
 }
 
 export interface StoryMapLabel {
@@ -22,11 +38,20 @@ export interface InternalStoryCard extends StoryCard {
   sources?: string[];
 }
 
+/** Present when the host has applied `filterStoryMapView`. The board shows its search toolbar only then. */
+export interface StoryMapFilterState {
+  query?: string;
+  status?: StoryStatus;
+  /** Number of stories in the view before filtering. */
+  total: number;
+}
+
 interface StoryMapBaseView {
   title: string;
   summary?: string;
   activities: StoryMapLabel[];
   releases: StoryMapLabel[];
+  filter?: StoryMapFilterState;
 }
 
 export type StoryMapView =
@@ -37,13 +62,15 @@ function projectLabel(item: StoryMapLabel): StoryMapLabel {
   return { id: item.id, title: item.title, summary: item.summary };
 }
 
-export function getStoryMapForViewer(
+export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
   map: StoryMapDocument,
-  viewer: StoryMapViewer | null,
+  viewer: Viewer | null,
+  options: StoryMapAccessOptions<Viewer> = {},
 ): StoryMapView | null {
   if (!viewer) return null;
 
-  if (viewer.roles.includes("engineer") || viewer.roles.includes("super-admin")) {
+  const canViewInternal = options.canViewInternal ?? hasDefaultInternalRole;
+  if (canViewInternal(viewer) === true) {
     return {
       audience: "internal",
       title: map.title,
