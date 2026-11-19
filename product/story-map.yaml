@@ -1,0 +1,79 @@
+version: 1
+id: builder-estimates
+title: Builder estimates delivery map
+summary: Sample plan for the builder-to-finance purchasing workflow.
+visibility: all-users
+customer:
+  title: Purchasing roadmap
+  summary: Follow the work from estimating materials through purchase approval.
+activities:
+  - id: prepare
+    title: Prepare estimate
+    summary: Capture the materials and quantities for a project.
+    customer:
+      title: Prepare an estimate
+  - id: submit
+    title: Submit for finance review
+    summary: Send the builder’s estimate to finance.
+    customer:
+      title: Send for approval
+  - id: purchase
+    title: Create purchase order
+    customer:
+      title: Track purchases
+  - id: finance-ops
+    title: Finance exception handling
+releases:
+  - id: builder-mvp
+    title: Builder workflow
+    summary: Deliver the builder interface and the backend it needs.
+    customer:
+      title: Builder workflow
+  - id: finance-follow-up
+    title: Finance follow-up
+    summary: Update the finance workflow where needed.
+    customer:
+      title: Finance updates
+  - id: reconciliation-internal
+    title: Reconciliation discovery
+stories:
+  - id: BUILDER-101
+    title: Draft an estimate against a project
+    activity: prepare
+    release: builder-mvp
+    status: in-progress
+    summary: Record material quantities and units against a project.
+    customer:
+      title: Draft a project estimate
+      summary: List materials and quantities for a project in one place.
+  - id: BUILDER-102
+    title: Look up prices in the material catalogue
+    activity: prepare
+    release: builder-mvp
+    status: planned
+    notes: Confirm how a catalogue price is carried into a submitted estimate.
+    sources:
+      - docs/example-builder-estimate-plan.md
+    customer:
+      title: Find material prices
+      summary: Use the price catalogue while preparing an estimate.
+  - id: BUILDER-103
+    title: Submit the estimate to finance
+    activity: submit
+    release: builder-mvp
+    status: planned
+    customer:
+      title: Submit an estimate for approval
+  - id: FINANCE-201
+    title: Approve an estimate and create a purchase order
+    activity: purchase
+    release: finance-follow-up
+    status: planned
+    customer:
+      title: Track approved purchases
+  - id: FINANCE-202
+    title: Explore duplicate approval handling
+    activity: finance-ops
+    release: reconciliation-internal
+    status: planned
+    notes: Agree a single owner when an approval is retried.
