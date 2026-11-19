@@ -1,10 +1,18 @@
-export { parseStoryMap, storyMapSchema, storyStatuses } from "./schema.js";
-export type { StoryMapDocument, StoryStatus } from "./schema.js";
+export {
+  describeIssueTarget,
+  formatStoryMapIssue,
+  parseStoryMap,
+  StoryMapValidationError,
+  storyMapSchema,
+  storyStatuses,
+} from "./schema.js";
+export type { StoryMapDocument, StoryMapIssue, StoryStatus } from "./schema.js";
 export { storyStatusLabels } from "./status.js";
-export { getStoryMapForViewer } from "./view.js";
+export { defaultInternalRoles, getStoryMapForViewer } from "./view.js";
 export type {
   InternalStoryCard,
   StoryCard,
+  StoryMapAccessOptions,
   StoryMapFilterState,
   StoryMapLabel,
   StoryMapView,

@@ -1,6 +1,6 @@
 # Embedded Story Map
 
-A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using the roles from its existing sign-in.
+A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
 
 ## Try the builder estimates example
 
@@ -13,7 +13,7 @@ npm test
 npm run demo
 ```
 
-Open [the local story map](http://127.0.0.1:4173/story-map). Choose **Engineer**, select **Look up prices in the material catalogue** to open its details, and follow the **Engineering overview** link. Search for “estimate” or filter by status. Switch to **Regular user** to see the customer-facing activity and release labels. The demo also offers **Super admin** and **Guest** views. It listens on loopback and serves sample JSON at `/api/story-map`.
+Open [the local story map](http://127.0.0.1:4173/story-map). Choose **Engineer**, select **Look up prices in the material catalogue** to open its details, and follow the **Engineering overview** link. Search for “estimate” or filter by status. Switch to **Regular user** to see the customer-facing activity and release labels. The demo also offers **Product manager**, **Super admin** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves sample JSON at `/api/story-map`.
 
 Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. The panel and the search form work without client-side JavaScript.
 
@@ -26,6 +26,7 @@ Run `npm ci` and `npm pack` in the source checkout. From your host product, inst
 | `embedded-story-map` | Parse the YAML, select the viewer’s view and apply search filters on the server. |
 | `embedded-story-map/react` | Render a view with `<StoryMapBoard map={view} />`. |
 | `embedded-story-map/styles.css` | Style the board using namespaced CSS. |
+| `embedded-story-map/schema.json` | Give editors autocomplete and inline checks for the YAML. |
 
 [The host integration][host] shows how a product can serve the board and JSON with the same audience rules. [The example delivery plan][delivery-plan] shows how plans reference stories by ID.
 

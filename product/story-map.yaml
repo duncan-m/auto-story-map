@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../story-map.schema.json
 version: 1
 id: builder-estimates
 title: Builder estimates delivery map

@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1,
+      "description": "Story map format version."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+      "description": "Product-specific map ID."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "Internal map title."
+    },
+    "summary": {
+      "description": "Optional internal map summary.",
+      "type": "string",
+      "maxLength": 500
+    },
+    "visibility": {
+      "default": "internal",
+      "description": "internal: only internal viewers can see the map. all-users: signed-in users see the customer-facing view.",
+      "type": "string",
+      "enum": [
+        "internal",
+        "all-users"
+      ]
+    },
+    "customer": {
+      "description": "Customer-facing map title and summary. Required when visibility is all-users.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Customer-facing title. Add only after the wording is approved."
+        },
+        "summary": {
+          "description": "Optional customer-facing summary.",
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "activities": {
+      "minItems": 1,
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+            "description": "Stable activity ID that stories reference. Keep it when renaming."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Internal activity title."
+          },
+          "summary": {
+            "description": "Optional internal activity summary.",
+            "type": "string",
+            "maxLength": 500
+          },
+          "customer": {
+            "description": "Customer-facing activity label. Required before a customer-facing story can use this activity.",
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "Customer-facing title. Add only after the wording is approved."
+              },
+              "summary": {
+                "description": "Optional customer-facing summary.",
+                "type": "string",
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "additionalProperties": false,
+        "description": "Activities run left to right in the order of the user journey."
+      }
+    },
+    "releases": {
+      "minItems": 1,
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+            "description": "Stable release ID that stories reference. Keep it when renaming."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Internal release title."
+          },
+          "summary": {
+            "description": "Optional internal release summary.",
+            "type": "string",
+            "maxLength": 500
+          },
+          "customer": {
+            "description": "Customer-facing release label. Required before a customer-facing story can use this release.",
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "Customer-facing title. Add only after the wording is approved."
+              },
+              "summary": {
+                "description": "Optional customer-facing summary.",
+                "type": "string",
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "additionalProperties": false,
+        "description": "Releases run top to bottom in delivery order."
+      }
+    },
+    "stories": {
+      "maxItems": 1000,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+            "description": "Stable story ID, such as BUILDER-102. Keep it when renaming or moving the story."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Outcome-focused internal title."
+          },
+          "activity": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+            "description": "ID of the activity column this story sits under."
+          },
+          "release": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+            "description": "ID of the release lane this story belongs to."
+          },
+          "summary": {
+            "description": "Optional internal summary, shown when the card is opened.",
+            "type": "string",
+            "maxLength": 500
+          },
+          "status": {
+            "default": "planned",
+            "description": "planned: agreed work awaiting implementation. in-progress: work has started. shipped: available to its intended users.",
+            "type": "string",
+            "enum": [
+              "planned",
+              "in-progress",
+              "shipped"
+            ]
+          },
+          "updatedBy": {
+            "description": "Display name of the person who last added or edited the story.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "notes": {
+            "description": "Internal engineering notes.",
+            "type": "string",
+            "maxLength": 4000
+          },
+          "sources": {
+            "description": "Supporting docs, tests or links. The first Markdown link with a #heading becomes the Engineering overview link.",
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 250
+            }
+          },
+          "customer": {
+            "description": "Customer-facing copy. Add only when the story is approved for all users.",
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "Customer-facing title. Add only after the wording is approved."
+              },
+              "summary": {
+                "description": "Optional customer-facing summary.",
+                "type": "string",
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "activity",
+          "release"
+        ],
+        "additionalProperties": false,
+        "description": "Stories appear in this order within each cell."
+      }
+    }
+  },
+  "required": [
+    "version",
+    "id",
+    "title",
+    "activities",
+    "releases",
+    "stories"
+  ],
+  "additionalProperties": false,
+  "title": "Embedded Story Map",
+  "description": "A Git-backed user story map. Validate cross-references with `story-map validate`.",
+  "$id": "https://raw.githubusercontent.com/duncan-m/embedable-story-map/main/story-map.schema.json"
+}

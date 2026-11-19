@@ -1,10 +1,23 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { stringify } from "yaml";
-import { filterStoryMapView, getStoryMapForViewer, parseStoryMap, readStoryMapFilters } from "embedded-story-map";
+import { z } from "zod";
+import {
+  filterStoryMapView,
+  getStoryMapForViewer,
+  parseStoryMap,
+  readStoryMapFilters,
+  StoryMapValidationError,
+  storyMapSchema,
+} from "embedded-story-map";
 import { StoryMapBoard } from "embedded-story-map/react";
 import { makeStoryMapResponse } from "../example/host.mjs";
 
@@ -234,4 +247,81 @@ test("React renders story text as text", async () => {
   const html = await makeStoryMapResponse("/story-map", invalid, regular).text();
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>alert/);
+});
+
+test("hosts choose who sees the internal map", () => {
+  const productManager = { roles: ["product-manager"] };
+  const canViewInternal = viewer => viewer.roles.includes("product-manager");
+  assert.equal(getStoryMapForViewer(map, productManager).audience, "all-users");
+  assert.equal(getStoryMapForViewer(map, productManager, { canViewInternal }).audience, "internal");
+  // A custom rule replaces the default roles.
+  assert.equal(getStoryMapForViewer(map, engineer, { canViewInternal }).audience, "all-users");
+  // Viewers with no roles, or a rule that does not return true, get the customer view.
+  assert.equal(getStoryMapForViewer(map, {}).audience, "all-users");
+  assert.equal(getStoryMapForViewer(map, engineer, { canViewInternal: () => "yes" }).audience, "all-users");
+  assert.equal(getStoryMapForViewer({ ...map, visibility: "internal" }, productManager), null);
+});
+
+test("validation errors name the item and source line", () => {
+  const broken = sample
+    .replace("status: in-progress", "status: started")
+    .replace("    updatedBy: Sam Patel\n", "    updatedBy: Sam Patel\n    owner: Sam\n")
+    .replace("release: finance-follow-up\n", "release: finance-later\n")
+    .replace("  - id: finance-ops\n    title: Finance exception handling\n", "  - id: finance-ops\n");
+  const lines = broken.split("\n");
+  const lineOf = text => lines.findIndex(line => line.includes(text)) + 1;
+
+  let error;
+  try {
+    parseStoryMap(broken);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const byPath = Object.fromEntries(error.issues.map(issue => [issue.path.join("."), issue]));
+  assert.deepEqual(byPath["activities.3.title"], { path: ["activities", 3, "title"], message: "Missing required field.", itemId: "finance-ops", line: lineOf("- id: finance-ops"), column: 5 });
+  assert.equal(byPath["stories.0.status"].itemId, "BUILDER-101");
+  assert.equal(byPath["stories.0.status"].line, lineOf("status: started"));
+  assert.match(byPath["stories.0.status"].message, /Use one of 'planned', 'in-progress', 'shipped'\./);
+  assert.equal(byPath["stories.1.owner"].message, "Unknown field.");
+  assert.equal(byPath["stories.1.owner"].line, lineOf("owner: Sam"));
+  // Reference checks still run when another field is invalid.
+  assert.equal(byPath["stories.3.release"].message, "Unknown release 'finance-later'.");
+  assert.equal(byPath["stories.3.release"].itemId, "FINANCE-201");
+  assert.match(error.message, new RegExp(`line ${lineOf("finance-later")}: stories\\.3\\.release \\(FINANCE-201\\): Unknown release 'finance-later'\\.`));
+
+  assert.throws(() => parseStoryMap("version: 1\nid: a\nid: b\n"), error =>
+    error instanceof StoryMapValidationError && error.issues[0].line === 3 && /unique/i.test(error.issues[0].message));
+});
+
+test("the CLI prints file positions and GitHub annotations", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "story-map-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const file = join(directory, "map.yaml");
+  await writeFile(file, sample.replace("release: finance-follow-up\n", "release: finance-later\n"));
+  const line = sample.split("\n").findIndex(text => text.includes("release: finance-follow-up")) + 1;
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+
+  const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
+  assert.equal(text.status, 1);
+  assert.equal(text.stderr.trim(), `${file}:${line}:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'.`);
+
+  const github = spawnSync(process.execPath, [cli, "validate", "--format", "github", file], { encoding: "utf8" });
+  assert.equal(github.status, 1);
+  assert.equal(github.stdout.trim(), `::error file=${file.replace(/:/g, "%3A")},line=${line},col=14,title=Story map::stories.3.release (FINANCE-201): Unknown release 'finance-later'.`);
+
+  assert.equal(spawnSync(process.execPath, [cli, "validate", "--format", "xml", file]).status, 2);
+});
+
+test("the published JSON Schema matches the validator", async () => {
+  const require = createRequire(import.meta.url);
+  const schema = JSON.parse(await readFile(require.resolve("embedded-story-map/schema.json"), "utf8"));
+  assert.deepEqual(schema, { ...z.toJSONSchema(storyMapSchema, { io: "input" }), $id: schema.$id });
+  assert.deepEqual(schema.required, ["version", "id", "title", "activities", "releases", "stories"]);
+  const storyProperties = Object.keys(schema.properties.stories.items.properties);
+  for (const story of parseStoryMap(sample).stories) {
+    for (const key of Object.keys(story)) assert.ok(storyProperties.includes(key), key);
+  }
+  assert.match(schema.properties.stories.items.properties.status.description, /shipped: available to its intended users/);
+  assert.match(sample, /^# yaml-language-server: \$schema=\.\.\/story-map\.schema\.json\n/);
 });

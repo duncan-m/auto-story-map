@@ -26,8 +26,10 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - run: npm run validate
+      - run: node dist/cli.js validate --format github product/story-map.yaml
       - run: npm test
+      - name: Check the committed JSON Schema is up to date
+        run: git diff --exit-code -- story-map.schema.json
       - name: Smoke-test the packed npm package
         env:
           REACT_MAJOR: ${{ matrix.react }}

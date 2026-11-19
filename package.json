@@ -12,12 +12,13 @@
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
     "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js" },
-    "./styles.css": "./styles.css"
+    "./styles.css": "./styles.css",
+    "./schema.json": "./story-map.schema.json"
   },
   "bin": { "story-map": "./dist/cli.js" },
-  "files": ["dist", "styles.css", "docs/story-map.md"],
+  "files": ["dist", "styles.css", "story-map.schema.json", "docs/story-map.md"],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/build-schema.mjs",
     "prepare": "npm run build",
     "validate": "node dist/cli.js validate product/story-map.yaml",
     "test": "npm run build && node --test",
@@ -25,7 +26,7 @@
   },
   "dependencies": {
     "yaml": "^2.8.0",
-    "zod": "^3.25.0"
+    "zod": "^4.6.7"
   },
   "peerDependencies": { "react": "^18.2.0 || ^19.0.0" },
   "peerDependenciesMeta": { "react": { "optional": true } },
