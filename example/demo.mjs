@@ -15,6 +15,7 @@ const styles = new Map([
   ["/example-host.css", await readFile(new URL("./host.css", import.meta.url), "utf8")],
 ]);
 const mapFile = new URL("../product/story-map.yaml", import.meta.url);
+const sourceBaseUrl = "https://github.com/duncan-m/embedable-story-map/blob/main/";
 
 const server = createServer(async (request, response) => {
   try {
@@ -46,7 +47,7 @@ const server = createServer(async (request, response) => {
     );
 
     const map = parseStoryMap(await readFile(mapFile, "utf8"));
-    const result = makeStoryMapResponse(url.pathname, map, viewer, navigation);
+    const result = makeStoryMapResponse(url.pathname, map, viewer, navigation, sourceBaseUrl);
     response.writeHead(result.status, Object.fromEntries(result.headers)).end(await result.text());
   } catch (error) {
     console.error(error);

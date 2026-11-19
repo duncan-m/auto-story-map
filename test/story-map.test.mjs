@@ -13,6 +13,7 @@ const map = parseStoryMap(sample);
 const regular = { roles: ["member"] };
 const engineer = { roles: ["engineer"] };
 const superAdmin = { roles: ["super-admin"] };
+const sourceBaseUrl = "https://docs.example.test/repository/";
 
 test("applies internal and planned defaults to new content", () => {
   const document = structuredClone(map);
@@ -49,13 +50,14 @@ test("enforces audience permissions on the page and JSON", async () => {
 
 test("customer HTML and JSON only contain the customer projection", async () => {
   for (const path of ["/story-map", "/api/story-map"]) {
-    const response = makeStoryMapResponse(path, map, regular);
+    const response = makeStoryMapResponse(path, map, regular, null, sourceBaseUrl);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("Cache-Control"), "private, no-store");
     const payload = await response.text();
     assert.match(payload, /Find material prices/);
     assert.doesNotMatch(payload, /BUILDER-102|FINANCE-202|Reconciliation discovery|Finance exception|Confirm how|docs\/example-builder|Look up prices/);
     assert.doesNotMatch(payload, /updatedBy|Last updated by|Alex Morgan|Sam Patel|Taylor Reed/);
+    assert.doesNotMatch(payload, /Engineering overview|#builder-workflow/);
   }
   const internal = await makeStoryMapResponse("/story-map", map, engineer).text();
   assert.match(internal, /BUILDER-102/);
@@ -86,15 +88,47 @@ test("shows the recorded editor on internal cards and accepts older records", as
   }
 });
 
+test("cards have a collapsed disclosure with audience-appropriate activity and release labels", async () => {
+  const html = await makeStoryMapResponse("/story-map", map, regular).text();
+  assert.match(html, /<article class="esm-card" aria-labelledby="[^"]+"><details><summary class="esm-card-toggle">/);
+  assert.match(html, /<dt>Activity<\/dt><dd>Prepare an estimate<\/dd><dt>Release<\/dt><dd>Builder workflow<\/dd>/);
+});
+
+test("renders one internal Markdown section link and keeps other sources in JSON", async () => {
+  const document = structuredClone(map);
+  const story = document.stories.find(story => story.sources?.length);
+  story.sources.unshift("source/lib/ap/controls.ts", "docs/engineering-overview.md");
+  story.sources.push("docs/another-overview.md#decisions");
+
+  const response = makeStoryMapResponse("/api/story-map", document, engineer);
+  const view = await response.json();
+  assert.deepEqual(view.stories.find(card => card.id === story.id).sources, story.sources);
+
+  const html = await makeStoryMapResponse("/story-map", document, engineer, null, sourceBaseUrl).text();
+  const overviewLinks = [...html.matchAll(/<a class="esm-overview-link" href="([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(overviewLinks, [sourceBaseUrl + "docs/example-builder-estimate-plan.md#builder-workflow"]);
+  assert.doesNotMatch(html, /source\/lib\/ap\/controls\.ts|docs\/engineering-overview\.md|another-overview\.md/);
+  assert.match(html, /<h3>Engineering notes<\/h3>/);
+});
+
+test("absolute Markdown section links work without a source base URL", async () => {
+  const document = structuredClone(map);
+  const story = document.stories.find(story => story.sources?.length);
+  story.sources = ["https://docs.example.test/ENGINEERING-OVERVIEW.md#controls"];
+  const html = await makeStoryMapResponse("/story-map", document, superAdmin).text();
+  assert.match(html, /href="https:\/\/docs\.example\.test\/ENGINEERING-OVERVIEW\.md#controls"/);
+});
+
 test("renders source-only engineering details after a JSON round trip", async () => {
   const document = structuredClone(map);
   const story = document.stories.find(story => story.sources?.length);
+  story.sources = ["docs/example-builder-estimate-plan.md"];
   delete story.notes;
   const view = await makeStoryMapResponse("/api/story-map", document, engineer).json();
   const card = view.stories.find(card => card.id === story.id);
   assert.equal(Object.hasOwn(card, "notes"), false);
-  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
-  assert.match(html, /<summary>Engineering details<\/summary>/);
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, sourceBaseUrl }));
+  assert.match(html, /<h3>Engineering details<\/h3>/);
   assert.ok(html.includes(story.sources[0]));
 });
 

@@ -19,7 +19,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 | The order of delivery slices | Reorder the `releases` list. |
 | Where one story sits | Change its `activity` or `release` to an existing ID. |
 | The order within a cell | Reorder the affected stories in the `stories` list. |
-| Implementation details | Update the delivery plan, then link that plan in `sources` if helpful. |
+| Implementation details | Update the delivery plan, then add the relevant Markdown section to `sources`. |
 | Progress | Set `status` to `planned`, `in-progress` or `shipped`. Shipped means the intended audience can use it. |
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
@@ -37,11 +37,17 @@ When price catalogue lookup is agreed for the builder workflow, put the story un
   release: builder-mvp
   status: planned
   sources:
-    - docs/example-builder-estimate-plan.md
+    - docs/example-builder-estimate-plan.md#builder-workflow
   updatedBy: Sam Patel
 ```
 
 If the agreed release changes, edit `release` on this story. If implementation starts, set its status to `in-progress`. Once deployed and available to builders, set it to `shipped`.
+
+## Link an engineering overview
+
+Add the URL of the relevant Markdown heading to the story’s `sources`, including the fragment after `#`. For a repository-relative reference such as `ENGINEERING-OVERVIEW.md#payment-controls`, pass the repository file URL prefix to `StoryMapBoard` as `sourceBaseUrl`. Include the trailing slash, for example `https://github.com/your-org/your-product/blob/main/`. Absolute Markdown URLs work without this prop.
+
+Open a card to see its activity and release. In the internal view, the card also shows engineering notes and uses the first Markdown section that resolves to a web URL as its **Engineering overview** link. Other sources stay in the internal JSON view for reference. Stories without a section link show their existing references under **Engineering details**.
 
 ## Audience settings
 

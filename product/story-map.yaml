@@ -55,7 +55,7 @@ stories:
     updatedBy: Sam Patel
     notes: Confirm how a catalogue price is carried into a submitted estimate.
     sources:
-      - docs/example-builder-estimate-plan.md
+      - docs/example-builder-estimate-plan.md#builder-workflow
     customer:
       title: Find material prices
       summary: Use the price catalogue while preparing an estimate.

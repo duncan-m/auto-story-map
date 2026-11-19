@@ -4,7 +4,7 @@ import { getStoryMapForViewer } from "embedded-story-map";
 import { StoryMapBoard } from "embedded-story-map/react";
 
 // The enclosing app supplies a viewer from its verified session.
-export function makeStoryMapResponse(path, document, viewer, navigation = null) {
+export function makeStoryMapResponse(path, document, viewer, navigation = null, sourceBaseUrl) {
   const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
   const isApi = path === "/api/story-map";
 
@@ -34,7 +34,7 @@ export function makeStoryMapResponse(path, document, viewer, navigation = null) 
         navigation,
       ),
       h("main", null,
-        map ? h(StoryMapBoard, { map }) : h("p", null, message),
+        map ? h(StoryMapBoard, { map, sourceBaseUrl }) : h("p", null, message),
       ),
     ),
   );
