@@ -2,6 +2,11 @@
 
 A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
 
+
+## Screenshot
+
+![Story Map](story-map-screenshot.png)
+
 ## Try the builder estimates example
 
 Use Node.js 20 or newer. Run these commands from a checkout of the [source repository][source].
