@@ -1,4 +1,4 @@
-import type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
+import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { defaultStalledAfterWeeks, type ReleaseImpact, type StoryMapDocument } from "./schema.js";
 import { isActiveStatus, storyStatuses, type StoryStatus } from "./status.js";
 
@@ -67,6 +67,8 @@ export interface InternalStoryCard extends StoryCard {
   lastChangedAt?: string;
   /** The story’s additions and status changes, newest first. */
   history?: StoryHistoryEntry[];
+  /** The latest commit that changed any of the story’s fields, including moves. Present when the history records it. */
+  lastEdit?: Omit<StoryLastEdit, "storyId">;
   /** When an in-progress story last became in progress. Present when the history records it. */
   inProgressSince?: string;
   /** True when the story has been in progress for longer than the view’s `stalledAfterWeeks`. */
@@ -131,6 +133,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       byStory.set(storyId, [entry, ...(byStory.get(storyId) ?? [])]);
     }
     for (const entries of byStory.values()) entries.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    const lastEdits = new Map((history?.lastEdits ?? []).map(({ storyId, ...edit }) => [storyId, edit]));
     const storyCounts = new Map(map.releases.map(release => [
       release.id,
       Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>,
@@ -169,6 +172,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           notes: story.notes,
           sources: story.sources,
           ...(entries ? { lastChangedAt: entries[0].at, history: entries } : {}),
+          ...(lastEdits.has(story.id) ? { lastEdit: { ...lastEdits.get(story.id)! } } : {}),
           ...(inProgressSince ? { inProgressSince } : {}),
           ...(stalled ? { stalled } : {}),
         };

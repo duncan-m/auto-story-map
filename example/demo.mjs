@@ -25,7 +25,8 @@ const canViewInternal = viewer => viewer.roles.some(role => internalRoles.has(ro
 // A product would run `story-map history --out <file>` in its build. The demo reads its own Git history at startup.
 let history = null;
 try {
-  history = await buildStoryMapHistory({ cwd: new URL("..", import.meta.url).pathname, allowShallow: true });
+  // This repository's map edits were authored by a coding agent as "Claude", so credit whoever merged them.
+  history = await buildStoryMapHistory({ cwd: new URL("..", import.meta.url).pathname, allowShallow: true, botNames: ["Claude"] });
 } catch (error) {
   console.warn(`Status history is unavailable: ${error.message}`);
 }

@@ -1,6 +1,6 @@
 # Embedded Story Map: engineering overview
 
-Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings, blocked and cut statuses, release notes and impact, and stalled stories. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
+Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings, blocked and cut statuses, release notes and impact, stalled stories, and “last updated” from Git. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
@@ -254,19 +254,20 @@ Status history shows when each story was added or changed status, who made the c
 1. Refuse a shallow clone unless `--allow-shallow` is passed. In a shallow clone, the oldest version found is used only as a baseline, so stories that already existed are not reported as added on that date. The output then has `complete: false`.
 2. List commits that touched the map with `git log --first-parent --reverse` on the chosen ref, usually `main`. First-parent means each change is dated when it reached that branch, not when it was written on a feature branch.
 3. Read each version with `git show <sha>:<path>` and parse it. Versions that are missing or do not validate are skipped, and the next valid version is compared with the last valid one.
-4. Compare each version's stories with the previous one by ID. A new ID produces an `added` event. A changed `status` produces a `status` event with `from` and `to`. When the new status is blocked or cut and the story has a `statusReason`, the event records it as `reason`. Moves, renames and other edits produce nothing, and removing a story produces no event.
-5. Store `at` as the commit's committer date, normalised with `toISOString()`. Git versions print UTC as either `+00:00` or `Z`, and a canonical form keeps the file stable and comparable.
+4. Compare each version's stories with the previous one by ID. A new ID produces an `added` event. A changed `status` produces a `status` event with `from` and `to`. When the new status is blocked or cut and the story has a `statusReason`, the event records it as `reason`. Moves, renames and other edits produce no event, and removing a story produces no event.
+5. Separately, any difference in a story's fields (compared with `canonical`, which ignores key order), including a move or a new story, updates that story's last edit. Reordering the stories list is not an edit. At the end, `lastEdits` keeps one entry for each story in the newest valid version.
+6. Store `at` as the commit's committer date, normalised with `toISOString()`. Git versions print UTC as either `+00:00` or `Z`, and a canonical form keeps the file stable and comparable.
 
 Who is credited:
 
-- **`by`**: the story's `updatedBy` if this change set or changed it. Otherwise the commit author. For a merge commit, it is the author of the latest non-merge commit on the merged branch that touched the map, found with one extra `git log` per merge, and cached for that commit.
+- **`by`** (for events and last edits): the story's `updatedBy` if this change set or changed it. Otherwise the commit author, unless the author is a bot (a name ending in `[bot]`, or one of `botNames` from `--bot-names`, compared case-insensitively) and the commit has a `mergedBy` who is not a bot: then the merger. For a merge commit, it is the author of the latest non-merge commit on the merged branch that touched the map, found with one extra `git log` per merge, and cached for that commit.
 - **`mergedBy`**: for a merge commit, its author (the person who merged). For a single-parent commit, the committer, unless the committer is `GitHub`. GitHub records itself as the committer of squash and rebase merges made on the website, so those entries have no `mergedBy`.
 
 ### Using it
 
-The host reads the JSON with `parseStoryMapHistory`, which validates it with Zod, and passes it to `getStoryMapForViewer` as `history`. Only internal views receive it. The file contains people's names, so the guide tells hosts to keep it out of static asset directories.
+The host reads the JSON with `parseStoryMapHistory`, which validates it with Zod, and passes it to `getStoryMapForViewer` as `history`. `lastEdits` is optional in the schema, so history files from before 0.4.0 still load. The internal view attaches each story's entry as `lastEdit`, which the panel shows as “Last updated 3 days ago by …”. Without it, the panel falls back to `updatedBy`. `lastEdit` never changes `lastChangedAt` or the **Changed** filter. Only internal views receive it. The file contains people's names, so the guide tells hosts to keep it out of static asset directories.
 
-A host without a history file loses nothing else: no dates on cards, no history in panels and no **Changed** filter.
+A host without a history file loses nothing else: no dates on cards, no history in panels, no **Changed** filter and no stalled flag, and panels show `updatedBy` instead of the last edit.
 
 ## CLI
 
@@ -276,7 +277,7 @@ A host without a history file loses nothing else: no dates on cards, no history 
 | --- | --- | --- |
 | `validate [--format text\|github] [--strict] [--check-sources] [--plans <dir>]… [--root <dir>] <map>…` | Parses each map, then runs the optional reference checks | 0 valid (warnings allowed), 1 errors, or warnings with `--strict` |
 | `diff [--format markdown\|json] [--map <path>] <base-ref>` | Compares the working copy of the map with its version at a Git ref | 0, 1 invalid map, 2 Git or usage error |
-| `history [--map] [--ref] [--out] [--allow-shallow]` | Writes the history JSON | 0, 1, 2 Git error or shallow clone |
+| `history [--map] [--ref] [--out] [--bot-names] [--allow-shallow]` | Writes the history JSON | 0, 1, 2 Git error or shallow clone |
 | `init [--no-ci] [--dir <path>]` | Sets up a host repository | 0 |
 
 ### validate
@@ -363,7 +364,7 @@ All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert
 - validator warnings, `--strict` and `::warning` annotations,
 - the CLI's text and GitHub output, `diff` against a Git ref, `init` in a temporary directory, source and plan checks, and GitHub anchor rules,
 - that the committed JSON Schema matches the validator,
-- history built from real temporary Git repositories, with merge commits, `updatedBy` credit, shallow clones and blocked or cut reasons, and history on the board,
+- history built from real temporary Git repositories, with merge commits, `updatedBy` credit, shallow clones, blocked or cut reasons, last edits to any field, bot authors credited to mergers, and history and last edits on the board,
 - stalled stories: the threshold from the map, the host override and 0, measuring from the latest start, no flag without history or with an out-of-date history, the filter, the board and the customer view.
 
 Tests that need Git create temporary repositories and clean them up. They need `git` on the path.
@@ -428,7 +429,7 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 - Dates use the server's time zone unless the host passes `timeZone`.
 - Stalled stories need a history file. Hosts without one get no flag.
 
-The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings, blocked and cut statuses, release notes and impact, and flagging stalled stories are built. Release notes and impact are written in PRs, never on the board. Still proposed: “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
+The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings, blocked and cut statuses, release notes and impact, flagging stalled stories, and “last updated” from Git are built. Release notes and impact are written in PRs, never on the board. Still proposed: expandable steps within activities, and a scheduled agent that audits the map against the code.
 
 ## Documentation precedence
 

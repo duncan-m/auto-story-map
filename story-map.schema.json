@@ -271,7 +271,7 @@
             "maxLength": 500
           },
           "updatedBy": {
-            "description": "Display name of the person who last added or edited the story.",
+            "description": "Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise.",
             "type": "string",
             "minLength": 1,
             "maxLength": 120

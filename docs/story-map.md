@@ -8,7 +8,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id` and `title`, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
-3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Record `updatedBy` when you know the editor’s display name. Add customer-facing copy only after approval.
+3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
 4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
 ## Upgrade to 0.4.0
@@ -23,6 +23,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 6. Releases accept optional [`notes` and `impact`](#release-notes-and-impact). The validator warns about each release with active stories but no impact, so expect new warnings on existing maps. Add impact, or ask an agent to draft it, before turning on `--strict`.
 7. In the internal view, each release is now an `InternalReleaseLabel` with `notes`, `impact` and `storyCounts`. Release titles on internal boards are buttons that open a release panel. Check any host CSS that targets `.esm-release-name`.
 8. Hosts with a history file now see [stalled stories](#flag-stalled-stories) flagged after 4 weeks in progress. Set `settings.stalledAfterWeeks` in the map, or pass `stalledAfterWeeks` to `getStoryMapForViewer`, to change the threshold or turn it off with `0`. The status filter accepts `stalled`, so the type of `StoryMapFilters.status` and `filter.status` now includes `"stalled"`. Pass the same `now` to `getStoryMapForViewer` as to `filterStoryMapView` and the board if the host fixes the time.
+9. Rebuild the history file with this version so story panels show “Last updated 3 days ago by …” from Git. Older history files still load, and the panel then falls back to `updatedBy`. `updatedBy` is now optional guidance: update your `AGENTS.md` section from `node_modules/embedded-story-map/templates/AGENTS.md`, which no longer asks agents to set it on every edit. If bots author map changes under names that do not end in `[bot]`, pass them to `story-map history` with `--bot-names`.
 
 ## Upgrade to 0.3.0
 
@@ -52,7 +53,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
 
-When you add or edit a story, record the editor’s display name in `updatedBy`. The [status history](#show-status-history) uses it to credit each change. This field is optional, so stories with no recorded editor can omit it.
+The [status history](#show-status-history) works out who last edited each story from Git, so `updatedBy` is optional. Set it to a display name only when the commit author is not the person to credit, such as an edit made on someone else’s behalf. An edit that sets `updatedBy` is credited to that name.
 
 ## Example
 
@@ -228,7 +229,7 @@ In code, `diffStoryMaps(before, after)` returns the same comparison and `formatS
 
 ## Show status history
 
-Internal viewers can see when each story was added or changed status, who made the change and who merged it. The board shows the time since the last change on each card, such as “Shipped · 2 days ago”, and the full history in the story panel. A **Changed** filter in the toolbar narrows the board to stories added or changed in the last day, 7, 14 or 30 days. Moving a story to another activity or release does not count as a change. The customer view never includes history.
+Internal viewers can see when each story was added or changed status, who made the change and who merged it. The board shows the time since the last change on each card, such as “Shipped · 2 days ago”, and the full history in the story panel. The panel also says who last edited the story and when, such as “Last updated 3 days ago by Sam Patel”, counting any change to the story, including notes, sources and moves. A **Changed** filter in the toolbar narrows the board to stories added or changed in the last day, 7, 14 or 30 days. Moving a story to another activity or release does not count as a change. The customer view never includes history.
 
 The history comes from Git, so there is nothing extra to record. When the product is built, run:
 
@@ -239,7 +240,7 @@ npx --no-install story-map history --out build/story-map-history.json
 The command reads every version of the map on the current branch’s first-parent history, usually `main`:
 
 - **When** is the time the change reached that branch.
-- **By** is the story’s `updatedBy` when that edit set it, otherwise the author of the commit that made the change. Keep setting `updatedBy` on every edit so the right person is credited.
+- **By** is the story’s `updatedBy` when that edit set it, otherwise the author of the commit that made the change. When the author is a bot, such as a coding agent, the person who merged the change is credited instead. Authors whose names end in `[bot]` are bots. Name other bot accounts with `--bot-names "Audit Agent,Release Helper"`. If Git does not record who merged, as with GitHub squash merges, the bot is credited.
 - **Merged by** is the person who merged the pull request. Git records this for merge commits and direct pushes, but not for GitHub squash or rebase merges, so those entries show only the editor.
 
 Load the file on the server and pass it in. Keep it with the map, outside the static asset directory, because it contains names:
@@ -250,7 +251,7 @@ const view = getStoryMapForViewer(document, viewer, { canViewInternal, history }
 const map = view && filterStoryMapView(view, readStoryMapFilters(url.searchParams));
 ```
 
-Pass `timeZone`, such as `Europe/London`, and optionally `locale` to `StoryMapBoard` so dates match your team. Without a history file, the board works as before with no dates and no **Changed** filter.
+Pass `timeZone`, such as `Europe/London`, and optionally `locale` to `StoryMapBoard` so dates match your team. Without a history file, the board works as before with no dates and no **Changed** filter, and the panel shows the story’s `updatedBy` as “Last updated by …”.
 
 The build needs the full Git history. Many CI and hosting systems clone only the latest commits, and Docker builds often have no `.git` folder:
 

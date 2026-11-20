@@ -31,6 +31,13 @@ Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-ma
 - `story-map diff` lists a changed threshold under **Settings**, with a new `stalledAfterWeeks` on `StoryMapDiff`.
 - New `--esm-stalled` and `--esm-stalled-bg` colours.
 
+### Last updated from Git
+
+- `story-map history` records each current story’s last edit to any field, including notes, sources and moves, as `lastEdits` in the history file. New `StoryLastEdit` type. Older history files still parse.
+- Story panels show “Last updated 3 days ago by Sam Patel” from the last edit, and fall back to `updatedBy` without it. Status changes and the **Changed** filter are unaffected.
+- Edits authored by bots are credited to whoever merged them, in both the last edit and status history. Names ending in `[bot]` are bots. New `--bot-names` option on `story-map history`, and `botNames` on `buildStoryMapHistory`.
+- `updatedBy` is now optional guidance. The guide and the `AGENTS.md` template ask agents to set it only when the commit author is not the person to credit.
+
 ### Validation
 
 - Validation issues have a `severity` of `error` or `warning`. Warnings do not make a map invalid. The first warning is a blocked or cut story with no `statusReason`. New `storyMapWarnings(document)`.

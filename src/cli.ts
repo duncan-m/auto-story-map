@@ -19,7 +19,7 @@ const usage = `Usage:
   story-map init [--no-ci] [--dir <path>]
   story-map validate [--format text|github] [--strict] [--check-sources] [--plans <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
-  story-map history [--map <path>] [--ref <ref>] [--out <file>] [--allow-shallow]
+  story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
 
 init
   Sets up a host repository: a starter product/story-map.yaml, the story map
@@ -51,13 +51,17 @@ diff
   --format json      Print the comparison as JSON instead.
 
 history
-  Reads the map's Git history and writes when each story was added and each
-  status change, who made it and who merged it, as JSON for the board. Run it
-  when building the product, from a full clone.
+  Reads the map's Git history and writes when each story was added, each
+  status change and each story's last edit, who made it and who merged it, as
+  JSON for the board. Run it when building the product, from a full clone.
 
   --map <path>       Map to read. Defaults to product/story-map.yaml.
   --ref <ref>        Branch whose history to read. Defaults to HEAD.
   --out <file>       Write to a file instead of printing.
+  --bot-names <names>
+                     Comma-separated commit authors that are bots. Their edits
+                     are credited to whoever merged them. Authors ending in
+                     [bot] are always treated as bots. Repeat to add more.
   --allow-shallow    Build a partial history from a shallow clone instead of failing.`;
 
 type Format = "text" | "github";
@@ -251,7 +255,7 @@ Next, ask an agent in this repository to populate the map:
 }
 
 function parseHistoryArgs(rest: string[]) {
-  const options = { map: "product/story-map.yaml", ref: "HEAD", out: undefined as string | undefined, allowShallow: false };
+  const options = { map: "product/story-map.yaml", ref: "HEAD", out: undefined as string | undefined, allowShallow: false, botNames: [] as string[] };
   for (let index = 0; index < rest.length; index++) {
     const arg = rest[index];
     const name = arg.split("=")[0];
@@ -260,6 +264,11 @@ function parseHistoryArgs(rest: string[]) {
       if (!value) return null;
       index = next;
       options[name.slice(2) as "map" | "ref" | "out"] = value;
+    } else if (name === "--bot-names") {
+      const [value, next] = optionValue(rest, index, name);
+      if (!value) return null;
+      index = next;
+      options.botNames.push(...value.split(",").map(botName => botName.trim()).filter(Boolean));
     } else if (arg === "--allow-shallow") {
       options.allowShallow = true;
     } else {
@@ -271,7 +280,7 @@ function parseHistoryArgs(rest: string[]) {
 
 async function history(options: NonNullable<ReturnType<typeof parseHistoryArgs>>) {
   try {
-    const result = await buildStoryMapHistory({ map: options.map, ref: options.ref, allowShallow: options.allowShallow });
+    const result = await buildStoryMapHistory({ map: options.map, ref: options.ref, allowShallow: options.allowShallow, botNames: options.botNames });
     const json = JSON.stringify(result, null, 2) + "\n";
     if (!options.out) {
       process.stdout.write(json);

@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
+import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { parseStoryMap, type StoryMapDocument } from "./schema.js";
 
 const run = promisify(execFile);
@@ -17,6 +17,11 @@ export interface BuildHistoryOptions {
   allowShallow?: boolean;
   /** Time to record as `generatedAt`. Defaults to now. */
   now?: Date;
+  /**
+   * Commit authors that are bots, such as a coding agent’s account. Names ending in
+   * `[bot]` are always bots. Changes they author are credited to whoever merged them.
+   */
+  botNames?: readonly string[];
 }
 
 export class StoryMapHistoryError extends Error {}
@@ -54,10 +59,21 @@ function mergedBy(commit: Commit) {
   return commit.committerName === "GitHub" ? undefined : commit.committerName;
 }
 
+/** Compares two values regardless of key order. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort()
+      .filter(key => (value as Record<string, unknown>)[key] !== undefined)
+      .map(key => `${JSON.stringify(key)}:${canonical((value as Record<string, unknown>)[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 /**
- * Reads the map’s Git history and records when each story was added and each
- * status change, using the first-parent history of `ref` so each change is
- * dated when it reached that branch.
+ * Reads the map’s Git history and records when each story was added, each
+ * status change and each story’s last edit, using the first-parent history of
+ * `ref` so each change is dated when it reached that branch.
  */
 export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): Promise<StoryMapHistory> {
   const cwd = resolve(options.cwd ?? ".");
@@ -77,7 +93,11 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
   const format = ["%H", "%P", "%cI", "%an", "%cn"].join("%x1f");
   const commits = parseCommits(await git(cwd, ["log", "--first-parent", "--reverse", `--format=${format}`, ref, "--", mapPath]));
 
+  const bots = new Set((options.botNames ?? []).map(name => name.trim().toLowerCase()).filter(Boolean));
+  const isBot = (name: string) => name.toLowerCase().endsWith("[bot]") || bots.has(name.toLowerCase());
+
   const events: StoryHistoryEvent[] = [];
+  const lastEdits = new Map<string, StoryLastEdit>();
   let previous: StoryMapDocument | null = null;
   // In a shallow clone, the oldest version is only a starting point: its stories were added before the history begins.
   let baselineOnly = shallow;
@@ -98,10 +118,11 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     }
 
     const before = new Map((previous?.stories ?? []).map(story => [story.id, story]));
+    const merger = mergedBy(commit);
+    // Git versions differ in how they print UTC (+00:00 or Z), so store one canonical form.
+    const at = new Date(commit.committedAt).toISOString();
     let branchAuthor: string | undefined | null = null;
-    const editor = async (story: StoryMapDocument["stories"][number]) => {
-      const earlier = before.get(story.id);
-      if (story.updatedBy && (!earlier || earlier.updatedBy !== story.updatedBy)) return story.updatedBy;
+    const author = async () => {
       if (commit.parents.length < 2) return commit.authorName;
       // For a merge, credit the author of the latest commit on the merged branch that edited the map.
       if (branchAuthor === null) {
@@ -110,20 +131,27 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
       }
       return branchAuthor ?? commit.authorName;
     };
+    const editor = async (story: StoryMapDocument["stories"][number]) => {
+      const earlier = before.get(story.id);
+      if (story.updatedBy && (!earlier || earlier.updatedBy !== story.updatedBy)) return story.updatedBy;
+      const name = await author();
+      // A bot did the edit, so credit the person who accepted it, when Git knows who that is.
+      return isBot(name) && merger && !isBot(merger) ? merger : name;
+    };
 
     for (const story of current.stories) {
       const earlier = before.get(story.id);
-      if (earlier && earlier.status === story.status) continue;
+      if (earlier && canonical(earlier) === canonical(story)) continue;
       const by = await editor(story);
-      const merger = mergedBy(commit);
+      lastEdits.set(story.id, { storyId: story.id, at, ...(by ? { by } : {}), commit: commit.sha });
+      if (earlier && earlier.status === story.status) continue;
       events.push({
         storyId: story.id,
         type: earlier ? "status" : "added",
         ...(earlier ? { from: earlier.status } : {}),
         to: story.status,
         ...((story.status === "blocked" || story.status === "cut") && story.statusReason ? { reason: story.statusReason } : {}),
-        // Git versions differ in how they print UTC (+00:00 or Z), so store one canonical form.
-        at: new Date(commit.committedAt).toISOString(),
+        at,
         ...(by ? { by } : {}),
         ...(merger ? { mergedBy: merger } : {}),
         commit: commit.sha,
@@ -137,5 +165,7 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     generatedAt: (options.now ?? new Date()).toISOString(),
     complete: !shallow,
     events,
+    // Only stories still in the map. A story first seen in a shallow clone's baseline has no known edit.
+    lastEdits: (previous?.stories ?? []).flatMap(story => lastEdits.get(story.id) ?? []),
   };
 }
