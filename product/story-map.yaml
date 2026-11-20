@@ -96,9 +96,23 @@ releases:
         draft: true
     customer:
       title: "0.4.1"
+  - id: v0-5
+    title: "0.5.0: Collapsible releases and version footer"
+    summary: Release lanes collapse to one line, and the board shows which version is running.
+    impact:
+      - metric: Scrolling past finished releases
+        expected: Shipped releases collapse to one line and stay collapsed between visits
+        solves: Long maps where the current release is far down the page
+        draft: true
+      - metric: Time to find which version a product runs
+        expected: Read from the board’s footer, with a link to that version’s changelog
+        solves: Checking the host’s lockfile to answer “do we have that fix?”
+        draft: true
+    customer:
+      title: "0.5.0"
   - id: next
     title: Next
-    summary: Proposed for 0.4.x or 0.5.0.
+    summary: Proposed for 0.5.x or 0.6.0.
     impact:
       - metric: Map changes that are missing from feature PRs
         expected: Found by the weekly audit and proposed in a PR
@@ -326,11 +340,11 @@ stories:
     customer:
       title: Filters apply as you choose them
       summary: Choose a filter and the board updates, with no Apply button.
-  # Next
+  # 0.5.0
   - id: ESM-412
     title: Collapse release lanes
     activity: explore
-    release: next
+    release: v0-5
     status: merged
     summary: A chevron in each release header collapses the lane to its title and story count. It works without JavaScript, and board.js remembers collapsed lanes across reloads.
     notes: CSS :has() does the collapsing. Browsers without :has() do not show the toggle, so every lane stays open.
@@ -340,11 +354,12 @@ stories:
   - id: ESM-413
     title: Show the running version on the board
     activity: explore
-    release: next
+    release: v0-5
     status: merged
     summary: A footer shows the library version, author and licence. Internal viewers also get links to the changelog, source code, licence and author.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
+  # Next
   - id: ESM-501
     title: Expand activities into steps
     activity: explore
