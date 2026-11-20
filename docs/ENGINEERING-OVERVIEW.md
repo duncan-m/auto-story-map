@@ -427,6 +427,12 @@ The `publish` job installs nothing. It can mint an npm publishing token, so a de
 
 Before 1.0.0, a minor version may contain breaking changes. Each one needs a changelog entry marked **Breaking**, an upgrade section in `docs/story-map.md`, and updated upgrade links in `README.md` and `AGENTS.md`.
 
+## Branches and pull requests
+
+Give every branch a meaningful name, so anyone can tell from the name alone what it holds: a type such as `fix/`, `feat/`, `docs/`, `chore/` or `release/`, then a few words describing the work, with the story IDs when it has them. For example, `fix/esm-601-history-name-length`, `fix/esm-606-607-cli-and-diff-escaping`, `docs/review-fixes-plan` or `release/0.6.0`. Never use random or generated names, such as `claude/zealous-fermat-srf6a2`.
+
+Branches follow the work, not the map, so there is no rule of one branch or pull request per story. Small, related stories that change the same area can share a branch and a pull request, as ESM-606 and ESM-607 did. A large story can be split across several. Keep each pull request to one change that can be reviewed and reverted on its own, update the map for every story it touches, and name those stories in its description.
+
 ## Making common changes
 
 ### Add a field to the map
