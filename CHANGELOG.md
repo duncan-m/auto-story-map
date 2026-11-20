@@ -2,6 +2,13 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+No upgrade steps. Hosts with custom CSS for `.esm-release` should check the new toggle fits.
+
+- Release lanes can be collapsed. Each release header has a chevron toggle (`.esm-collapse`, a labelled checkbox `.esm-collapse-input` whose value is the release ID) that hides the lane’s stories, summary and impact, leaving its title and story count. It works without JavaScript through CSS `:has()`, and browsers without `:has()` do not show the toggle.
+- `board.js` remembers collapsed lanes per page in `localStorage`, so they stay collapsed when a filter reloads the page. New export `enhanceStoryMapReleases(root)` for pages that add a board after loading.
+
 ## 0.4.1
 
 No upgrade steps. Nothing changes for hosts that do not load the new script.

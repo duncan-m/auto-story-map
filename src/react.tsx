@@ -394,6 +394,22 @@ function ReleaseDetail({ release, panelId, stories, storyPanelIds, filtered }: {
   );
 }
 
+/**
+ * Collapses a release lane to its header. CSS does the collapsing with :has(), so it works
+ * without JavaScript; browsers without :has() never show the toggle. The value is the
+ * release ID, which board.js uses to remember the choice.
+ */
+function ReleaseCollapse({ releaseId, title }: { releaseId: string; title: string }) {
+  return (
+    <label className="esm-collapse">
+      <input type="checkbox" className="esm-collapse-input" value={releaseId} aria-label={`Collapse ${title}`} />
+      <svg className="esm-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m4 6 4 4 4-4" />
+      </svg>
+    </label>
+  );
+}
+
 /** True when a filter narrows the board beyond the default of active stories. */
 function isFiltering(filter: StoryMapView["filter"]) {
   return !!(filter && (filter.query || (filter.status && filter.status !== "all") || filter.changedWithinDays));
@@ -571,6 +587,7 @@ export function StoryMapBoard({
               {releases.map((release, laneIndex) => (
                 <div className="esm-row esm-lane" role="row" data-lane={laneIndex % 3} key={release.id}>
                   <div className="esm-release" role="rowheader">
+                    <ReleaseCollapse releaseId={release.id} title={release.title} />
                     <span className="esm-release-name">
                       <span className="esm-release-dot" aria-hidden="true" />
                       {internalReleases

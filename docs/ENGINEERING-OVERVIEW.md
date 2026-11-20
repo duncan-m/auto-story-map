@@ -56,7 +56,7 @@ flowchart LR
 | `embedded-story-map` | `dist/index.js` | Parsing, validation errors, projection, filters, history parsing, diff |
 | `embedded-story-map/react` | `dist/react.js` | `StoryMapBoard` |
 | `embedded-story-map/styles.css` | `styles.css` | Board stylesheet |
-| `embedded-story-map/board.js` | `dist/board.js` | Optional browser script that applies filters as they change. Exported under `default`, so `require.resolve` finds it for hosts that copy it into their static files. |
+| `embedded-story-map/board.js` | `dist/board.js` | Optional browser script that applies filters as they change and remembers collapsed release lanes. Exported under `default`, so `require.resolve` finds it for hosts that copy it into their static files. |
 | `embedded-story-map/schema.json` | `story-map.schema.json` | JSON Schema for editors |
 | `story-map` (bin) | `dist/cli.js` | CLI |
 
@@ -201,6 +201,7 @@ The “changed in” filter only applies to internal views that have history. It
 - Stories are grouped by `release:activity` key. Stories whose activity or release is missing from the view are skipped (`placed`), which also guards against a host passing a hand-built view.
 - While filtering, releases with no matching stories are hidden. Without filters, every release shows, even when empty, so engineers can see the full plan. The default Active status filter does not count as filtering for this, and neither does `status=all`.
 - Release lanes cycle through three colour schemes using `data-lane` (index modulo 3).
+- Each release header has a collapse toggle (`ReleaseCollapse`): a `<label class="esm-collapse">` holding a visually hidden checkbox, `.esm-collapse-input`, whose `value` is the release ID and whose accessible name is “Collapse <release title>”. CSS `:has()` hides a checked lane's cells, summary and impact line, and stretches its header across the row, leaving the title, story count and chevron. The toggle is only shown inside `@supports selector(:has(*))`, so browsers without `:has()` never offer a toggle that would do nothing. Customer boards get the toggle too, with their renumbered release IDs as values. Collapsing hides cards but not their panels, so the release panel still opens stories in a collapsed lane.
 - The eyebrow reads “User story map” for internal viewers and “Roadmap” for customers.
 
 ### Detail panels without JavaScript
@@ -232,7 +233,7 @@ Engineering links open in a new tab with `rel="noopener noreferrer"`, an icon an
 
 The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history. Internal views get **Active** (the default) and **All, including blocked and cut** at the top of the status select; customer views get **All statuses** and `customerStoryStatuses` (planned, in progress and shipped). When `filter.hidden` is set, the results line says how many blocked and cut stories are hidden and links to the same filters with `status=all`.
 
-The optional `board.js` script (`src/board.ts`) enhances the form without changing it. It marks the form `data-esm-auto`, which hides the `.esm-apply` button through CSS. It then submits the form with `requestSubmit()` when a select changes or Enter is pressed in the search box, and stores the field's name in `sessionStorage` so focus returns to it after the reload. Changing a select reloads the page, so the board renders an empty, visually hidden hint (`data-esm-filter-hint`) referenced by each select's `aria-describedby`, and the script fills it in to warn screen reader users before they choose. Without the script the hint stays empty, so nothing false is announced. Keep it a separate file: an inline script would need `dangerouslySetInnerHTML` and would break hosts with a strict Content Security Policy.
+The optional `board.js` script (`src/board.ts`) enhances the form without changing it. It marks the form `data-esm-auto`, which hides the `.esm-apply` button through CSS. It then submits the form with `requestSubmit()` when a select changes or Enter is pressed in the search box, and stores the field's name in `sessionStorage` so focus returns to it after the reload. Changing a select reloads the page, so the board renders an empty, visually hidden hint (`data-esm-filter-hint`) referenced by each select's `aria-describedby`, and the script fills it in to warn screen reader users before they choose. Without the script the hint stays empty, so nothing false is announced. It also remembers collapsed release lanes (`enhanceStoryMapReleases`): it stores the checked toggles' values in `localStorage` under `esm-collapsed:<page path>` and checks them again on load, so lanes stay collapsed when a filter reloads the page and on later visits. Without the script, the toggles still work but reset on reload. Keep it a separate file: an inline script would need `dangerouslySetInnerHTML` and would break hosts with a strict Content Security Policy.
 
 ### Dates
 
@@ -365,10 +366,11 @@ All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert
 - parsing defaults, duplicate keys and IDs, dangling references, customer-label rules, and error lines and item IDs,
 - audience rules on the HTML page and JSON endpoint through `example/host.mjs`, including that customer output contains no internal content,
 - card faces, popover panels, engineering links, sources after a JSON round trip, themes and escaping,
+- collapse toggles on every release lane, with renumbered IDs on customer boards,
 - filters, including that searches only see the projected view, the default that hides blocked and cut stories, and the checkbox on boards without filters,
 - that customers never see blocked or cut stories,
 - validator warnings, `--strict` and `::warning` annotations,
-- `board.js` with a minimal fake DOM: selects and Enter in search submit, focus is restored after the reload, and enhancing twice adds no extra listeners,
+- `board.js` with a minimal fake DOM: selects and Enter in search submit, focus is restored after the reload, and enhancing twice adds no extra listeners, and collapsed release lanes are remembered across reloads,
 - the CLI's text and GitHub output, `diff` against a Git ref, `init` in a temporary directory, source and plan checks, and GitHub anchor rules,
 - that the committed JSON Schema matches the validator,
 - history built from real temporary Git repositories, with merge commits, `updatedBy` credit, shallow clones, blocked or cut reasons, last edits to any field, bot authors credited to mergers, and history and last edits on the board,

@@ -1365,3 +1365,76 @@ test("the board renders the filter hint empty and marks the Apply button", () =>
   assert.match(html, new RegExp(`<select class="esm-select" name="status" aria-label="Filter by story status" aria-describedby="${hintId}"`));
   assert.match(html, /<button type="submit" class="esm-button esm-apply">Apply<\/button>/);
 });
+
+test("each release lane has a collapse toggle that works without JavaScript", () => {
+  const internal = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) }));
+  const toggles = [...internal.matchAll(/<input type="checkbox" class="esm-collapse-input"[^>]*>/g)].map(match => match[0]);
+  assert.deepEqual(toggles.map(input => /value="([^"]+)"/.exec(input)[1]), map.releases.map(release => release.id));
+  assert.deepEqual(toggles.map(input => /aria-label="Collapse ([^"]+)"/.exec(input)[1]), map.releases.map(release => release.title));
+
+  // Customer toggles use the renumbered release IDs, never the internal ones.
+  const customerView = getStoryMapForViewer(map, regular);
+  const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: customerView }));
+  const customerIds = [...customer.matchAll(/<input type="checkbox" class="esm-collapse-input"[^>]*>/g)]
+    .map(match => /value="([^"]+)"/.exec(match[0])[1]);
+  assert.deepEqual(customerIds, customerView.releases.map(release => release.id));
+  for (const release of map.releases) assert.doesNotMatch(customer, new RegExp(`value="${release.id}"`));
+});
+
+test("board.js remembers collapsed release lanes", async t => {
+  class FakeElement {}
+  class FakeInput extends FakeElement {
+    constructor(value) { super(); this.value = value; this.checked = false; this.classList = { contains: name => name === "esm-collapse-input" }; }
+  }
+  const storage = new Map();
+  const globals = {
+    HTMLElement: FakeElement,
+    HTMLInputElement: FakeInput,
+    HTMLSelectElement: class {},
+    location: { pathname: "/story-map" },
+    localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
+    document: { readyState: "complete", querySelectorAll: () => [] },
+  };
+  const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  t.after(() => {
+    for (const [key, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  });
+
+  function fakeBoard(ids) {
+    const inputs = ids.map(id => new FakeInput(id));
+    let listeners = 0;
+    let listener;
+    return {
+      inputs,
+      get listeners() { return listeners; },
+      querySelectorAll: () => inputs,
+      addEventListener: (type, handler) => { listeners++; listener = handler; },
+      toggle(index) { inputs[index].checked = !inputs[index].checked; listener({ target: inputs[index] }); },
+    };
+  }
+  const { enhanceStoryMapReleases } = await import("embedded-story-map/board.js");
+
+  const board = fakeBoard(["r1", "r2", "r3"]);
+  const root = { querySelectorAll: () => [board] };
+  enhanceStoryMapReleases(root);
+  enhanceStoryMapReleases(root);
+  assert.equal(board.listeners, 1, "enhancing twice adds one listener");
+
+  board.toggle(0);
+  board.toggle(2);
+  assert.deepEqual(JSON.parse(storage.get("esm-collapsed:/story-map")), ["r1", "r3"]);
+  board.toggle(0);
+  assert.deepEqual(JSON.parse(storage.get("esm-collapsed:/story-map")), ["r3"]);
+
+  // After a filter reloads the page, the same lanes start collapsed.
+  const reloaded = fakeBoard(["r1", "r2", "r3"]);
+  enhanceStoryMapReleases({ querySelectorAll: () => [reloaded] });
+  assert.deepEqual(reloaded.inputs.map(input => input.checked), [false, false, true]);
+
+  reloaded.toggle(2);
+  assert.equal(storage.has("esm-collapsed:/story-map"), false, "expanding every lane clears the stored value");
+});
