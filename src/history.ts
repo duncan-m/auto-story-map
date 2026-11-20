@@ -40,7 +40,32 @@ export interface StoryMapHistory {
   lastEdits?: StoryLastEdit[];
 }
 
-const name = z.string().trim().min(1).max(120);
+/** The longest `by` or `mergedBy` name a history file can hold, in Unicode code points. */
+export const historyNameMaxLength = 120;
+/** The longest blocked or cut `reason` a history file can hold, in Unicode code points. */
+export const historyReasonMaxLength = 500;
+
+const codePoints = (text: string) => Array.from(text).length;
+
+/**
+ * Fits text to the history format: trimmed, and cut to `max` code points
+ * ending in “…” when it is longer, so emoji and other surrogate pairs are
+ * never split. Returns `undefined` for empty text. The writer passes every
+ * name and reason through this, so `parseStoryMapHistory` accepts its output.
+ */
+export function fitHistoryText(text: string | undefined, max: number): string | undefined {
+  const trimmed = text?.trim();
+  if (!trimmed) return undefined;
+  const characters = Array.from(trimmed);
+  if (characters.length <= max) return trimmed;
+  return `${characters.slice(0, max - 1).join("").trimEnd()}…`;
+}
+
+const withinCodePoints = (max: number) => (text: string) => codePoints(text) <= max;
+const name = z.string().trim().min(1)
+  .refine(withinCodePoints(historyNameMaxLength), `Use at most ${historyNameMaxLength} characters.`);
+const reason = z.string()
+  .refine(withinCodePoints(historyReasonMaxLength), `Use at most ${historyReasonMaxLength} characters.`);
 const at = z.iso.datetime({ offset: true });
 const commit = z.string().regex(/^[0-9a-f]{7,64}$/);
 
@@ -53,7 +78,7 @@ export const storyMapHistorySchema = z.object({
     type: z.enum(["added", "status"]),
     from: z.enum(storyStatuses).optional(),
     to: z.enum(storyStatuses),
-    reason: z.string().max(500).optional(),
+    reason: reason.optional(),
     at,
     by: name.optional(),
     mergedBy: name.optional(),
@@ -66,6 +91,11 @@ export const storyMapHistorySchema = z.object({
     commit,
   })).max(100_000).optional(),
 });
+
+// The interfaces above document the format and the schema checks it. Fail the
+// build if they ever describe different shapes.
+type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+true satisfies Same<z.infer<typeof storyMapHistorySchema>, StoryMapHistory>;
 
 /** Parses the JSON written by `story-map history`. Throws if it is not a valid history file. */
 export function parseStoryMapHistory(json: string | unknown): StoryMapHistory {

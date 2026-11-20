@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
+import { fitHistoryText, historyNameMaxLength, historyReasonMaxLength, type StoryHistoryEvent, type StoryLastEdit, type StoryMapHistory } from "./history.js";
 import { parseStoryMap, type StoryMapDocument } from "./schema.js";
 
 const run = promisify(execFile);
@@ -45,6 +45,9 @@ async function git(cwd: string, args: string[]) {
 }
 
 const separator = "\u001f";
+
+/** Git names have no length limit, so fit each one to the history format. */
+const historyName = (name: string | undefined) => fitHistoryText(name, historyNameMaxLength);
 
 function parseCommits(output: string): Commit[] {
   return output.split("\n").filter(Boolean).map(line => {
@@ -118,7 +121,8 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     }
 
     const before = new Map((previous?.stories ?? []).map(story => [story.id, story]));
-    const merger = mergedBy(commit);
+    const rawMerger = mergedBy(commit);
+    const merger = historyName(rawMerger);
     // Git versions differ in how they print UTC (+00:00 or Z), so store one canonical form.
     const at = new Date(commit.committedAt).toISOString();
     let branchAuthor: string | undefined | null = null;
@@ -136,13 +140,16 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
       if (story.updatedBy && (!earlier || earlier.updatedBy !== story.updatedBy)) return story.updatedBy;
       const name = await author();
       // A bot did the edit, so credit the person who accepted it, when Git knows who that is.
-      return isBot(name) && merger && !isBot(merger) ? merger : name;
+      return isBot(name) && rawMerger && !isBot(rawMerger) ? rawMerger : name;
     };
 
     for (const story of current.stories) {
       const earlier = before.get(story.id);
       if (earlier && canonical(earlier) === canonical(story)) continue;
-      const by = await editor(story);
+      const by = historyName(await editor(story));
+      const reason = story.status === "blocked" || story.status === "cut"
+        ? fitHistoryText(story.statusReason, historyReasonMaxLength)
+        : undefined;
       lastEdits.set(story.id, { storyId: story.id, at, ...(by ? { by } : {}), commit: commit.sha });
       if (earlier && earlier.status === story.status) continue;
       events.push({
@@ -150,7 +157,7 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
         type: earlier ? "status" : "added",
         ...(earlier ? { from: earlier.status } : {}),
         to: story.status,
-        ...((story.status === "blocked" || story.status === "cut") && story.statusReason ? { reason: story.statusReason } : {}),
+        ...(reason ? { reason } : {}),
         at,
         ...(by ? { by } : {}),
         ...(merger ? { mergedBy: merger } : {}),
