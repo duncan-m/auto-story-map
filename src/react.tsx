@@ -43,7 +43,7 @@ const warned = new Set<string>();
 function warnOnce(message: string) {
   if (warned.has(message)) return;
   warned.add(message);
-  console.warn(`embedded-story-map: ${message}`);
+  console.warn(`auto-story-map: ${message}`);
 }
 
 /** Whether `Intl` accepts the options. An unknown locale tag or time zone throws a RangeError. */
@@ -466,7 +466,7 @@ function VersionFooter({ internal }: { internal: boolean }) {
   const licenseUrl = `${storyMapRepositoryUrl}/blob/main/LICENSE`;
   return (
     <footer className="esm-footer">
-      <span className="esm-version">Embedded Story Map {storyMapVersion}</span>
+      <span className="esm-version">Auto Story Map {storyMapVersion}</span>
       <span className="esm-author">
         {"By "}
         {internal && storyMapAuthor.url

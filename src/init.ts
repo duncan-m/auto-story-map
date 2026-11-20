@@ -15,7 +15,7 @@ export interface InitStep {
 
 const packageRoot = new URL("../", import.meta.url);
 const template = (name: string) => readFile(new URL(`templates/${name}`, packageRoot), "utf8");
-const agentsMarker = "<!-- embedded-story-map:start -->";
+const agentsMarker = "<!-- auto-story-map:start -->";
 
 async function exists(path: string) {
   try {
@@ -50,7 +50,7 @@ export function describeProduct(name: string) {
 }
 
 /**
- * Sets up Embedded Story Map in a host repository: a starter map, the story
+ * Sets up Auto Story Map in a host repository: a starter map, the story
  * map guide, the agent instructions and a validation workflow. Existing files
  * are never overwritten, so it is safe to run again.
  */
@@ -78,7 +78,7 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     steps.push({
       path: guidePath,
       action: "skipped",
-      reason: "differs from this version's guide; compare it with node_modules/embedded-story-map/docs/story-map.md",
+      reason: "differs from this version's guide; compare it with node_modules/auto-story-map/docs/story-map.md",
     });
   }
 

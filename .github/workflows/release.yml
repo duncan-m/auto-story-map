@@ -120,9 +120,9 @@ jobs:
         id: npm
         run: |
           version="$(node -p "require('./package.json').version")"
-          if npm view "embedded-story-map@$version" version > /dev/null 2>&1; then
+          if npm view "auto-story-map@$version" version > /dev/null 2>&1; then
             echo "published=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::embedded-story-map@$version is already on npm, so only the GitHub release will be created."
+            echo "::notice::auto-story-map@$version is already on npm, so only the GitHub release will be created."
           else
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi

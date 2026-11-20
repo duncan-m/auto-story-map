@@ -91,7 +91,7 @@ export interface StoryMapExportOptions {
 export function storyMapToVsdx(view: StoryMapView, options?: StoryMapExportOptions): Uint8Array;
 ```
 
-It is exported from `embedded-story-map`, uses no Node-only APIs, and throws a `TypeError` when `view.audience` is not `"internal"` (decision B).
+It is exported from `auto-story-map`, uses no Node-only APIs, and throws a `TypeError` when `view.audience` is not `"internal"` (decision B).
 
 **Change.**
 

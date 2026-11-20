@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../node_modules/embedded-story-map/story-map.schema.json
+# yaml-language-server: $schema=../node_modules/auto-story-map/story-map.schema.json
 version: 1
 id: __ID__
 title: __TITLE__

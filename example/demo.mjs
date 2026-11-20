@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createElement as h } from "react";
-import { parseStoryMap } from "embedded-story-map";
+import { parseStoryMap } from "auto-story-map";
 import { buildStoryMapHistory } from "../dist/history-git.js";
 import { makeStoryMapResponse } from "./host.mjs";
 
@@ -20,7 +20,7 @@ const scripts = new Map([
   ["/story-map-board.js", await readFile(new URL("../dist/board.js", import.meta.url), "utf8")],
 ]);
 const mapFile = new URL("../product/story-map.yaml", import.meta.url);
-const sourceBaseUrl = "https://github.com/duncan-m/embedable-story-map/blob/main/";
+const sourceBaseUrl = "https://github.com/duncan-m/auto-story-map/blob/main/";
 // This product also gives product managers the internal view.
 const internalRoles = new Set(["engineer", "super-admin", "product-manager"]);
 const canViewInternal = viewer => viewer.roles.some(role => internalRoles.has(role));
