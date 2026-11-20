@@ -56,6 +56,7 @@ flowchart LR
 | `embedded-story-map` | `dist/index.js` | Parsing, validation errors, projection, filters, history parsing, diff |
 | `embedded-story-map/react` | `dist/react.js` | `StoryMapBoard` |
 | `embedded-story-map/styles.css` | `styles.css` | Board stylesheet |
+| `embedded-story-map/board.js` | `dist/board.js` | Optional browser script that applies filters as they change. Exported under `default`, so `require.resolve` finds it for hosts that copy it into their static files. |
 | `embedded-story-map/schema.json` | `story-map.schema.json` | JSON Schema for editors |
 | `story-map` (bin) | `dist/cli.js` | CLI |
 
@@ -77,6 +78,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `src/references.ts` | `--check-sources` (files and GitHub heading anchors) and `--plans` (story IDs in Markdown) |
 | `src/init.ts` | `story-map init`: writes the starter map, guide, `AGENTS.md` section and CI workflow without overwriting |
 | `src/cli.ts` | Argument parsing, output formats and exit codes for the four commands |
+| `src/board.ts` | The optional browser script, `enhanceStoryMapFilters`. The only code that runs in the browser. |
 | `src/react.tsx` | `StoryMapBoard`: grid, cards, popover panels, filter toolbar, history list and date formatting |
 | `src/index.ts` | Root entry point re-exports |
 | `styles.css` | Board styles, light, dark and `auto` themes, and the narrow-screen layout |
@@ -84,7 +86,8 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `docs/story-map.md` | The user guide. **It is also shipped in the package and copied into hosts by `init`.** |
 | `docs/plans/` | Delivery plans. `0.4.0-enhancements.md` records what 0.4.0 built and the items still proposed. |
 | `docs/releasing.md` | How to publish a version |
-| `product/story-map.yaml` | The builder estimates demo map, including one cut story (`FINANCE-202`). It is test data and the demo's content, not a map of this library. Tests that need FINANCE-202 still planned use the `planningMap` copy. |
+| `product/story-map.yaml` | This library's own story map, with `ESM-` story IDs: one release per version, the 0.4.0 work as `merged` until it is on npm, one cut story and the proposed next items. The demo shows it, and CI validates it with `--check-sources`, so its doc links must stay valid. Keep it up to date like any product's map. |
+| `test/fixtures/builder-estimates.yaml` | The builder estimates sample map, including one cut story (`FINANCE-202`). It is test data with stable IDs that the tests and the guide's examples rely on. Tests that need FINANCE-202 still planned use the `planningMap` copy. |
 | `example/host.mjs` | Reference host integration: one function that returns a web `Response` for the page or the JSON endpoint |
 | `example/demo.mjs` | Local demo server on `127.0.0.1:4173` with a role switcher |
 | `scripts/build-schema.mjs` | Generates `story-map.schema.json` from the compiled Zod schema |
@@ -229,6 +232,8 @@ Engineering links open in a new tab with `rel="noopener noreferrer"`, an icon an
 
 The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history. Internal views get **Active** (the default) and **All, including blocked and cut** at the top of the status select; customer views get **All statuses** and `customerStoryStatuses` (planned, in progress and shipped). When `filter.hidden` is set, the results line says how many blocked and cut stories are hidden and links to the same filters with `status=all`.
 
+The optional `board.js` script (`src/board.ts`) enhances the form without changing it. It marks the form `data-esm-auto`, which hides the `.esm-apply` button through CSS. It then submits the form with `requestSubmit()` when a select changes or Enter is pressed in the search box, and stores the field's name in `sessionStorage` so focus returns to it after the reload. Changing a select reloads the page, so the board renders an empty, visually hidden hint (`data-esm-filter-hint`) referenced by each select's `aria-describedby`, and the script fills it in to warn screen reader users before they choose. Without the script the hint stays empty, so nothing false is announced. Keep it a separate file: an inline script would need `dangerouslySetInnerHTML` and would break hosts with a strict Content Security Policy.
+
 ### Dates
 
 `locale` (default `en-GB`), `timeZone` and `now` control date output. Cards show relative times (“5 hours ago”, “yesterday”), switching to a date after 30 days. Without `timeZone`, dates use the server's zone, which may not match the team's. Tests pass a fixed `now` so output is deterministic.
@@ -286,7 +291,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 
 `--check-sources` (`checkSources` in `src/references.ts`) looks at each source that looks like a path: no whitespace, no URL scheme and no leading `//`. It reports files that do not exist and paths that resolve outside `--root`. For Markdown files with a fragment, it checks the fragment against `markdownAnchors`, which reimplements GitHub's anchor rules: strip inline Markdown and HTML, lower-case, drop punctuation, turn spaces into hyphens, add `-1`, `-2` suffixes for duplicate headings, skip fenced code blocks, and accept Setext headings and `<a id>`/`<a name>` anchors. If GitHub's rendering and this function disagree, the validator either accepts a broken link or rejects a working one, so test any change against real GitHub output.
 
-`--plans <dir>` (`checkPlanReferences`) scans Markdown under the folder for story IDs. It only checks IDs whose prefix the map already uses (`BUILDER-` in `BUILDER-102`), so ordinary text such as `UTF-8` is not flagged. This repository runs it over `docs/`, so any `BUILDER-` or `FINANCE-` ID mentioned there must exist in the demo map.
+`--plans <dir>` (`checkPlanReferences`) scans Markdown under the folder for story IDs. It only checks IDs whose prefix the map already uses (`BUILDER-` in `BUILDER-102`), so ordinary text such as `UTF-8` is not flagged. This repository runs it over `docs/`, so any `ESM-` ID mentioned there must exist in the product map. `BUILDER-` and `FINANCE-` IDs in the docs refer to the sample fixture and are not checked.
 
 ### diff
 
@@ -341,13 +346,14 @@ npm run validate
 npm run demo
 ```
 
-`npm ci` runs `prepare`, which builds `dist/` and regenerates the schema. `npm test` rebuilds and runs `node --test`. `npm run validate` validates the demo map with `--check-sources --plans docs`.
+`npm ci` runs `prepare`, which builds `dist/` and regenerates the schema. `npm test` rebuilds and runs `node --test`. `npm run validate` validates the product map with `--check-sources --plans docs`. It reports three warnings for drafted impact on shipped releases until a person confirms those items.
 
-`npm run demo` starts [the demo](http://127.0.0.1:4173/story-map). Set `STORY_MAP_DEMO_PORT` to use another port. The demo:
+`npm run demo` starts [the demo](http://127.0.0.1:4173/story-map), showing this library's own map as **Super admin** by default. Set `STORY_MAP_DEMO_PORT` to use another port. The demo:
 
 - reads `product/story-map.yaml` on every request, so YAML edits show up on refresh,
+- serves `dist/board.js` at `/story-map-board.js`, which `example/host.mjs` loads, so filters apply as they change,
 - builds history from this repository's Git history at startup, allowing a shallow clone, and logs a warning if Git is unavailable,
-- offers Regular user, Product manager, Engineer, Super admin and Guest views. It passes a custom `canViewInternal` that also admits `product-manager`, to show that option in use,
+- starts as Super admin, and offers Regular user, Product manager, Engineer, Super admin and Guest views. It passes a custom `canViewInternal` that also admits `product-manager`, to show that option in use,
 - links sources to this repository on GitHub with `sourceBaseUrl`.
 
 `dist/` is ignored by Git. If an import fails or behaviour does not match the source, rebuild.
@@ -362,6 +368,7 @@ All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert
 - filters, including that searches only see the projected view, the default that hides blocked and cut stories, and the checkbox on boards without filters,
 - that customers never see blocked or cut stories,
 - validator warnings, `--strict` and `::warning` annotations,
+- `board.js` with a minimal fake DOM: selects and Enter in search submit, focus is restored after the reload, and enhancing twice adds no extra listeners,
 - the CLI's text and GitHub output, `diff` against a Git ref, `init` in a temporary directory, source and plan checks, and GitHub anchor rules,
 - that the committed JSON Schema matches the validator,
 - history built from real temporary Git repositories, with merge commits, `updatedBy` credit, shallow clones, blocked or cut reasons, last edits to any field, bot authors credited to mergers, and history and last edits on the board,
@@ -372,7 +379,7 @@ Tests that need Git create temporary repositories and clean them up. They need `
 `ci.yml` runs on every PR and push to `main`, on a matrix of Node 20 and 26 with React 18 and 19:
 
 1. `npm ci`
-2. Validate the demo map with `--format github --check-sources --plans docs`
+2. Validate the product map with `--format github --check-sources --plans docs`
 3. On PRs, once per run, append `story-map diff origin/<base>` to the job summary. The checkout uses `fetch-depth: 0` for this.
 4. `npm test`
 5. Fail if `story-map.schema.json` differs from the freshly built schema

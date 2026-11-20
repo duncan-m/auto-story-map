@@ -25,7 +25,8 @@ import {
 import { StoryMapBoard } from "embedded-story-map/react";
 import { makeStoryMapResponse } from "../example/host.mjs";
 
-const sample = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
+// The builder estimates sample map: test data with stable IDs, separate from this product’s own map.
+const sample = await readFile(new URL("./fixtures/builder-estimates.yaml", import.meta.url), "utf8");
 const map = parseStoryMap(sample);
 const regular = { roles: ["member"] };
 const engineer = { roles: ["engineer"] };
@@ -336,7 +337,11 @@ test("the published JSON Schema matches the validator", async () => {
     for (const key of Object.keys(story)) assert.ok(storyProperties.includes(key), key);
   }
   assert.match(schema.properties.stories.items.properties.status.description, /shipped: available to its intended users/);
-  assert.match(sample, /^# yaml-language-server: \$schema=\.\.\/story-map\.schema\.json\n/);
+  const productMap = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
+  assert.match(productMap, /^# yaml-language-server: \$schema=\.\.\/story-map\.schema\.json\n/);
+  for (const story of parseStoryMap(productMap).stories) {
+    for (const key of Object.keys(story)) assert.ok(storyProperties.includes(key), key);
+  }
 });
 
 test("init sets up a host repository without overwriting anything", async t => {
@@ -1281,4 +1286,82 @@ test("stalled stories stop counting once merged", () => {
     .stories.find(story => story.id === "BUILDER-101");
   assert.equal(story.stalled, undefined);
   assert.equal(story.inProgressSince, undefined);
+});
+
+test("board.js applies filters as they change and restores focus", async t => {
+  // A minimal stand-in for the browser, enough for the script's event wiring.
+  class FakeElement { focus() { focused = this.name; } }
+  class FakeSelect extends FakeElement {}
+  class FakeInput extends FakeElement {}
+  const storage = new Map();
+  let focused;
+  const globals = {
+    HTMLElement: FakeElement,
+    HTMLSelectElement: FakeSelect,
+    HTMLInputElement: FakeInput,
+    sessionStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
+    document: { readyState: "complete", querySelectorAll: () => [] },
+  };
+  const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  t.after(() => {
+    for (const [key, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  });
+
+  function fakeForm() {
+    const status = Object.assign(new FakeSelect(), { name: "status" });
+    const search = Object.assign(new FakeInput(), { name: "q", type: "search" });
+    const hint = { textContent: "" };
+    const listeners = {};
+    const form = {
+      dataset: {},
+      submitted: 0,
+      fields: { status, search },
+      hint,
+      elements: { namedItem: name => [status, search].find(field => field.name === name) ?? null },
+      querySelector: () => hint,
+      addEventListener: (type, listener) => { listeners[type] = listener; },
+      requestSubmit() { this.submitted++; },
+      fire: (type, event) => listeners[type]?.(event),
+    };
+    return form;
+  }
+  const { enhanceStoryMapFilters } = await import("embedded-story-map/board.js");
+
+  const form = fakeForm();
+  const root = { querySelectorAll: () => [form] };
+  enhanceStoryMapFilters(root);
+  enhanceStoryMapFilters(root);
+  assert.equal(form.dataset.esmAuto, "");
+  assert.match(form.hint.textContent, /updates as soon as you choose/);
+
+  form.fire("change", { target: form.fields.status });
+  assert.equal(form.submitted, 1, "a select change submits once, even after enhancing twice");
+  assert.equal(storage.get("esm-filter-focus"), "status");
+
+  let prevented = false;
+  form.fire("keydown", { key: "Enter", target: form.fields.search, preventDefault: () => { prevented = true; } });
+  assert.equal(form.submitted, 2);
+  assert.ok(prevented);
+  form.fire("keydown", { key: "a", target: form.fields.search, preventDefault() {} });
+  form.fire("change", { target: form.fields.search });
+  assert.equal(form.submitted, 2, "typing and search changes do not submit");
+
+  // After the page reloads, focus returns to the field that was used.
+  const reloaded = fakeForm();
+  enhanceStoryMapFilters({ querySelectorAll: () => [reloaded] });
+  assert.equal(focused, "q");
+  assert.equal(storage.has("esm-filter-focus"), false);
+});
+
+test("the board renders the filter hint empty and marks the Apply button", () => {
+  const view = filterStoryMapView(getStoryMapForViewer(map, engineer), {});
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+  const hintId = /<span class="esm-visually-hidden" id="([^"]+)" data-esm-filter-hint=""><\/span>/.exec(html)?.[1];
+  assert.ok(hintId);
+  assert.match(html, new RegExp(`<select class="esm-select" name="status" aria-label="Filter by story status" aria-describedby="${hintId}"`));
+  assert.match(html, /<button type="submit" class="esm-button esm-apply">Apply<\/button>/);
 });

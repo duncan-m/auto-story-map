@@ -32,10 +32,12 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
       h("title", null, "Story map"),
       h("link", { rel: "stylesheet", href: "/story-map.css" }),
       h("link", { rel: "stylesheet", href: "/example-host.css" }),
+      // Optional: applies the filters as soon as they change. The board works without it.
+      h("script", { type: "module", src: "/story-map-board.js" }),
     ),
     h("body", null,
       h("header", { className: "product-header" },
-        h("h1", null, "Purchasing"),
+        h("h1", null, "Embedded Story Map"),
         navigation,
       ),
       h("main", null,

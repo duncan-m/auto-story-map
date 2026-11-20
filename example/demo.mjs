@@ -16,6 +16,9 @@ const styles = new Map([
   ["/story-map.css", await readFile(new URL("../styles.css", import.meta.url), "utf8")],
   ["/example-host.css", await readFile(new URL("./host.css", import.meta.url), "utf8")],
 ]);
+const scripts = new Map([
+  ["/story-map-board.js", await readFile(new URL("../dist/board.js", import.meta.url), "utf8")],
+]);
 const mapFile = new URL("../product/story-map.yaml", import.meta.url);
 const sourceBaseUrl = "https://github.com/duncan-m/embedable-story-map/blob/main/";
 // This product also gives product managers the internal view.
@@ -47,12 +50,16 @@ const server = createServer(async (request, response) => {
       response.writeHead(302, { Location: "/story-map" }).end();
       return;
     }
+    if (scripts.has(url.pathname)) {
+      response.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" }).end(scripts.get(url.pathname));
+      return;
+    }
     if (styles.has(url.pathname)) {
       response.writeHead(200, { "Content-Type": "text/css; charset=utf-8" }).end(styles.get(url.pathname));
       return;
     }
 
-    const selected = url.searchParams.get("as") ?? "user";
+    const selected = url.searchParams.get("as") ?? "super-admin";
     const roles = demoRoles.get(selected);
     const viewer = roles ? { roles } : null;
     const views = [["user", "Regular user"], ["product", "Product manager"], ["engineer", "Engineer"], ["super-admin", "Super admin"], ["guest", "Guest"]];

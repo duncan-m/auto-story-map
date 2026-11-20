@@ -168,6 +168,8 @@
   cursor: pointer;
 }
 .esm-button:hover { background: var(--esm-hover); }
+/* board.js applies filters as they change, so the Apply button is only needed without it. */
+.esm-filters[data-esm-auto] .esm-apply { display: none; }
 .esm-filter-results { margin: 0; padding: 0 17px 12px; color: var(--esm-muted); font-size: .875rem; }
 .esm-filter-results a, .esm-detail a { color: var(--esm-accent-ink); }
 

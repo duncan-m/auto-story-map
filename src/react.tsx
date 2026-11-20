@@ -417,6 +417,8 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
   if (filter.query) showHiddenParams.set("q", filter.query);
   showHiddenParams.set("status", "all");
   if (filter.changedWithinDays) showHiddenParams.set("changed", `${filter.changedWithinDays}d`);
+  // Empty unless the optional board.js script runs: it explains that the filters apply as soon as they change.
+  const hintId = `${useId()}-filter-hint`;
   return (
     <>
       <div className="esm-toolbar">
@@ -434,7 +436,8 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
             </svg>
             <input type="search" name="q" placeholder="Search stories" aria-label="Search stories" maxLength={100} defaultValue={filter.query ?? ""} />
           </label>
-          <select className="esm-select" name="status" aria-label="Filter by story status" defaultValue={filter.status ?? ""}>
+          <span className="esm-visually-hidden" id={hintId} data-esm-filter-hint="" />
+          <select className="esm-select" name="status" aria-label="Filter by story status" aria-describedby={hintId} defaultValue={filter.status ?? ""}>
             {internal ? <>
               <option value="">Active</option>
               <option value="all">All, including blocked and cut</option>
@@ -447,13 +450,14 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
               className="esm-select"
               name="changed"
               aria-label="Filter by when stories were added or changed status"
+              aria-describedby={hintId}
               defaultValue={filter.changedWithinDays ? `${filter.changedWithinDays}d` : ""}
             >
               <option value="">Changed any time</option>
               {changedWithinChoices.map(([days, label]) => <option key={days} value={`${days}d`}>{`Changed: ${label.toLowerCase()}`}</option>)}
             </select>
           )}
-          <button type="submit" className="esm-button">Apply</button>
+          <button type="submit" className="esm-button esm-apply">Apply</button>
         </form>
       </div>
       {(filtering || filter.hidden) && (
