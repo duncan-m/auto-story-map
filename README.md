@@ -64,7 +64,7 @@ Start an agent in the host repo and give it this task.
 
 ## Changes and releases
 
-See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one.
+See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one. To work on the library itself, start with [the engineering overview][overview].
 
 [source]: https://github.com/duncan-m/embedable-story-map
 [example-map]: https://github.com/duncan-m/embedable-story-map/blob/main/product/story-map.yaml
@@ -76,3 +76,4 @@ See [the changelog][changelog] for what changed in each version and [the release
 [host]: https://github.com/duncan-m/embedable-story-map/blob/main/example/host.mjs
 [changelog]: https://github.com/duncan-m/embedable-story-map/blob/main/CHANGELOG.md
 [releasing]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/releasing.md
+[overview]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/ENGINEERING-OVERVIEW.md
