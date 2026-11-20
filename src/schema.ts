@@ -58,7 +58,7 @@ const story = z.object({
     .describe("planned: agreed work awaiting implementation. in-progress: work has started. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers."),
   statusReason: z.string().trim().min(1).max(500).optional()
     .describe("Why the story is blocked or cut. Internal only."),
-  updatedBy: z.string().trim().min(1).max(120).optional().describe("Display name of the person who last added or edited the story."),
+  updatedBy: z.string().trim().min(1).max(120).optional().describe("Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise."),
   notes: z.string().trim().max(4000).optional().describe("Internal engineering notes."),
   sources: z.array(z.string().trim().min(1).max(250)).max(20).optional()
     .describe("Supporting docs, tests or links. The first Markdown link with a #heading becomes the Engineering overview link."),

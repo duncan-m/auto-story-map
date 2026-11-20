@@ -628,6 +628,15 @@ test("history records additions and status changes with editor, merger and date"
     ["BUILDER-104", "added", undefined, "planned", "2026-11-18T16:45", "Erin", undefined],
   ]);
   assert.equal(history.events.at(-1).commit, git(["rev-parse", "HEAD"]));
+  // Moving FINANCE-201 is an edit, though not a status change.
+  assert.deepEqual(history.lastEdits.map(({ storyId, at, by }) => [storyId, at.slice(0, 16), by]), [
+    ["BUILDER-101", "2026-11-12T15:30", "Bob Builder"],
+    ["BUILDER-102", "2026-11-16T08:00", "Dan"],
+    ["BUILDER-103", "2026-11-01T10:00", "Alex Morgan"],
+    ["FINANCE-201", "2026-11-12T15:30", "Bob"],
+    ["FINANCE-202", "2026-11-01T10:00", "Taylor Reed"],
+    ["BUILDER-104", "2026-11-18T16:45", "Erin"],
+  ]);
   assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
   assert.throws(() => parseStoryMapHistory({ ...history, events: [{ storyId: "X" }] }), /Invalid story map history/);
 
@@ -637,6 +646,7 @@ test("history records additions and status changes with editor, merger and date"
   const partial = await buildStoryMapHistory({ cwd: shallow, allowShallow: true });
   assert.equal(partial.complete, false);
   assert.deepEqual(partial.events.map(event => event.storyId), ["BUILDER-104"]);
+  assert.deepEqual(partial.lastEdits.map(edit => edit.storyId), ["BUILDER-104"]);
 
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   const out = join(root, "build/history.json");
@@ -1130,4 +1140,90 @@ test("diffs report a change to the stalled threshold", () => {
   assert.match(formatStoryMapDiff(longer), /### Settings\n\n- Stories are flagged as stalled after 6 weeks in progress \(was 4 weeks\)\./);
   assert.match(formatStoryMapDiff(diffStoryMaps(map, weeks(0))), /- Turned off the stalled flag \(was 4 weeks\)\./);
   assert.match(formatStoryMapDiff(diffStoryMaps(weeks(0), weeks(1))), /after 1 week in progress \(was off\)/);
+});
+
+test("history records each story's last edit to any field and credits mergers for bot edits", async t => {
+  const { buildStoryMapHistory } = await import("../dist/history-git.js");
+  const { root, git } = await historyRepo(t);
+  const writeMap = edit => writeFile(join(root, "product/story-map.yaml"), stringify(edit(parseStoryMap(git(["show", "HEAD:product/story-map.yaml"])))));
+  const story = (document, id) => document.stories.find(story => story.id === id);
+
+  // A bot commit pushed by Frank: a notes edit and a status change are both credited to Frank.
+  await writeMap(document => {
+    story(document, "BUILDER-103").notes = "Validate the total before submitting.";
+    story(document, "FINANCE-201").status = "in-progress";
+    return document;
+  });
+  git(["commit", "-q", "-am", "Agent notes"], { author: "claude[bot]", committer: "Frank", date: "2026-11-19T09:00:00Z" });
+
+  // A named agent account on a branch merged by Grace. It also sets updatedBy on BUILDER-104, which wins.
+  git(["checkout", "-q", "-b", "audit"]);
+  await writeMap(document => {
+    story(document, "BUILDER-102").sources = ["docs/story-map.md"];
+    story(document, "BUILDER-104").summary = "Totals include tax.";
+    story(document, "BUILDER-104").updatedBy = "Sam Patel";
+    return document;
+  });
+  git(["commit", "-q", "-am", "Audit sources"], { author: "Audit Agent", date: "2026-11-19T10:00:00Z" });
+  git(["checkout", "-q", "main"]);
+  git(["merge", "-q", "--no-ff", "-m", "Merge audit", "audit"], { author: "Grace", date: "2026-11-19T11:00:00Z" });
+
+  // Reordering stories changes no story, so it is not an edit.
+  await writeMap(document => {
+    document.stories.reverse();
+    return document;
+  });
+  git(["commit", "-q", "-am", "Reorder"], { author: "Hana", date: "2026-11-19T12:00:00Z" });
+
+  const edits = history => Object.fromEntries(history.lastEdits.map(({ storyId, at, by }) => [storyId, [at.slice(0, 16), by]]));
+  const withBots = await buildStoryMapHistory({ cwd: root, botNames: ["audit agent"] });
+  assert.deepEqual(edits(withBots), {
+    "BUILDER-101": ["2026-11-12T15:30", "Bob Builder"],
+    "BUILDER-102": ["2026-11-19T11:00", "Grace"],
+    "BUILDER-103": ["2026-11-19T09:00", "Frank"],
+    "BUILDER-104": ["2026-11-19T11:00", "Sam Patel"],
+    "FINANCE-201": ["2026-11-19T09:00", "Frank"],
+    "FINANCE-202": ["2026-11-01T10:00", "Taylor Reed"],
+  });
+  assert.deepEqual(withBots.events.at(-1), {
+    storyId: "FINANCE-201", type: "status", from: "planned", to: "in-progress",
+    at: "2026-11-19T09:00:00.000Z", by: "Frank", mergedBy: "Frank", commit: withBots.lastEdits.find(edit => edit.storyId === "FINANCE-201").commit,
+  });
+  // Without the bot list, the named agent is credited as an ordinary author.
+  assert.equal(edits(await buildStoryMapHistory({ cwd: root }))["BUILDER-102"][1], "Audit Agent");
+
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const out = join(root, "build/history.json");
+  const written = spawnSync(process.execPath, [cli, "history", "--bot-names", "Someone Else, Audit Agent", "--out", out], { cwd: root, encoding: "utf8" });
+  assert.equal(written.status, 0, written.stderr);
+  assert.equal(edits(parseStoryMapHistory(await readFile(out, "utf8")))["BUILDER-102"][1], "Grace");
+  assert.equal(spawnSync(process.execPath, [cli, "history", "--bot-names"], { cwd: root }).status, 2);
+});
+
+test("panels show the last edit from history, and fall back to updatedBy without it", async () => {
+  const history = parseStoryMapHistory({
+    version: 1,
+    generatedAt: "2026-11-20T08:00:00Z",
+    complete: true,
+    events: [{ storyId: "BUILDER-101", type: "added", to: "in-progress", at: "2026-11-01T10:00:00Z", by: "Alex Morgan", commit: "a000001" }],
+    lastEdits: [{ storyId: "BUILDER-101", at: "2026-11-17T10:00:00Z", by: "Sam Patel", commit: "a000002" }],
+  });
+  const now = new Date("2026-11-20T12:00:00Z");
+  const html = await makeStoryMapResponse("/story-map", map, engineer, { history, now }).text();
+  const panel = panelFor(html, "Draft an estimate against a project");
+  assert.match(panel, /<p class="esm-updater">Last updated <time dateTime="2026-11-17T10:00:00Z" title="17 Nov 2026, \d\d:00">3 days ago<\/time> by Sam Patel<\/p>/);
+  assert.doesNotMatch(panel, /Last updated by Alex Morgan/);
+  // The card still shows the last status change: an edit is not a change for the Changed filter.
+  assert.match(cardsIn(html).find(card => card.includes("BUILDER-101")), />19 days ago<\/time>/);
+  // A story with no recorded edit falls back to updatedBy.
+  assert.match(panelFor(html, "Look up prices in the material catalogue"), /Last updated by Sam Patel/);
+
+  // History files written before lastEdits existed still parse.
+  const older = parseStoryMapHistory({ ...history, lastEdits: undefined });
+  assert.equal(older.lastEdits, undefined);
+  const view = getStoryMapForViewer(map, engineer, { history: older });
+  assert.equal(Object.hasOwn(view.stories[0], "lastEdit"), false);
+
+  const customer = await makeStoryMapResponse("/api/story-map", map, regular, { history, now }).json();
+  assert.doesNotMatch(JSON.stringify(customer), /lastEdit|Sam Patel|a000002/);
 });

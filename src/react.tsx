@@ -259,7 +259,14 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
           )}
         </section>
       )}
-      {internal && story.updatedBy && <p className="esm-updater">Last updated by {story.updatedBy}</p>}
+      {internal && (story.lastEdit
+        ? (
+          <p className="esm-updater">
+            Last updated <time dateTime={story.lastEdit.at} title={formatDate(story.lastEdit.at, settings)}>{formatRelative(story.lastEdit.at, settings)}</time>
+            {story.lastEdit.by && ` by ${story.lastEdit.by}`}
+          </p>
+        )
+        : story.updatedBy && <p className="esm-updater">Last updated by {story.updatedBy}</p>)}
     </div>
   );
 }
