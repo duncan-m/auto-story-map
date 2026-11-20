@@ -1624,6 +1624,12 @@ test("story-map diff escapes rejected story IDs from an older base", async t => 
   assert.equal(note, "> The map at `HEAD` uses an older format, so this comparison leaves out 1 story that no longer validates (``x` [link](https://example.test) @team #1``) from it.");
 });
 
+test("code spans hold any number of backtick runs", async () => {
+  const { code } = await import("../dist/diff.js");
+  assert.equal(code("a``b`c"), "```a``b`c```");
+  assert.equal(code("`a".repeat(300000)).length, 600006);
+});
+
 test("story-map diff compares with a base that uses an older format", async t => {
   const { root } = await formatRepo(t, [
     document => { document.owner = "Platform team"; storyIn(document, "BUILDER-103").status = "on-hold"; },

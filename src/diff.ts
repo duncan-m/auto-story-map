@@ -284,7 +284,8 @@ function text(value: string) {
 export function code(value: string) {
   const flat = value.replace(/\s+/g, " ");
   if (!flat.trim()) return text(value);
-  const fence = "`".repeat(Math.max(0, ...(flat.match(/`+/g) ?? []).map(run => run.length)) + 1);
+  const longestRun = (flat.match(/`+/g) ?? []).reduce((longest, run) => Math.max(longest, run.length), 0);
+  const fence = "`".repeat(longestRun + 1);
   const pad = /^[ `]|[ `]$/.test(flat) ? " " : "";
   return `${fence}${pad}${flat}${pad}${fence}`;
 }
