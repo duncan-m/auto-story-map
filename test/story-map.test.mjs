@@ -605,6 +605,7 @@ test("Markdown anchors stay linear for headings with unclosed markup", async () 
   const { markdownAnchors, slugify } = await import("../dist/references.js");
   assert.equal(slugify("a <b>bold</b> ![img](x.png) `<code>` <> < [x]y"), "a-bold-img----xy");
   assert.deepEqual([...markdownAnchors("## Title ## \n# Keep # hash#\n<a name='One' id=\"two\">")].sort(), ["keep--hash", "one", "title", "two"]);
+  assert.deepEqual([...markdownAnchors("<a title=\"1 < 2\" id=\"real\"></a>")], ["real"]);
   const size = 200_000;
   const started = performance.now();
   for (const text of ["<", "[", "[a](", "![a]", "`"]) markdownAnchors(`# ${text.repeat(size / text.length)}`);

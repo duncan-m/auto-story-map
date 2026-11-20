@@ -76,14 +76,20 @@ function atxHeading(line: string) {
   return text.slice(0, end);
 }
 
-/** Returns the `id` and `name` values of each `<a …>` tag in a line. */
+/**
+ * Returns the `id` and `name` values of each `<a …>` tag in a line. A tag runs
+ * to the next `>`, so a quoted `<` inside it does not end it. Openers inside a
+ * tag already read share its end, so each character is read once.
+ */
 function htmlAnchors(line: string) {
   const ids: string[] = [];
-  for (const segment of line.split("<").slice(1)) {
-    if (!/^a\s/i.test(segment)) continue;
-    const close = segment.indexOf(">");
-    const tag = close === -1 ? segment : segment.slice(0, close);
-    for (const match of tag.matchAll(/\b(?:id|name)=["']([^"']+)["']/gi)) ids.push(match[1].toLowerCase());
+  const opener = /<a\s/gi;
+  for (let match = opener.exec(line); match; match = opener.exec(line)) {
+    const close = line.indexOf(">", match.index);
+    const tag = line.slice(match.index, close === -1 ? line.length : close);
+    for (const attribute of tag.matchAll(/\b(?:id|name)=["']([^"']+)["']/gi)) ids.push(attribute[1].toLowerCase());
+    if (close === -1) break;
+    opener.lastIndex = close + 1;
   }
   return ids;
 }
