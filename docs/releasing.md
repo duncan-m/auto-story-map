@@ -19,7 +19,7 @@ npm can only trust a workflow for a package that already exists, so publish the 
 1. Check out the release commit on `main` in a clean clone, then run `npm ci --ignore-scripts`, `npm run build`, `npm test` and `npm publish --access public --ignore-scripts`. Skipping install scripts keeps dependencies from running code on your machine while you are signed in to npm. npm asks you to sign in and confirm with two-factor authentication.
 2. In the package’s settings on npmjs.com, add a trusted publisher for GitHub Actions with these values:
    - Organization or user: `duncan-m`
-   - Repository: `embedable-story-map`
+   - Repository: `auto-story-map`
    - Workflow filename: `release.yml`
    - Environment: `npm`
 3. Push the version tag as described in step 5 below. The workflow sees that the version is already on npm, skips publishing and creates the GitHub release.

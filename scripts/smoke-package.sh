@@ -23,8 +23,8 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createElement, version } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { filterStoryMapView, getStoryMapForViewer, parseStoryMap } from "embedded-story-map";
-import { StoryMapBoard } from "embedded-story-map/react";
+import { filterStoryMapView, getStoryMapForViewer, parseStoryMap } from "auto-story-map";
+import { StoryMapBoard } from "auto-story-map/react";
 
 const [, , mapPath, reactMajor] = process.argv;
 const map = parseStoryMap(readFileSync(mapPath, "utf8"));
@@ -53,10 +53,10 @@ for (const target of targets) {
 assert.match(internalHtml, /autofocus=""[^>]*popovertargetaction="hide"/i);
 
 const resolve = createRequire(import.meta.url).resolve;
-const css = readFileSync(resolve("embedded-story-map/styles.css"), "utf8");
-assert.match(readFileSync(resolve("embedded-story-map/board.js"), "utf8"), /export function enhanceStoryMapFilters/);
+const css = readFileSync(resolve("auto-story-map/styles.css"), "utf8");
+assert.match(readFileSync(resolve("auto-story-map/board.js"), "utf8"), /export function enhanceStoryMapFilters/);
 assert.match(css, /\.esm-board\s*\{/);
-const schema = JSON.parse(readFileSync(resolve("embedded-story-map/schema.json"), "utf8"));
+const schema = JSON.parse(readFileSync(resolve("auto-story-map/schema.json"), "utf8"));
 assert.equal(schema.properties.version.const, 1);
 assert.equal(version.split(".")[0], reactMajor);
 console.log(`Packed imports, board, board script, stylesheet and JSON Schema work with React ${version}.`);

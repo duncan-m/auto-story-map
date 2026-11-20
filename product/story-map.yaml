@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=../story-map.schema.json
 version: 1
-id: embedded-story-map
+id: auto-story-map
 title: Auto Story Map delivery map
 summary: How product teams set up, plan, review and follow their story map, from the first release to what comes next.
 visibility: all-users

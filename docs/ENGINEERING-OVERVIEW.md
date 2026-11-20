@@ -27,7 +27,7 @@ Two audiences see the map. Internal viewers (by default the `engineer` and `supe
 | UI | React 18 or 19, an optional peer dependency. The board is a plain function component with no state or effects. |
 | Styling | One namespaced stylesheet, `styles.css`, using `.esm-*` classes and `--esm-*` custom properties. |
 | Git | The `diff` and `history` commands shell out to `git` with `execFile`, never through a shell. |
-| Distribution | npm package `embedded-story-map`, published from version tags with npm trusted publishing. |
+| Distribution | npm package `auto-story-map`, published from version tags with npm trusted publishing. |
 
 The library never handles authentication, HTTP or storage itself. The host reads the YAML, resolves the viewer from its own verified session, and passes both in. Data flows one way:
 
@@ -55,16 +55,16 @@ flowchart LR
 
 | Import | File | Contents |
 | --- | --- | --- |
-| `embedded-story-map` | `dist/index.js` | Parsing, validation errors, projection, filters, history parsing, diff |
-| `embedded-story-map/react` | `dist/react.js` | `StoryMapBoard` |
-| `embedded-story-map/styles.css` | `styles.css` | Board stylesheet |
-| `embedded-story-map/board.js` | `dist/board.js` | Optional browser script that applies filters as they change and remembers collapsed release lanes. Exported under `default`, so `require.resolve` finds it for hosts that copy it into their static files. |
-| `embedded-story-map/schema.json` | `story-map.schema.json` | JSON Schema for editors |
+| `auto-story-map` | `dist/index.js` | Parsing, validation errors, projection, filters, history parsing, diff |
+| `auto-story-map/react` | `dist/react.js` | `StoryMapBoard` |
+| `auto-story-map/styles.css` | `styles.css` | Board stylesheet |
+| `auto-story-map/board.js` | `dist/board.js` | Optional browser script that applies filters as they change and remembers collapsed release lanes. Exported under `default`, so `require.resolve` finds it for hosts that copy it into their static files. |
+| `auto-story-map/schema.json` | `story-map.schema.json` | JSON Schema for editors |
 | `story-map` (bin) | `dist/cli.js` | CLI |
 
 `buildStoryMapHistory` (`src/history-git.ts`), `loadStoryMap`, `checkSources`, `checkPlanReferences` and `initStoryMap` are not exported from the root entry point. Hosts reach them through the CLI. The demo imports `dist/history-git.js` directly, which is fine inside this repository but not a supported API.
 
-The tests and the demo import the package by its own name (`import … from "embedded-story-map"`). Node resolves this through the package's `exports`, so they exercise the built `dist/` output exactly as a host would. Run `npm run build` before running them; `npm test` and `npm run demo` do this for you.
+The tests and the demo import the package by its own name (`import … from "auto-story-map"`). Node resolves this through the package's `exports`, so they exercise the built `dist/` output exactly as a host would. Run `npm run build` before running them; `npm test` and `npm run demo` do this for you.
 
 ## Code map
 
@@ -339,7 +339,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 
 - `product/story-map.yaml` from `templates/story-map.yaml`, with `__ID__` and `__TITLE__` filled from the host's `package.json` name (without its scope) or folder name.
 - `docs/story-map.md`, copied from this package's `docs/story-map.md`. If the host already has a different copy, it is left alone and the output says to compare it.
-- `AGENTS.md`: created, or the section from `templates/AGENTS.md` appended. The `<!-- embedded-story-map:start -->` marker prevents appending twice.
+- `AGENTS.md`: created, or the section from `templates/AGENTS.md` appended. The `<!-- auto-story-map:start -->` marker prevents appending twice.
 - `.github/workflows/story-map.yml`, only when the host has a `package-lock.json`, because the workflow uses `npm ci`. Skipped with `--no-ci`.
 
 Templates and the guide are found relative to the compiled `dist/init.js` (`new URL("../", import.meta.url)`). They must stay in the package `files` list.

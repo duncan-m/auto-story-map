@@ -1,17 +1,17 @@
 # Changelog
 
-All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
+All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
 ## Unreleased
 
-- The product is now called Auto Story Map. The board footer reads “Auto Story Map <version>”, and the schema title and docs use the new name. The npm package name, import paths and `AGENTS.md` markers are unchanged.
+- **Breaking:** The package is renamed from `embedded-story-map` to `auto-story-map`, and the repository moved to [duncan-m/auto-story-map](https://github.com/duncan-m/auto-story-map). Import paths change to `auto-story-map`, `auto-story-map/react`, `auto-story-map/styles.css`, `auto-story-map/board.js` and `auto-story-map/schema.json`. The board footer reads “Auto Story Map <version>”, and the `AGENTS.md` section added by `story-map init` uses `auto-story-map` markers. `init` still recognises the old markers. The map format, the API and the `story-map` command are unchanged. Upgrade steps: [Move to auto-story-map](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#move-to-auto-story-map).
 - `story-map history` and `story-map diff` read past versions of the map leniently, so a future format change that removes or renames a field or status no longer breaks them. Fields the format no longer has are ignored, and a story that no longer validates is left out of that version only. History used to skip every such version silently, losing its events and dates, and diff failed until the change merged.
 - History now records each version it cannot read, because the map was missing or not valid YAML, in new optional `skipped` and `skippedCount` fields, and `story-map history` warns about them and still exits 0. `parseStoryMapHistory` accepts files with and without these fields. New type `SkippedStoryMapVersion`.
 - When the diff's base drops anything, the summary starts with a note saying what, and `--format json` adds `baseDropped`.
 - `story-map history` fits names to the history format, so `parseStoryMapHistory` always accepts the file it writes. Git author and committer names have no length limit, and a name over 120 characters used to produce a history file that failed to load. Names are trimmed and cut to 120 characters ending in “…”, and blocked or cut reasons to 500, counting characters rather than UTF-16 code units so emoji are never split. `parseStoryMapHistory` counts the same way, so it now accepts names of up to 120 emoji.
 - New `getStoryMapPage(document, viewer, { canViewInternal, history, stalledAfterWeeks, now, searchParams })` projects the map for the viewer and then applies the filters from `searchParams`, so the safe order is the easy one. It returns the same as `filterStoryMapView(getStoryMapForViewer(...), readStoryMapFilters(searchParams), { now })`, which remain available. New type `StoryMapPageOptions`.
 - New `storyMapResponseHeaders`: `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`, for every story map response.
-- The example host and the integration guide use both. The guide has a new [Large maps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#large-maps) section with measured page sizes.
+- The example host and the integration guide use both. The guide has a new [Large maps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#large-maps) section with measured page sizes.
 - CLI options no longer take the next option as their value. `story-map validate --plans --strict map.yaml` and `story-map history --map --allow-shallow` used to read `--strict` and `--allow-shallow` as paths. They now print `story-map: --plans needs a value` and the usage, and exit 2. Pass a value that starts with a hyphen as `--name=-value`. The same applies to `init --dir`.
 - `--check-sources` and `--plans` no longer follow symbolic links out of the repository. A source or plan file that links outside is reported as pointing outside the repository through a symbolic link, and is not read. Links inside the repository still work.
 - `story-map diff` escapes `@` and `#` in text from the map, so pasting the summary into a PR does not mention people or teams, or link issues.
@@ -35,7 +35,7 @@ No upgrade steps. Nothing changes for hosts that do not load the new script.
 
 ## 0.4.0
 
-Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-040). Existing maps stay valid, but expect new validation warnings, mainly releases with no impact.
+Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040). Existing maps stay valid, but expect new validation warnings, mainly releases with no impact.
 
 ### Statuses
 
@@ -77,7 +77,7 @@ Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-ma
 
 ## 0.3.0
 
-Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030). The YAML format is unchanged.
+Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030). The YAML format is unchanged.
 
 ### Board
 

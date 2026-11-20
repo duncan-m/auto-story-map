@@ -25,8 +25,8 @@ import {
   StoryMapValidationError,
   storyMapResponseHeaders,
   storyMapSchema,
-} from "embedded-story-map";
-import { StoryMapBoard } from "embedded-story-map/react";
+} from "auto-story-map";
+import { StoryMapBoard } from "auto-story-map/react";
 import { makeStoryMapResponse } from "../example/host.mjs";
 
 // The builder estimates sample map: test data with stable IDs, separate from this product’s own map.
@@ -333,7 +333,7 @@ test("the CLI prints file positions and GitHub annotations", async t => {
 
 test("the published JSON Schema matches the validator", async () => {
   const require = createRequire(import.meta.url);
-  const schema = JSON.parse(await readFile(require.resolve("embedded-story-map/schema.json"), "utf8"));
+  const schema = JSON.parse(await readFile(require.resolve("auto-story-map/schema.json"), "utf8"));
   assert.deepEqual(schema, { ...z.toJSONSchema(storyMapSchema, { io: "input" }), $id: schema.$id });
   assert.deepEqual(schema.required, ["version", "id", "title", "activities", "releases", "stories"]);
   const storyProperties = Object.keys(schema.properties.stories.items.properties);
@@ -371,8 +371,8 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.match(starter.summary, /^Starter map/);
   assert.equal(await readFile(join(root, "docs/story-map.md"), "utf8"), await readFile(new URL("../docs/story-map.md", import.meta.url), "utf8"));
   const agents = await readFile(join(root, "AGENTS.md"), "utf8");
-  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- embedded-story-map:start -->\n## Story map\n/);
-  assert.match(agents, /<!-- embedded-story-map:end -->\n$/);
+  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- auto-story-map:start -->\n## Story map\n/);
+  assert.match(agents, /<!-- auto-story-map:end -->\n$/);
   assert.match(await readFile(join(root, ".github/workflows/story-map.yml"), "utf8"), /story-map validate --format github --check-sources product\/story-map\.yaml/);
 
   await writeFile(join(root, "product/story-map.yaml"), sample);
@@ -380,6 +380,12 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.ok(second.every(step => step.action === "skipped"));
   assert.equal(await readFile(join(root, "product/story-map.yaml"), "utf8"), sample);
   assert.equal(await readFile(join(root, "AGENTS.md"), "utf8"), agents);
+
+  const legacyAgents = "<!-- embedded-story-map:start -->\n## Story map\n<!-- embedded-story-map:end -->\n";
+  await writeFile(join(root, "AGENTS.md"), legacyAgents);
+  const legacy = await initStoryMap(root);
+  assert.equal(legacy.find(step => step.path === "AGENTS.md")?.action, "skipped");
+  assert.equal(await readFile(join(root, "AGENTS.md"), "utf8"), legacyAgents);
 
   assert.deepEqual(describeProduct("!!!"), { id: "product", title: "Product story map" });
   assert.equal(describeProduct("x".repeat(100)).id.length, 64);
@@ -394,7 +400,7 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.equal(run.status, 0);
   assert.match(run.stdout, /skipped  \.github\/workflows\/story-map\.yml \(no package-lock\.json/);
   assert.match(run.stdout, /Next, ask an agent/);
-  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- embedded-story-map:start -->/);
+  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- auto-story-map:start -->/);
 
   await writeFile(join(root, "package-lock.json"), "{}");
   const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
@@ -1337,8 +1343,8 @@ test("the board survives a locale or time zone that Intl rejects", t => {
   render({ timeZone: "Nowhere/Nope" });
   render({ locale: "not a locale" });
   assert.deepEqual(warnings, [
-    'embedded-story-map: Unknown time zone "Nowhere/Nope", so dates use the server\'s time zone.',
-    'embedded-story-map: Unknown locale "not a locale", so dates use en-GB.',
+    'auto-story-map: Unknown time zone "Nowhere/Nope", so dates use the server\'s time zone.',
+    'auto-story-map: Unknown locale "not a locale", so dates use en-GB.',
   ]);
   // A valid locale and zone are used as given.
   assert.match(render({ locale: "de-DE", timeZone: "Asia/Tokyo" }), /19\.11\.2026, 19:00/);
@@ -1734,7 +1740,7 @@ test("board.js applies filters as they change and restores focus", async t => {
     };
     return form;
   }
-  const { enhanceStoryMapFilters } = await import("embedded-story-map/board.js");
+  const { enhanceStoryMapFilters } = await import("auto-story-map/board.js");
 
   const form = fakeForm();
   const root = { querySelectorAll: () => [form] };
@@ -1821,7 +1827,7 @@ test("board.js remembers collapsed release lanes", async t => {
       toggle(index) { inputs[index].checked = !inputs[index].checked; listener({ target: inputs[index] }); },
     };
   }
-  const { enhanceStoryMapReleases } = await import("embedded-story-map/board.js");
+  const { enhanceStoryMapReleases } = await import("auto-story-map/board.js");
 
   const board = fakeBoard(["r1", "r2", "r3"]);
   const root = { querySelectorAll: () => [board] };
@@ -1847,17 +1853,17 @@ test("board.js remembers collapsed release lanes", async t => {
 test("the board shows the running version, with links for internal viewers", async () => {
   const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
   assert.equal(storyMapVersion, pkg.version);
-  assert.equal(storyMapRepositoryUrl, "https://github.com/duncan-m/embedable-story-map");
+  assert.equal(storyMapRepositoryUrl, "https://github.com/duncan-m/auto-story-map");
 
   const internal = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) }));
   const footer = /<footer class="esm-footer">.*?<\/footer>/.exec(internal)?.[0];
   assert.ok(footer);
   assert.match(footer, new RegExp(`Auto Story Map ${pkg.version.replaceAll(".", "\\.")}`));
   const anchor = pkg.version.replaceAll(".", "");
-  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/embedable-story-map/blob/main/CHANGELOG\\.md#${anchor}" target="_blank" rel="noopener noreferrer">Changelog`));
-  assert.match(footer, /href="https:\/\/github\.com\/duncan-m\/embedable-story-map" target="_blank" rel="noopener noreferrer">Source code/);
+  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/auto-story-map/blob/main/CHANGELOG\\.md#${anchor}" target="_blank" rel="noopener noreferrer">Changelog`));
+  assert.match(footer, /href="https:\/\/github\.com\/duncan-m\/auto-story-map" target="_blank" rel="noopener noreferrer">Source code/);
   assert.match(footer, /By <a href="https:\/\/github\.com\/duncan-m" target="_blank" rel="noopener noreferrer">Duncan Malcolm/);
-  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/embedable-story-map/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">${pkg.license.replaceAll(".", "\\.")} licence`));
+  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/auto-story-map/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">${pkg.license.replaceAll(".", "\\.")} licence`));
   const changelog = await readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8");
   assert.match(changelog, new RegExp(`^## ${pkg.version.replaceAll(".", "\\.")}$`, "m"), "the changelog link has a heading to land on");
 
