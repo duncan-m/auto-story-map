@@ -4,7 +4,7 @@ A TypeScript library for displaying a Git-backed user story map inside a product
 
 ## Screenshot
 
-![The builder estimates demo map as an engineer sees it: activities across the top, a lane for each release with its expected impact, and story cards showing each story's ID, title, status and when it last changed. The Active filter hides one cut story and offers a link to show it.](https://raw.githubusercontent.com/duncan-m/embedable-story-map/main/story-map-screenshot.png)
+![This library's own story map in the demo, as a super admin sees it: activities from setting up to tracking delivery across the top, a lane for each release with its expected impact, and story cards showing each story's ID, title, status and when it last changed. The Active filter hides one cut story and offers a link to show it.](https://raw.githubusercontent.com/duncan-m/embedable-story-map/main/story-map-screenshot.png)
 
 ## Try the demo
 
