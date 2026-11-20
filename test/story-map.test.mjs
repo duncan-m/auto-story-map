@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -426,6 +426,16 @@ test("init refuses links that lead outside the repository", async t => {
   assert.deepEqual(steps.slice(1, 3).map(step => [step.path, step.action]), [["docs/story-map.md", "created"], ["AGENTS.md", "updated"]]);
   assert.match(await readFile(join(inside, "documentation/story-map.md"), "utf8"), /./);
   assert.match(await readFile(join(inside, "RULES.md"), "utf8"), /^# Rules\n\n<!-- auto-story-map:start -->/);
+
+  const dotted = await host("dotted");
+  await mkdir(join(dotted, "..documentation"));
+  await symlink("..documentation", join(dotted, "docs"));
+  await initStoryMap(dotted);
+  assert.match(await readFile(join(dotted, "..documentation/story-map.md"), "utf8"), /./);
+
+  await chmod(join(inside, "RULES.md"), 0o444);
+  const again = await initStoryMap(inside);
+  assert.deepEqual(again.find(step => step.path === "AGENTS.md"), { path: "AGENTS.md", action: "skipped", reason: "already has the story map section" });
 });
 
 test("init skips the workflow without npm or when asked", async t => {

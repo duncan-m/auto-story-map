@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { access, lstat, mkdir, open, readFile, realpath, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 
 export interface InitOptions {
   /** Write a GitHub Actions workflow that validates the map. Defaults to true. */
@@ -31,7 +31,7 @@ const isMissing = (error: unknown) => (error as NodeJS.ErrnoException).code === 
 
 function isInside(realRoot: string, path: string) {
   const rel = relative(realRoot, path);
-  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
 }
 
 /**
@@ -81,7 +81,23 @@ async function writeNew(realRoot: string, path: string, contents: string) {
 
 /** Appends the guidance through one handle opened without following a final link. */
 async function appendGuidance(realRoot: string, path: string, agents: string) {
-  const handle = await open(await destination(realRoot, path), constants.O_RDWR | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0));
+  const target = await destination(realRoot, path);
+  const noFollow = constants.O_NOFOLLOW ?? 0;
+  let handle;
+  try {
+    handle = await open(target, constants.O_RDWR | constants.O_APPEND | noFollow);
+  } catch (error) {
+    if (!["EACCES", "EPERM", "EROFS"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+    // A read-only file that already has the section needs no write access.
+    const reader = await open(target, constants.O_RDONLY | noFollow).catch(() => undefined);
+    if (!reader) throw error;
+    try {
+      if ((await reader.stat()).isFile() && (await reader.readFile("utf8")).includes(agentsMarker)) return false;
+    } finally {
+      await reader.close();
+    }
+    throw error;
+  }
   try {
     if (!(await handle.stat()).isFile()) throw new Error(`${path} is not a file`);
     const current = await handle.readFile("utf8");
