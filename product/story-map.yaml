@@ -115,7 +115,7 @@ releases:
     summary: Fixes from the November 2026 code review, several of them for security, with one call to project and filter the map and a header that shows recent changes.
     impact:
       - metric: Known bugs and security risks from the code review
-        expected: Fixed, or recorded as a decision, before the first npm release
+        expected: Fixed, or recorded as a decision, before 0.6.1 is published
         solves: Publishing a first version with known problems
         draft: true
   - id: export
