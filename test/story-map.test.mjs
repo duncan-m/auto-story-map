@@ -310,6 +310,45 @@ test("validation errors name the item and source line", () => {
 
   assert.throws(() => parseStoryMap("version: 1\nid: a\nid: b\n"), error =>
     error instanceof StoryMapValidationError && error.issues[0].line === 3 && /unique/i.test(error.issues[0].message));
+  assert.throws(() => parseStoryMap("version: 1\nstories:\n  - id: a\n    id: b\n"), error =>
+    error instanceof StoryMapValidationError && error.issues.length === 1 && error.issues[0].line === 4 && error.issues[0].column === 5);
+});
+
+test("many unknown fields are located in linear time", () => {
+  const count = 20000;
+  const source = `${"version: 1\n"}${Array.from({ length: count }, (_, index) => `extra${index}: x\n`).join("")}`;
+  const started = performance.now();
+  let error;
+  try {
+    parseStoryMap(source);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const unknown = error.issues.filter(issue => issue.message === "Unknown field.");
+  assert.equal(unknown.length, count);
+  assert.equal(unknown.at(-1).line, count + 1);
+  assert.ok(performance.now() - started < 3000);
+});
+
+test("unknown fields below many unknown top-level fields are located in linear time", () => {
+  const count = 20000;
+  const root = Array.from({ length: count }, (_, index) => `extra${index}: x\n`).join("");
+  const story = Array.from({ length: count }, (_, index) => `    field${index}: x\n`).join("");
+  const source = `version: 1\n${root}stories:\n  - id: A-1\n${story}`;
+  const started = performance.now();
+  let error;
+  try {
+    parseStoryMap(source);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const nested = error.issues.filter(issue => issue.message === "Unknown field." && issue.path[0] === "stories");
+  assert.equal(nested.length, count);
+  assert.deepEqual(nested.at(-1).path, ["stories", 0, `field${count - 1}`]);
+  assert.equal(nested.at(-1).line, 2 * count + 3);
+  assert.ok(performance.now() - started < 3000);
 });
 
 test("the CLI prints file positions and GitHub annotations", async t => {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LineCounter, isMap, parseDocument, type Document, type Node } from "yaml";
+import { LineCounter, isMap, isScalar, isSeq, parseDocument, visit, type Document, type Node } from "yaml";
 import { isActiveStatus, storyStatuses } from "./status.js";
 
 export { storyStatuses };
@@ -200,16 +200,43 @@ export class StoryMapValidationError extends Error {
   }
 }
 
-function locate(document: Document, lineCounter: LineCounter, path: (string | number)[], key?: string) {
-  for (let depth = path.length; depth >= 0; depth--) {
-    const node = document.getIn(path.slice(0, depth), true) as Node | undefined;
+/** Each mapping's entries by key, built once so that every lookup is one step per path segment. */
+type KeyIndex = WeakMap<Node, Map<unknown, { offset?: number; value: unknown }>>;
+
+function entry(node: Node, key: string | number, keyIndex: KeyIndex) {
+  if (!isMap(node)) return undefined;
+  let entries = keyIndex.get(node);
+  if (!entries) {
+    entries = new Map();
+    for (const item of node.items) {
+      const keyNode = item.key as (Node & { value?: unknown }) | null;
+      const name = isScalar(keyNode) ? keyNode.value : keyNode;
+      if (!entries.has(name)) entries.set(name, { offset: keyNode?.range?.[0], value: item.value });
+    }
+    keyIndex.set(node, entries);
+  }
+  return entries.get(key);
+}
+
+/** The nodes from the document root down `path`, stopping where the path leaves the document. */
+function nodesAlong(document: Document, path: (string | number)[], keyIndex: KeyIndex) {
+  const nodes = [document.contents as Node | null];
+  for (const segment of path) {
+    const node = nodes[nodes.length - 1];
+    const next = isSeq(node) && typeof segment === "number" ? node.items[segment] : node ? entry(node, segment, keyIndex)?.value : undefined;
+    if (!next) break;
+    nodes.push(next as Node);
+  }
+  return nodes;
+}
+
+function locate(document: Document, lineCounter: LineCounter, keyIndex: KeyIndex, path: (string | number)[], key?: string) {
+  const nodes = nodesAlong(document, path, keyIndex);
+  for (let depth = nodes.length - 1; depth >= 0; depth--) {
+    const node = nodes[depth];
     if (!node?.range) continue;
     let offset = node.range[0];
-    if (key !== undefined && depth === path.length && isMap(node)) {
-      const pair = node.items.find(item => (item.key as { value?: unknown } | null)?.value === key);
-      const keyNode = pair?.key as Node | undefined;
-      if (keyNode?.range) offset = keyNode.range[0];
-    }
+    if (key !== undefined && depth === path.length) offset = entry(node, key, keyIndex)?.offset ?? offset;
     const { line, col } = lineCounter.linePos(offset);
     return { line, column: col };
   }
@@ -296,21 +323,47 @@ export function migrateStoryMap(data: unknown): unknown {
   return data;
 }
 
+/**
+ * Finds repeated scalar keys in each mapping, as the YAML library's own
+ * `uniqueKeys` check does, but with one lookup per key. The library compares
+ * every key with every earlier one, which takes seconds on a large map.
+ */
+function duplicateKeyOffsets(document: Document) {
+  const offsets: number[] = [];
+  visit(document, {
+    Map(_, map) {
+      const seen = new Set<unknown>();
+      for (const { key } of map.items) {
+        if (!isScalar(key) || Number.isNaN(key.value)) continue;
+        if (seen.has(key.value)) offsets.push(key.range?.[0] ?? 0);
+        else seen.add(key.value);
+      }
+    },
+  });
+  return offsets;
+}
+
 /** Reads the YAML with the same safety settings for every parser: unique keys and a limit on aliases. */
 function readYaml(source: string) {
   const lineCounter = new LineCounter();
-  const document = parseDocument(source, { uniqueKeys: true, lineCounter });
-  if (document.errors.length) {
-    throw new StoryMapValidationError(document.errors.map(error => {
-      const position = error.linePos?.[0];
-      return {
-        severity: "error" as const,
-        path: [],
-        message: error.message.replace(/ at line \d+, column \d+:[\s\S]*$/, "").trim(),
-        line: position?.line,
-        column: position?.col,
-      };
-    }));
+  const document = parseDocument(source, { uniqueKeys: false, lineCounter });
+  const problems: StoryMapIssue[] = document.errors.map(error => {
+    const position = error.linePos?.[0];
+    return {
+      severity: "error" as const,
+      path: [],
+      message: error.message.replace(/ at line \d+, column \d+:[\s\S]*$/, "").trim(),
+      line: position?.line,
+      column: position?.col,
+    };
+  });
+  for (const offset of duplicateKeyOffsets(document)) {
+    const { line, col } = lineCounter.linePos(offset);
+    problems.push({ severity: "error", path: [], message: "Map keys must be unique", line, column: col });
+  }
+  if (problems.length) {
+    problems.sort((a, b) => (a.line ?? 0) - (b.line ?? 0) || (a.column ?? 0) - (b.column ?? 0));
+    throw new StoryMapValidationError(problems);
   }
   return { document, lineCounter, data: migrateStoryMap(document.toJS({ maxAliasCount: 20 })) };
 }
@@ -328,7 +381,8 @@ export function loadStoryMap(source: string): LoadedStoryMap {
   const { document, lineCounter, data } = readYaml(source);
   const result = storyMapSchema.safeParse(data, { error: errorMessages });
   if (result.success) {
-    const find = (path: (string | number)[]) => locate(document, lineCounter, path);
+    const keyIndex: KeyIndex = new WeakMap();
+    const find = (path: (string | number)[]) => locate(document, lineCounter, keyIndex, path);
     const warnings = storyMapWarnings(result.data)
       .map(warning => ({ ...warning, ...find(warning.path) }))
       .sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
@@ -343,16 +397,17 @@ export function loadStoryMap(source: string): LoadedStoryMap {
     .map(issue => ({ ...issue, code: "custom" as const }));
 
   const issues: StoryMapIssue[] = [];
+  const keyIndex: KeyIndex = new WeakMap();
   for (const issue of [...result.error.issues, ...extra]) {
     const path = issue.path.map(segment => typeof segment === "number" ? segment : String(segment));
     const itemId = itemIdAt(data, path);
     if (issue.code === "unrecognized_keys") {
       for (const key of issue.keys) {
-        issues.push({ severity: "error", path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, path, key) });
+        issues.push({ severity: "error", path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, keyIndex, path, key) });
       }
       continue;
     }
-    issues.push({ severity: "error", path, message: issue.message, itemId, ...locate(document, lineCounter, path) });
+    issues.push({ severity: "error", path, message: issue.message, itemId, ...locate(document, lineCounter, keyIndex, path) });
   }
   issues.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
   throw new StoryMapValidationError(issues);
