@@ -422,11 +422,11 @@ stories:
     title: Use real IDs in the customer view
     activity: explore
     release: planning
-    status: planned
-    summary: The customer view keeps the real activity, release and story IDs instead of numbering them by position, so a collapsed lane stays on the same release when other releases become visible.
-    notes: Customers can see internal IDs for now. Breaking for hosts that read the old positional IDs, so it ships in 0.6.0.
+    status: cut
+    statusReason: Out of scope for this release. The customer view keeps its positional IDs, so customers see no internal IDs.
+    summary: Would have kept the real activity, release and story IDs in the customer view, so a collapsed lane stays on the same release when other releases become visible.
     sources:
-      - docs/plans/0.6.0-review-fixes.md#4-real-ids-in-the-customer-view
+      - docs/plans/0.6.0-review-fixes.md#4-real-ids-in-the-customer-view-out-of-scope
   - id: ESM-604
     title: Make hosts choose who sees the internal map
     activity: set-up
@@ -435,7 +435,7 @@ stories:
     statusReason: The library is set up mainly for internal use, so the default engineer and super-admin rule stays. The risk is documented in the engineering overview instead.
     summary: Would have warned when the default engineer and super-admin rule was used, then required canViewInternal.
     sources:
-      - docs/plans/0.6.0-review-fixes.md#5-the-default-rule-for-who-sees-the-internal-map
+      - docs/plans/0.6.0-review-fixes.md#5-the-default-rule-for-who-sees-the-internal-map-out-of-scope
       - docs/ENGINEERING-OVERVIEW.md#audience-projection
   - id: ESM-605
     title: Project and filter the map in one call
