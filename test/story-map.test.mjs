@@ -366,7 +366,7 @@ test("init sets up a host repository without overwriting anything", async t => {
 
   const starter = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
   assert.equal(starter.id, "field-ops");
-  assert.equal(starter.title, "Field ops story map");
+  assert.equal(starter.title, "Field Ops Story Map");
   assert.equal(starter.visibility, "internal");
   assert.match(starter.summary, /^Starter map/);
   assert.equal(await readFile(join(root, "docs/story-map.md"), "utf8"), await readFile(new URL("../docs/story-map.md", import.meta.url), "utf8"));
@@ -381,7 +381,7 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.equal(await readFile(join(root, "product/story-map.yaml"), "utf8"), sample);
   assert.equal(await readFile(join(root, "AGENTS.md"), "utf8"), agents);
 
-  assert.deepEqual(describeProduct("!!!"), { id: "product", title: "Product story map" });
+  assert.deepEqual(describeProduct("!!!"), { id: "product", title: "Product Story Map" });
   assert.equal(describeProduct("x".repeat(100)).id.length, 64);
 });
 
@@ -1305,6 +1305,44 @@ test("history records each story's last edit to any field and credits mergers fo
   assert.equal(written.status, 0, written.stderr);
   assert.equal(edits(parseStoryMapHistory(await readFile(out, "utf8")))["BUILDER-102"][1], "Grace");
   assert.equal(spawnSync(process.execPath, [cli, "history", "--bot-names"], { cwd: root }).status, 2);
+});
+
+test("the header says when the map last changed and which releases the changes were in", () => {
+  const now = new Date("2026-11-20T12:00:00Z");
+  const edit = (storyId, at, by) => ({ storyId, at, by, commit: "abcdef1" });
+  const history = {
+    version: 1, generatedAt: now.toISOString(), complete: true,
+    events: [{ storyId: "FINANCE-202", type: "added", to: "planned", at: "2026-11-10T09:00:00.000Z", by: "Alex Morgan", commit: "abcdef0" }],
+    lastEdits: [
+      edit("BUILDER-101", "2026-11-18T10:00:00.000Z", "Sam Patel"),
+      edit("BUILDER-102", "2026-11-20T08:00:00.000Z", "Sam Patel"),
+      // More than 14 days before the latest update, so not recent.
+      edit("FINANCE-201", "2026-10-01T10:00:00.000Z", "Grace"),
+    ],
+  };
+  const view = getStoryMapForViewer(map, engineer, { history, now });
+  assert.deepEqual(view.recentUpdates, {
+    at: "2026-11-20T08:00:00.000Z",
+    by: "Sam Patel",
+    days: 14,
+    releases: [
+      { id: "builder-mvp", title: "Builder workflow", stories: 2 },
+      // Falls back to the status history for a story with no last edit.
+      { id: "reconciliation-internal", title: "Reconciliation discovery", stories: 1 },
+    ],
+  });
+  // Filtering the board does not change the summary.
+  assert.deepEqual(filterStoryMapView(view, { query: "nothing matches this" }, { now }).recentUpdates, view.recentUpdates);
+
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, now, timeZone: "UTC" }));
+  assert.match(html, /<p class="esm-goal esm-recent">Last updated <time dateTime="2026-11-20T08:00:00\.000Z" title="[^"]+">4 hours ago<\/time> by Sam Patel\. Recent changes focused on <strong>Builder workflow<\/strong> \(2 stories\) and <strong>Reconciliation discovery<\/strong> \(1 story\)\.<\/p>/);
+  assert.doesNotMatch(html, /Sample plan for the builder-to-finance/);
+
+  // Without history, and for customers, the map's summary stays.
+  const noHistory = getStoryMapForViewer(map, engineer);
+  assert.equal(noHistory.recentUpdates, undefined);
+  assert.match(renderToStaticMarkup(createElement(StoryMapBoard, { map: noHistory })), /<p class="esm-goal">Sample plan for the builder-to-finance/);
+  assert.equal(getStoryMapForViewer(map, { roles: ["customer"] }, { history, now }).recentUpdates, undefined);
 });
 
 test("the board survives a locale or time zone that Intl rejects", t => {

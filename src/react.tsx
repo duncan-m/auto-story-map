@@ -1,9 +1,9 @@
-import { useId, version } from "react";
-import type { CSSProperties } from "react";
+import { Fragment, useId, version } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
 import type { ReleaseImpact } from "./schema.js";
 import { storyMapAuthor, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -93,6 +93,37 @@ function formatRelative(at: string, settings: DateSettings) {
   const days = Math.floor(minutes / (24 * 60));
   if (days < 30) return relative.format(-days, "day");
   return formatDate(at, settings, false);
+}
+
+const shownReleases = 3;
+
+function plural(count: number, one: string, many = `${one}s`) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/**
+ * “Last updated 4 hours ago by Sam. Recent changes focused on 0.6.0 (12 stories) and 0.5.0 (3 stories).”
+ * Recent means the `days` up to the latest update, so a quiet map still shows what last moved.
+ */
+function RecentUpdates({ updates, settings }: { updates: StoryMapRecentUpdates; settings: DateSettings }) {
+  const shown = updates.releases.slice(0, shownReleases);
+  const others = updates.releases.length - shown.length;
+  const parts: ReactNode[] = shown.map(release => (
+    <Fragment key={release.id}><strong>{release.title}</strong> ({plural(release.stories, "story", "stories")})</Fragment>
+  ));
+  if (others > 0) parts.push(plural(others, "other release"));
+  return (
+    <p className="esm-goal esm-recent">
+      Last updated <time dateTime={updates.at} title={formatDate(updates.at, settings)}>{formatRelative(updates.at, settings)}</time>
+      {updates.by && ` by ${updates.by}`}.
+      {parts.length > 0 && <>
+        {" Recent changes focused on "}
+        {parts.map((part, index) => (
+          <Fragment key={index}>{index > 0 && (index === parts.length - 1 ? " and " : ", ")}{part}</Fragment>
+        ))}.
+      </>}
+    </p>
+  );
 }
 
 function ChangedAt({ at, settings }: { at: string; settings: DateSettings }) {
@@ -620,7 +651,9 @@ export function StoryMapBoard({
       <header className="esm-header">
         <p className="esm-eyebrow">{internal ? "User story map" : "Roadmap"}</p>
         <h2 id={headingId}>{map.title}</h2>
-        {map.summary && <p className="esm-goal">{map.summary}</p>}
+        {map.audience === "internal" && map.recentUpdates
+          ? <RecentUpdates updates={map.recentUpdates} settings={settings} />
+          : map.summary && <p className="esm-goal">{map.summary}</p>}
       </header>
       <div className="esm-frame">
         {map.filter && (

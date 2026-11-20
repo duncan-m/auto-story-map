@@ -45,7 +45,8 @@ async function productName(root: string) {
 export function describeProduct(name: string) {
   const id = name.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^[^a-z0-9]+/, "").slice(0, 64).replace(/-+$/, "") || "product";
   const words = id.replace(/[-_]+/g, " ").trim();
-  const title = `${words.charAt(0).toUpperCase()}${words.slice(1)} story map`;
+  // “[App Name] Story Map”, such as “Field Ops Story Map”.
+  const title = `${words.replace(/(^|\s)\S/g, letter => letter.toUpperCase())} Story Map`;
   return { id, title };
 }
 

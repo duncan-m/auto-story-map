@@ -4,6 +4,9 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
+- With history, the internal board's header says when the map was last updated and by whom, and which releases recent changes focused on, such as “Last updated 4 hours ago by Sam Patel. Recent changes focused on 0.6.0 (12 stories) and 0.5.0 (3 stories).” It replaces the map's `summary` there. Without history, and for customers, the header still shows the summary. Internal views carry the data in a new `recentUpdates` field. New export `recentUpdateDays` and type `StoryMapRecentUpdates`.
+- `story-map init` titles the starter map “[App Name] Story Map”, such as “Field Ops Story Map”, instead of “Field ops story map”.
+- Activity titles on the board are larger: `.esm-activity-title` is now `1.1rem`.
 - `story-map history` and `story-map diff` read past versions of the map leniently, so a future format change that removes or renames a field or status no longer breaks them. Fields the format no longer has are ignored, and a story that no longer validates is left out of that version only. History used to skip every such version silently, losing its events and dates, and diff failed until the change merged.
 - History now records each version it cannot read, because the map was missing or not valid YAML, in new optional `skipped` and `skippedCount` fields, and `story-map history` warns about them and still exits 0. `parseStoryMapHistory` accepts files with and without these fields. New type `SkippedStoryMapVersion`.
 - When the diff's base drops anything, the summary starts with a note saying what, and `--format json` adds `baseDropped`.
