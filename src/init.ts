@@ -16,8 +16,6 @@ export interface InitStep {
 const packageRoot = new URL("../", import.meta.url);
 const template = (name: string) => readFile(new URL(`templates/${name}`, packageRoot), "utf8");
 const agentsMarker = "<!-- auto-story-map:start -->";
-// Sections added before the package was renamed from embedded-story-map.
-const legacyAgentsMarker = "<!-- embedded-story-map:start -->";
 
 async function exists(path: string) {
   try {
@@ -91,7 +89,7 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     steps.push({ path: agentsPath, action: "created" });
   } else {
     const current = await readFile(join(root, agentsPath), "utf8");
-    if (current.includes(agentsMarker) || current.includes(legacyAgentsMarker)) {
+    if (current.includes(agentsMarker)) {
       steps.push({ path: agentsPath, action: "skipped", reason: "already has the story map section" });
     } else {
       const separator = current.length === 0 || current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";

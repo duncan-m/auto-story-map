@@ -11,21 +11,11 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, `merged` when the work is on the default branch but not yet available to its users, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
 4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
-## Move to auto-story-map
-
-The package was renamed from `embedded-story-map` to `auto-story-map`, and its repository moved to [duncan-m/auto-story-map](https://github.com/duncan-m/auto-story-map). The map format, the API and the `story-map` command are unchanged. If your host is on a version before 0.4.0, follow the upgrade steps below first.
-
-1. From your host repo, run `npm uninstall embedded-story-map` and then `npm install auto-story-map`. Commit the dependency and lockfile changes together.
-2. Run `git grep -n embedded-story-map` and change each match to `auto-story-map`. Check these in particular: imports such as `auto-story-map/react` and `auto-story-map/styles.css`; any path that copies `node_modules/auto-story-map/dist/board.js` into the host's static files; and the schema comment at the top of `product/story-map.yaml`, which becomes `# yaml-language-server: $schema=../node_modules/auto-story-map/story-map.schema.json`.
-3. In `AGENTS.md`, rename the `<!-- embedded-story-map:start -->` and `<!-- embedded-story-map:end -->` markers to `auto-story-map`. `story-map init` recognises both, so it won't add the section twice if you leave them.
-4. `init` does not update a guide you already copied, so compare `docs/story-map.md` with `node_modules/auto-story-map/docs/story-map.md`.
-5. Rebuild the host, run `npx --no-install story-map validate --check-sources product/story-map.yaml`, and open the board. The footer now reads “Auto Story Map <version>”.
-
 ## Upgrade to 0.4.0
 
 These steps work from 0.3.0. Existing maps stay valid, but expect new validation warnings.
 
-1. From your host repo, run `npm install embedded-story-map@0.4.1` (0.4.1 adds an optional script and nothing else) and commit the dependency and lockfile changes together. React hosts should load the updated `auto-story-map/styles.css`.
+1. From your host repo, run `npm install auto-story-map@0.4.1` (0.4.1 adds an optional script and nothing else) and commit the dependency and lockfile changes together. React hosts should load the updated `auto-story-map/styles.css`.
 2. Story statuses now include [`merged`](#merged-and-shipped), [`blocked` and `cut`](#blocked-and-cut-stories). If host code switches over every value of `storyStatuses` or `StoryStatus`, add cases for all three. `activeStoryStatuses` lists planned, in progress, merged and shipped. Customers see merged stories as in progress, so the customer view’s statuses are `customerStoryStatuses`.
 3. `filterStoryMapView` now hides blocked and cut stories when no status is given, and records how many it hid in `filter.hidden`. Pass `status: "all"`, or `?status=all` in the URL, to include them. Boards rendered without `filterStoryMapView` hide them too, with a **Show blocked and cut stories** checkbox above the grid.
 4. The customer view never includes blocked or cut stories. Check that customer-facing stories you plan to block or cut are ones customers can stop seeing.
@@ -41,7 +31,7 @@ These steps work from 0.3.0. Existing maps stay valid, but expect new validation
 
 These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 
-1. From your host repo, run `npm install embedded-story-map@0.3.0`. If you installed an earlier version from a tarball, this replaces it with the npm release. Commit the dependency and lockfile changes together.
+1. From your host repo, run `npm install auto-story-map@0.3.0`. If you installed an earlier version from a tarball, this replaces it with the npm release. Commit the dependency and lockfile changes together.
 2. Keep your existing `version: 1` map, story IDs, and visibility settings. React hosts should load the updated `auto-story-map/styles.css` and rebuild or restart the app. Refresh the stylesheet from the new package if the host keeps a local copy. The board is now a grid of release lanes, and each card opens a detail panel. Remove any host CSS that targets the old `.esm-table`, `.esm-card-toggle` or `<details>` markup.
 3. To turn on search and the status filter, pass the projected view through `filterStoryMapView` with `readStoryMapFilters(url.searchParams)`, as described in [Integrate with a product](#integrate-with-a-product). Without this step the board renders without a toolbar.
 4. To add an **Engineering overview** link, append a verified heading fragment such as `#payment-controls` to an existing Markdown source. Use an absolute Markdown URL or configure [`sourceBaseUrl`](#link-an-engineering-overview) for repository-relative paths.

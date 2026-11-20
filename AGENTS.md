@@ -6,7 +6,7 @@ Treat [product/story-map.yaml](product/story-map.yaml) as the source of truth fo
 
 When setting up Auto Story Map in a host product, or when asked to initialise the map, check whether `product/story-map.yaml` is missing, still contains the builder estimates demo, or is the starter map from `story-map init`. Follow the [first-run workflow](docs/story-map.md#populate-the-first-map) to inspect the host product, draft its initial internal map, and validate it. If the product already has a map, keep its story IDs and update only the requested scope.
 
-Use an existing Markdown heading for each engineering overview you can verify. If you are updating a host that already uses the library, follow the [steps to move to auto-story-map](docs/story-map.md#move-to-auto-story-map) and then the [upgrade steps](docs/story-map.md#upgrade-to-040).
+Use an existing Markdown heading for each engineering overview you can verify. If you are updating a host that already uses the library, follow the [upgrade steps](docs/story-map.md#upgrade-to-040).
 
 ## Maintain an existing map
 

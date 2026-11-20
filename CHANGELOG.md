@@ -4,7 +4,6 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
-- **Breaking:** The package is renamed from `embedded-story-map` to `auto-story-map`, and the repository moved to [duncan-m/auto-story-map](https://github.com/duncan-m/auto-story-map). Import paths change to `auto-story-map`, `auto-story-map/react`, `auto-story-map/styles.css`, `auto-story-map/board.js` and `auto-story-map/schema.json`. The board footer reads “Auto Story Map <version>”, and the `AGENTS.md` section added by `story-map init` uses `auto-story-map` markers. `init` still recognises the old markers. The map format, the API and the `story-map` command are unchanged. Upgrade steps: [Move to auto-story-map](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#move-to-auto-story-map).
 - `story-map history` and `story-map diff` read past versions of the map leniently, so a future format change that removes or renames a field or status no longer breaks them. Fields the format no longer has are ignored, and a story that no longer validates is left out of that version only. History used to skip every such version silently, losing its events and dates, and diff failed until the change merged.
 - History now records each version it cannot read, because the map was missing or not valid YAML, in new optional `skipped` and `skippedCount` fields, and `story-map history` warns about them and still exits 0. `parseStoryMapHistory` accepts files with and without these fields. New type `SkippedStoryMapVersion`.
 - When the diff's base drops anything, the summary starts with a note saying what, and `--format json` adds `baseDropped`.
@@ -22,14 +21,14 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 No upgrade steps. Hosts with custom CSS for `.esm-release` should check the new toggle fits.
 
 - Release lanes can be collapsed. Each release header has a chevron toggle (`.esm-collapse`, a labelled checkbox `.esm-collapse-input` whose value is the release ID) that hides the lane’s stories, summary and impact, leaving its title, the chevron to expand it and its story count on one line. It works without JavaScript through CSS `:has()`, and browsers without `:has()` do not show the toggle.
-- The board shows the running version, author and licence in a footer, such as “Embedded Story Map 0.5.0 · By Duncan Malcolm · Apache-2.0 licence”. Internal boards also link to the changelog, source code, licence and author. Pass `showVersion={false}` to `StoryMapBoard` to remove it. New exports `storyMapVersion` and `storyMapRepositoryUrl`.
+- The board shows the running version, author and licence in a footer, such as “Auto Story Map 0.5.0 · By Duncan Malcolm · Apache-2.0 licence”. Internal boards also link to the changelog, source code, licence and author. Pass `showVersion={false}` to `StoryMapBoard` to remove it. New exports `storyMapVersion` and `storyMapRepositoryUrl`.
 - `board.js` remembers collapsed lanes per page in `localStorage`, so they stay collapsed when a filter reloads the page. New export `enhanceStoryMapReleases(root)` for pages that add a board after loading.
 
 ## 0.4.1
 
 No upgrade steps. Nothing changes for hosts that do not load the new script.
 
-- New optional browser script, `embedded-story-map/board.js`. Load it with `<script type="module">` on the page that renders the board, and the filters apply as soon as they change: a select applies on change, search applies on Enter, the **Apply** button is hidden, and focus returns to the filter that was used. Without it, the filter form works as before. It also exports `enhanceStoryMapFilters(root)` for pages that add a board after loading.
+- New optional browser script, `auto-story-map/board.js`. Load it with `<script type="module">` on the page that renders the board, and the filters apply as soon as they change: a select applies on change, search applies on Enter, the **Apply** button is hidden, and focus returns to the filter that was used. Without it, the filter form works as before. It also exports `enhanceStoryMapFilters(root)` for pages that add a board after loading.
 - The **Apply** button has a new `esm-apply` class, and the filter form has an empty, visually hidden hint that the script fills in for screen reader users.
 - The demo shows this library’s own story map instead of the builder estimates sample, loads `board.js`, and starts as **Super admin**. The sample moved to `test/fixtures/builder-estimates.yaml`.
 
@@ -94,7 +93,7 @@ Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/auto-story-map/blo
 - `parseStoryMap` throws `StoryMapValidationError`. Its `issues` give the path, message, line, column and containing item ID. Every problem is reported in one run, including reference checks when another field is invalid.
 - `story-map validate` prints `file:line:column` and supports `--format github` for PR annotations.
 - New `--check-sources` validator option checks that repository-relative sources exist and that Markdown `#heading` links match a heading. New `--plans <folder>` checks that story IDs mentioned in delivery plans exist in the map.
-- The package ships `story-map.schema.json` (also exported as `embedded-story-map/schema.json`) for editor autocomplete and inline checks.
+- The package ships `story-map.schema.json` (also exported as `auto-story-map/schema.json`) for editor autocomplete and inline checks.
 - **Breaking:** `storyMapSchema` is now a Zod 4 schema.
 
 ### Reviewing changes

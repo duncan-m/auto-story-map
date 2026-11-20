@@ -381,12 +381,6 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.equal(await readFile(join(root, "product/story-map.yaml"), "utf8"), sample);
   assert.equal(await readFile(join(root, "AGENTS.md"), "utf8"), agents);
 
-  const legacyAgents = "<!-- embedded-story-map:start -->\n## Story map\n<!-- embedded-story-map:end -->\n";
-  await writeFile(join(root, "AGENTS.md"), legacyAgents);
-  const legacy = await initStoryMap(root);
-  assert.equal(legacy.find(step => step.path === "AGENTS.md")?.action, "skipped");
-  assert.equal(await readFile(join(root, "AGENTS.md"), "utf8"), legacyAgents);
-
   assert.deepEqual(describeProduct("!!!"), { id: "product", title: "Product story map" });
   assert.equal(describeProduct("x".repeat(100)).id.length, 64);
 });
