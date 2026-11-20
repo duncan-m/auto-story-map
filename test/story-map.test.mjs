@@ -615,13 +615,19 @@ async function historyRepo(t) {
     document.stories.push({ id: "BUILDER-104", title: "Check the estimate total", activity: "prepare", release: "builder-mvp", status: "planned" });
   });
   git(["commit", "-q", "-am", "Add totals (#7)"], { author: "Erin", committer: "GitHub", date: "2026-11-18T16:45:00Z" });
-  return { root, git };
+  // Builds the history and checks that the reader accepts everything the writer produces.
+  const build = async (options = {}) => {
+    const { buildStoryMapHistory } = await import("../dist/history-git.js");
+    const history = await buildStoryMapHistory({ cwd: root, ...options });
+    assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
+    return history;
+  };
+  return { root, git, build };
 }
 
 test("history records additions and status changes with editor, merger and date", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root, git } = await historyRepo(t);
-  const history = await buildStoryMapHistory({ cwd: root, now: new Date("2026-11-20T12:00:00Z") });
+  const { root, git, build } = await historyRepo(t);
+  const history = await build({ now: new Date("2026-11-20T12:00:00Z") });
 
   assert.equal(history.complete, true);
   assert.equal(history.generatedAt, "2026-11-20T12:00:00.000Z");
@@ -637,6 +643,10 @@ test("history records additions and status changes with editor, merger and date"
     ["BUILDER-104", "added", undefined, "planned", "2026-11-18T16:45", "Erin", undefined],
   ]);
   assert.equal(history.events.at(-1).commit, git(["rev-parse", "HEAD"]));
+  // The broken version is skipped and says why.
+  assert.equal(history.skippedCount, 1);
+  assert.deepEqual(history.skipped.map(version => version.commit), [git(["rev-parse", "HEAD~1"])]);
+  assert.match(history.skipped[0].reason, /^The map could not be read: id: Missing required field\. \(and \d+ more problems\)$/);
   // Moving FINANCE-201 is an edit, though not a status change.
   assert.deepEqual(history.lastEdits.map(({ storyId, at, by }) => [storyId, at.slice(0, 16), by]), [
     ["BUILDER-101", "2026-11-12T15:30", "Bob Builder"],
@@ -646,13 +656,12 @@ test("history records additions and status changes with editor, merger and date"
     ["FINANCE-202", "2026-11-01T10:00", "Taylor Reed"],
     ["BUILDER-104", "2026-11-18T16:45", "Erin"],
   ]);
-  assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
   assert.throws(() => parseStoryMapHistory({ ...history, events: [{ storyId: "X" }] }), /Invalid story map history/);
 
   const shallow = join(root, "shallow");
   git(["clone", "-q", "--depth", "3", `file://${root}`, shallow]);
-  await assert.rejects(buildStoryMapHistory({ cwd: shallow }), /shallow clone/);
-  const partial = await buildStoryMapHistory({ cwd: shallow, allowShallow: true });
+  await assert.rejects(build({ cwd: shallow }), /shallow clone/);
+  const partial = await build({ cwd: shallow, allowShallow: true });
   assert.equal(partial.complete, false);
   assert.deepEqual(partial.events.map(event => event.storyId), ["BUILDER-104"]);
   assert.deepEqual(partial.lastEdits.map(edit => edit.storyId), ["BUILDER-104"]);
@@ -662,14 +671,14 @@ test("history records additions and status changes with editor, merger and date"
   const written = spawnSync(process.execPath, [cli, "history", "--out", out], { cwd: root, encoding: "utf8" });
   assert.equal(written.status, 0, written.stderr);
   assert.match(written.stderr, /8 changes to 6 stories/);
+  assert.match(written.stderr, /warning: skipped 1 version of the map that could not be read/);
   assert.equal(parseStoryMapHistory(await readFile(out, "utf8")).events.length, 8);
   assert.equal(spawnSync(process.execPath, [cli, "history"], { cwd: shallow }).status, 2);
 });
 
 test("only internal viewers see history, and it drives the “changed in” filter", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root } = await historyRepo(t);
-  const history = await buildStoryMapHistory({ cwd: root });
+  const { root, build } = await historyRepo(t);
+  const history = await build();
   const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
   const now = new Date("2026-11-20T12:00:00Z");
 
@@ -699,9 +708,8 @@ test("only internal viewers see history, and it drives the “changed in” filt
 });
 
 test("the board shows when each story changed and its history to internal viewers only", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root } = await historyRepo(t);
-  const history = await buildStoryMapHistory({ cwd: root });
+  const { root, build } = await historyRepo(t);
+  const history = await build();
   const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
   const now = new Date("2026-11-20T12:00:00Z");
   const props = { now, timeZone: "UTC", preservedParams: { as: "engineer" } };
@@ -873,18 +881,16 @@ test("diffs call out stories that become blocked or cut, with their reasons", ()
 });
 
 test("history records why a story was blocked or cut", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root, git } = await historyRepo(t);
+  const { root, git, build } = await historyRepo(t);
   await writeFile(join(root, "product/story-map.yaml"), stringify(withInactiveStories()));
   git(["commit", "-q", "-am", "Cut duplicate handling"], { author: "Fay", committer: "Fay", date: "2026-11-19T09:00:00Z" });
-  const history = await buildStoryMapHistory({ cwd: root });
+  const history = await build();
   const finance = history.events.filter(event => event.storyId.startsWith("FINANCE") && event.to !== "planned");
   assert.deepEqual(finance.map(({ storyId, type, to, reason }) => [storyId, type, to, reason]), [
     // The demo map adds FINANCE-202 as already cut.
     ["FINANCE-202", "added", "cut", "Finance will handle duplicate approvals manually until volumes justify it."],
     ["FINANCE-201", "status", "blocked", "Waiting on the finance system’s purchase order API."],
   ]);
-  assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
 
   const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
   const board = renderToStaticMarkup(createElement(StoryMapBoard, {
@@ -1152,8 +1158,7 @@ test("diffs report a change to the stalled threshold", () => {
 });
 
 test("history records each story's last edit to any field and credits mergers for bot edits", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root, git } = await historyRepo(t);
+  const { root, git, build } = await historyRepo(t);
   const writeMap = edit => writeFile(join(root, "product/story-map.yaml"), stringify(edit(parseStoryMap(git(["show", "HEAD:product/story-map.yaml"])))));
   const story = (document, id) => document.stories.find(story => story.id === id);
 
@@ -1185,7 +1190,7 @@ test("history records each story's last edit to any field and credits mergers fo
   git(["commit", "-q", "-am", "Reorder"], { author: "Hana", date: "2026-11-19T12:00:00Z" });
 
   const edits = history => Object.fromEntries(history.lastEdits.map(({ storyId, at, by }) => [storyId, [at.slice(0, 16), by]]));
-  const withBots = await buildStoryMapHistory({ cwd: root, botNames: ["audit agent"] });
+  const withBots = await build({ botNames: ["audit agent"] });
   assert.deepEqual(edits(withBots), {
     "BUILDER-101": ["2026-11-12T15:30", "Bob Builder"],
     "BUILDER-102": ["2026-11-19T11:00", "Grace"],
@@ -1199,7 +1204,7 @@ test("history records each story's last edit to any field and credits mergers fo
     at: "2026-11-19T09:00:00.000Z", by: "Frank", mergedBy: "Frank", commit: withBots.lastEdits.find(edit => edit.storyId === "FINANCE-201").commit,
   });
   // Without the bot list, the named agent is credited as an ordinary author.
-  assert.equal(edits(await buildStoryMapHistory({ cwd: root }))["BUILDER-102"][1], "Audit Agent");
+  assert.equal(edits(await build())["BUILDER-102"][1], "Audit Agent");
 
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   const out = join(root, "build/history.json");
@@ -1249,6 +1254,230 @@ test("storyMapResponseHeaders keep story map responses private", () => {
       for (const [name, value] of Object.entries(storyMapResponseHeaders)) assert.equal(response.headers.get(name), value, `${path} ${name}`);
     }
   }
+});
+
+test("history fits long Git names to the history format", async t => {
+  const { root, git, build } = await historyRepo(t);
+  const writeMap = edit => writeFile(join(root, "product/story-map.yaml"), stringify(edit(parseStoryMap(git(["show", "HEAD:product/story-map.yaml"])))));
+  const story = (document, id) => document.stories.find(story => story.id === id);
+  const longName = "A".repeat(130);
+  const emojiName = "🙂".repeat(130);
+
+  await writeMap(document => {
+    story(document, "BUILDER-103").status = "in-progress";
+    return document;
+  });
+  git(["commit", "-q", "-am", "Start checks"], { author: longName, committer: emojiName, date: "2026-11-19T09:00:00Z" });
+  await writeMap(document => {
+    story(document, "FINANCE-201").status = "in-progress";
+    return document;
+  });
+  git(["commit", "-q", "-am", "Start approvals"], { author: `  ${emojiName}  `, committer: "Erin", date: "2026-11-19T10:00:00Z" });
+
+  // build() checks that parseStoryMapHistory accepts the file.
+  const history = await build();
+  const [checks, approvals] = history.events.slice(-2);
+  assert.equal(checks.by, `${"A".repeat(119)}…`);
+  assert.equal(Array.from(checks.mergedBy).length, 120);
+  assert.equal(checks.mergedBy, `${"🙂".repeat(119)}…`);
+  assert.equal(approvals.by, `${"🙂".repeat(119)}…`);
+  for (const name of [checks.by, checks.mergedBy, approvals.by]) assert.ok(name.isWellFormed(), "no lone surrogates");
+  assert.equal(history.lastEdits.find(edit => edit.storyId === "BUILDER-103").by, checks.by);
+});
+
+test("the history format limits names and reasons by code points", async () => {
+  const { fitHistoryText, historyNameMaxLength, historyReasonMaxLength } = await import("../dist/history.js");
+  assert.equal(historyNameMaxLength, 120);
+  assert.equal(fitHistoryText("  Bob  ", 120), "Bob");
+  assert.equal(fitHistoryText("   ", 120), undefined);
+  assert.equal(fitHistoryText(undefined, 120), undefined);
+  assert.equal(fitHistoryText("B".repeat(120), 120), "B".repeat(120));
+  // No trailing space before the ellipsis.
+  assert.equal(fitHistoryText(`${"B".repeat(118)} more`, 120), `${"B".repeat(118)}…`);
+  assert.equal(fitHistoryText("x".repeat(600), historyReasonMaxLength).length, 500);
+
+  const event = { storyId: "X-1", type: "added", to: "planned", at: "2026-11-01T10:00:00.000Z", commit: "abcdef1" };
+  const history = events => ({ version: 1, generatedAt: "2026-11-20T12:00:00.000Z", complete: true, events });
+  // 120 emoji are 240 UTF-16 code units, but 120 characters.
+  assert.equal(parseStoryMapHistory(history([{ ...event, by: "🙂".repeat(120) }])).events[0].by, "🙂".repeat(120));
+  assert.throws(() => parseStoryMapHistory(history([{ ...event, by: "B".repeat(121) }])), /at most 120 characters/);
+  assert.throws(() => parseStoryMapHistory(history([{ ...event, mergedBy: "   " }])), /Invalid story map history/);
+  assert.throws(() => parseStoryMapHistory(history([{ ...event, reason: "r".repeat(501) }])), /at most 500 characters/);
+});
+
+/** A repository whose map is committed once per entry, as YAML text or as an edit of the sample. */
+async function formatRepo(t, versions) {
+  const root = await mkdtemp(join(tmpdir(), "story-map-format-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const git = (args, date) => {
+    const result = spawnSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "a@example.test",
+        GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "a@example.test",
+        ...(date ? { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date } : {}),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  git(["init", "-q", "-b", "main"]);
+  await mkdir(join(root, "product"));
+  const commits = [];
+  for (const [index, version] of versions.entries()) {
+    const text = typeof version === "string" ? version : stringify(rawSample(version));
+    await writeFile(join(root, "product/story-map.yaml"), text);
+    git(["add", "-A"]);
+    git(["commit", "-q", "--allow-empty", "-m", `Version ${index + 1}`], `2026-11-${String(index + 1).padStart(2, "0")}T10:00:00Z`);
+    commits.push(git(["rev-parse", "HEAD"]));
+  }
+  const build = async () => {
+    const { buildStoryMapHistory } = await import("../dist/history-git.js");
+    const history = await buildStoryMapHistory({ cwd: root });
+    assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
+    return history;
+  };
+  return { root, git, commits, build };
+}
+
+const storyIn = (document, id) => document.stories.find(story => story.id === id);
+
+/** Like editedSample, but without validating, so the result can use fields or statuses the format does not have. */
+function rawSample(edit) {
+  const document = structuredClone(map);
+  edit(document);
+  return document;
+}
+
+test("past versions of the map are read leniently", async () => {
+  const { loadHistoricalStoryMap, migrateStoryMap } = await import("../dist/schema.js");
+  const older = rawSample(document => {
+    document.owner = "Platform team";
+    storyIn(document, "BUILDER-101").estimate = 3;
+    document.releases[0].customer.icon = "rocket";
+    storyIn(document, "BUILDER-103").status = "on-hold";
+  });
+  const loaded = loadHistoricalStoryMap(stringify(older));
+  assert.deepEqual(loaded.dropped, { stories: 1, storyIds: ["BUILDER-103"], fields: 3 });
+  assert.equal(Object.hasOwn(loaded.map, "owner"), false);
+  assert.equal(Object.hasOwn(storyIn(loaded.map, "BUILDER-101"), "estimate"), false);
+  assert.equal(storyIn(loaded.map, "BUILDER-103"), undefined);
+  assert.equal(loaded.map.stories.length, map.stories.length - 1);
+  // A current map reads the same both ways.
+  assert.deepEqual(loadHistoricalStoryMap(sample), { map, dropped: { stories: 0, storyIds: [], fields: 0 } });
+  // Cross-references are not checked, but YAML safety and the map's structure are.
+  assert.equal(loadHistoricalStoryMap(stringify(rawSample(document => { storyIn(document, "BUILDER-101").release = "gone"; }))).map.stories.length, map.stories.length);
+  assert.throws(() => loadHistoricalStoryMap("a: 1\na: 2\n"), StoryMapValidationError);
+  assert.throws(() => loadHistoricalStoryMap(`a: &a [1]\nb: [${Array(30).fill("*a").join(", ")}]\n`), /alias/i);
+  assert.throws(() => loadHistoricalStoryMap("version: 2\n"), StoryMapValidationError);
+  assert.equal(migrateStoryMap(older), older);
+  // The current map is still checked strictly.
+  assert.throws(() => parseStoryMap(stringify(older)), /owner[^\n]*Unknown field/);
+});
+
+test("history keeps events from versions that use an older format", async t => {
+  const { commits, build } = await formatRepo(t, [
+    // An older format: a map-level field and a story field that no longer exist.
+    document => { document.owner = "Platform team"; storyIn(document, "BUILDER-101").estimate = 3; },
+    // A status that no longer exists drops only that story from this version.
+    document => {
+      storyIn(document, "BUILDER-101").estimate = 3;
+      storyIn(document, "BUILDER-102").status = "in-progress";
+      storyIn(document, "BUILDER-103").status = "on-hold";
+    },
+    "version: 1\nstories: [unclosed\n",
+    // Today's format.
+    document => { storyIn(document, "BUILDER-102").status = "in-progress"; },
+  ]);
+  const history = await build();
+  const events = history.events.map(({ storyId, type, from, to, at }) => [storyId, type, from, to, at.slice(0, 10)]);
+  assert.deepEqual(events, [
+    ["BUILDER-101", "added", undefined, "in-progress", "2026-11-01"],
+    ["BUILDER-102", "added", undefined, "planned", "2026-11-01"],
+    ["BUILDER-103", "added", undefined, "planned", "2026-11-01"],
+    ["FINANCE-201", "added", undefined, "planned", "2026-11-01"],
+    ["FINANCE-202", "added", undefined, "cut", "2026-11-01"],
+    ["BUILDER-102", "status", "planned", "in-progress", "2026-11-02"],
+  ]);
+  // Dropping a field the format no longer has is not an edit, and the dropped story was not re-added.
+  const edits = Object.fromEntries(history.lastEdits.map(edit => [edit.storyId, edit.at.slice(0, 10)]));
+  assert.deepEqual(edits, { "BUILDER-101": "2026-11-01", "BUILDER-102": "2026-11-02", "BUILDER-103": "2026-11-01", "FINANCE-201": "2026-11-01", "FINANCE-202": "2026-11-01" });
+  // Only the version that is not valid YAML is skipped.
+  assert.equal(history.skippedCount, 1);
+  assert.equal(history.skipped[0].commit, commits[2]);
+  assert.match(history.skipped[0].reason, /^The map could not be read: line \d+: /);
+});
+
+test("story-map history warns about skipped versions and still exits 0", async t => {
+  const { root, commits } = await formatRepo(t, [
+    document => document,
+    "version: 1\nstories: [unclosed\n",
+    "",
+    "not: [valid\n",
+    "id: : :\n",
+    document => { storyIn(document, "BUILDER-102").status = "in-progress"; },
+  ]);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const out = join(root, "history.json");
+  const result = spawnSync(process.execPath, [cli, "history", "--out", out], { cwd: root, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /warning: skipped 4 versions of the map that could not be read, so changes made in them are missing:/);
+  for (const commit of commits.slice(1, 4)) assert.ok(result.stderr.includes(`  ${commit.slice(0, 12)}: The map could not be read`), commit);
+  assert.equal(result.stderr.includes(commits[4].slice(0, 12)), false);
+  assert.match(result.stderr, /and 1 more, listed in the file's skipped field/);
+  const history = parseStoryMapHistory(await readFile(out, "utf8"));
+  assert.equal(history.skippedCount, 4);
+  assert.deepEqual(history.skipped.map(version => version.commit), commits.slice(1, 5));
+  assert.equal(history.events.at(-1).to, "in-progress");
+});
+
+test("history files load with and without the skipped fields", () => {
+  const base = { version: 1, generatedAt: "2026-11-20T12:00:00.000Z", complete: true, events: [] };
+  assert.deepEqual(parseStoryMapHistory(base), base);
+  const withSkipped = { ...base, skipped: [{ commit: "abcdef1", reason: "The map does not exist at this commit." }], skippedCount: 120 };
+  assert.deepEqual(parseStoryMapHistory(withSkipped), withSkipped);
+  assert.throws(() => parseStoryMapHistory({ ...base, skipped: Array(101).fill(withSkipped.skipped[0]) }), /Invalid story map history/);
+  assert.throws(() => parseStoryMapHistory({ ...base, skipped: [{ commit: "abcdef1", reason: "" }] }), /Invalid story map history/);
+  assert.throws(() => parseStoryMapHistory({ ...base, skippedCount: -1 }), /Invalid story map history/);
+});
+
+test("story-map diff compares with a base that uses an older format", async t => {
+  const { root } = await formatRepo(t, [
+    document => { document.owner = "Platform team"; storyIn(document, "BUILDER-103").status = "on-hold"; },
+  ]);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const run = (...args) => spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8" });
+  await writeFile(join(root, "product/story-map.yaml"), stringify(editedSample(document => { storyIn(document, "BUILDER-102").status = "in-progress"; })));
+
+  const markdown = run("diff", "HEAD");
+  assert.equal(markdown.status, 0, markdown.stderr);
+  assert.match(markdown.stdout, /^## Story map changes\n\n> \[!NOTE\]\n> The map at `HEAD` uses an older format, so this comparison leaves out 1 field the format no longer has and 1 story that no longer validates \(`BUILDER-103`\) from it\.\n\n/);
+  assert.match(markdown.stdout, /`BUILDER-102`[^\n]*Planned → \*\*In progress\*\*/);
+  const json = JSON.parse(run("diff", "--format", "json", "HEAD").stdout);
+  assert.deepEqual(json.baseDropped, { stories: 1, storyIds: ["BUILDER-103"], fields: 1 });
+
+  // Without anything dropped there is no note, and an unreadable base still fails.
+  spawnSync("git", ["commit", "-q", "-am", "Today's format"], { cwd: root, env: { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@example.test", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@example.test" } });
+  const clean = run("diff", "HEAD");
+  assert.equal(clean.status, 0, clean.stderr);
+  assert.doesNotMatch(clean.stdout, /older format/);
+  assert.equal(Object.hasOwn(JSON.parse(run("diff", "--format", "json", "HEAD").stdout), "baseDropped"), false);
+  const current = await readFile(join(root, "product/story-map.yaml"), "utf8");
+  await writeFile(join(root, "product/story-map.yaml"), "version: 2\n");
+  spawnSync("git", ["commit", "-q", "-am", "Break"], { cwd: root, env: { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@example.test", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@example.test" } });
+  await writeFile(join(root, "product/story-map.yaml"), current);
+  const broken = run("diff", "HEAD");
+  assert.equal(broken.status, 1);
+  assert.match(broken.stderr, /The map at HEAD is not valid, so it cannot be compared/);
+
+  // The current map is still checked strictly.
+  await writeFile(join(root, "product/story-map.yaml"), stringify(rawSample(document => { document.owner = "Platform team"; })));
+  const strict = run("validate", "product/story-map.yaml");
+  assert.equal(strict.status, 1);
+  assert.match(strict.stderr, /owner: Unknown field\./);
+  assert.equal(run("diff", "HEAD~1").status, 1);
 });
 
 test("panels show the last edit from history, and fall back to updatedBy without it", async () => {

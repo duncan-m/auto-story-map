@@ -9,9 +9,11 @@ import { initStoryMap } from "./init.js";
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
 import {
   describeIssueTarget,
+  loadHistoricalStoryMap,
   loadStoryMap,
   parseStoryMap,
   StoryMapValidationError,
+  type HistoricalStoryMap,
   type StoryMapDocument,
 } from "./schema.js";
 
@@ -199,7 +201,8 @@ async function validate(options: NonNullable<ReturnType<typeof parseValidateArgs
 
 class UsageError extends Error {}
 
-async function readMapAt(ref: string, mapPath: string): Promise<StoryMapDocument | null> {
+/** Reads the base version leniently, since it may use an earlier format. The current map is always checked strictly. */
+async function readMapAt(ref: string, mapPath: string): Promise<HistoricalStoryMap | null> {
   if (ref.startsWith("-")) throw new UsageError(`'${ref}' is not a Git reference.`);
   const gitPath = `./${relative(process.cwd(), resolve(mapPath)).split(sep).join("/")}`;
   let source: string;
@@ -211,7 +214,7 @@ async function readMapAt(ref: string, mapPath: string): Promise<StoryMapDocument
     throw new UsageError(stderr.trim() || `Could not read ${mapPath} at ${ref}.`);
   }
   try {
-    return parseStoryMap(source);
+    return loadHistoricalStoryMap(source);
   } catch (error) {
     throw new Error(`The map at ${ref} is not valid, so it cannot be compared:\n${error instanceof Error ? error.message : String(error)}`);
   }
@@ -232,8 +235,23 @@ async function diff(options: NonNullable<ReturnType<typeof parseDiffArgs>>) {
   }
   try {
     const before = await readMapAt(options.base, options.map);
-    const result = diffStoryMaps(before, after);
-    console.log(options.format === "json" ? JSON.stringify(result, null, 2) : formatStoryMapDiff(result));
+    const result = diffStoryMaps(before?.map ?? null, after);
+    const dropped = before && (before.dropped.stories || before.dropped.fields) ? before.dropped : undefined;
+    if (options.format === "json") {
+      console.log(JSON.stringify(dropped ? { ...result, baseDropped: dropped } : result, null, 2));
+      return;
+    }
+    let markdown = formatStoryMapDiff(result);
+    if (dropped) {
+      const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+      const parts = [
+        dropped.fields && `${count(dropped.fields, "field")} the format no longer has`,
+        dropped.stories && `${count(dropped.stories, "story")} that no longer ${dropped.stories === 1 ? "validates" : "validate"}${dropped.storyIds.length ? ` (${dropped.storyIds.map(id => `\`${id}\``).join(", ")})` : ""}`,
+      ].filter(Boolean);
+      const note = `> [!NOTE]\n> The map at \`${options.base}\` uses an older format, so this comparison leaves out ${parts.join(" and ")} from it.`;
+      markdown = markdown.replace(/^## Story map changes\n\n/, match => `${match}${note}\n\n`);
+    }
+    console.log(markdown);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = error instanceof UsageError ? 2 : 1;
@@ -281,6 +299,7 @@ function parseHistoryArgs(rest: string[]) {
 async function history(options: NonNullable<ReturnType<typeof parseHistoryArgs>>) {
   try {
     const result = await buildStoryMapHistory({ map: options.map, ref: options.ref, allowShallow: options.allowShallow, botNames: options.botNames });
+    warnSkipped(result);
     const json = JSON.stringify(result, null, 2) + "\n";
     if (!options.out) {
       process.stdout.write(json);
@@ -294,6 +313,16 @@ async function history(options: NonNullable<ReturnType<typeof parseHistoryArgs>>
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = error instanceof StoryMapHistoryError ? 2 : 1;
   }
+}
+
+/** Warns about versions of the map that history could not read. They do not fail the build. */
+function warnSkipped(result: Awaited<ReturnType<typeof buildStoryMapHistory>>) {
+  if (!result.skippedCount) return;
+  const shown = (result.skipped ?? []).slice(0, 3);
+  const versions = result.skippedCount === 1 ? "1 version" : `${result.skippedCount} versions`;
+  console.error(`warning: skipped ${versions} of the map that could not be read, so changes made in ${result.skippedCount === 1 ? "it are" : "them are"} missing:`);
+  for (const version of shown) console.error(`  ${version.commit.slice(0, 12)}: ${version.reason}`);
+  if (result.skippedCount > shown.length) console.error(`  and ${result.skippedCount - shown.length} more, listed in the file's skipped field`);
 }
 
 const [command, ...rest] = process.argv.slice(2);

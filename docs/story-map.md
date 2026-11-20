@@ -229,6 +229,8 @@ npx --no-install story-map diff origin/main
 
 The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Next, **Blocked and cut** lists stories that became blocked or cut, with their reasons, and stories that are no longer blocked or cut. Then it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
 
+The base version may use an older format of the map, such as when this change upgrades the package. It is read leniently: fields the format no longer has, and stories that no longer validate, are left out of the comparison, and the summary starts with a note saying what was left out. The JSON has the same counts as `baseDropped`. Your current map is still validated strictly.
+
 The workflow from `npx story-map init` adds the summary to each PR’s job summary. In your own workflow, check out with `fetch-depth: 0` so the base branch is available:
 
 ```yaml
@@ -255,6 +257,8 @@ The command reads every version of the map on the current branch’s first-paren
 - **When** is the time the change reached that branch.
 - **By** is the story’s `updatedBy` when that edit set it, otherwise the author of the commit that made the change. When the author is a bot, such as a coding agent, the person who merged the change is credited instead. Authors whose names end in `[bot]` are bots. Name other bot accounts with `--bot-names "Audit Agent,Release Helper"`. If Git does not record who merged, as with GitHub squash merges, the bot is credited.
 - **Merged by** is the person who merged the pull request. Git records this for merge commits and direct pushes, but not for GitHub squash or rebase merges, so those entries show only the editor.
+
+Older versions of the map may use an earlier format. The command reads them leniently, so their changes still count: it ignores fields the format no longer has, and leaves out a story that no longer validates, such as one with a status that has since been removed, until a later version of the map has it again. A version it cannot read at all, because the map was missing or was not valid YAML, is skipped, and the next readable version is compared with the last readable one. The command prints a warning naming the first few skipped commits and still succeeds. The file lists them, oldest first, in `skipped` (up to 100, each with its `commit` and a `reason`) and counts them all in `skippedCount`. Both fields are absent when nothing was skipped.
 
 Load the file on the server and pass it in. Keep it with the map, outside the static asset directory, because it contains names:
 
