@@ -310,6 +310,25 @@ test("validation errors name the item and source line", () => {
 
   assert.throws(() => parseStoryMap("version: 1\nid: a\nid: b\n"), error =>
     error instanceof StoryMapValidationError && error.issues[0].line === 3 && /unique/i.test(error.issues[0].message));
+  assert.throws(() => parseStoryMap("version: 1\nstories:\n  - id: a\n    id: b\n"), error =>
+    error instanceof StoryMapValidationError && error.issues.length === 1 && error.issues[0].line === 4 && error.issues[0].column === 5);
+});
+
+test("many unknown fields are located in linear time", () => {
+  const count = 20000;
+  const source = `${"version: 1\n"}${Array.from({ length: count }, (_, index) => `extra${index}: x\n`).join("")}`;
+  const started = performance.now();
+  let error;
+  try {
+    parseStoryMap(source);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const unknown = error.issues.filter(issue => issue.message === "Unknown field.");
+  assert.equal(unknown.length, count);
+  assert.equal(unknown.at(-1).line, count + 1);
+  assert.ok(performance.now() - started < 3000);
 });
 
 test("the CLI prints file positions and GitHub annotations", async t => {

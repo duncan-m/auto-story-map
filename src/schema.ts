@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LineCounter, isMap, parseDocument, type Document, type Node } from "yaml";
+import { LineCounter, isMap, isScalar, parseDocument, visit, type Document, type Node } from "yaml";
 import { isActiveStatus, storyStatuses } from "./status.js";
 
 export { storyStatuses };
@@ -200,16 +200,29 @@ export class StoryMapValidationError extends Error {
   }
 }
 
-function locate(document: Document, lineCounter: LineCounter, path: (string | number)[], key?: string) {
+/** Key offsets per mapping, built once so locating many keys stays linear. */
+type KeyIndex = WeakMap<Node, Map<unknown, number | undefined>>;
+
+function keyOffset(node: Node, key: string, keyIndex: KeyIndex) {
+  if (!isMap(node)) return undefined;
+  let offsets = keyIndex.get(node);
+  if (!offsets) {
+    offsets = new Map();
+    for (const item of node.items) {
+      const keyNode = item.key as (Node & { value?: unknown }) | null;
+      if (keyNode && !offsets.has(keyNode.value)) offsets.set(keyNode.value, keyNode.range?.[0]);
+    }
+    keyIndex.set(node, offsets);
+  }
+  return offsets.get(key);
+}
+
+function locate(document: Document, lineCounter: LineCounter, path: (string | number)[], key?: string, keyIndex: KeyIndex = new WeakMap()) {
   for (let depth = path.length; depth >= 0; depth--) {
     const node = document.getIn(path.slice(0, depth), true) as Node | undefined;
     if (!node?.range) continue;
     let offset = node.range[0];
-    if (key !== undefined && depth === path.length && isMap(node)) {
-      const pair = node.items.find(item => (item.key as { value?: unknown } | null)?.value === key);
-      const keyNode = pair?.key as Node | undefined;
-      if (keyNode?.range) offset = keyNode.range[0];
-    }
+    if (key !== undefined && depth === path.length) offset = keyOffset(node, key, keyIndex) ?? offset;
     const { line, col } = lineCounter.linePos(offset);
     return { line, column: col };
   }
@@ -296,21 +309,47 @@ export function migrateStoryMap(data: unknown): unknown {
   return data;
 }
 
+/**
+ * Finds repeated scalar keys in each mapping, as the YAML library's own
+ * `uniqueKeys` check does, but with one lookup per key. The library compares
+ * every key with every earlier one, which takes seconds on a large map.
+ */
+function duplicateKeyOffsets(document: Document) {
+  const offsets: number[] = [];
+  visit(document, {
+    Map(_, map) {
+      const seen = new Set<unknown>();
+      for (const { key } of map.items) {
+        if (!isScalar(key) || Number.isNaN(key.value)) continue;
+        if (seen.has(key.value)) offsets.push(key.range?.[0] ?? 0);
+        else seen.add(key.value);
+      }
+    },
+  });
+  return offsets;
+}
+
 /** Reads the YAML with the same safety settings for every parser: unique keys and a limit on aliases. */
 function readYaml(source: string) {
   const lineCounter = new LineCounter();
-  const document = parseDocument(source, { uniqueKeys: true, lineCounter });
-  if (document.errors.length) {
-    throw new StoryMapValidationError(document.errors.map(error => {
-      const position = error.linePos?.[0];
-      return {
-        severity: "error" as const,
-        path: [],
-        message: error.message.replace(/ at line \d+, column \d+:[\s\S]*$/, "").trim(),
-        line: position?.line,
-        column: position?.col,
-      };
-    }));
+  const document = parseDocument(source, { uniqueKeys: false, lineCounter });
+  const problems: StoryMapIssue[] = document.errors.map(error => {
+    const position = error.linePos?.[0];
+    return {
+      severity: "error" as const,
+      path: [],
+      message: error.message.replace(/ at line \d+, column \d+:[\s\S]*$/, "").trim(),
+      line: position?.line,
+      column: position?.col,
+    };
+  });
+  for (const offset of duplicateKeyOffsets(document)) {
+    const { line, col } = lineCounter.linePos(offset);
+    problems.push({ severity: "error", path: [], message: "Map keys must be unique", line, column: col });
+  }
+  if (problems.length) {
+    problems.sort((a, b) => (a.line ?? 0) - (b.line ?? 0) || (a.column ?? 0) - (b.column ?? 0));
+    throw new StoryMapValidationError(problems);
   }
   return { document, lineCounter, data: migrateStoryMap(document.toJS({ maxAliasCount: 20 })) };
 }
@@ -343,12 +382,13 @@ export function loadStoryMap(source: string): LoadedStoryMap {
     .map(issue => ({ ...issue, code: "custom" as const }));
 
   const issues: StoryMapIssue[] = [];
+  const keyIndex: KeyIndex = new WeakMap();
   for (const issue of [...result.error.issues, ...extra]) {
     const path = issue.path.map(segment => typeof segment === "number" ? segment : String(segment));
     const itemId = itemIdAt(data, path);
     if (issue.code === "unrecognized_keys") {
       for (const key of issue.keys) {
-        issues.push({ severity: "error", path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, path, key) });
+        issues.push({ severity: "error", path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, path, key, keyIndex) });
       }
       continue;
     }
