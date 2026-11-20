@@ -11,6 +11,9 @@ All notable changes to `embedded-story-map` are recorded here. The project follo
 - New `getStoryMapPage(document, viewer, { canViewInternal, history, stalledAfterWeeks, now, searchParams })` projects the map for the viewer and then applies the filters from `searchParams`, so the safe order is the easy one. It returns the same as `filterStoryMapView(getStoryMapForViewer(...), readStoryMapFilters(searchParams), { now })`, which remain available. New type `StoryMapPageOptions`.
 - New `storyMapResponseHeaders`: `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`, for every story map response.
 - The example host and the integration guide use both. The guide has a new [Large maps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#large-maps) section with measured page sizes.
+- CLI options no longer take the next option as their value. `story-map validate --plans --strict map.yaml` and `story-map history --map --allow-shallow` used to read `--strict` and `--allow-shallow` as paths. They now print `story-map: --plans needs a value` and the usage, and exit 2. Pass a value that starts with a hyphen as `--name=-value`. The same applies to `init --dir`.
+- `--check-sources` and `--plans` no longer follow symbolic links out of the repository. A source or plan file that links outside is reported as pointing outside the repository through a symbolic link, and is not read. Links inside the repository still work.
+- `story-map diff` escapes `@` and `#` in text from the map, so pasting the summary into a PR does not mention people or teams, or link issues.
 
 ## 0.5.0
 

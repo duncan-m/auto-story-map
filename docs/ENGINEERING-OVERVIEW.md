@@ -298,7 +298,7 @@ A host without a history file loses nothing else: no dates on cards, no history 
 
 ## CLI
 
-`src/cli.ts` parses arguments by hand to avoid a dependency. Options accept both `--name value` and `--name=value`. An unknown option or a missing value prints the usage and exits with code 2.
+`src/cli.ts` parses arguments by hand to avoid a dependency. Options accept both `--name value` and `--name=value`. An unknown option or a missing value prints the usage and exits with code 2. With `--name value`, a next argument that starts with `-` is another option, not the value, so `--map --strict` is a missing value: the CLI prints `story-map: --map needs a value` before the usage. A value that starts with a hyphen can be passed as `--name=-value`.
 
 | Command | What it does | Exit codes |
 | --- | --- | --- |
@@ -311,9 +311,9 @@ A host without a history file loses nothing else: no dates on cards, no history 
 
 Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with `warning: ` before the path for warnings. `--format github` prints `::error` or `::warning file=…,line=…,col=…::` workflow commands to stdout, escaping `%`, newlines, `:` and `,` as GitHub requires, so problems appear on the PR diff.
 
-`--check-sources` (`checkSources` in `src/references.ts`) looks at each source that looks like a path: no whitespace, no URL scheme and no leading `//`. It reports files that do not exist and paths that resolve outside `--root`. For Markdown files with a fragment, it checks the fragment against `markdownAnchors`, which reimplements GitHub's anchor rules: strip inline Markdown and HTML, lower-case, drop punctuation, turn spaces into hyphens, add `-1`, `-2` suffixes for duplicate headings, skip fenced code blocks, and accept Setext headings and `<a id>`/`<a name>` anchors. If GitHub's rendering and this function disagree, the validator either accepts a broken link or rejects a working one, so test any change against real GitHub output.
+`--check-sources` (`checkSources` in `src/references.ts`) looks at each source that looks like a path: no whitespace, no URL scheme and no leading `//`. It reports files that do not exist and paths that resolve outside `--root`. It then resolves the path one component at a time from the real root (`resolveInRepository`), following symbolic links only while they stay inside, and reports a link out of the repository without reading it. It never looks at the link's target, so the result does not reveal whether a file outside the repository exists. A plain `realpath` would: a link to a missing file fails differently from a link to a file that exists. For Markdown files with a fragment, it checks the fragment against `markdownAnchors`, which reimplements GitHub's anchor rules: strip inline Markdown and HTML, lower-case, drop punctuation, turn spaces into hyphens, add `-1`, `-2` suffixes for duplicate headings, skip fenced code blocks, and accept Setext headings and `<a id>`/`<a name>` anchors. If GitHub's rendering and this function disagree, the validator either accepts a broken link or rejects a working one, so test any change against real GitHub output.
 
-`--plans <dir>` (`checkPlanReferences`) scans Markdown under the folder for story IDs. It only checks IDs whose prefix the map already uses (`BUILDER-` in `BUILDER-102`), so ordinary text such as `UTF-8` is not flagged. This repository runs it over `docs/`, so any `ESM-` ID mentioned there must exist in the product map. `BUILDER-` and `FINANCE-` IDs in the docs refer to the sample fixture and are not checked.
+`--plans <dir>` (`checkPlanReferences`) scans Markdown under the folder for story IDs. The folder and every symbolic link found under it go through the same check, and a link out of the repository is reported, not read. It only checks IDs whose prefix the map already uses (`BUILDER-` in `BUILDER-102`), so ordinary text such as `UTF-8` is not flagged. This repository runs it over `docs/`, so any `ESM-` ID mentioned there must exist in the product map. `BUILDER-` and `FINANCE-` IDs in the docs refer to the sample fixture and are not checked.
 
 ### diff
 
@@ -329,7 +329,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 - Added, renamed, removed and reordered activities and releases, and changes to their customer labels.
 - A **Settings** section (`stalledAfterWeeks`) when the effective stalled threshold changes, counting a missing setting as the default of 4.
 
-`formatStoryMapDiff` escapes all text taken from the map (HTML, Markdown punctuation, `|` and newlines), because the summary is written into PR job summaries and table cells. A story title must not be able to inject Markdown or break the table.
+`formatStoryMapDiff` escapes all text taken from the map (HTML, Markdown punctuation, `|` and newlines), because the summary is written into PR job summaries and table cells. A story title must not be able to inject Markdown or break the table. Each `@` and `#` is followed by an empty `<span></span>`, because the summary is pasted into PR descriptions: a title such as “Ask @finance-team” must not notify that team, and `#123` must not link an unrelated issue. The span renders as nothing. Checked on a real PR: character references such as `&#64;` do not work, because GitHub decodes them before it finds mentions and references, and an empty HTML comment works in list items but is dropped inside table cells. Check any change here against GitHub's rendering of both.
 
 ### init
 
@@ -354,7 +354,8 @@ Templates and the guide are found relative to the compiled `dist/init.js` (`new 
 - **Only `http` and `https` sources become links.** React escapes all text, and the board never uses `dangerouslySetInnerHTML`. A test checks that story text renders as text.
 - **The publish job installs nothing.** It is the only job that can get an npm publishing token, so it publishes the tarball built by `pack` and never runs `npm ci` or dependency scripts.
 - **Git arguments are not shell input.** `git` runs through `execFile` with an argument array, and refs starting with `-` are rejected so they cannot be read as options.
-- **Source checks stay inside the repository.** Paths that resolve outside `--root` are reported, not read.
+- **Source checks stay inside the repository.** Paths that resolve outside `--root`, directly or through a symbolic link, are reported, not read, for sources and `--plans` alike. Never `stat` or read a link's target before checking it is inside.
+- **Diff summaries notify nobody.** Text from the map has `@` and `#` escaped, so pasting the summary does not mention people or link issues.
 - **Bounded input.** Keep the schema's length and count limits and the YAML alias limit.
 - **The demo is not an auth model.** `example/demo.mjs` picks a role from `?as=` and listens only on `127.0.0.1`. Real hosts must take roles from their verified session.
 

@@ -449,7 +449,7 @@ stories:
     title: Fix CLI and source check edge cases
     activity: review
     release: planning
-    status: planned
+    status: merged
     summary: Stop options taking the next flag as their value, and refuse sources that reach outside the repository through a symbolic link.
     sources:
       - docs/plans/0.6.0-review-fixes.md#7-cli-and-source-check-fixes
@@ -457,7 +457,7 @@ stories:
     title: Stop diff summaries notifying people
     activity: review
     release: planning
-    status: planned
+    status: merged
     summary: The diff escapes @mentions and #references in map text, so pasting the summary into a PR does not notify people or link issues.
     sources:
       - docs/plans/0.6.0-review-fixes.md#8-diff-summaries-that-do-not-notify-people

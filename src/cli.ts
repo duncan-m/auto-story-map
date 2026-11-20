@@ -68,11 +68,19 @@ history
 
 type Format = "text" | "github";
 
-/** Reads `--name value` and `--name=value`. Returns undefined when the value is missing. */
-function optionValue(rest: string[], index: number, name: string): [string | undefined, number] {
+/** A problem with the command line, reported before the usage text. */
+class ArgumentError extends Error {}
+
+/**
+ * Reads `--name value` and `--name=value`. A missing value, or a next argument
+ * that is another option, such as `--map --strict`, is an error rather than
+ * the value. Use `--name=-value` for a value that starts with a hyphen.
+ */
+function optionValue(rest: string[], index: number, name: string): [string, number] {
   const arg = rest[index];
-  if (arg === name) return [rest[index + 1], index + 1];
-  return [arg.slice(name.length + 1), index];
+  const [value, next] = arg === name ? [rest[index + 1], index + 1] : [arg.slice(name.length + 1), index];
+  if (!value || (arg === name && value.startsWith("-"))) throw new ArgumentError(`${name} needs a value`);
+  return [value, next];
 }
 
 function parseValidateArgs(rest: string[]) {
@@ -87,7 +95,6 @@ function parseValidateArgs(rest: string[]) {
     const name = arg.split("=")[0];
     if (name === "--format" || name === "--plans" || name === "--root") {
       const [value, next] = optionValue(rest, index, name);
-      if (!value) return null;
       index = next;
       if (name === "--format") {
         if (value !== "text" && value !== "github") return null;
@@ -119,7 +126,6 @@ function parseDiffArgs(rest: string[]) {
     const name = arg.split("=")[0];
     if (name === "--format" || name === "--map") {
       const [value, next] = optionValue(rest, index, name);
-      if (!value) return null;
       index = next;
       if (name === "--map") map = value;
       else if (value === "markdown" || value === "json") format = value;
@@ -139,8 +145,7 @@ function parseInitArgs(rest: string[]) {
   for (let index = 0; index < rest.length; index++) {
     const arg = rest[index];
     if (arg === "--no-ci") ci = false;
-    else if (arg === "--dir" && rest[index + 1]) dir = rest[++index];
-    else if (arg.startsWith("--dir=")) dir = arg.slice("--dir=".length);
+    else if (arg.split("=")[0] === "--dir") [dir, index] = optionValue(rest, index, "--dir");
     else return null;
   }
   return { ci, dir: resolve(dir) };
@@ -279,12 +284,10 @@ function parseHistoryArgs(rest: string[]) {
     const name = arg.split("=")[0];
     if (name === "--map" || name === "--ref" || name === "--out") {
       const [value, next] = optionValue(rest, index, name);
-      if (!value) return null;
       index = next;
       options[name.slice(2) as "map" | "ref" | "out"] = value;
     } else if (name === "--bot-names") {
       const [value, next] = optionValue(rest, index, name);
-      if (!value) return null;
       index = next;
       options.botNames.push(...value.split(",").map(botName => botName.trim()).filter(Boolean));
     } else if (arg === "--allow-shallow") {
@@ -326,10 +329,20 @@ function warnSkipped(result: Awaited<ReturnType<typeof buildStoryMapHistory>>) {
 }
 
 const [command, ...rest] = process.argv.slice(2);
-const validateOptions = command === "validate" ? parseValidateArgs(rest) : null;
-const initOptions = command === "init" ? parseInitArgs(rest) : null;
-const diffOptions = command === "diff" ? parseDiffArgs(rest) : null;
-const historyOptions = command === "history" ? parseHistoryArgs(rest) : null;
+function parse<T>(name: string, parser: (rest: string[]) => T | null): T | null {
+  if (command !== name) return null;
+  try {
+    return parser(rest);
+  } catch (error) {
+    if (!(error instanceof ArgumentError)) throw error;
+    console.error(`story-map: ${error.message}\n`);
+    return null;
+  }
+}
+const validateOptions = parse("validate", parseValidateArgs);
+const initOptions = parse("init", parseInitArgs);
+const diffOptions = parse("diff", parseDiffArgs);
+const historyOptions = parse("history", parseHistoryArgs);
 if (validateOptions) {
   await validate(validateOptions);
 } else if (diffOptions) {
