@@ -52,7 +52,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/build-schema.mjs",
+    "build": "node scripts/write-version.mjs && tsc -p tsconfig.json && node scripts/build-schema.mjs",
     "prepare": "npm run build",
     "validate": "node dist/cli.js validate --check-sources --plans docs product/story-map.yaml",
     "test": "npm run build && node --test",

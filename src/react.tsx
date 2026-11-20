@@ -2,6 +2,7 @@ import { useId, version } from "react";
 import type { CSSProperties } from "react";
 import { customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
 import type { ReleaseImpact } from "./schema.js";
+import { storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
@@ -21,6 +22,11 @@ export interface StoryMapBoardProps {
   timeZone?: string;
   /** Time to measure “3 days ago” from. Defaults to now. */
   now?: Date;
+  /**
+   * Shows the library version under the board, with links to its changelog and
+   * repository on internal boards. On by default.
+   */
+  showVersion?: boolean;
 }
 
 interface DateSettings {
@@ -410,6 +416,24 @@ function ReleaseCollapse({ releaseId, title }: { releaseId: string; title: strin
   );
 }
 
+/** GitHub’s anchor for a changelog heading such as `## 0.4.1`. */
+function changelogAnchor(version: string) {
+  return version.toLowerCase().replace(/[^a-z0-9 _-]/g, "").replace(/ /g, "-");
+}
+
+/** The running version. Internal viewers also get links to what changed and the source. */
+function VersionFooter({ internal }: { internal: boolean }) {
+  return (
+    <footer className="esm-footer">
+      <span className="esm-version">Embedded Story Map {storyMapVersion}</span>
+      {internal && <>
+        <a href={`${storyMapRepositoryUrl}/blob/main/CHANGELOG.md#${changelogAnchor(storyMapVersion)}`} {...newTab}>Changelog<NewTabHint /></a>
+        <a href={storyMapRepositoryUrl} {...newTab}>Source code<NewTabHint /></a>
+      </>}
+    </footer>
+  );
+}
+
 /** True when a filter narrows the board beyond the default of active stories. */
 function isFiltering(filter: StoryMapView["filter"]) {
   return !!(filter && (filter.query || (filter.status && filter.status !== "all") || filter.changedWithinDays));
@@ -500,6 +524,7 @@ export function StoryMapBoard({
   locale = "en-GB",
   timeZone,
   now,
+  showVersion = true,
 }: StoryMapBoardProps) {
   const baseId = useId();
   const headingId = `${baseId}-heading`;
@@ -640,6 +665,7 @@ export function StoryMapBoard({
           </div>
         ) : !filtering && <p className="esm-empty">There are no stories to show yet.</p>}
       </div>
+      {showVersion && <VersionFooter internal={internal} />}
       {placed.map(story => (
         <StoryDetail
           key={story.id}

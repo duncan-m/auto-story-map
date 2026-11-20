@@ -11,6 +11,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { stringify } from "yaml";
 import { z } from "zod";
 import {
+  storyMapRepositoryUrl,
+  storyMapVersion,
   diffStoryMaps,
   filterStoryMapView,
   formatStoryMapDiff,
@@ -1437,4 +1439,28 @@ test("board.js remembers collapsed release lanes", async t => {
 
   reloaded.toggle(2);
   assert.equal(storage.has("esm-collapsed:/story-map"), false, "expanding every lane clears the stored value");
+});
+
+test("the board shows the running version, with links for internal viewers", async () => {
+  const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  assert.equal(storyMapVersion, pkg.version);
+  assert.equal(storyMapRepositoryUrl, "https://github.com/duncan-m/embedable-story-map");
+
+  const internal = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) }));
+  const footer = /<footer class="esm-footer">.*?<\/footer>/.exec(internal)?.[0];
+  assert.ok(footer);
+  assert.match(footer, new RegExp(`Embedded Story Map ${pkg.version.replaceAll(".", "\\.")}`));
+  const anchor = pkg.version.replaceAll(".", "");
+  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/embedable-story-map/blob/main/CHANGELOG\\.md#${anchor}" target="_blank" rel="noopener noreferrer">Changelog`));
+  assert.match(footer, /href="https:\/\/github\.com\/duncan-m\/embedable-story-map" target="_blank" rel="noopener noreferrer">Source code/);
+  const changelog = await readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8");
+  assert.match(changelog, new RegExp(`^## ${pkg.version.replaceAll(".", "\\.")}$`, "m"), "the changelog link has a heading to land on");
+
+  const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, regular) }));
+  const customerFooter = /<footer class="esm-footer">.*?<\/footer>/.exec(customer)?.[0];
+  assert.ok(customerFooter?.includes(`Embedded Story Map ${pkg.version}`));
+  assert.doesNotMatch(customerFooter, /<a /, "customers see the version without links");
+
+  const hidden = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer), showVersion: false }));
+  assert.doesNotMatch(hidden, /esm-footer/);
 });

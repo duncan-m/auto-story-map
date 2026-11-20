@@ -337,6 +337,14 @@ stories:
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
       - docs/ENGINEERING-OVERVIEW.md#filter-toolbar
+  - id: ESM-413
+    title: Show the running version on the board
+    activity: explore
+    release: next
+    status: in-progress
+    summary: A footer shows the library version. Internal viewers also get links to the changelog and source code.
+    sources:
+      - docs/ENGINEERING-OVERVIEW.md#layout
   - id: ESM-501
     title: Expand activities into steps
     activity: explore
