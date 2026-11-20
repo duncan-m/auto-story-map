@@ -2,6 +2,7 @@ import { useId, version } from "react";
 import type { CSSProperties } from "react";
 import { customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
 import type { ReleaseImpact } from "./schema.js";
+import { storyMapAuthor, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
@@ -21,6 +22,11 @@ export interface StoryMapBoardProps {
   timeZone?: string;
   /** Time to measure “3 days ago” from. Defaults to now. */
   now?: Date;
+  /**
+   * Shows the library version under the board, with links to its changelog and
+   * repository on internal boards. On by default.
+   */
+  showVersion?: boolean;
 }
 
 interface DateSettings {
@@ -394,6 +400,50 @@ function ReleaseDetail({ release, panelId, stories, storyPanelIds, filtered }: {
   );
 }
 
+/**
+ * Collapses a release lane to its header. CSS does the collapsing with :has(), so it works
+ * without JavaScript; browsers without :has() never show the toggle. The value is the
+ * release ID, which board.js uses to remember the choice.
+ */
+function ReleaseCollapse({ releaseId, title }: { releaseId: string; title: string }) {
+  return (
+    <label className="esm-collapse">
+      <input type="checkbox" className="esm-collapse-input" value={releaseId} aria-label={`Collapse ${title}`} />
+      <svg className="esm-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m4 6 4 4 4-4" />
+      </svg>
+    </label>
+  );
+}
+
+/** GitHub’s anchor for a changelog heading such as `## 0.4.1`. */
+function changelogAnchor(version: string) {
+  return version.toLowerCase().replace(/[^a-z0-9 _-]/g, "").replace(/ /g, "-");
+}
+
+/** The running version, licence and author. Internal viewers also get links. */
+function VersionFooter({ internal }: { internal: boolean }) {
+  const licenseUrl = `${storyMapRepositoryUrl}/blob/main/LICENSE`;
+  return (
+    <footer className="esm-footer">
+      <span className="esm-version">Embedded Story Map {storyMapVersion}</span>
+      <span className="esm-author">
+        {"By "}
+        {internal && storyMapAuthor.url
+          ? <a href={storyMapAuthor.url} {...newTab}>{storyMapAuthor.name}<NewTabHint /></a>
+          : storyMapAuthor.name}
+      </span>
+      <span className="esm-license">
+        {internal ? <a href={licenseUrl} {...newTab}>{storyMapLicense} licence<NewTabHint /></a> : `${storyMapLicense} licence`}
+      </span>
+      {internal && <>
+        <span><a href={`${storyMapRepositoryUrl}/blob/main/CHANGELOG.md#${changelogAnchor(storyMapVersion)}`} {...newTab}>Changelog<NewTabHint /></a></span>
+        <span><a href={storyMapRepositoryUrl} {...newTab}>Source code<NewTabHint /></a></span>
+      </>}
+    </footer>
+  );
+}
+
 /** True when a filter narrows the board beyond the default of active stories. */
 function isFiltering(filter: StoryMapView["filter"]) {
   return !!(filter && (filter.query || (filter.status && filter.status !== "all") || filter.changedWithinDays));
@@ -484,6 +534,7 @@ export function StoryMapBoard({
   locale = "en-GB",
   timeZone,
   now,
+  showVersion = true,
 }: StoryMapBoardProps) {
   const baseId = useId();
   const headingId = `${baseId}-heading`;
@@ -571,6 +622,7 @@ export function StoryMapBoard({
               {releases.map((release, laneIndex) => (
                 <div className="esm-row esm-lane" role="row" data-lane={laneIndex % 3} key={release.id}>
                   <div className="esm-release" role="rowheader">
+                    <ReleaseCollapse releaseId={release.id} title={release.title} />
                     <span className="esm-release-name">
                       <span className="esm-release-dot" aria-hidden="true" />
                       {internalReleases
@@ -623,6 +675,7 @@ export function StoryMapBoard({
           </div>
         ) : !filtering && <p className="esm-empty">There are no stories to show yet.</p>}
       </div>
+      {showVersion && <VersionFooter internal={internal} />}
       {placed.map(story => (
         <StoryDetail
           key={story.id}

@@ -27,5 +27,6 @@ export { changedWithinOptions, filterStoryMapView, readStoryMapFilters } from ".
 export type { ChangedWithinDays, FilterOptions, StoryMapFilters } from "./filter.js";
 export { parseStoryMapHistory, storyMapHistorySchema } from "./history.js";
 export type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
+export { storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
 export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";

@@ -19,7 +19,7 @@ npm run demo
 
 The demo shows this library’s own story map, `product/story-map.yaml`: what each release delivered, what is merged for the next one, and what is planned. Open [the local story map](http://127.0.0.1:4173/story-map). It starts as **Super admin**, who sees the full internal map. Select **Link stories to their engineering overview** to open its details, and follow the **Engineering overview** link into these docs. Select the **0.4.0: Delivery tracking** release title to see its notes, expected impact and progress. Search for “history”, filter by status, or use **Changed** to see recent changes. One story is cut, so it is hidden by default: choose **All, including blocked and cut** to see it and its reason. The demo reads this repository’s Git history to show when each story changed and who changed it. Switch to **Regular user** to see the customer roadmap, where merged stories read as in progress. The demo also offers **Engineer**, **Product manager** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves the same view as JSON at `/api/story-map`.
 
-Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. The panel and the search form work without client-side JavaScript. The demo also loads the optional `board.js` script, so filters apply as soon as you choose them.
+Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. Each release lane can be collapsed to its title and story count. The panel, the collapse toggles and the search form work without client-side JavaScript. The demo also loads the optional `board.js` script, so filters apply as soon as you choose them.
 
 ## Embed it in a product
 
@@ -72,6 +72,18 @@ You can’t edit the map in the app. The map ships with each deployment, so an e
 
 See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one. To work on the library itself, start with [the engineering overview][overview].
 
+## Disclaimer
+
+Embedded Story Map is pre-1.0 software. Until 1.0.0, any minor version, such as 0.4.0 to 0.5.0, can include breaking changes to the map format, the API, the CLI, or the board’s markup and class names. Each breaking change is marked **Breaking** in [the changelog][changelog] with its upgrade steps. Pin the version you install, read the changelog before you upgrade, and check the board and your CI after each upgrade.
+
+This software and its documentation are provided “as is”, without warranties or conditions of any kind, either express or implied, including any warranties or conditions of title, non-infringement, merchantability or fitness for a particular purpose. No guarantee is made that the software will work as described, be free of errors or security vulnerabilities, or stay compatible with your product, its dependencies or future versions.
+
+In no event shall the author or contributors be liable for any damages arising from the use of, or inability to use, this software, including direct, indirect, special, incidental or consequential damages, data loss, exposure of information, service interruption or lost profits, however caused and whether in contract, strict liability or tort (including negligence), even if advised of the possibility of such damages.
+
+You use the software at your own risk and are responsible for reviewing, testing and securing it before using it in your product. That includes deciding who can see the map: the library decides what each viewer sees, but your product must sign viewers in, pass their roles from a verified session, and keep internal content out of public pages and caches.
+
+The [Apache License 2.0][license], in particular its sections 7 (Disclaimer of Warranty) and 8 (Limitation of Liability), governs your use of this software. Where this summary and the licence differ, the licence applies.
+
 [source]: https://github.com/duncan-m/embedable-story-map
 [example-map]: https://github.com/duncan-m/embedable-story-map/blob/main/product/story-map.yaml
 [guide]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md
@@ -83,3 +95,4 @@ See [the changelog][changelog] for what changed in each version and [the release
 [changelog]: https://github.com/duncan-m/embedable-story-map/blob/main/CHANGELOG.md
 [releasing]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/releasing.md
 [overview]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/ENGINEERING-OVERVIEW.md
+[license]: https://github.com/duncan-m/embedable-story-map/blob/main/LICENSE
