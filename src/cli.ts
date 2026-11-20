@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import { diffStoryMaps, formatStoryMapDiff } from "./diff.js";
+import { code, diffStoryMaps, formatStoryMapDiff } from "./diff.js";
 import { buildStoryMapHistory, StoryMapHistoryError } from "./history-git.js";
 import { initStoryMap } from "./init.js";
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
@@ -159,6 +159,12 @@ function escapeProperty(value: string) {
   return escapeData(value).replace(/:/g, "%3A").replace(/,/g, "%2C");
 }
 
+// Map text reaches diagnostics, so a line break or terminal control in it must not start what looks like another record.
+function escapeText(value: string) {
+  return value.replace(/[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u2028\u2029]/g, char =>
+    char === "\n" ? "\\n" : char === "\r" ? "\\r" : `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
+}
+
 function report(mapPath: string, issue: ReferenceIssue, format: Format) {
   const path = issue.file ?? mapPath;
   const message = issue.path.length ? `${describeIssueTarget(issue)}: ${issue.message}` : issue.message;
@@ -171,7 +177,7 @@ function report(mapPath: string, issue: ReferenceIssue, format: Format) {
     console.log(`::${warning ? "warning" : "error"} ${properties.join(",")}::${escapeData(message)}`);
   } else {
     const position = issue.line ? `:${issue.line}${issue.column ? `:${issue.column}` : ""}` : "";
-    console.error(`${path}${position}: ${warning ? "warning: " : ""}${message}`);
+    console.error(`${escapeText(path)}${position}: ${warning ? "warning: " : ""}${escapeText(message)}`);
   }
 }
 
@@ -251,9 +257,9 @@ async function diff(options: NonNullable<ReturnType<typeof parseDiffArgs>>) {
       const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
       const parts = [
         dropped.fields && `${count(dropped.fields, "field")} the format no longer has`,
-        dropped.stories && `${count(dropped.stories, "story")} that no longer ${dropped.stories === 1 ? "validates" : "validate"}${dropped.storyIds.length ? ` (${dropped.storyIds.map(id => `\`${id}\``).join(", ")})` : ""}`,
+        dropped.stories && `${count(dropped.stories, "story")} that no longer ${dropped.stories === 1 ? "validates" : "validate"}${dropped.storyIds.length ? ` (${dropped.storyIds.map(code).join(", ")})` : ""}`,
       ].filter(Boolean);
-      const note = `> [!NOTE]\n> The map at \`${options.base}\` uses an older format, so this comparison leaves out ${parts.join(" and ")} from it.`;
+      const note = `> [!NOTE]\n> The map at ${code(options.base)} uses an older format, so this comparison leaves out ${parts.join(" and ")} from it.`;
       markdown = markdown.replace(/^## Story map changes\n\n/, match => `${match}${note}\n\n`);
     }
     console.log(markdown);
@@ -264,7 +270,14 @@ async function diff(options: NonNullable<ReturnType<typeof parseDiffArgs>>) {
 }
 
 async function init(options: NonNullable<ReturnType<typeof parseInitArgs>>) {
-  const steps = await initStoryMap(options.dir, { ci: options.ci });
+  let steps;
+  try {
+    steps = await initStoryMap(options.dir, { ci: options.ci });
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+    return;
+  }
   for (const step of steps) {
     console.log(`${step.action.padEnd(8)} ${step.path}${step.reason ? ` (${step.reason})` : ""}`);
   }

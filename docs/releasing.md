@@ -8,9 +8,11 @@ The workflow has three jobs:
 
 1. **check** runs the full test matrix. It installs with `npm ci --ignore-scripts` and then runs `npm run build` itself.
 2. **pack** builds the package once and packs it with `npm pack`. It has only read access to the repository and cannot publish. It uploads the `.tgz` as a workflow artifact.
-3. **publish** downloads that tarball, checks that the tag matches the version in `package.json`, in the tarball and in the changelog, and publishes it with `npm publish <tarball> --provenance`. Then it creates the GitHub release.
+3. **publish** downloads that tarball, checks that the tag matches the version in `package.json` and in the changelog, checks that the tarball’s `package.json` is identical to the committed one, and publishes it with `npm publish <tarball> --provenance`. Then it creates the GitHub release.
 
 The publish job must never install dependencies or run `npm ci`. It has `id-token: write`, so any step in it can ask GitHub for the OpenID Connect token that npm trusted publishing accepts. A compromised dependency's install script could use that token to publish a malicious version, and npm would give it a valid provenance statement. Publishing a tarball runs no lifecycle scripts, so nothing but the workflow's own steps runs there. Keep any new build or test step in **check** or **pack**.
+
+The tarball itself is untrusted for the same reason: **pack** runs dependency code during the build, which could rewrite `package.json` before it is packed. `npm publish` reads `publishConfig` from the tarball, so a changed `publishConfig` could send the publish, and its OpenID Connect token, to another registry or through a proxy. The publish job therefore fails unless the packed `package.json` equals the one committed at the tag, and `publishConfig` may only set `access`. It also passes the registry, proxy and TLS settings on the command line, which take precedence over `publishConfig`. If you need another `publishConfig` key, add it to the allowed list in the workflow in the same PR.
 
 ## Set up publishing once
 

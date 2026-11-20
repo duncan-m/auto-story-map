@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -310,6 +310,45 @@ test("validation errors name the item and source line", () => {
 
   assert.throws(() => parseStoryMap("version: 1\nid: a\nid: b\n"), error =>
     error instanceof StoryMapValidationError && error.issues[0].line === 3 && /unique/i.test(error.issues[0].message));
+  assert.throws(() => parseStoryMap("version: 1\nstories:\n  - id: a\n    id: b\n"), error =>
+    error instanceof StoryMapValidationError && error.issues.length === 1 && error.issues[0].line === 4 && error.issues[0].column === 5);
+});
+
+test("many unknown fields are located in linear time", () => {
+  const count = 20000;
+  const source = `${"version: 1\n"}${Array.from({ length: count }, (_, index) => `extra${index}: x\n`).join("")}`;
+  const started = performance.now();
+  let error;
+  try {
+    parseStoryMap(source);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const unknown = error.issues.filter(issue => issue.message === "Unknown field.");
+  assert.equal(unknown.length, count);
+  assert.equal(unknown.at(-1).line, count + 1);
+  assert.ok(performance.now() - started < 3000);
+});
+
+test("unknown fields below many unknown top-level fields are located in linear time", () => {
+  const count = 20000;
+  const root = Array.from({ length: count }, (_, index) => `extra${index}: x\n`).join("");
+  const story = Array.from({ length: count }, (_, index) => `    field${index}: x\n`).join("");
+  const source = `version: 1\n${root}stories:\n  - id: A-1\n${story}`;
+  const started = performance.now();
+  let error;
+  try {
+    parseStoryMap(source);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const nested = error.issues.filter(issue => issue.message === "Unknown field." && issue.path[0] === "stories");
+  assert.equal(nested.length, count);
+  assert.deepEqual(nested.at(-1).path, ["stories", 0, `field${count - 1}`]);
+  assert.equal(nested.at(-1).line, 2 * count + 3);
+  assert.ok(performance.now() - started < 3000);
 });
 
 test("the CLI prints file positions and GitHub annotations", async t => {
@@ -385,6 +424,59 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.equal(describeProduct("x".repeat(100)).id.length, 64);
 });
 
+test("init refuses links that lead outside the repository", async t => {
+  const { initStoryMap } = await import("../dist/init.js");
+  const base = await mkdtemp(join(tmpdir(), "story-map-links-"));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const outside = join(base, "outside");
+  await mkdir(outside);
+  await writeFile(join(outside, "AGENTS.md"), "outside\n");
+  const host = async name => {
+    const root = join(base, name);
+    await mkdir(root);
+    return root;
+  };
+
+  const agentsLink = await host("agents-link");
+  await symlink(join(outside, "AGENTS.md"), join(agentsLink, "AGENTS.md"));
+  await assert.rejects(initStoryMap(agentsLink), /AGENTS\.md is a symbolic link that points outside the repository/);
+  assert.equal(await readFile(join(outside, "AGENTS.md"), "utf8"), "outside\n");
+
+  const dirLink = await host("dir-link");
+  await symlink(outside, join(dirLink, "product"));
+  await assert.rejects(initStoryMap(dirLink), /product\/story-map\.yaml: product is a symbolic link that points outside/);
+
+  const dangling = await host("dangling");
+  await symlink(join(outside, "missing"), join(dangling, "docs"));
+  await assert.rejects(initStoryMap(dangling), /docs is a broken symbolic link/);
+  await assert.rejects(readFile(join(outside, "missing", "story-map.md")));
+
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const run = spawnSync(process.execPath, [cli, "init", "--dir", agentsLink], { encoding: "utf8" });
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /points outside the repository/);
+
+  const inside = await host("inside");
+  await mkdir(join(inside, "documentation"));
+  await symlink("documentation", join(inside, "docs"));
+  await writeFile(join(inside, "RULES.md"), "# Rules\n");
+  await symlink("RULES.md", join(inside, "AGENTS.md"));
+  const steps = await initStoryMap(inside);
+  assert.deepEqual(steps.slice(1, 3).map(step => [step.path, step.action]), [["docs/story-map.md", "created"], ["AGENTS.md", "updated"]]);
+  assert.match(await readFile(join(inside, "documentation/story-map.md"), "utf8"), /./);
+  assert.match(await readFile(join(inside, "RULES.md"), "utf8"), /^# Rules\n\n<!-- auto-story-map:start -->/);
+
+  const dotted = await host("dotted");
+  await mkdir(join(dotted, "..documentation"));
+  await symlink("..documentation", join(dotted, "docs"));
+  await initStoryMap(dotted);
+  assert.match(await readFile(join(dotted, "..documentation/story-map.md"), "utf8"), /./);
+
+  await chmod(join(inside, "RULES.md"), 0o444);
+  const again = await initStoryMap(inside);
+  assert.deepEqual(again.find(step => step.path === "AGENTS.md"), { path: "AGENTS.md", action: "skipped", reason: "already has the story map section" });
+});
+
 test("init skips the workflow without npm or when asked", async t => {
   const root = await mkdtemp(join(tmpdir(), "story-map-host-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -400,6 +492,24 @@ test("init skips the workflow without npm or when asked", async t => {
   const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
   assert.doesNotMatch(noCi.stdout, /workflows/);
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
+});
+
+test("text diagnostics escape line breaks and control characters from the map", async t => {
+  const source = stringify(editedSample(document => {
+    document.stories.find(story => story.id === "BUILDER-101").status = "shipped";
+    document.releases[0].impact[1].metric = "Turnaround\nmap.yaml:1:1: error: forged\r\u001b[2Kdone";
+  }));
+  const directory = await mkdtemp(join(tmpdir(), "story-map-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const file = join(directory, "map.yaml");
+  await writeFile(file, source);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
+  assert.equal(text.status, 0);
+  const lines = text.stderr.trimEnd().split("\n");
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0].includes("“Turnaround\\nmap.yaml:1:1: error: forged\\r\\u001b[2Kdone”"), lines[0]);
+  assert.doesNotMatch(text.stderr, /[\r\u001b]/);
 });
 
 function editedSample(edit, base = map) {
@@ -1633,6 +1743,25 @@ test("history files load with and without the skipped fields", () => {
   assert.throws(() => parseStoryMapHistory({ ...base, skippedCount: -1 }), /Invalid story map history/);
 });
 
+test("story-map diff escapes rejected story IDs from an older base", async t => {
+  const { root } = await formatRepo(t, [
+    document => { storyIn(document, "BUILDER-103").id = "x` [link](https://example.test)\n@team #1"; },
+  ]);
+  await writeFile(join(root, "product/story-map.yaml"), stringify(editedSample(document => { storyIn(document, "BUILDER-102").status = "in-progress"; })));
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const result = spawnSync(process.execPath, [cli, "diff", "HEAD"], { cwd: root, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  const note = result.stdout.split("\n").find(line => line.startsWith("> The map at"));
+  // The whole rejected ID stays in one code span, so its link and mentions render as plain text.
+  assert.equal(note, "> The map at `HEAD` uses an older format, so this comparison leaves out 1 story that no longer validates (``x` [link](https://example.test) @team #1``) from it.");
+});
+
+test("code spans hold any number of backtick runs", async () => {
+  const { code } = await import("../dist/diff.js");
+  assert.equal(code("a``b`c"), "```a``b`c```");
+  assert.equal(code("`a".repeat(300000)).length, 600006);
+});
+
 test("story-map diff compares with a base that uses an older format", async t => {
   const { root } = await formatRepo(t, [
     document => { document.owner = "Platform team"; storyIn(document, "BUILDER-103").status = "on-hold"; },
@@ -1930,4 +2059,26 @@ test("the board shows the running version, with links for internal viewers", asy
 
   const hidden = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer), showVersion: false }));
   assert.doesNotMatch(hidden, /esm-footer/);
+});
+
+test("groups story history newest first in linear time, keeping equal timestamps latest-supplied first", () => {
+  const event = (to, at, commit) => ({ storyId: "BUILDER-101", type: "status", from: "planned", to, at, by: "Alex Morgan", commit });
+  const history = {
+    version: 1, generatedAt: "2026-11-20T12:00:00.000Z", complete: true,
+    events: [
+      event("planned", "2026-11-01T10:00:00.000Z", "a000001"),
+      event("in-progress", "2026-11-03T10:00:00.000Z", "a000002"),
+      event("blocked", "2026-11-03T10:00:00.000Z", "a000003"),
+      event("merged", "2026-11-02T10:00:00.000Z", "a000004"),
+    ],
+  };
+  const story = getStoryMapForViewer(map, engineer, { history }).stories.find(s => s.id === "BUILDER-101");
+  assert.deepEqual(story.history.map(entry => entry.commit), ["a000003", "a000002", "a000004", "a000001"]);
+
+  // Many events for one story stay fast.
+  const many = Array.from({ length: 100_000 }, (_, i) => event("planned", new Date(Date.UTC(2026, 0, 1) + i * 1000).toISOString(), "b000000"));
+  const started = performance.now();
+  const view = getStoryMapForViewer(map, engineer, { history: { ...history, events: many } });
+  assert.ok(performance.now() - started < 2000);
+  assert.equal(view.stories.find(s => s.id === "BUILDER-101").history.length, 100_000);
 });
