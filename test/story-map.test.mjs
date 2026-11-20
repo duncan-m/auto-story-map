@@ -1008,3 +1008,126 @@ test("diffs list release notes and impact changes and call out measured results"
   assert.doesNotMatch(markdown, /### Customer-facing changes/);
   assert.deepEqual(diffStoryMaps(map, map).releaseDetails, []);
 });
+
+// BUILDER-101 has been in progress since September. BUILDER-102 started in September, went back
+// to planned and restarted on 1 November. BUILDER-103 is in progress in the map, but the history
+// has not caught up, so its start date is unknown.
+const stalledNow = new Date("2026-11-20T12:00:00Z");
+const stalledHistory = parseStoryMapHistory({
+  version: 1,
+  generatedAt: "2026-11-20T08:00:00Z",
+  complete: true,
+  events: [
+    { storyId: "BUILDER-101", type: "added", to: "in-progress", at: "2026-09-01T10:00:00Z", by: "Alex Morgan", commit: "a000001" },
+    { storyId: "BUILDER-102", type: "added", to: "planned", at: "2026-09-01T10:00:00Z", commit: "a000001" },
+    { storyId: "BUILDER-102", type: "status", from: "planned", to: "in-progress", at: "2026-09-10T10:00:00Z", commit: "a000002" },
+    { storyId: "BUILDER-102", type: "status", from: "in-progress", to: "planned", at: "2026-10-01T10:00:00Z", commit: "a000003" },
+    { storyId: "BUILDER-102", type: "status", from: "planned", to: "in-progress", at: "2026-11-01T10:00:00Z", commit: "a000004" },
+    { storyId: "BUILDER-103", type: "added", to: "planned", at: "2026-09-01T10:00:00Z", commit: "a000001" },
+  ],
+});
+
+function stalledMap(settings) {
+  return editedSample(document => {
+    for (const id of ["BUILDER-102", "BUILDER-103"]) document.stories.find(story => story.id === id).status = "in-progress";
+    if (settings) document.settings = settings;
+  });
+}
+
+function stalledIds(view) {
+  return view.stories.filter(story => story.stalled).map(story => story.id);
+}
+
+test("the stalled threshold is read from the map, can be overridden and turned off", () => {
+  const options = { history: stalledHistory, now: stalledNow };
+  const view = getStoryMapForViewer(stalledMap(), engineer, options);
+  assert.equal(view.stalledAfterWeeks, 4);
+  assert.deepEqual(stalledIds(view), ["BUILDER-101"]);
+  const since = Object.fromEntries(view.stories.map(story => [story.id, story.inProgressSince]));
+  // Measured from the latest move to in progress. Without a matching history entry, there is no start date.
+  assert.deepEqual(since, {
+    "BUILDER-101": "2026-09-01T10:00:00Z",
+    "BUILDER-102": "2026-11-01T10:00:00Z",
+    "BUILDER-103": undefined,
+    "FINANCE-201": undefined,
+    "FINANCE-202": undefined,
+  });
+
+  const fromMap = getStoryMapForViewer(stalledMap({ stalledAfterWeeks: 12 }), engineer, options);
+  assert.equal(fromMap.stalledAfterWeeks, 12);
+  assert.deepEqual(stalledIds(fromMap), []);
+  const overridden = getStoryMapForViewer(stalledMap({ stalledAfterWeeks: 12 }), engineer, { ...options, stalledAfterWeeks: 2 });
+  assert.deepEqual(stalledIds(overridden), ["BUILDER-101", "BUILDER-102"]);
+
+  const off = getStoryMapForViewer(stalledMap({ stalledAfterWeeks: 0 }), engineer, options);
+  assert.equal(Object.hasOwn(off, "stalledAfterWeeks"), false);
+  assert.deepEqual(stalledIds(off), []);
+  assert.deepEqual(stalledIds(getStoryMapForViewer(stalledMap(), engineer, { ...options, stalledAfterWeeks: 0 })), []);
+
+  const noHistory = getStoryMapForViewer(stalledMap(), engineer, { now: stalledNow });
+  assert.equal(Object.hasOwn(noHistory, "stalledAfterWeeks"), false);
+  assert.ok(noHistory.stories.every(story => !("stalled" in story) && !("inProgressSince" in story)));
+
+  assert.equal(parseStoryMap(stringify({ ...map, settings: { stalledAfterWeeks: 6 } })).settings.stalledAfterWeeks, 6);
+  for (const settings of [{ stalledAfterWeeks: -1 }, { stalledAfterWeeks: 1.5 }, { stalledAfterWeeks: 105 }, { stalledAfter: 4 }]) {
+    assert.throws(() => parseStoryMap(stringify({ ...map, settings })), StoryMapValidationError, JSON.stringify(settings));
+  }
+});
+
+test("the stalled filter keeps stalled stories and needs history", () => {
+  assert.equal(readStoryMapFilters(new URLSearchParams("status=stalled")).status, "stalled");
+  const view = getStoryMapForViewer(stalledMap({ stalledAfterWeeks: 2 }), engineer, { history: stalledHistory, now: stalledNow });
+  const stalled = filterStoryMapView(view, { status: "stalled" });
+  assert.deepEqual(stalled.stories.map(story => story.id), ["BUILDER-101", "BUILDER-102"]);
+  assert.equal(stalled.filter.status, "stalled");
+  assert.equal(stalled.filter.hidden, undefined);
+
+  // Without history, and for customers, the stalled filter falls back to the default.
+  const noHistory = filterStoryMapView(getStoryMapForViewer(stalledMap(), engineer), { status: "stalled" });
+  assert.equal(noHistory.filter.status, undefined);
+  assert.equal(noHistory.stories.length, 4);
+  const customer = getStoryMapForViewer(stalledMap(), regular, { history: stalledHistory, now: stalledNow });
+  assert.equal(filterStoryMapView(customer, { status: "stalled" }).stories.length, customer.stories.length);
+});
+
+test("the board flags stalled stories to internal viewers only", async () => {
+  const current = stalledMap();
+  const options = { history: stalledHistory, now: stalledNow };
+  const html = await makeStoryMapResponse("/story-map", current, engineer, options).text();
+  const card = cardsIn(html).find(card => card.includes("BUILDER-101"));
+  assert.match(card, /<span class="esm-stalled" title="In progress since 1 Sept? 2026, \d\d:00"><svg[^>]*>[\s\S]*?<\/svg>In progress for 11 weeks<\/span>/);
+  assert.doesNotMatch(card, /esm-changed/);
+  assert.match(cardsIn(html).find(card => card.includes("BUILDER-102")), /<time class="esm-changed"[^>]*>19 days ago<\/time>/);
+  assert.doesNotMatch(cardsIn(html).find(card => card.includes("BUILDER-102")), /esm-stalled/);
+
+  const panel = panelFor(html, "Draft an estimate against a project");
+  assert.match(panel, /<p class="esm-progress-since">In progress since <time dateTime="2026-09-01T10:00:00Z">1 Sept? 2026<\/time><\/p>/);
+  assert.match(panel, /<span>Stalled: in progress for 11 weeks\. Stories are flagged after 4 weeks\.<\/span>/);
+  assert.match(panelFor(html, "Look up prices in the material catalogue"), /In progress since <time dateTime="2026-11-01T10:00:00Z">/);
+  assert.doesNotMatch(panelFor(html, "Look up prices in the material catalogue"), /esm-stalled-note/);
+  assert.match(html, /<option value="stalled">Stalled: in progress over 4 weeks<\/option>/);
+
+  const filtered = await makeStoryMapResponse("/story-map?status=stalled", current, engineer, options).text();
+  assert.match(filtered, /<option value="stalled" selected="">/);
+  assert.match(filtered, /Showing 1 of 5 stories\./);
+  assert.deepEqual(cardsIn(filtered).map(card => /esm-card-id">([^<]+)/.exec(card)[1]), ["BUILDER-101"]);
+
+  const noHistory = await makeStoryMapResponse("/story-map", current, engineer, { now: stalledNow }).text();
+  assert.doesNotMatch(noHistory, /esm-stalled|value="stalled"|In progress since/);
+
+  const customer = await makeStoryMapResponse("/story-map?status=stalled", current, regular, options).text();
+  assert.doesNotMatch(customer, /esm-stalled|stalled|In progress since|In progress for/i);
+  const customerJson = await makeStoryMapResponse("/api/story-map", current, regular, options).json();
+  assert.doesNotMatch(JSON.stringify(customerJson), /stalled|inProgressSince/i);
+});
+
+test("diffs report a change to the stalled threshold", () => {
+  const weeks = stalledAfterWeeks => editedSample(document => { document.settings = { stalledAfterWeeks }; });
+  assert.equal(diffStoryMaps(map, editedSample(document => { document.settings = { stalledAfterWeeks: 4 }; })).stalledAfterWeeks, undefined);
+  const longer = diffStoryMaps(map, weeks(6));
+  assert.deepEqual(longer.stalledAfterWeeks, { from: 4, to: 6 });
+  assert.ok(hasStoryMapChanges(longer));
+  assert.match(formatStoryMapDiff(longer), /### Settings\n\n- Stories are flagged as stalled after 6 weeks in progress \(was 4 weeks\)\./);
+  assert.match(formatStoryMapDiff(diffStoryMaps(map, weeks(0))), /- Turned off the stalled flag \(was 4 weeks\)\./);
+  assert.match(formatStoryMapDiff(diffStoryMaps(weeks(0), weeks(1))), /after 1 week in progress \(was off\)/);
+});

@@ -1,5 +1,5 @@
 import type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
-import type { ReleaseImpact, StoryMapDocument } from "./schema.js";
+import { defaultStalledAfterWeeks, type ReleaseImpact, type StoryMapDocument } from "./schema.js";
 import { isActiveStatus, storyStatuses, type StoryStatus } from "./status.js";
 
 export interface StoryMapViewer {
@@ -18,6 +18,13 @@ export interface StoryMapAccessOptions<Viewer extends StoryMapViewer = StoryMapV
    * customer view never includes dates or names from it.
    */
   history?: StoryMapHistory | null;
+  /**
+   * Overrides the map’s `settings.stalledAfterWeeks`, such as from the host’s own
+   * admin settings. 0 turns the stalled flag off.
+   */
+  stalledAfterWeeks?: number;
+  /** Time to measure how long stories have been in progress from. Defaults to now. */
+  now?: Date;
 }
 
 export const defaultInternalRoles: readonly string[] = ["engineer", "super-admin"];
@@ -60,13 +67,17 @@ export interface InternalStoryCard extends StoryCard {
   lastChangedAt?: string;
   /** The story’s additions and status changes, newest first. */
   history?: StoryHistoryEntry[];
+  /** When an in-progress story last became in progress. Present when the history records it. */
+  inProgressSince?: string;
+  /** True when the story has been in progress for longer than the view’s `stalledAfterWeeks`. */
+  stalled?: boolean;
 }
 
 /** Present when the host has applied `filterStoryMapView`. The board shows its search toolbar only then. */
 export interface StoryMapFilterState {
   query?: string;
-  /** The status filter. Absent means the default: active stories only. */
-  status?: StoryStatus | "all";
+  /** The status filter. Absent means the default: active stories only. `stalled` keeps stalled stories. */
+  status?: StoryStatus | "all" | "stalled";
   /** Only stories added or changed in this many days. */
   changedWithinDays?: number;
   /** Number of stories in the view before filtering. */
@@ -85,8 +96,21 @@ interface StoryMapBaseView {
 }
 
 export type StoryMapView =
-  | (StoryMapBaseView & { audience: "internal"; releases: InternalReleaseLabel[]; stories: InternalStoryCard[] })
+  | (StoryMapBaseView & {
+    audience: "internal";
+    releases: InternalReleaseLabel[];
+    stories: InternalStoryCard[];
+    /** Present when the view has history and the stalled flag is on: the threshold it used. */
+    stalledAfterWeeks?: number;
+  })
   | (StoryMapBaseView & { audience: "all-users"; releases: StoryMapLabel[]; stories: StoryCard[] });
+
+const weekMs = 7 * 24 * 60 * 60 * 1000;
+
+function stalledThreshold(map: StoryMapDocument, override: number | undefined) {
+  if (typeof override === "number" && Number.isFinite(override) && override >= 0) return override;
+  return map.settings?.stalledAfterWeeks ?? defaultStalledAfterWeeks;
+}
 
 function projectLabel(item: StoryMapLabel): StoryMapLabel {
   return { id: item.id, title: item.title, summary: item.summary };
@@ -115,6 +139,9 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       const counts = storyCounts.get(story.release);
       if (counts) counts[story.status]++;
     }
+    // Stalled needs to know when the story became in progress, so it only works with history.
+    const stalledAfterWeeks = history ? stalledThreshold(map, options.stalledAfterWeeks) : 0;
+    const stalledBefore = (options.now ?? new Date()).getTime() - stalledAfterWeeks * weekMs;
     return {
       audience: "internal",
       title: map.title,
@@ -128,6 +155,10 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       })),
       stories: map.stories.map(story => {
         const entries = byStory.get(story.id);
+        // Only trust the newest entry: if it is not the move to in progress, the history is
+        // older than the map, and the start date is unknown.
+        const inProgressSince = story.status === "in-progress" && entries?.[0].to === "in-progress" ? entries[0].at : undefined;
+        const stalled = !!inProgressSince && stalledAfterWeeks > 0 && Date.parse(inProgressSince) < stalledBefore;
         return {
           ...projectLabel(story),
           activity: story.activity,
@@ -138,9 +169,12 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           notes: story.notes,
           sources: story.sources,
           ...(entries ? { lastChangedAt: entries[0].at, history: entries } : {}),
+          ...(inProgressSince ? { inProgressSince } : {}),
+          ...(stalled ? { stalled } : {}),
         };
       }),
       ...(history ? { history: { generatedAt: history.generatedAt, complete: history.complete } } : {}),
+      ...(stalledAfterWeeks > 0 ? { stalledAfterWeeks } : {}),
     };
   }
 

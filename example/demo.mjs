@@ -30,6 +30,10 @@ try {
   console.warn(`Status history is unavailable: ${error.message}`);
 }
 
+// Set STORY_MAP_DEMO_NOW to a later date, such as 2027-01-15, to see in-progress stories flagged as stalled.
+const now = process.env.STORY_MAP_DEMO_NOW ? new Date(process.env.STORY_MAP_DEMO_NOW) : undefined;
+if (now && Number.isNaN(now.getTime())) throw new Error("STORY_MAP_DEMO_NOW must be a date, such as 2027-01-15.");
+
 const server = createServer(async (request, response) => {
   try {
     if (request.method !== "GET") {
@@ -65,6 +69,7 @@ const server = createServer(async (request, response) => {
       sourceBaseUrl,
       canViewInternal,
       history,
+      now,
       preservedParams: { as: selected },
     });
     response.writeHead(result.status, Object.fromEntries(result.headers)).end(await result.text());

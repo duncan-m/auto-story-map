@@ -22,6 +22,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 5. Add styles for the new statuses if the host overrides status colours: `--esm-status-blocked` and `--esm-status-cut`.
 6. Releases accept optional [`notes` and `impact`](#release-notes-and-impact). The validator warns about each release with active stories but no impact, so expect new warnings on existing maps. Add impact, or ask an agent to draft it, before turning on `--strict`.
 7. In the internal view, each release is now an `InternalReleaseLabel` with `notes`, `impact` and `storyCounts`. Release titles on internal boards are buttons that open a release panel. Check any host CSS that targets `.esm-release-name`.
+8. Hosts with a history file now see [stalled stories](#flag-stalled-stories) flagged after 4 weeks in progress. Set `settings.stalledAfterWeeks` in the map, or pass `stalledAfterWeeks` to `getStoryMapForViewer`, to change the threshold or turn it off with `0`. The status filter accepts `stalled`, so the type of `StoryMapFilters.status` and `filter.status` now includes `"stalled"`. Pass the same `now` to `getStoryMapForViewer` as to `filterStoryMapView` and the board if the host fixes the time.
 
 ## Upgrade to 0.3.0
 
@@ -257,6 +258,29 @@ The build needs the full Git history. Many CI and hosting systems clone only the
 - Elsewhere, run `git fetch --unshallow` before the command, or generate the file in a step that has the full history and pass it into the build.
 
 The command stops with an explanation when the clone is shallow. Pass `--allow-shallow` to accept a partial history instead; changes before the clone’s oldest commit are then missing.
+
+## Flag stalled stories
+
+A story is stalled when it has been `in-progress` for longer than a number of weeks, 4 by default. Internal viewers see a warning on its card, such as “In progress for 6 weeks”, in place of the time since its last change. The story panel says when it became in progress and that it is stalled, and the status filter has a **Stalled** option. Customers never see the flag.
+
+Stalled is a flag, not a status, and nothing changes the map automatically. When a stalled story cannot continue, set it to `blocked` with a `statusReason`. When it is still moving, leave it: the flag clears once it ships.
+
+The time is measured from the latest history entry that moved the story to in progress, so a story that went back to planned and restarted counts from its restart. The flag needs the [status history](#show-status-history) file. Without it, or when the newest history entry for the story is not its move to in progress, there is no flag.
+
+Set the threshold for everyone in the map. Changes go through a PR like any other edit, and `story-map diff` lists them under **Settings**:
+
+```yaml
+settings:
+  stalledAfterWeeks: 6   # whole weeks, up to 104; 0 turns the flag off
+```
+
+A host can override it, for example from its own admin settings:
+
+```ts
+const view = getStoryMapForViewer(document, viewer, { canViewInternal, history, stalledAfterWeeks: 8 });
+```
+
+Pass `now` to `getStoryMapForViewer` as well as to `filterStoryMapView` and the board when the host fixes the time, such as in tests.
 
 ## Integrate with a product
 

@@ -53,6 +53,19 @@
       ],
       "additionalProperties": false
     },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "stalledAfterWeeks": {
+          "description": "Flag a story as stalled when it has been in progress for longer than this many weeks. Defaults to 4. 0 turns the flag off. Needs the history file from `story-map history`.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 104
+        }
+      },
+      "additionalProperties": false,
+      "description": "Optional settings for everyone who views the map. Hosts can override them."
+    },
     "activities": {
       "minItems": 1,
       "maxItems": 50,

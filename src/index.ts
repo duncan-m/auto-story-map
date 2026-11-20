@@ -7,7 +7,7 @@ export {
   storyMapWarnings,
   storyStatuses,
 } from "./schema.js";
-export { releaseImpactMaxItems, releaseNotesMaxLength } from "./schema.js";
+export { defaultStalledAfterWeeks, releaseImpactMaxItems, releaseNotesMaxLength } from "./schema.js";
 export type { ReleaseImpact, StoryMapDocument, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
 export { activeStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
 export { defaultInternalRoles, getStoryMapForViewer } from "./view.js";
