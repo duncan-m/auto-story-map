@@ -2,6 +2,14 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## 0.4.1
+
+No upgrade steps. Nothing changes for hosts that do not load the new script.
+
+- New optional browser script, `embedded-story-map/board.js`. Load it with `<script type="module">` on the page that renders the board, and the filters apply as soon as they change: a select applies on change, search applies on Enter, the **Apply** button is hidden, and focus returns to the filter that was used. Without it, the filter form works as before. It also exports `enhanceStoryMapFilters(root)` for pages that add a board after loading.
+- The **Apply** button has a new `esm-apply` class, and the filter form has an empty, visually hidden hint that the script fills in for screen reader users.
+- The demo shows this library’s own story map instead of the builder estimates sample, loads `board.js`, and starts as **Super admin**. The sample moved to `test/fixtures/builder-estimates.yaml`.
+
 ## 0.4.0
 
 Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-040). Existing maps stay valid, but expect new validation warnings, mainly releases with no impact.

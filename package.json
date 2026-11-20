@@ -1,6 +1,6 @@
 {
   "name": "embedded-story-map",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Git-backed user story maps embedded in product applications",
   "license": "Apache-2.0",
   "keywords": [
@@ -32,6 +32,10 @@
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
+    },
+    "./board.js": {
+      "types": "./dist/board.d.ts",
+      "default": "./dist/board.js"
     },
     "./styles.css": "./styles.css",
     "./schema.json": "./story-map.schema.json"

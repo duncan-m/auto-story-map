@@ -54,9 +54,10 @@ assert.match(internalHtml, /autofocus=""[^>]*popovertargetaction="hide"/i);
 
 const resolve = createRequire(import.meta.url).resolve;
 const css = readFileSync(resolve("embedded-story-map/styles.css"), "utf8");
+assert.match(readFileSync(resolve("embedded-story-map/board.js"), "utf8"), /export function enhanceStoryMapFilters/);
 assert.match(css, /\.esm-board\s*\{/);
 const schema = JSON.parse(readFileSync(resolve("embedded-story-map/schema.json"), "utf8"));
 assert.equal(schema.properties.version.const, 1);
 assert.equal(version.split(".")[0], reactMajor);
-console.log(`Packed imports, board, stylesheet and JSON Schema work with React ${version}.`);
+console.log(`Packed imports, board, board script, stylesheet and JSON Schema work with React ${version}.`);
 NODE

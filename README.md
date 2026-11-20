@@ -19,7 +19,7 @@ npm run demo
 
 The demo shows this library’s own story map, `product/story-map.yaml`: what each release delivered, what is merged for the next one, and what is planned. Open [the local story map](http://127.0.0.1:4173/story-map). It starts as **Super admin**, who sees the full internal map. Select **Link stories to their engineering overview** to open its details, and follow the **Engineering overview** link into these docs. Select the **0.4.0: Delivery tracking** release title to see its notes, expected impact and progress. Search for “history”, filter by status, or use **Changed** to see recent changes. One story is cut, so it is hidden by default: choose **All, including blocked and cut** to see it and its reason. The demo reads this repository’s Git history to show when each story changed and who changed it. Switch to **Regular user** to see the customer roadmap, where merged stories read as in progress. The demo also offers **Engineer**, **Product manager** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves the same view as JSON at `/api/story-map`.
 
-Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. The panel and the search form work without client-side JavaScript.
+Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. The panel and the search form work without client-side JavaScript. The demo also loads the optional `board.js` script, so filters apply as soon as you choose them.
 
 ## Embed it in a product
 
@@ -45,7 +45,7 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Run `npm install embedded-story-map@0.4.0` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.4.0 adds the `merged`, `blocked` and `cut` statuses, so host code that handles every status needs updating. It also adds release notes and impact, stalled stories and “last updated” from Git. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.2.0 or earlier, follow the [0.3.0 upgrade steps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030) first.
+Run `npm install embedded-story-map@0.4.1` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.4.0 adds the `merged`, `blocked` and `cut` statuses, so host code that handles every status needs updating. It also adds release notes and impact, stalled stories and “last updated” from Git. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.2.0 or earlier, follow the [0.3.0 upgrade steps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030) first.
 
 ## Populate the first map
 

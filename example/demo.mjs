@@ -16,6 +16,9 @@ const styles = new Map([
   ["/story-map.css", await readFile(new URL("../styles.css", import.meta.url), "utf8")],
   ["/example-host.css", await readFile(new URL("./host.css", import.meta.url), "utf8")],
 ]);
+const scripts = new Map([
+  ["/story-map-board.js", await readFile(new URL("../dist/board.js", import.meta.url), "utf8")],
+]);
 const mapFile = new URL("../product/story-map.yaml", import.meta.url);
 const sourceBaseUrl = "https://github.com/duncan-m/embedable-story-map/blob/main/";
 // This product also gives product managers the internal view.
@@ -45,6 +48,10 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost");
     if (url.pathname === "/") {
       response.writeHead(302, { Location: "/story-map" }).end();
+      return;
+    }
+    if (scripts.has(url.pathname)) {
+      response.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" }).end(scripts.get(url.pathname));
       return;
     }
     if (styles.has(url.pathname)) {

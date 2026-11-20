@@ -88,6 +88,16 @@ releases:
         draft: true
     customer:
       title: "0.4.0"
+  - id: v0-4-1
+    title: "0.4.1: Filters apply as you choose"
+    summary: An optional script applies the board’s filters as soon as they change, and the demo shows this library’s own map.
+    impact:
+      - metric: Steps to change a filter
+        expected: One choice instead of a choice and a click on Apply
+        solves: Viewers changing a filter and forgetting to apply it
+        draft: true
+    customer:
+      title: "0.4.1"
   - id: next
     title: Next
     summary: Proposed for 0.4.x or 0.5.0.
@@ -289,6 +299,19 @@ stories:
       - docs/story-map.md#merged-and-shipped
     customer:
       title: Tell finished work from released work
+  # 0.4.1
+  - id: ESM-411
+    title: Apply filters as soon as they change
+    activity: explore
+    release: v0-4-1
+    status: merged
+    summary: The optional board.js script submits the filter form when a select changes or Enter is pressed in search, hides Apply, and returns focus to the filter that was used.
+    notes: Progressive enhancement only. Without the script, the form and its Apply button work as before.
+    sources:
+      - docs/story-map.md#integrate-with-a-product
+      - docs/ENGINEERING-OVERVIEW.md#filter-toolbar
+    customer:
+      title: Filters apply as you choose them
   # Next
   - id: ESM-501
     title: Expand activities into steps
