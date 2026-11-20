@@ -336,6 +336,7 @@ Templates and the guide are found relative to the compiled `dist/init.js` (`new 
 - **History contains names.** Keep it internal-only and out of static assets.
 - **Responses are private.** The example host sends `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. Hosts are told to do the same, because the page differs per viewer.
 - **Only `http` and `https` sources become links.** React escapes all text, and the board never uses `dangerouslySetInnerHTML`. A test checks that story text renders as text.
+- **The publish job installs nothing.** It is the only job that can get an npm publishing token, so it publishes the tarball built by `pack` and never runs `npm ci` or dependency scripts.
 - **Git arguments are not shell input.** `git` runs through `execFile` with an argument array, and refs starting with `-` are rejected so they cannot be read as options.
 - **Source checks stay inside the repository.** Paths that resolve outside `--root` are reported, not read.
 - **Bounded input.** Keep the schema's length and count limits and the YAML alias limit.
@@ -386,7 +387,7 @@ Tests that need Git create temporary repositories and clean them up. They need `
 
 `ci.yml` runs on every PR and push to `main`, on a matrix of Node 20 and 26 with React 18 and 19:
 
-1. `npm ci`
+1. `npm ci --ignore-scripts`, then `npm run build`, so no dependency's install script runs in CI
 2. Validate the product map with `--format github --check-sources --plans docs`
 3. On PRs, once per run, append `story-map diff origin/<base>` to the job summary. The checkout uses `fetch-depth: 0` for this.
 4. `npm test`
@@ -401,7 +402,9 @@ Actions are pinned to commit SHAs with the version in a comment. `templates/stor
 
 [The release steps](releasing.md) are the full procedure. In short: bump `package.json` with `npm version <version> --no-git-tag-version`, add a `## <version>` section to `CHANGELOG.md`, merge, then push a `v<version>` tag.
 
-`release.yml` reruns the full CI matrix, checks the tag matches `package.json` and has a changelog section, publishes with `npm publish --provenance` using npm trusted publishing (OpenID Connect, no stored token), and creates a GitHub release from the changelog section. It runs in the `npm` GitHub environment, where maintainers can require approval. If the version is already on npm, it only creates the GitHub release.
+`release.yml` reruns the full CI matrix, then a `pack` job with read-only permissions builds and packs the package and uploads the tarball. The `publish` job downloads it, checks the tag matches `package.json`, the tarball's version and a changelog section, publishes the tarball with `npm publish --provenance` using npm trusted publishing (OpenID Connect, no stored token), and creates a GitHub release from the changelog section. It runs in the `npm` GitHub environment, where maintainers can require approval. If the version is already on npm, it only creates the GitHub release.
+
+The `publish` job installs nothing. It can mint an npm publishing token, so a dependency's install script running there could publish a malicious version with valid provenance. Keep build and test steps in `check` or `pack`, which install with `npm ci --ignore-scripts` and build explicitly.
 
 Before 1.0.0, a minor version may contain breaking changes. Each one needs a changelog entry marked **Breaking**, an upgrade section in `docs/story-map.md`, and updated upgrade links in `README.md` and `AGENTS.md`.
 
