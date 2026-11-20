@@ -1668,6 +1668,25 @@ test("history files load with and without the skipped fields", () => {
   assert.throws(() => parseStoryMapHistory({ ...base, skippedCount: -1 }), /Invalid story map history/);
 });
 
+test("story-map diff escapes rejected story IDs from an older base", async t => {
+  const { root } = await formatRepo(t, [
+    document => { storyIn(document, "BUILDER-103").id = "x` [link](https://example.test)\n@team #1"; },
+  ]);
+  await writeFile(join(root, "product/story-map.yaml"), stringify(editedSample(document => { storyIn(document, "BUILDER-102").status = "in-progress"; })));
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const result = spawnSync(process.execPath, [cli, "diff", "HEAD"], { cwd: root, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  const note = result.stdout.split("\n").find(line => line.startsWith("> The map at"));
+  // The whole rejected ID stays in one code span, so its link and mentions render as plain text.
+  assert.equal(note, "> The map at `HEAD` uses an older format, so this comparison leaves out 1 story that no longer validates (``x` [link](https://example.test) @team #1``) from it.");
+});
+
+test("code spans hold any number of backtick runs", async () => {
+  const { code } = await import("../dist/diff.js");
+  assert.equal(code("a``b`c"), "```a``b`c```");
+  assert.equal(code("`a".repeat(300000)).length, 600006);
+});
+
 test("story-map diff compares with a base that uses an older format", async t => {
   const { root } = await formatRepo(t, [
     document => { document.owner = "Platform team"; storyIn(document, "BUILDER-103").status = "on-hold"; },
