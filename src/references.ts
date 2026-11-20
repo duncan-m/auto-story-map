@@ -10,13 +10,88 @@ export interface ReferenceIssue extends StoryMapIssue {
 
 const markdownExtensions = new Set([".md", ".markdown"]);
 
+/** Largest Markdown file read for heading anchors, so source checks stay quick. */
+export const maxMarkdownBytes = 5 * 1024 * 1024;
+
+/**
+ * Removes every `open … close` span with a nonempty body and keeps what
+ * `keep` returns for it. Each character is visited a bounded number of times,
+ * so text with many unclosed openers stays linear (a regex would rescan the
+ * rest of the text from every opener).
+ */
+function replaceSpans(text: string, open: string, close: string, keep: (body: string) => string, allowEmpty = false) {
+  let out = "";
+  let from = 0;
+  let closeAt = -1;
+  for (let i = text.indexOf(open); i !== -1; i = text.indexOf(open, i + 1)) {
+    if (i < from) continue;
+    if (closeAt <= i) closeAt = text.indexOf(close, i + 1);
+    if (closeAt === -1) break;
+    if (closeAt === i + 1 && !allowEmpty) continue;
+    out += text.slice(from, i) + keep(text.slice(i + 1, closeAt));
+    from = closeAt + 1;
+    i = closeAt;
+  }
+  return out + text.slice(from);
+}
+
+/** Replaces `[text](url)` and `![text](url)` with their text, in linear time. */
+function stripLinks(text: string) {
+  let out = "";
+  let from = 0;
+  let bracketAt = -1;
+  let parenAt = -1;
+  for (let i = text.indexOf("["); i !== -1; i = text.indexOf("[", i + 1)) {
+    if (i < from) continue;
+    if (bracketAt <= i) bracketAt = text.indexOf("]", i + 1);
+    if (bracketAt === -1) break;
+    if (text[bracketAt + 1] !== "(") continue;
+    if (parenAt <= bracketAt + 1) parenAt = text.indexOf(")", bracketAt + 2);
+    if (parenAt === -1) break;
+    const start = i > from && text[i - 1] === "!" ? i - 1 : i;
+    out += text.slice(from, start) + text.slice(i + 1, bracketAt);
+    from = parenAt + 1;
+    i = parenAt;
+  }
+  return out + text.slice(from);
+}
+
 /** Strips inline Markdown so heading text matches what GitHub renders. */
 function headingText(raw: string) {
-  return raw
-    .replace(/<[^>]+>/g, "")
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/`([^`]*)`/g, "$1")
-    .trim();
+  const withoutTags = replaceSpans(raw, "<", ">", () => "");
+  return replaceSpans(stripLinks(withoutTags), "`", "`", body => body, true).trim();
+}
+
+const isSpace = (char: string) => /\s/.test(char);
+
+/** Returns an ATX heading's text without its opening and closing `#`s, or undefined. */
+function atxHeading(line: string) {
+  const opening = /^\s{0,3}#{1,6}\s+/.exec(line);
+  if (!opening) return undefined;
+  const text = line.slice(opening[0].length).trimEnd();
+  let end = text.length;
+  while (end > 0 && text[end - 1] === "#") end--;
+  if (end === text.length || end === 0 || !isSpace(text[end - 1])) return text;
+  while (end > 0 && isSpace(text[end - 1])) end--;
+  return text.slice(0, end);
+}
+
+/**
+ * Returns the `id` and `name` values of each `<a …>` tag in a line. A tag runs
+ * to the next `>`, so a quoted `<` inside it does not end it. Openers inside a
+ * tag already read share its end, so each character is read once.
+ */
+function htmlAnchors(line: string) {
+  const ids: string[] = [];
+  const opener = /<a\s/gi;
+  for (let match = opener.exec(line); match; match = opener.exec(line)) {
+    const close = line.indexOf(">", match.index);
+    const tag = line.slice(match.index, close === -1 ? line.length : close);
+    for (const attribute of tag.matchAll(/\b(?:id|name)=["']([^"']+)["']/gi)) ids.push(attribute[1].toLowerCase());
+    if (close === -1) break;
+    opener.lastIndex = close + 1;
+  }
+  return ids;
 }
 
 /** GitHub’s heading anchor rules: lower case, drop punctuation, spaces become hyphens. */
@@ -46,12 +121,12 @@ export function markdownAnchors(markdown: string) {
     }
     if (fence) return;
 
-    const atx = /^\s{0,3}#{1,6}\s+(.*?)(?:\s+#+)?\s*$/.exec(line);
-    if (atx) addHeading(atx[1]);
+    const atx = atxHeading(line);
+    if (atx !== undefined) addHeading(atx);
     else if (index > 0 && /^\s{0,3}(=+|-+)\s*$/.test(line) && lines[index - 1].trim() && !/^\s*([-*+]|\d+\.)\s/.test(lines[index - 1])) {
       addHeading(lines[index - 1]);
     }
-    for (const match of line.matchAll(/<a\s[^>]*\b(?:id|name)=["']([^"']+)["']/gi)) anchors.add(match[1].toLowerCase());
+    for (const id of htmlAnchors(line)) anchors.add(id);
   });
   return anchors;
 }
@@ -154,6 +229,10 @@ export async function checkSources(loaded: LoadedStoryMap, root: string): Promis
       if (!fragment || !info.isFile() || !markdownExtensions.has(extname(file).toLowerCase())) continue;
 
       let anchors = anchorCache.get(absolute);
+      if (!anchors && info.size > maxMarkdownBytes) {
+        report(`'${file}' is larger than ${maxMarkdownBytes / 1024 / 1024} MB, so '#${fragment}' was not checked.`);
+        continue;
+      }
       if (!anchors) {
         anchors = markdownAnchors(await readFile(absolute, "utf8"));
         anchorCache.set(absolute, anchors);
