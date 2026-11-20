@@ -2,9 +2,9 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
-## Unreleased
+## 0.4.0
 
-Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-040). Existing maps stay valid.
+Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-040). Existing maps stay valid, but expect new validation warnings, mainly releases with no impact.
 
 ### Statuses
 
