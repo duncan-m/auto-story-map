@@ -2,6 +2,12 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+- CLI options no longer take the next option as their value. `story-map validate --plans --strict map.yaml` and `story-map history --map --allow-shallow` used to read `--strict` and `--allow-shallow` as paths. They now print `story-map: --plans needs a value` and the usage, and exit 2. Pass a value that starts with a hyphen as `--name=-value`. The same applies to `init --dir`.
+- `--check-sources` and `--plans` no longer follow symbolic links out of the repository. A source or plan file that links outside is reported as pointing outside the repository through a symbolic link, and is not read. Links inside the repository still work.
+- `story-map diff` escapes `@` and `#` in text from the map, so pasting the summary into a PR does not mention people or teams, or link issues.
+
 ## 0.5.0
 
 No upgrade steps. Hosts with custom CSS for `.esm-release` should check the new toggle fits.

@@ -259,11 +259,16 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     || groups(diff.activities) || groups(diff.releases) || diff.releaseDetails.length || diff.stalledAfterWeeks);
 }
 
-/** Escapes text from the map so it renders literally in GitHub Markdown, including inside table cells. */
+/**
+ * Escapes text from the map so it renders literally in GitHub Markdown,
+ * including inside table cells. `@` and `#` become character references, so
+ * a pasted summary does not mention people or teams, or link issues.
+ */
 function text(value: string) {
   return value
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/[\\`*_[\]|#~]/g, character => `\\${character}`)
+    .replace(/[@#]/g, character => character === "@" ? "&#64;" : "&#35;")
+    .replace(/[\\`*_[\]|~]/g, character => `\\${character}`)
     .replace(/\s+/g, " ");
 }
 

@@ -196,6 +196,7 @@ Two optional checks look beyond the map file. Run them from the repository root,
 
 - `--check-sources` checks that each repository-relative source exists and that each Markdown `#heading` fragment matches a heading in that file, using GitHub’s anchor rules. Absolute URLs and free text such as “Agreed in planning” are not checked.
 - `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. Repeat the option for several folders.
+- Both checks stay inside the repository. A source or plan that points outside it, directly or through a symbolic link, is reported and never read. Symbolic links that stay inside the repository are followed as usual.
 
 ```sh
 npx --no-install story-map validate --check-sources --plans docs product/story-map.yaml

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -458,6 +458,14 @@ test("diffs flag visibility switches and escape Markdown from the map", () => {
   assert.match(markdown, /Pipe \\\| &lt;img src=x&gt; \\\[link\\\]\(https:\/\/x\.test\)/);
   assert.doesNotMatch(markdown, /<img/);
 
+  // Mentions and issue references from the map do not notify people or link issues when pasted into a PR.
+  const mentions = editedSample(document => { document.stories[4].title = "Ask @someone and @org/team about #12 and GH-3"; });
+  const pasted = formatStoryMapDiff(diffStoryMaps(map, mentions));
+  for (const raw of ["@someone", "@org/team", "#12"]) assert.equal(pasted.includes(raw), false, raw);
+  assert.match(pasted, /Ask &#64;someone and &#64;org\/team about &#35;12 and GH-3/);
+  // The summary's own Markdown headings are untouched.
+  assert.match(pasted, /^## Story map changes\n/);
+
   assert.equal(hasStoryMapChanges(diffStoryMaps(map, map)), false);
   assert.equal(formatStoryMapDiff(diffStoryMaps(map, map)), "## Story map changes\n\nNo story map changes.\n");
   const created = diffStoryMaps(null, map);
@@ -547,6 +555,88 @@ test("the CLI diffs the map against a Git reference", async t => {
   assert.equal(run("diff", "--upload-pack=x").status, 2);
   await writeFile(join(root, "product/story-map.yaml"), "version: 2\n");
   assert.equal(run("diff", "HEAD").status, 1);
+});
+
+test("CLI options do not take the next option as their value", async t => {
+  const root = await mkdtemp(join(tmpdir(), "story-map-args-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(join(root, "map.yaml"), sample);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const run = (...args) => spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8" });
+  for (const [args, option] of [
+    [["validate", "--plans", "--strict", "map.yaml"], "--plans"],
+    [["validate", "--format", "--strict", "map.yaml"], "--format"],
+    [["validate", "map.yaml", "--root"], "--root"],
+    [["history", "--map", "--allow-shallow"], "--map"],
+    [["history", "--bot-names", "--allow-shallow"], "--bot-names"],
+    [["history", "--out="], "--out"],
+    [["diff", "--map", "--format", "json", "HEAD"], "--map"],
+    [["init", "--dir", "--no-ci"], "--dir"],
+  ]) {
+    const result = run(...args);
+    assert.equal(result.status, 2, args.join(" "));
+    assert.ok(result.stderr.startsWith(`story-map: ${option} needs a value\n\nUsage:`), `${args.join(" ")}: ${result.stderr.slice(0, 80)}`);
+  }
+  // With =, a value may start with a hyphen.
+  const dashed = run("validate", "--root=-not-a-folder", "--check-sources", "map.yaml");
+  assert.notEqual(dashed.status, 2);
+  assert.equal(run("validate", "--plans", "missing", "map.yaml").status, 1);
+  // Other usage errors print no message before the usage.
+  assert.match(run("validate", "--nope", "map.yaml").stderr, /^Usage:/);
+});
+
+test("source and plan checks do not follow symbolic links out of the repository", async t => {
+  const { checkPlanReferences, checkSources } = await import("../dist/references.js");
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const base = await mkdtemp(join(tmpdir(), "story-map-links-"));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const root = join(base, "repo");
+  const outside = join(base, "outside");
+  await mkdir(join(root, "docs/guides"), { recursive: true });
+  await mkdir(join(outside, "notes"), { recursive: true });
+  await writeFile(join(outside, "secret.md"), "# Secret heading\n\nBUILDER-999\n");
+  await writeFile(join(outside, "notes/plan.md"), "BUILDER-998\n");
+  await writeFile(join(root, "docs/guides/real.md"), "# Real heading\n");
+  await symlink(join(outside, "secret.md"), join(root, "docs/secret.md"));
+  await symlink(join(outside, "missing.md"), join(root, "docs/dangling.md"));
+  await symlink("../outside/notes", join(root, "notes"));
+  await symlink("guides/real.md", join(root, "docs/inside.md"));
+  await symlink("guides", join(root, "docs/linked"));
+  await symlink("loop-b.md", join(root, "docs/loop-a.md"));
+  await symlink("loop-a.md", join(root, "docs/loop-b.md"));
+
+  const sources = [
+    "docs/secret.md#secret-heading",
+    "docs/dangling.md",
+    "notes/plan.md",
+    "docs/inside.md#real-heading",
+    "docs/linked/real.md#real-heading",
+    "docs/inside.md#no-such-heading",
+    "docs/loop-a.md",
+  ];
+  const source = sample.replace("      - docs/example-builder-estimate-plan.md#builder-workflow\n", sources.map(path => `      - ${path}\n`).join(""));
+  const issues = await checkSources(loadStoryMap(source), root);
+  assert.deepEqual(issues.map(issue => issue.message), [
+    "Source 'docs/secret.md#secret-heading' points outside the repository through a symbolic link.",
+    // A link out of the repository says the same whether or not its target exists.
+    "Source 'docs/dangling.md' points outside the repository through a symbolic link.",
+    "Source 'notes/plan.md' points outside the repository through a symbolic link.",
+    "'docs/inside.md' has no heading for '#no-such-heading'.",
+    "Source file 'docs/loop-a.md' does not exist.",
+  ]);
+
+  const loaded = loadStoryMap(sample);
+  const plans = await checkPlanReferences(loaded, root, ["docs", "notes", "../outside"]);
+  assert.deepEqual(plans.map(issue => [issue.file, issue.message]), [
+    ["docs/dangling.md", "Points outside the repository through a symbolic link, so it was not read."],
+    ["docs/secret.md", "Points outside the repository through a symbolic link, so it was not read."],
+    ["notes", "Points outside the repository through a symbolic link."],
+    ["../outside", "Points outside the repository."],
+  ]);
+  // Links inside the repository are still read: an unknown ID in a linked plan is found once.
+  await writeFile(join(root, "docs/guides/real.md"), "# Real heading\n\nBUILDER-997\n");
+  const inside = await checkPlanReferences(loaded, root, ["docs/linked"]);
+  assert.deepEqual(inside.map(issue => [issue.file, issue.message]), [["docs/guides/real.md", "Unknown story ID 'BUILDER-997'. Add it to the map or correct the reference."]]);
 });
 
 /** Builds a repository whose map changes over several dated commits by different people. */
