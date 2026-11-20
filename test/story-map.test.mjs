@@ -1927,3 +1927,25 @@ test("the board shows the running version, with links for internal viewers", asy
   const hidden = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer), showVersion: false }));
   assert.doesNotMatch(hidden, /esm-footer/);
 });
+
+test("groups story history newest first in linear time, keeping equal timestamps latest-supplied first", () => {
+  const event = (to, at, commit) => ({ storyId: "BUILDER-101", type: "status", from: "planned", to, at, by: "Alex Morgan", commit });
+  const history = {
+    version: 1, generatedAt: "2026-11-20T12:00:00.000Z", complete: true,
+    events: [
+      event("planned", "2026-11-01T10:00:00.000Z", "a000001"),
+      event("in-progress", "2026-11-03T10:00:00.000Z", "a000002"),
+      event("blocked", "2026-11-03T10:00:00.000Z", "a000003"),
+      event("merged", "2026-11-02T10:00:00.000Z", "a000004"),
+    ],
+  };
+  const story = getStoryMapForViewer(map, engineer, { history }).stories.find(s => s.id === "BUILDER-101");
+  assert.deepEqual(story.history.map(entry => entry.commit), ["a000003", "a000002", "a000004", "a000001"]);
+
+  // Many events for one story stay fast.
+  const many = Array.from({ length: 100_000 }, (_, i) => event("planned", new Date(Date.UTC(2026, 0, 1) + i * 1000).toISOString(), "b000000"));
+  const started = performance.now();
+  const view = getStoryMapForViewer(map, engineer, { history: { ...history, events: many } });
+  assert.ok(performance.now() - started < 2000);
+  assert.equal(view.stories.find(s => s.id === "BUILDER-101").history.length, 100_000);
+});
