@@ -166,8 +166,13 @@ test("renders one Markdown overview link and lists the other sources", async () 
   const overviewLinks = [...html.matchAll(/<a class="esm-overview-link" href="([^"]+)"/g)].map(match => match[1]);
   assert.deepEqual(overviewLinks, [sourceBaseUrl + "docs/example-builder-estimate-plan.md#builder-workflow"]);
   const panel = panelFor(html, story.title);
-  assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}source/lib/ap/controls.ts"><code>source/lib/ap/controls.ts</code></a>`));
-  assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}docs/another-overview.md#decisions">`));
+  assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}source/lib/ap/controls.ts" target="_blank" rel="noopener noreferrer"><code>source/lib/ap/controls.ts</code><svg[^>]*esm-external[\\s\\S]*?<span class="esm-visually-hidden"> \\(opens in a new tab\\)</span></a>`));
+  assert.match(html, /<a class="esm-overview-link" href="[^"]+" aria-label="Engineering overview for [^"]+ \(opens in a new tab\)" target="_blank" rel="noopener noreferrer">/);
+  // Every engineering link opens in a new tab without giving the new page access to the board.
+  const engineeringLinks = panel.match(/<a [^>]*>/g);
+  assert.ok(engineeringLinks.length >= 3);
+  for (const link of engineeringLinks) assert.match(link, /target="_blank" rel="noopener noreferrer"/);
+  assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}docs/another-overview.md#decisions" target="_blank" rel="noopener noreferrer">`));
   assert.match(panel, /<li><code>Agreed in the March planning call<\/code><\/li>/);
 });
 
@@ -227,6 +232,7 @@ test("the filter toolbar submits a GET form and keeps host parameters", async ()
   assert.match(html, /name="q"[^>]*value="estimate"/);
   assert.match(html, /<option value="planned" selected="">Planned<\/option>/);
   assert.match(html, /Showing 3 of 5 stories\. <a href="\?as=engineer">Clear filters<\/a>/);
+  assert.doesNotMatch(html.match(/<a href="\?as=engineer">/)[0], /target=/);
   assert.equal(cardsIn(html).length, 3);
   assert.doesNotMatch(html, /Reconciliation discovery/);
 

@@ -2,6 +2,10 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+- Engineering overview and source links in the story panel open in a new tab, with an icon and screen-reader text that say so.
+
 ## 0.3.0
 
 Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030). The YAML format is unchanged.

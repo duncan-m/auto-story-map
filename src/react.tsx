@@ -46,6 +46,20 @@ function resolveSources(sources: readonly string[] | undefined, sourceBaseUrl?: 
   });
 }
 
+// Engineering links open in a new tab so the board stays where the reader left it.
+const newTab = { target: "_blank", rel: "noopener noreferrer" } as const;
+
+function NewTabHint() {
+  return (
+    <>
+      <svg className="esm-icon esm-external" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9.5 2.5h4v4M13.5 2.5 7 9M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" />
+      </svg>
+      <span className="esm-visually-hidden"> (opens in a new tab)</span>
+    </>
+  );
+}
+
 function StatusIcon({ status }: { status: StoryStatus }) {
   return (
     <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -106,8 +120,8 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
         <section className="esm-detail-section" aria-labelledby={`${panelId}-engineering`}>
           <h4 id={`${panelId}-engineering`}>Engineering</h4>
           {overview && (
-            <a className="esm-overview-link" href={overview.href} aria-label={`Engineering overview for ${story.title}`}>
-              Engineering overview
+            <a className="esm-overview-link" href={overview.href} aria-label={`Engineering overview for ${story.title} (opens in a new tab)`} {...newTab}>
+              Engineering overview<NewTabHint />
             </a>
           )}
           {story.notes && <p className="esm-notes">{story.notes}</p>}
@@ -115,7 +129,9 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
             <ul className="esm-sources" aria-label="Sources">
               {references.map((source, index) => (
                 <li key={index}>
-                  {source.href ? <a href={source.href}><code>{source.label}</code></a> : <code>{source.label}</code>}
+                  {source.href
+                    ? <a href={source.href} {...newTab}><code>{source.label}</code><NewTabHint /></a>
+                    : <code>{source.label}</code>}
                 </li>
               ))}
             </ul>
