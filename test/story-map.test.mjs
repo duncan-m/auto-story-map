@@ -1620,7 +1620,8 @@ test("story-map diff escapes rejected story IDs from an older base", async t => 
   const result = spawnSync(process.execPath, [cli, "diff", "HEAD"], { cwd: root, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   const note = result.stdout.split("\n").find(line => line.startsWith("> The map at"));
-  assert.equal(note, "> The map at `HEAD` uses an older format, so this comparison leaves out 1 story that no longer validates (x\\` \\[link\\](https://example.test) @<span></span>team #<span></span>1) from it.");
+  // The whole rejected ID stays in one code span, so its link and mentions render as plain text.
+  assert.equal(note, "> The map at `HEAD` uses an older format, so this comparison leaves out 1 story that no longer validates (``x` [link](https://example.test) @team #1``) from it.");
 });
 
 test("story-map diff compares with a base that uses an older format", async t => {

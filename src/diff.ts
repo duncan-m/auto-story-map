@@ -267,7 +267,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
  * `&#64;` before it finds mentions, and drops an empty HTML comment inside a
  * table cell, so neither works there. The span renders as nothing.
  */
-export function text(value: string) {
+function text(value: string) {
   return value
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/[\\`*_[\]|~]/g, character => `\\${character}`)
@@ -276,12 +276,17 @@ export function text(value: string) {
 }
 
 /**
- * Renders a value as inline code, or as escaped text when a code span could
- * not hold it literally, such as a story ID that failed validation and
- * contains a backtick or line break.
+ * Renders a value as inline code that GitHub shows literally, even a story ID
+ * that failed validation. The fence is one backtick longer than any run of
+ * backticks in the value, and line breaks become spaces, so the value cannot
+ * end the span, and URLs or mentions inside it stay plain text.
  */
 export function code(value: string) {
-  return /^[^\s`]+$/.test(value) ? `\`${value}\`` : text(value);
+  const flat = value.replace(/\s+/g, " ");
+  if (!flat.trim()) return text(value);
+  const fence = "`".repeat(Math.max(0, ...(flat.match(/`+/g) ?? []).map(run => run.length)) + 1);
+  const pad = /^[ `]|[ `]$/.test(flat) ? " " : "";
+  return `${fence}${pad}${flat}${pad}${fence}`;
 }
 
 function story(ref: StoryDiffRef) {
