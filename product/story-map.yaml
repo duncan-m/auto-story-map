@@ -474,7 +474,7 @@ stories:
     title: Check that Miro and Lucidchart import a test file
     activity: explore
     release: export
-    status: in-progress
+    status: merged
     summary: Import a hand-made Visio file and CSV into Miro, Lucidchart and LibreOffice before building the export, and record what survives.
     sources:
       - docs/plans/export-to-external-tools.md#1-check-that-miro-and-lucidchart-import-a-test-file
