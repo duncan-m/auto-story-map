@@ -1,103 +1,311 @@
 # yaml-language-server: $schema=../story-map.schema.json
 version: 1
-id: builder-estimates
-title: Builder estimates delivery map
-summary: Sample plan for the builder-to-finance purchasing workflow.
+id: embedded-story-map
+title: Embedded Story Map delivery map
+summary: How product teams set up, plan, review and follow their story map, from the first release to what comes next.
 visibility: all-users
 customer:
-  title: Purchasing roadmap
-  summary: Follow the work from estimating materials through purchase approval.
+  title: Embedded Story Map roadmap
+  summary: What you can do with Embedded Story Map today, and what is coming next.
 activities:
-  - id: prepare
-    title: Prepare estimate
-    summary: Capture the materials and quantities for a project.
+  - id: set-up
+    title: Set up in a product
+    summary: Install the package and serve the board behind the product’s sign-in.
     customer:
-      title: Prepare an estimate
-  - id: submit
-    title: Submit for finance review
-    summary: Send the builder’s estimate to finance.
+      title: Get started
+  - id: plan
+    title: Plan the map
+    summary: Write activities, releases and stories in the YAML file, by hand or with an agent.
     customer:
-      title: Send for approval
-  - id: purchase
-    title: Create purchase order
+      title: Plan your map
+  - id: review
+    title: Review changes
+    summary: Check and summarise map changes in pull requests.
     customer:
-      title: Track purchases
-  - id: finance-ops
-    title: Finance exception handling
+      title: Review changes
+  - id: explore
+    title: Explore the board
+    summary: Read the map, search it and open story details.
+    customer:
+      title: Explore the board
+  - id: track
+    title: Track delivery
+    summary: See what changed, who changed it and what is stuck.
+    customer:
+      title: Follow progress
 releases:
-  - id: builder-mvp
-    title: Builder workflow
-    summary: Deliver the builder interface and the backend it needs.
+  - id: v0-1
+    title: "0.1.0: First release"
+    summary: The YAML format, the validator, audience views and the React board.
     notes: |
-      Builders can price and submit estimates without emailing finance.
+      A product can keep its story map in Git and show it at /story-map. Internal viewers see the full map; signed-in customers see only stories with approved customer copy.
+    impact:
+      - metric: Places the team tracks delivery
+        expected: One map in the product repository instead of a separate planning tool
+        solves: Plans drifting away from the code
+        draft: true
+    customer:
+      title: "0.1.0"
+  - id: v0-2
+    title: "0.2.0: Engineering links"
+    summary: Link stories to engineering docs, and give agents a first-run workflow.
+    impact:
+      - metric: Time to find the design behind a story
+        expected: One click from the story to its engineering overview
+        solves: Searching docs for the section that explains a story
+        draft: true
+    customer:
+      title: "0.2.0"
+  - id: v0-3
+    title: "0.3.0: Board, search and history"
+    summary: A new board with panels, search, change summaries, status history and npm publishing.
+    notes: |
+      The board became a grid of activity tiles and release lanes, with a detail panel for each story that works without client-side JavaScript.
 
-      Catalogue prices are locked when the estimate is submitted, so finance reviews the prices the builder saw.
+      Pull requests get a summary of map changes, and the board shows when each story changed and who changed it.
     impact:
-      - metric: Estimate turnaround time
-        expected: Decrease from 3 days to 1 day
-        solves: Builders waiting on finance for prices
-      - metric: Estimates returned for corrections
-        expected: Decrease by 50%
-        solves: Wrong unit prices typed by hand
+      - metric: Map changes reviewed in pull requests
+        expected: Every map change shows a summary in its PR
+        solves: Reviewers missing status and customer-facing changes in YAML diffs
         draft: true
     customer:
-      title: Builder workflow
-  - id: finance-follow-up
-    title: Finance follow-up
-    summary: Update the finance workflow where needed.
+      title: "0.3.0"
+  - id: v0-4
+    title: "0.4.0: Delivery tracking"
+    summary: Statuses for work that is merged, blocked or cut, release impact, stalled stories and “last updated” from Git.
+    notes: |
+      Merged on main and waiting to be published to npm.
+
+      Teams can record why work stopped, what each release should change, and see which stories have been in progress too long.
     impact:
-      - metric: Time from approval to purchase order
-        expected: Same day for approved estimates
-        solves: Purchase orders retyped from emailed estimates
+      - metric: Stories in progress for more than 4 weeks
+        expected: Flagged on the board instead of found in stand-ups
+        solves: Stuck work going unnoticed
+        draft: true
+      - metric: Releases with a stated expected impact
+        expected: Every release with active stories
+        solves: Releases planned without saying what they should change
         draft: true
     customer:
-      title: Finance updates
-  - id: reconciliation-internal
-    title: Reconciliation discovery
+      title: "0.4.0"
+  - id: next
+    title: Next
+    summary: Proposed for 0.4.x or 0.5.0.
+    impact:
+      - metric: Map changes that are missing from feature PRs
+        expected: Found by the weekly audit and proposed in a PR
+        solves: The map drifting from the code when a PR forgets to update it
+        draft: true
+    customer:
+      title: Coming next
 stories:
-  - id: BUILDER-101
-    title: Draft an estimate against a project
-    activity: prepare
-    release: builder-mvp
-    status: in-progress
-    updatedBy: Alex Morgan
-    summary: Record material quantities and units against a project.
-    customer:
-      title: Draft a project estimate
-      summary: List materials and quantities for a project in one place.
-  - id: BUILDER-102
-    title: Look up prices in the material catalogue
-    activity: prepare
-    release: builder-mvp
-    status: planned
-    updatedBy: Sam Patel
-    notes: Confirm how a catalogue price is carried into a submitted estimate.
+  # 0.1.0
+  - id: ESM-101
+    title: Keep the map in a validated YAML file
+    activity: plan
+    release: v0-1
+    status: shipped
+    summary: One YAML file per product, with strict validation, size limits and stable story IDs.
     sources:
-      - docs/example-builder-estimate-plan.md#builder-workflow
+      - docs/ENGINEERING-OVERVIEW.md#the-map-file
     customer:
-      title: Find material prices
-      summary: Use the price catalogue while preparing an estimate.
-  - id: BUILDER-103
-    title: Submit the estimate to finance
-    activity: submit
-    release: builder-mvp
-    status: planned
-    updatedBy: Alex Morgan
+      title: Keep your map in your repository
+      summary: Your story map is a YAML file reviewed and versioned with your code.
+  - id: ESM-102
+    title: Validate the map from the command line
+    activity: review
+    release: v0-1
+    status: shipped
+    sources:
+      - docs/ENGINEERING-OVERVIEW.md#validate
     customer:
-      title: Submit an estimate for approval
-  - id: FINANCE-201
-    title: Approve an estimate and create a purchase order
-    activity: purchase
-    release: finance-follow-up
-    status: planned
-    updatedBy: Taylor Reed
+      title: Validate the map in CI
+  - id: ESM-103
+    title: Show internal and customer views of the same map
+    activity: set-up
+    release: v0-1
+    status: shipped
+    summary: The host passes the viewer from its own session, and the library builds only what that viewer may see.
+    sources:
+      - docs/ENGINEERING-OVERVIEW.md#audience-projection
     customer:
-      title: Track approved purchases
-  - id: FINANCE-202
-    title: Explore duplicate approval handling
-    activity: finance-ops
-    release: reconciliation-internal
+      title: Share a customer roadmap
+      summary: Signed-in customers see approved stories only.
+  - id: ESM-104
+    title: Render the map as a board in the product
+    activity: explore
+    release: v0-1
+    status: shipped
+    sources:
+      - docs/ENGINEERING-OVERVIEW.md#the-react-board
+    customer:
+      title: See the map inside your product
+  # 0.2.0
+  - id: ESM-201
+    title: Link stories to their engineering overview
+    activity: explore
+    release: v0-2
+    status: shipped
+    sources:
+      - docs/story-map.md#link-an-engineering-overview
+      - docs/ENGINEERING-OVERVIEW.md#engineering-links
+    customer:
+      title: Link stories to engineering docs
+  - id: ESM-202
+    title: Give agents a first-run workflow to populate the map
+    activity: plan
+    release: v0-2
+    status: shipped
+    sources:
+      - docs/story-map.md#populate-the-first-map
+    customer:
+      title: Let an agent draft your first map
+  # 0.3.0
+  - id: ESM-301
+    title: Set up a host repository with story-map init
+    activity: set-up
+    release: v0-3
+    status: shipped
+    summary: Writes the starter map, the guide, an AGENTS.md section and a CI workflow, without overwriting anything.
+    sources:
+      - docs/ENGINEERING-OVERVIEW.md#init
+    customer:
+      title: Set up with one command
+  - id: ESM-302
+    title: Publish the package to npm with provenance
+    activity: set-up
+    release: v0-3
+    status: shipped
+    sources:
+      - docs/releasing.md#release-a-version
+    customer:
+      title: Install from npm
+  - id: ESM-303
+    title: Report validation problems by line on the PR diff
+    activity: review
+    release: v0-3
+    status: shipped
+    sources:
+      - docs/story-map.md#validate-a-change
+  - id: ESM-304
+    title: Summarise map changes in pull requests
+    activity: review
+    release: v0-3
+    status: shipped
+    summary: story-map diff lists customer-facing changes first, then every story, activity and release change.
+    sources:
+      - docs/story-map.md#review-a-map-change
+      - docs/ENGINEERING-OVERVIEW.md#diff
+    customer:
+      title: See map changes in each pull request
+  - id: ESM-305
+    title: Search and filter the board
+    activity: explore
+    release: v0-3
+    status: shipped
+    sources:
+      - docs/ENGINEERING-OVERVIEW.md#search-and-filters
+    customer:
+      title: Search and filter the board
+  - id: ESM-306
+    title: Open story details without client-side JavaScript
+    activity: explore
+    release: v0-3
+    status: shipped
+    notes: Uses the HTML popover API. Keep the smoke test that checks every card targets a panel with both React versions.
+    sources:
+      - docs/ENGINEERING-OVERVIEW.md#detail-panels-without-javascript
+    customer:
+      title: Open story details
+  - id: ESM-307
+    title: Show status history from Git
+    activity: track
+    release: v0-3
+    status: shipped
+    sources:
+      - docs/story-map.md#show-status-history
+      - docs/ENGINEERING-OVERVIEW.md#status-history
+    customer:
+      title: See when each story changed
+  # 0.4.0
+  - id: ESM-401
+    title: Warn about map problems without failing CI
+    activity: review
+    release: v0-4
+    status: merged
+    sources:
+      - docs/plans/0.4.0-enhancements.md#1-groundwork-validator-warnings
+    customer:
+      title: Get warnings as well as errors
+  - id: ESM-402
+    title: Record blocked and cut stories with a reason
+    activity: plan
+    release: v0-4
+    status: merged
+    sources:
+      - docs/story-map.md#blocked-and-cut-stories
+  - id: ESM-403
+    title: Record release notes and expected impact
+    activity: plan
+    release: v0-4
+    status: merged
+    sources:
+      - docs/story-map.md#release-notes-and-impact
+    customer:
+      title: Say what each release should change
+  - id: ESM-404
+    title: Edit release notes and impact on the board
+    activity: explore
+    release: v0-4
     status: cut
-    statusReason: Finance will handle duplicate approvals manually until volumes justify it.
-    updatedBy: Taylor Reed
-    notes: Agree a single owner when an approval is retried.
+    statusReason: The board stays read-only. Saving edits would need the map on a hosted service, so agents update notes and impact in pull requests instead.
+    sources:
+      - docs/plans/0.4.0-enhancements.md#not-editable-on-the-board
+  - id: ESM-405
+    title: Flag stories that stay in progress too long
+    activity: track
+    release: v0-4
+    status: merged
+    sources:
+      - docs/story-map.md#flag-stalled-stories
+    customer:
+      title: Spot work that has stalled
+  - id: ESM-406
+    title: Show who last updated a story, from Git
+    activity: track
+    release: v0-4
+    status: merged
+    notes: Edits authored by bots are credited to whoever merged them.
+    sources:
+      - docs/plans/0.4.0-enhancements.md#5-last-updated-from-git
+    customer:
+      title: See who last updated a story
+  - id: ESM-407
+    title: Separate merged work from shipped work
+    activity: track
+    release: v0-4
+    status: merged
+    sources:
+      - docs/story-map.md#merged-and-shipped
+    customer:
+      title: Tell finished work from released work
+  # Next
+  - id: ESM-501
+    title: Expand activities into steps
+    activity: explore
+    release: next
+    status: planned
+    sources:
+      - docs/plans/0.4.0-enhancements.md#6-expandable-steps-within-activities
+    customer:
+      title: Break activities into steps
+  - id: ESM-502
+    title: Audit the map against the code on a schedule
+    activity: review
+    release: next
+    status: planned
+    summary: A scheduled agent gathers evidence from branches, PRs and commits, and proposes corrections in a single PR.
+    sources:
+      - docs/plans/0.4.0-enhancements.md#7-scheduled-map-audit
+    customer:
+      title: Keep the map in step with the code

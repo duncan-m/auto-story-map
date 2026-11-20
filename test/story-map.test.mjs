@@ -25,7 +25,8 @@ import {
 import { StoryMapBoard } from "embedded-story-map/react";
 import { makeStoryMapResponse } from "../example/host.mjs";
 
-const sample = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
+// The builder estimates sample map: test data with stable IDs, separate from this product’s own map.
+const sample = await readFile(new URL("./fixtures/builder-estimates.yaml", import.meta.url), "utf8");
 const map = parseStoryMap(sample);
 const regular = { roles: ["member"] };
 const engineer = { roles: ["engineer"] };
@@ -336,7 +337,11 @@ test("the published JSON Schema matches the validator", async () => {
     for (const key of Object.keys(story)) assert.ok(storyProperties.includes(key), key);
   }
   assert.match(schema.properties.stories.items.properties.status.description, /shipped: available to its intended users/);
-  assert.match(sample, /^# yaml-language-server: \$schema=\.\.\/story-map\.schema\.json\n/);
+  const productMap = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
+  assert.match(productMap, /^# yaml-language-server: \$schema=\.\.\/story-map\.schema\.json\n/);
+  for (const story of parseStoryMap(productMap).stories) {
+    for (const key of Object.keys(story)) assert.ok(storyProperties.includes(key), key);
+  }
 });
 
 test("init sets up a host repository without overwriting anything", async t => {

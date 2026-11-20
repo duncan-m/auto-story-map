@@ -52,7 +52,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    const selected = url.searchParams.get("as") ?? "user";
+    const selected = url.searchParams.get("as") ?? "super-admin";
     const roles = demoRoles.get(selected);
     const viewer = roles ? { roles } : null;
     const views = [["user", "Regular user"], ["product", "Product manager"], ["engineer", "Engineer"], ["super-admin", "Super admin"], ["guest", "Guest"]];

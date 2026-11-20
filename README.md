@@ -6,7 +6,7 @@ A TypeScript library for displaying a Git-backed user story map inside a product
 
 ![The builder estimates demo map as an engineer sees it: activities across the top, a lane for each release with its expected impact, and story cards showing each story's ID, title, status and when it last changed. The Active filter hides one cut story and offers a link to show it.](https://raw.githubusercontent.com/duncan-m/embedable-story-map/main/story-map-screenshot.png)
 
-## Try the builder estimates example
+## Try the demo
 
 Use Node.js 20 or newer. Run these commands from a checkout of the [source repository][source].
 
@@ -17,7 +17,7 @@ npm test
 npm run demo
 ```
 
-Open [the local story map](http://127.0.0.1:4173/story-map). Choose **Engineer**, select **Look up prices in the material catalogue** to open its details, and follow the **Engineering overview** link. Select the **Builder workflow** release title to see its notes, expected impact and progress. Search for “estimate”, filter by status, or use **Changed** to see recent changes. One story is cut, so it is hidden by default: choose **All, including blocked and cut** to see it and its reason. The demo reads this repository’s Git history to show when each story changed and who changed it. Start it with `STORY_MAP_DEMO_NOW=2027-01-15 npm run demo` to see an in-progress story flagged as stalled. Switch to **Regular user** to see the customer-facing activity and release labels. The demo also offers **Product manager**, **Super admin** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves sample JSON at `/api/story-map`.
+The demo shows this library’s own story map, `product/story-map.yaml`: what each release delivered, what is merged for the next one, and what is planned. Open [the local story map](http://127.0.0.1:4173/story-map). It starts as **Super admin**, who sees the full internal map. Select **Link stories to their engineering overview** to open its details, and follow the **Engineering overview** link into these docs. Select the **0.4.0: Delivery tracking** release title to see its notes, expected impact and progress. Search for “history”, filter by status, or use **Changed** to see recent changes. One story is cut, so it is hidden by default: choose **All, including blocked and cut** to see it and its reason. The demo reads this repository’s Git history to show when each story changed and who changed it. Switch to **Regular user** to see the customer roadmap, where merged stories read as in progress. The demo also offers **Engineer**, **Product manager** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves the same view as JSON at `/api/story-map`.
 
 Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. The panel and the search form work without client-side JavaScript.
 
@@ -39,7 +39,7 @@ The core can run in a TypeScript or JavaScript backend. A React host can also us
 | `embedded-story-map/styles.css` | Style the board using namespaced CSS. |
 | `embedded-story-map/schema.json` | Give editors autocomplete and inline checks for the YAML. |
 
-[The host integration][host] shows how a product can serve the board and JSON with the same audience rules. [The example delivery plan][delivery-plan] shows how plans reference stories by ID.
+[The host integration][host] shows how a product can serve the board and JSON with the same audience rules. [The example delivery plan][delivery-plan] shows how plans reference stories by ID, using the builder estimates sample map in `test/fixtures/builder-estimates.yaml`.
 
 The map lives in the product repo. The deployed product renders the file included in that revision. Use the host app’s verified session to resolve the viewer on the server and supply the projected view to the board.
 
@@ -56,7 +56,7 @@ Run `npx story-map init` in the host repo. It creates:
 - a story map section at the end of `AGENTS.md`, keeping any existing instructions,
 - a GitHub Actions workflow in `.github/workflows/story-map.yml` that validates the map and its sources on each PR and adds a summary of the story changes, starting with what customers will see. Pass `--no-ci` to skip it. The workflow is written only when the repo uses npm.
 
-It never overwrites an existing file, so it is safe to run again. [The example map][example-map] shows a fuller map.
+It never overwrites an existing file, so it is safe to run again. [This library’s own map][example-map] shows a fuller map.
 
 Start an agent in the host repo and give it this task.
 

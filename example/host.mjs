@@ -35,7 +35,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
     ),
     h("body", null,
       h("header", { className: "product-header" },
-        h("h1", null, "Purchasing"),
+        h("h1", null, "Embedded Story Map"),
         navigation,
       ),
       h("main", null,

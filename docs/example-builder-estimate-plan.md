@@ -1,6 +1,6 @@
 # Builder estimate delivery plan example
 
-The sample release sequence delivers the builder workflow first, then updates the finance workflow.
+The sample release sequence delivers the builder workflow first, then updates the finance workflow. The stories it refers to are in the sample map at [`test/fixtures/builder-estimates.yaml`](../test/fixtures/builder-estimates.yaml), which the tests use.
 
 ## Builder workflow
 
