@@ -172,9 +172,14 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     const history = options.history;
     const byStory = new Map<string, StoryHistoryEntry[]>();
     for (const { storyId, ...entry } of history?.events ?? []) {
-      byStory.set(storyId, [entry, ...(byStory.get(storyId) ?? [])]);
+      const entries = byStory.get(storyId);
+      if (entries) entries.push(entry);
+      else byStory.set(storyId, [entry]);
     }
-    for (const entries of byStory.values()) entries.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    // Reverse before the stable sort so entries with equal timestamps stay latest-supplied first.
+    for (const entries of byStory.values()) {
+      entries.reverse().sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    }
     const lastEdits = new Map((history?.lastEdits ?? []).map(({ storyId, ...edit }) => [storyId, edit]));
     const storyCounts = new Map(map.releases.map(release => [
       release.id,
