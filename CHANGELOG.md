@@ -4,6 +4,8 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## 0.6.1
 
+There is no 0.6.0 release. 0.6.1 follows 0.5.0.
+
 No upgrade steps. Existing maps and history files stay valid. Mainly fixes from a code review of 0.5.0, several of them security fixes, plus new exports and a new board header.
 
 - `getStoryMapForViewer` and `getStoryMapPage` group history events in linear time. They used to copy each story's growing list for every event, so a history with many events for one story took quadratic time: 100,000 events took over a minute and now take well under a second. Entry order is unchanged, including for events with the same timestamp.
