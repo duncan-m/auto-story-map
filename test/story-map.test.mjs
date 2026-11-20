@@ -462,7 +462,10 @@ test("diffs flag visibility switches and escape Markdown from the map", () => {
   const mentions = editedSample(document => { document.stories[4].title = "Ask @someone and @org/team about #12 and GH-3"; });
   const pasted = formatStoryMapDiff(diffStoryMaps(map, mentions));
   for (const raw of ["@someone", "@org/team", "#12"]) assert.equal(pasted.includes(raw), false, raw);
-  assert.match(pasted, /Ask &#64;someone and &#64;org\/team about &#35;12 and GH-3/);
+  // GitHub renders the empty spans as nothing, so the title still reads “Ask @someone and @org/team about #12 and GH-3”.
+  assert.ok(pasted.includes("Ask @<span></span>someone and @<span></span>org/team about #<span></span>12 and GH-3"));
+  // Only that markup is added: other HTML from the map is still escaped.
+  assert.equal(pasted.replaceAll("<span></span>", "").includes("<"), false);
   // The summary's own Markdown headings are untouched.
   assert.match(pasted, /^## Story map changes\n/);
 

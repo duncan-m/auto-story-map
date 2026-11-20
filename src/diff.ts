@@ -261,14 +261,17 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
 
 /**
  * Escapes text from the map so it renders literally in GitHub Markdown,
- * including inside table cells. `@` and `#` become character references, so
- * a pasted summary does not mention people or teams, or link issues.
+ * including inside table cells. An empty `<span></span>` follows each `@`
+ * and `#`, so a pasted summary does not mention people or teams, or link
+ * issues. Checked on a real PR: GitHub decodes character references such as
+ * `&#64;` before it finds mentions, and drops an empty HTML comment inside a
+ * table cell, so neither works there. The span renders as nothing.
  */
 function text(value: string) {
   return value
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/[@#]/g, character => character === "@" ? "&#64;" : "&#35;")
     .replace(/[\\`*_[\]|~]/g, character => `\\${character}`)
+    .replace(/[@#]/g, character => `${character}<span></span>`)
     .replace(/\s+/g, " ");
 }
 

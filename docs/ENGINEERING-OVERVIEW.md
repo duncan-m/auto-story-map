@@ -313,7 +313,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 - Added, renamed, removed and reordered activities and releases, and changes to their customer labels.
 - A **Settings** section (`stalledAfterWeeks`) when the effective stalled threshold changes, counting a missing setting as the default of 4.
 
-`formatStoryMapDiff` escapes all text taken from the map (HTML, Markdown punctuation, `|` and newlines), because the summary is written into PR job summaries and table cells. A story title must not be able to inject Markdown or break the table. `@` and `#` become `&#64;` and `&#35;`, because the summary is pasted into PR descriptions: a title such as “Ask @finance-team” must not notify that team, and `#123` must not link an unrelated issue.
+`formatStoryMapDiff` escapes all text taken from the map (HTML, Markdown punctuation, `|` and newlines), because the summary is written into PR job summaries and table cells. A story title must not be able to inject Markdown or break the table. Each `@` and `#` is followed by an empty `<span></span>`, because the summary is pasted into PR descriptions: a title such as “Ask @finance-team” must not notify that team, and `#123` must not link an unrelated issue. The span renders as nothing. Checked on a real PR: character references such as `&#64;` do not work, because GitHub decodes them before it finds mentions and references, and an empty HTML comment works in list items but is dropped inside table cells. Check any change here against GitHub's rendering of both.
 
 ### init
 
