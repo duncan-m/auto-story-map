@@ -481,7 +481,7 @@ stories:
     title: Keep source checks fast on crafted headings
     activity: review
     release: planning
-    status: in-progress
+    status: merged
     summary: Heading anchors are read in linear time, and Markdown files over 5 MB are not read for anchors, so a crafted heading in a PR cannot stall CI.
     sources:
       - docs/plans/0.6.0-review-fixes.md#11-source-checks-that-stay-fast
