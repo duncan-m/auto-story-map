@@ -4,7 +4,7 @@ A TypeScript library for displaying a Git-backed user story map inside a product
 
 ## Screenshot
 
-![This library's own story map in the demo, as a super admin sees it: activities from setting up to tracking delivery across the top, a lane for each release with its expected impact, and story cards showing each story's ID, title, status and when it last changed. The Active filter hides one cut story and offers a link to show it.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
+![This library's own story map in the demo, as a super admin sees it. Under the title, a line says when the map was last updated, by whom, and which releases recent changes focused on. Activities from setting up to tracking delivery run across the top, with a lane for each release and its expected impact, and story cards showing each story's ID, title, status and when it last changed. The Active filter hides three cut stories and offers a link to show them.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
 
 ## Try the demo
 
