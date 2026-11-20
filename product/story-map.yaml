@@ -80,6 +80,7 @@ stories:
     title: Explore duplicate approval handling
     activity: finance-ops
     release: reconciliation-internal
-    status: planned
+    status: cut
+    statusReason: Finance will handle duplicate approvals manually until volumes justify it.
     updatedBy: Taylor Reed
     notes: Agree a single owner when an approval is retried.

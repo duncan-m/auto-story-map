@@ -29,7 +29,9 @@ const story = z.object({
   release: id.describe("ID of the release lane this story belongs to."),
   summary: summary.describe("Optional internal summary, shown when the card is opened."),
   status: z.enum(storyStatuses).default("planned")
-    .describe("planned: agreed work awaiting implementation. in-progress: work has started. shipped: available to its intended users."),
+    .describe("planned: agreed work awaiting implementation. in-progress: work has started. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers."),
+  statusReason: z.string().trim().min(1).max(500).optional()
+    .describe("Why the story is blocked or cut. Internal only."),
   updatedBy: z.string().trim().min(1).max(120).optional().describe("Display name of the person who last added or edited the story."),
   notes: z.string().trim().max(4000).optional().describe("Internal engineering notes."),
   sources: z.array(z.string().trim().min(1).max(250)).max(20).optional()
@@ -108,7 +110,11 @@ export const storyMapSchema = z.object({
 
 export type StoryMapDocument = z.infer<typeof storyMapSchema>;
 
+export type StoryMapIssueSeverity = "error" | "warning";
+
 export interface StoryMapIssue {
+  /** Errors make the map invalid. Warnings are advice: the map still parses and CI passes unless run with `--strict`. */
+  severity: StoryMapIssueSeverity;
   /** Location in the map, such as `["stories", 3, "release"]`. Empty for the whole file. */
   path: (string | number)[];
   message: string;
@@ -128,7 +134,8 @@ export function describeIssueTarget(issue: StoryMapIssue): string {
 
 export function formatStoryMapIssue(issue: StoryMapIssue): string {
   const line = issue.line ? `line ${issue.line}: ` : "";
-  return `${line}${describeIssueTarget(issue)}: ${issue.message}`;
+  const level = issue.severity === "warning" ? "warning: " : "";
+  return `${line}${level}${describeIssueTarget(issue)}: ${issue.message}`;
 }
 
 export class StoryMapValidationError extends Error {
@@ -174,8 +181,29 @@ export function parseStoryMap(source: string): StoryMapDocument {
   return loadStoryMap(source).map;
 }
 
+/**
+ * Checks a valid map for problems that should not fail validation, such as a
+ * blocked story with no reason. Paths point into the map like error paths.
+ */
+export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
+  const warnings: StoryMapIssue[] = [];
+  map.stories.forEach((story, index) => {
+    if ((story.status === "blocked" || story.status === "cut") && !story.statusReason) {
+      warnings.push({
+        severity: "warning",
+        path: ["stories", index, "status"],
+        message: `Add a statusReason explaining why the story is ${story.status}.`,
+        itemId: story.id,
+      });
+    }
+  });
+  return warnings;
+}
+
 export interface LoadedStoryMap {
   map: StoryMapDocument;
+  /** Problems that do not make the map invalid, in source order. */
+  warnings: StoryMapIssue[];
   /** Finds the source position of a path in the map, such as `["stories", 2, "sources", 0]`. */
   locate(path: (string | number)[]): { line?: number; column?: number };
 }
@@ -188,6 +216,7 @@ export function loadStoryMap(source: string): LoadedStoryMap {
     throw new StoryMapValidationError(document.errors.map(error => {
       const position = error.linePos?.[0];
       return {
+        severity: "error" as const,
         path: [],
         message: error.message.replace(/ at line \d+, column \d+:[\s\S]*$/, "").trim(),
         line: position?.line,
@@ -207,7 +236,11 @@ export function loadStoryMap(source: string): LoadedStoryMap {
     },
   });
   if (result.success) {
-    return { map: result.data, locate: path => locate(document, lineCounter, path) };
+    const find = (path: (string | number)[]) => locate(document, lineCounter, path);
+    const warnings = storyMapWarnings(result.data)
+      .map(warning => ({ ...warning, ...find(warning.path) }))
+      .sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
+    return { map: result.data, warnings, locate: find };
   }
 
   // Zod skips the cross-reference checks once a field fails, so run them here
@@ -223,11 +256,11 @@ export function loadStoryMap(source: string): LoadedStoryMap {
     const itemId = itemIdAt(data, path);
     if (issue.code === "unrecognized_keys") {
       for (const key of issue.keys) {
-        issues.push({ path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, path, key) });
+        issues.push({ severity: "error", path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, path, key) });
       }
       continue;
     }
-    issues.push({ path, message: issue.message, itemId, ...locate(document, lineCounter, path) });
+    issues.push({ severity: "error", path, message: issue.message, itemId, ...locate(document, lineCounter, path) });
   }
   issues.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
   throw new StoryMapValidationError(issues);

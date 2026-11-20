@@ -79,7 +79,10 @@ test("customer HTML and JSON only contain the customer projection", async () => 
   const internal = await makeStoryMapResponse("/story-map", map, engineer).text();
   assert.match(internal, /BUILDER-102/);
   assert.match(internal, /Confirm how a catalogue price/);
-  assert.match(internal, /Explore duplicate approval handling/);
+  // The demo’s cut story is hidden by default and shown on request.
+  assert.doesNotMatch(internal, /Explore duplicate approval handling/);
+  assert.match(internal, /1 cut hidden\./);
+  assert.match(await makeStoryMapResponse("/story-map?status=all", map, engineer).text(), /Explore duplicate approval handling/);
 
   const view = await makeStoryMapResponse("/api/story-map", map, regular).json();
   assert.equal(view.stories.length, 4);
@@ -119,7 +122,7 @@ test("card faces show only the ID, title and status", async () => {
   assert.match(card, /Draft an estimate against a project/);
   assert.match(card, /In progress/);
   assert.doesNotMatch(card, /Record material quantities|Last updated by|Alex Morgan/);
-  assert.equal(cardsIn(internal).length, 5);
+  assert.equal(cardsIn(internal).length, 4);
 
   const customer = await makeStoryMapResponse("/story-map", map, regular).text();
   const customerCard = cardsIn(customer).find(card => card.includes("Draft a project estimate"));
@@ -213,7 +216,7 @@ test("filters search only what the viewer can see", () => {
   assert.deepEqual(filterStoryMapView(internal, { query: "builder-102" }).stories.map(story => story.id), ["BUILDER-102"]);
   assert.deepEqual(filterStoryMapView(internal, { query: "catalogue price" }).stories.map(story => story.id), ["BUILDER-102"]);
   assert.deepEqual(filterStoryMapView(internal, { status: "in-progress" }).stories.map(story => story.id), ["BUILDER-101"]);
-  assert.deepEqual(filterStoryMapView(internal).filter, { query: undefined, status: undefined, total: 5 });
+  assert.deepEqual(filterStoryMapView(internal).filter, { query: undefined, status: undefined, total: 5, hidden: { blocked: 0, cut: 1 } });
 
   const customer = getStoryMapForViewer(map, regular);
   assert.equal(filterStoryMapView(customer, { query: "BUILDER-102" }).stories.length, 0);
@@ -289,10 +292,10 @@ test("validation errors name the item and source line", () => {
   }
   assert.ok(error instanceof StoryMapValidationError);
   const byPath = Object.fromEntries(error.issues.map(issue => [issue.path.join("."), issue]));
-  assert.deepEqual(byPath["activities.3.title"], { path: ["activities", 3, "title"], message: "Missing required field.", itemId: "finance-ops", line: lineOf("- id: finance-ops"), column: 5 });
+  assert.deepEqual(byPath["activities.3.title"], { severity: "error", path: ["activities", 3, "title"], message: "Missing required field.", itemId: "finance-ops", line: lineOf("- id: finance-ops"), column: 5 });
   assert.equal(byPath["stories.0.status"].itemId, "BUILDER-101");
   assert.equal(byPath["stories.0.status"].line, lineOf("status: started"));
-  assert.match(byPath["stories.0.status"].message, /Use one of 'planned', 'in-progress', 'shipped'\./);
+  assert.match(byPath["stories.0.status"].message, /Use one of 'planned', 'in-progress', 'shipped', 'blocked', 'cut'\./);
   assert.equal(byPath["stories.1.owner"].message, "Unknown field.");
   assert.equal(byPath["stories.1.owner"].line, lineOf("owner: Sam"));
   // Reference checks still run when another field is invalid.
@@ -390,8 +393,8 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
 });
 
-function editedSample(edit) {
-  const document = structuredClone(map);
+function editedSample(edit, base = map) {
+  const document = structuredClone(base);
   edit(document);
   return parseStoryMap(stringify(document));
 }
@@ -619,7 +622,7 @@ test("history records additions and status changes with editor, merger and date"
     ["BUILDER-102", "added", undefined, "planned", "2026-11-01T10:00", "Sam Patel", "Alice"],
     ["BUILDER-103", "added", undefined, "planned", "2026-11-01T10:00", "Alex Morgan", "Alice"],
     ["FINANCE-201", "added", undefined, "planned", "2026-11-01T10:00", "Taylor Reed", "Alice"],
-    ["FINANCE-202", "added", undefined, "planned", "2026-11-01T10:00", "Taylor Reed", "Alice"],
+    ["FINANCE-202", "added", undefined, "cut", "2026-11-01T10:00", "Taylor Reed", "Alice"],
     ["BUILDER-101", "status", "in-progress", "shipped", "2026-11-12T15:30", "Bob Builder", "Carol"],
     ["BUILDER-102", "status", "planned", "in-progress", "2026-11-16T08:00", "Dan", "Carol"],
     ["BUILDER-104", "added", undefined, "planned", "2026-11-18T16:45", "Erin", undefined],
@@ -662,7 +665,7 @@ test("only internal viewers see history, and it drives the “changed in” filt
   assert.equal(Object.hasOwn(customer, "history"), false);
   assert.ok(customer.stories.every(story => !("history" in story) && !("lastChangedAt" in story)));
 
-  const ids = (view, days) => filterStoryMapView(view, { changedWithinDays: days }, { now }).stories.map(story => story.id);
+  const ids = (view, days) => filterStoryMapView(view, { status: "all", changedWithinDays: days }, { now }).stories.map(story => story.id);
   assert.deepEqual(ids(internal, 1), []);
   assert.deepEqual(ids(internal, 7), ["BUILDER-102", "BUILDER-104"]);
   assert.deepEqual(ids(internal, 14), ["BUILDER-101", "BUILDER-102", "BUILDER-104"]);
@@ -706,4 +709,186 @@ test("the board shows when each story changed and its history to internal viewer
 
   const noHistory = renderToStaticMarkup(createElement(StoryMapBoard, { map: filterStoryMapView(getStoryMapForViewer(current, engineer)), ...props }));
   assert.doesNotMatch(noHistory, /name="changed"|esm-changed|>History</);
+});
+
+// The demo map before FINANCE-202 was cut, so tests can watch stories become blocked or cut.
+const planningMap = editedSample(document => {
+  const story = document.stories.find(story => story.id === "FINANCE-202");
+  story.status = "planned";
+  delete story.statusReason;
+});
+
+// A copy of the demo map with one blocked customer-facing story and one cut internal story.
+function withInactiveStories({ reasons = true } = {}) {
+  return editedSample(document => {
+    for (const story of document.stories) delete story.statusReason;
+    Object.assign(document.stories.find(story => story.id === "FINANCE-201"), {
+      status: "blocked",
+      ...(reasons ? { statusReason: "Waiting on the finance system’s purchase order API." } : {}),
+    });
+    Object.assign(document.stories.find(story => story.id === "FINANCE-202"), {
+      status: "cut",
+      ...(reasons ? { statusReason: "Finance will handle duplicates manually until volumes justify it." } : {}),
+    });
+  });
+}
+
+test("warnings come back with a valid map and pass validation unless strict", async t => {
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const source = stringify(withInactiveStories({ reasons: false }));
+  const loaded = loadStoryMap(source);
+  assert.deepEqual(loaded.warnings.map(({ severity, path, itemId, message }) => [severity, path.join("."), itemId, message]), [
+    ["warning", "stories.3.status", "FINANCE-201", "Add a statusReason explaining why the story is blocked."],
+    ["warning", "stories.4.status", "FINANCE-202", "Add a statusReason explaining why the story is cut."],
+  ]);
+  const line = source.split("\n").findIndex(text => text.includes("status: blocked")) + 1;
+  assert.equal(loaded.warnings[0].line, line);
+  assert.deepEqual(loadStoryMap(stringify(withInactiveStories())).warnings, []);
+  assert.deepEqual(loadStoryMap(sample).warnings, []);
+
+  const directory = await mkdtemp(join(tmpdir(), "story-map-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const file = join(directory, "map.yaml");
+  await writeFile(file, source);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+
+  const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
+  assert.equal(text.status, 0);
+  assert.equal(text.stderr.split("\n")[0], `${file}:${line}:13: warning: stories.3.status (FINANCE-201): Add a statusReason explaining why the story is blocked.`);
+  assert.match(text.stdout, /valid \(4 activities, 3 releases, 5 stories\), 2 warnings/);
+
+  const github = spawnSync(process.execPath, [cli, "validate", "--format", "github", file], { encoding: "utf8" });
+  assert.equal(github.status, 0);
+  assert.match(github.stdout, new RegExp(`^::warning file=[^,]+,line=${line},col=13,title=Story map::stories\\.3\\.status \\(FINANCE-201\\): Add a statusReason`));
+
+  const strict = spawnSync(process.execPath, [cli, "validate", "--strict", file], { encoding: "utf8" });
+  assert.equal(strict.status, 1);
+  assert.match(strict.stderr, /warning: stories\.4\.status \(FINANCE-202\)/);
+  assert.doesNotMatch(strict.stdout, /valid/);
+
+  // Errors are still errors, and say so in the issue.
+  assert.throws(() => parseStoryMap(sample.replace("status: in-progress", "status: started")), error =>
+    error.issues[0].severity === "error" && /'blocked', 'cut'/.test(error.issues[0].message));
+  assert.throws(() => parseStoryMap(stringify(editedSample(document => { document.stories[0].statusReason = "x".repeat(501); }))), /statusReason/);
+});
+
+test("blocked and cut stories are hidden by default and shown on request", async () => {
+  const inactive = withInactiveStories();
+  const internal = getStoryMapForViewer(inactive, engineer);
+  const ids = filters => filterStoryMapView(internal, filters).stories.map(story => story.id);
+
+  assert.deepEqual(ids({}), ["BUILDER-101", "BUILDER-102", "BUILDER-103"]);
+  assert.deepEqual(filterStoryMapView(internal).filter, { query: undefined, status: undefined, total: 5, hidden: { blocked: 1, cut: 1 } });
+  assert.equal(ids({ status: "all" }).length, 5);
+  assert.equal(filterStoryMapView(internal, { status: "all" }).filter.hidden, undefined);
+  assert.deepEqual(ids({ status: "cut" }), ["FINANCE-202"]);
+  assert.deepEqual(ids({ status: "blocked" }), ["FINANCE-201"]);
+  // The hidden count only counts stories that match the other filters. Reasons are searchable.
+  assert.deepEqual(filterStoryMapView(internal, { query: "duplicates manually" }).filter.hidden, { blocked: 0, cut: 1 });
+  assert.equal(filterStoryMapView(getStoryMapForViewer(planningMap, engineer)).filter.hidden, undefined);
+
+  assert.equal(readStoryMapFilters(new URLSearchParams("status=all")).status, "all");
+  assert.equal(readStoryMapFilters(new URLSearchParams("status=cut")).status, "cut");
+
+  const html = await makeStoryMapResponse("/story-map?q=e", inactive, engineer, { preservedParams: { as: "engineer" } }).text();
+  assert.match(html, /<option value="" selected="">Active<\/option><option value="all">All, including blocked and cut<\/option>/);
+  assert.match(html, /<option value="blocked">Blocked<\/option><option value="cut">Cut<\/option>/);
+  assert.match(html, /Showing 3 of 5 stories\. 1 blocked and 1 cut hidden\. <a href="\?as=engineer&amp;q=e&amp;status=all">Show them<\/a> · <a href="\?as=engineer">Clear filters<\/a>/);
+  assert.doesNotMatch(html, /Explore duplicate approval handling/);
+
+  // With no other filters, every release still shows and the message has no “Clear filters” link.
+  const plain = await makeStoryMapResponse("/story-map", inactive, engineer).text();
+  assert.match(plain, /<p class="esm-filter-results" role="status">1 blocked and 1 cut hidden\. <a href="\?status=all">Show them<\/a><\/p>/);
+  assert.match(plain, /Reconciliation discovery/);
+  assert.match(plain, /Finance follow-up<\/span>[\s\S]*?0 stories/);
+
+  const all = await makeStoryMapResponse("/story-map?status=all", inactive, engineer).text();
+  assert.equal(cardsIn(all).length, 5);
+  assert.doesNotMatch(all, /esm-filter-results/);
+  const cut = panelFor(all, "Explore duplicate approval handling");
+  assert.match(cut, /<span class="esm-status" data-status="cut"><svg[^>]*><circle[^>]*><\/circle><path d="M3\.6 12\.4 12\.4 3\.6"><\/path><\/svg>Cut<\/span><p class="esm-status-reason">Finance will handle duplicates manually until volumes justify it\.<\/p>/);
+  assert.match(panelFor(all, "Approve an estimate"), /data-status="blocked"><svg[^>]*><circle[^>]*><\/circle><path d="M5 8h6"><\/path><\/svg>Blocked<\/span>/);
+});
+
+test("customers never see blocked or cut stories", async () => {
+  const inactive = withInactiveStories();
+  const customer = getStoryMapForViewer(inactive, regular);
+  // FINANCE-201 was the only customer-facing story in its activity and release, so both disappear too.
+  assert.deepEqual(customer.stories.map(story => story.title), ["Draft a project estimate", "Find material prices", "Submit an estimate for approval"]);
+  assert.deepEqual(customer.releases.map(release => release.title), ["Builder workflow"]);
+  assert.deepEqual(customer.activities.map(activity => activity.title), ["Prepare an estimate", "Send for approval"]);
+
+  const page = await makeStoryMapResponse("/story-map", inactive, regular).text();
+  assert.match(page, /<option value="" selected="">All statuses<\/option><option value="planned">Planned<\/option><option value="in-progress">In progress<\/option><option value="shipped">Shipped<\/option><\/select>/);
+  for (const target of ["/story-map?status=all", "/story-map?status=blocked", "/api/story-map?status=all"]) {
+    const payload = await (await makeStoryMapResponse(target, inactive, regular)).text();
+    assert.doesNotMatch(payload, /Track approved purchases|Finance updates|Track purchases|blocked|Waiting on the finance|statusReason| hidden\./i);
+  }
+});
+
+test("diffs call out stories that become blocked or cut, with their reasons", () => {
+  const inactive = withInactiveStories();
+  const diff = diffStoryMaps(planningMap, inactive);
+  assert.deepEqual(diff.blockedOrCut.map(({ id, change, from, to }) => [id, change, from, to]), [
+    ["FINANCE-201", "entered", "planned", "blocked"],
+    ["FINANCE-202", "entered", "planned", "cut"],
+  ]);
+  assert.deepEqual(diff.customer.map(change => [change.id, change.change]), [["FINANCE-201", "no-longer-visible"]]);
+
+  const markdown = formatStoryMapDiff(diff);
+  assert.ok(markdown.indexOf("### Customer-facing changes") < markdown.indexOf("### Blocked and cut"));
+  assert.ok(markdown.indexOf("### Blocked and cut") < markdown.indexOf("### Stories"));
+  assert.match(markdown, /- \*\*Cut:\*\* `FINANCE-202` Explore duplicate approval handling \(was Planned\)\. Reason: Finance will handle duplicates manually until volumes justify it\./);
+  assert.match(markdown, /\| `FINANCE-201` [^|]+ \| Status: Planned → \*\*Blocked\*\*<br>Edited `statusReason` \|/);
+
+  const unblocked = editedSample(document => {
+    Object.assign(document.stories.find(story => story.id === "FINANCE-201"), { status: "in-progress" });
+  }, planningMap);
+  const back = diffStoryMaps(inactive, unblocked);
+  assert.deepEqual(back.blockedOrCut.map(({ id, change, from, to }) => [id, change, from, to]), [
+    ["FINANCE-201", "left", "blocked", "in-progress"],
+    ["FINANCE-202", "left", "cut", "planned"],
+  ]);
+  assert.match(formatStoryMapDiff(back), /- \*\*No longer blocked:\*\* `FINANCE-201` Approve an estimate and create a purchase order, now In progress\./);
+  assert.deepEqual(diffStoryMaps(null, inactive).blockedOrCut.map(change => [change.id, change.from]), [["FINANCE-201", undefined], ["FINANCE-202", undefined]]);
+});
+
+test("history records why a story was blocked or cut", async t => {
+  const { buildStoryMapHistory } = await import("../dist/history-git.js");
+  const { root, git } = await historyRepo(t);
+  await writeFile(join(root, "product/story-map.yaml"), stringify(withInactiveStories()));
+  git(["commit", "-q", "-am", "Cut duplicate handling"], { author: "Fay", committer: "Fay", date: "2026-11-19T09:00:00Z" });
+  const history = await buildStoryMapHistory({ cwd: root });
+  const finance = history.events.filter(event => event.storyId.startsWith("FINANCE") && event.to !== "planned");
+  assert.deepEqual(finance.map(({ storyId, type, to, reason }) => [storyId, type, to, reason]), [
+    // The demo map adds FINANCE-202 as already cut.
+    ["FINANCE-202", "added", "cut", "Finance will handle duplicate approvals manually until volumes justify it."],
+    ["FINANCE-201", "status", "blocked", "Waiting on the finance system’s purchase order API."],
+  ]);
+  assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
+
+  const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
+  const board = renderToStaticMarkup(createElement(StoryMapBoard, {
+    map: filterStoryMapView(getStoryMapForViewer(current, engineer, { history }), { status: "all" }),
+    timeZone: "UTC",
+  }));
+  assert.match(panelFor(board, "Explore duplicate approval handling"), /<span class="esm-history-reason">Finance will handle duplicate approvals manually until volumes justify it\.<\/span>/);
+});
+
+test("boards rendered without filters hide blocked and cut stories behind a checkbox", () => {
+  const board = view => renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+  const html = board(getStoryMapForViewer(map, engineer));
+  assert.match(html, /<section class="esm-board" data-theme="light" data-hide-inactive=""/);
+  assert.match(html, /<p class="esm-inactive-toggle"><input type="checkbox" class="esm-inactive-input" id="([^"]+)"\/><label for="\1">Show blocked and cut stories \(1 cut\)<\/label><\/p>/);
+  // The cut card is rendered for CSS to hide, and its cell and lane count know it.
+  const cut = cardsIn(html).find(card => card.includes("FINANCE-202"));
+  assert.match(cut, /data-inactive=""/);
+  assert.equal(cardsIn(html).filter(card => card.includes("data-inactive")).length, 1);
+  assert.match(html, /<div class="esm-cell" role="cell" data-inactive-only="">/);
+  assert.match(html, /Reconciliation discovery<\/span><span class="esm-release-count esm-count-active">0 stories<\/span><span class="esm-release-count esm-count-all">1 story<\/span>/);
+
+  // Filtered boards use the toolbar instead, and maps with nothing to hide get no checkbox.
+  assert.doesNotMatch(board(filterStoryMapView(getStoryMapForViewer(map, engineer))), /esm-inactive-toggle|data-hide-inactive/);
+  assert.doesNotMatch(board(getStoryMapForViewer(planningMap, engineer)), /esm-inactive-toggle|data-hide-inactive|data-inactive/);
+  assert.doesNotMatch(board(getStoryMapForViewer(map, regular)), /esm-inactive-toggle|data-inactive/);
 });

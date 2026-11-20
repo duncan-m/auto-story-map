@@ -1,10 +1,10 @@
 # Embedded Story Map: engineering overview
 
-Prepared 20 November 2026 for version 0.3.0 (`main` at `d7e13cc`). Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
+Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings and blocked and cut statuses. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
-Embedded Story Map lets a product show its own user story map at `/story-map`, behind the product's existing sign-in. Activities (the steps of the user journey) run left to right. Releases (delivery slices) run top to bottom. Each story sits in one activity and one release and has a status of `planned`, `in-progress` or `shipped`.
+Embedded Story Map lets a product show its own user story map at `/story-map`, behind the product's existing sign-in. Activities (the steps of the user journey) run left to right. Releases (delivery slices) run top to bottom. Each story sits in one activity and one release and has a status of `planned`, `in-progress`, `shipped`, `blocked` or `cut`. The first three are the active statuses. Blocked and cut stories are hidden by default and never shown to customers.
 
 The map is a YAML file, `product/story-map.yaml`, committed in the host product's repository. It is edited through pull requests, like code, and ships with each deployment. Nothing is stored in a database, and the board is read-only.
 
@@ -67,8 +67,8 @@ The tests and the demo import the package by its own name (`import … from "emb
 
 | Path | Responsibility |
 | --- | --- |
-| `src/status.ts` | The three statuses and their display labels. The single list every other module reads. |
-| `src/schema.ts` | Zod schema for the YAML, cross-reference checks, `parseStoryMap`, `loadStoryMap`, `StoryMapValidationError` and source-line lookup |
+| `src/status.ts` | The five statuses, the active subset, and their display labels. The single list every other module reads. |
+| `src/schema.ts` | Zod schema for the YAML, cross-reference checks, warnings (`storyMapWarnings`), `parseStoryMap`, `loadStoryMap`, `StoryMapValidationError` and source-line lookup |
 | `src/view.ts` | `getStoryMapForViewer`: the internal and customer projections, role check, and attaching history to stories |
 | `src/filter.ts` | `readStoryMapFilters` (URL parameters) and `filterStoryMapView` (search, status and “changed in” filters) |
 | `src/history.ts` | History file types and `parseStoryMapHistory` |
@@ -84,7 +84,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `docs/story-map.md` | The user guide. **It is also shipped in the package and copied into hosts by `init`.** |
 | `docs/plans/` | Delivery plans. `0.4.0-enhancements.md` is the proposed next release. |
 | `docs/releasing.md` | How to publish a version |
-| `product/story-map.yaml` | The builder estimates demo map. It is test data and the demo's content, not a map of this library. |
+| `product/story-map.yaml` | The builder estimates demo map, including one cut story (`FINANCE-202`). It is test data and the demo's content, not a map of this library. Tests that need FINANCE-202 still planned use the `planningMap` copy. |
 | `example/host.mjs` | Reference host integration: one function that returns a web `Response` for the page or the JSON endpoint |
 | `example/demo.mjs` | Local demo server on `127.0.0.1:4173` with a role switcher |
 | `scripts/build-schema.mjs` | Generates `story-map.schema.json` from the compiled Zod schema |
@@ -100,7 +100,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 
 - The order of `activities` is the journey order. The order of `releases` is the delivery order. The order of `stories` is the order within each cell.
 - IDs match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`. Story IDs such as `BUILDER-102` are stable: renaming or moving a story keeps its ID, and history, diffs and delivery plans all key on it.
-- A story's `status` defaults to `planned`.
+- A story's `status` defaults to `planned`. `statusReason` (up to 500 characters) records why a story is blocked or cut.
 - `sources` is a list of up to 20 strings. A string is either a URL, a repository-relative path (optionally with a `#heading`), or free text such as “Agreed in planning”.
 - Every object is `.strict()`, so an unknown field is an error rather than being silently dropped. This catches typos such as `staus`.
 - Size limits (titles 120 characters, summaries 500, notes 4,000, 50 activities or releases, 1,000 stories) keep a malformed or hostile file from producing an unusable page.
@@ -114,7 +114,9 @@ Cross-reference rules, checked in `crossReferenceIssues`:
 
 ### Parsing and error reporting
 
-`parseStoryMap(text)` returns a typed `StoryMapDocument` or throws `StoryMapValidationError`, whose `issues` each have a `path`, `message`, `line`, `column` and the `itemId` of the containing activity, release or story.
+`parseStoryMap(text)` returns a typed `StoryMapDocument` or throws `StoryMapValidationError`, whose `issues` each have a `severity`, `path`, `message`, `line`, `column` and the `itemId` of the containing activity, release or story.
+
+Issues are errors or warnings. Errors make the map invalid and are thrown. Warnings are advice about a valid map, such as a blocked or cut story with no `statusReason`. `storyMapWarnings(map)` computes them from the parsed document, and `loadStoryMap` returns them, located in the source, as `warnings`. `parseStoryMap` drops them. Never make a warning depend on something an error would catch: warnings only run once the map is valid.
 
 How `loadStoryMap` gets there:
 
@@ -125,7 +127,7 @@ How `loadStoryMap` gets there:
 5. Map each issue path back to a YAML node to get its line and column. `unrecognized_keys` issues are split into one issue per key, located at the key itself.
 6. Sort issues by line.
 
-`loadStoryMap` also returns `locate(path)` so later checks, such as `--check-sources`, can report positions in the same file.
+`loadStoryMap` also returns `warnings` and `locate(path)` so later checks, such as `--check-sources`, can report positions in the same file.
 
 ### JSON Schema
 
@@ -150,10 +152,10 @@ The default `canViewInternal` checks for the `engineer` or `super-admin` role (`
 
 The customer view is built from scratch, not by deleting fields from the internal one:
 
-- Only stories with `customer` copy are included, using the customer title and summary.
+- Only stories with `customer` copy and an active status are included, using the customer title and summary. Blocked and cut stories are dropped before activities and releases are chosen, so a release that only contains them disappears too.
 - Only activities and releases that contain a published story and have customer copy are included.
 - Real IDs are replaced with sequential ones (`story-1`, `activity-1`, `release-1`), so internal IDs and the number of hidden stories do not leak.
-- Notes, sources, `updatedBy` and history are never copied.
+- Notes, sources, `statusReason`, `updatedBy` and history are never copied.
 - The status is shown as it is. Reviewers must check that a customer-facing story's status is right for customers.
 
 Both views have the same `StoryMapView` shape apart from `audience`, so the board and JSON endpoint treat them alike.
@@ -165,10 +167,12 @@ When history is supplied, the internal view attaches each story's events newest 
 `readStoryMapFilters(url.searchParams)` reads three parameters and ignores anything unknown:
 
 - `q`: trimmed and cut to 100 characters
-- `status`: one of the three statuses
+- `status`: one of the five statuses, or `all`
 - `changed`: `1d`, `7d`, `14d` or `30d`
 
 `filterStoryMapView(view, filters, { now })` returns a copy of the view with fewer stories and a `filter` object recording the active filters and the unfiltered total. The board shows its toolbar only when `filter` is present, so hosts that do not call it get a board without search.
+
+With no `status`, the filter keeps only active stories and records in `filter.hidden` how many blocked and cut stories matched the other filters but were hidden. The board shows that count with a link to `status=all`. A host that never calls `filterStoryMapView` gets no toolbar, so the board hides blocked and cut stories itself: it sets `data-hide-inactive` on the board, marks those cards `data-inactive`, and renders a **Show blocked and cut stories** checkbox. CSS `:has()` hides the cards, cells that only hold them, and the active-only lane counts until the box is ticked. Browsers without `:has()` ignore those rules and show every story with full counts, which fails safe for internal viewers. Customer views contain no blocked or cut stories, so for them the default changes nothing, and their status select offers only the active statuses.
 
 Always filter after projecting. The search runs over the projected view, so a customer's search matches only approved titles and summaries, while an internal search also matches IDs and notes. Filtering the raw document first would let a search reveal hidden content through which results come back.
 
@@ -182,7 +186,7 @@ The “changed in” filter only applies to internal views that have history. It
 
 - The grid is a set of `div`s with ARIA `table`, `row`, `columnheader`, `rowheader` and `cell` roles. `--esm-columns` on the grid sets the number of activity columns for CSS grid.
 - Stories are grouped by `release:activity` key. Stories whose activity or release is missing from the view are skipped (`placed`), which also guards against a host passing a hand-built view.
-- While filtering, releases with no matching stories are hidden. Without filters, every release shows, even when empty, so engineers can see the full plan.
+- While filtering, releases with no matching stories are hidden. Without filters, every release shows, even when empty, so engineers can see the full plan. The default Active status filter does not count as filtering for this, and neither does `status=all`.
 - Release lanes cycle through three colour schemes using `data-lane` (index modulo 3).
 - The eyebrow reads “User story map” for internal viewers and “Roadmap” for customers.
 
@@ -207,7 +211,7 @@ Engineering links open in a new tab with `rel="noopener noreferrer"`, an icon an
 
 ### Filter toolbar
 
-The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history.
+The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history. Internal views get **Active** (the default) and **All, including blocked and cut** at the top of the status select; customer views get **All statuses** and the three active statuses. When `filter.hidden` is set, the results line says how many blocked and cut stories are hidden and links to the same filters with `status=all`.
 
 ### Dates
 
@@ -234,7 +238,7 @@ Status history shows when each story was added or changed status, who made the c
 1. Refuse a shallow clone unless `--allow-shallow` is passed. In a shallow clone, the oldest version found is used only as a baseline, so stories that already existed are not reported as added on that date. The output then has `complete: false`.
 2. List commits that touched the map with `git log --first-parent --reverse` on the chosen ref, usually `main`. First-parent means each change is dated when it reached that branch, not when it was written on a feature branch.
 3. Read each version with `git show <sha>:<path>` and parse it. Versions that are missing or do not validate are skipped, and the next valid version is compared with the last valid one.
-4. Compare each version's stories with the previous one by ID. A new ID produces an `added` event. A changed `status` produces a `status` event with `from` and `to`. Moves, renames and other edits produce nothing, and removing a story produces no event.
+4. Compare each version's stories with the previous one by ID. A new ID produces an `added` event. A changed `status` produces a `status` event with `from` and `to`. When the new status is blocked or cut and the story has a `statusReason`, the event records it as `reason`. Moves, renames and other edits produce nothing, and removing a story produces no event.
 5. Store `at` as the commit's committer date, normalised with `toISOString()`. Git versions print UTC as either `+00:00` or `Z`, and a canonical form keeps the file stable and comparable.
 
 Who is credited:
@@ -254,14 +258,14 @@ A host without a history file loses nothing else: no dates on cards, no history 
 
 | Command | What it does | Exit codes |
 | --- | --- | --- |
-| `validate [--format text\|github] [--check-sources] [--plans <dir>]… [--root <dir>] <map>…` | Parses each map, then runs the optional reference checks | 0 valid, 1 problems |
+| `validate [--format text\|github] [--strict] [--check-sources] [--plans <dir>]… [--root <dir>] <map>…` | Parses each map, then runs the optional reference checks | 0 valid (warnings allowed), 1 errors, or warnings with `--strict` |
 | `diff [--format markdown\|json] [--map <path>] <base-ref>` | Compares the working copy of the map with its version at a Git ref | 0, 1 invalid map, 2 Git or usage error |
 | `history [--map] [--ref] [--out] [--allow-shallow]` | Writes the history JSON | 0, 1, 2 Git error or shallow clone |
 | `init [--no-ci] [--dir <path>]` | Sets up a host repository | 0 |
 
 ### validate
 
-Text output goes to stderr as `file:line:column: path (ITEM-ID): message`. `--format github` prints `::error file=…,line=…,col=…::` workflow commands to stdout, escaping `%`, newlines, `:` and `,` as GitHub requires, so problems appear on the PR diff.
+Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with `warning: ` before the path for warnings. `--format github` prints `::error` or `::warning file=…,line=…,col=…::` workflow commands to stdout, escaping `%`, newlines, `:` and `,` as GitHub requires, so problems appear on the PR diff.
 
 `--check-sources` (`checkSources` in `src/references.ts`) looks at each source that looks like a path: no whitespace, no URL scheme and no leading `//`. It reports files that do not exist and paths that resolve outside `--root`. For Markdown files with a fragment, it checks the fragment against `markdownAnchors`, which reimplements GitHub's anchor rules: strip inline Markdown and HTML, lower-case, drop punctuation, turn spaces into hyphens, add `-1`, `-2` suffixes for duplicate headings, skip fenced code blocks, and accept Setext headings and `<a id>`/`<a name>` anchors. If GitHub's rendering and this function disagree, the validator either accepts a broken link or rejects a working one, so test any change against real GitHub output.
 
@@ -275,6 +279,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`. `--fo
 
 - **Customer-facing changes** first: stories that become visible or stop being visible to signed-in customers, and visible stories whose customer title, summary, status or customer-facing activity or release changes. A story counts as visible only when the map is `all-users`, has map customer copy and the story has customer copy.
 - Visibility switches, as a GitHub `[!IMPORTANT]` or `[!NOTE]` alert.
+- A **Blocked and cut** section (`blockedOrCut`): stories that became blocked or cut, with their reasons, and stories that returned to an active status. A blocked or cut story does not count as customer-visible, so a published story that becomes blocked or cut also appears under “No longer visible”.
 - Added, moved, renamed, re-statused, edited and removed stories, in one table.
 - Added, renamed, removed and reordered activities and releases, and changes to their customer labels.
 
@@ -297,6 +302,7 @@ Templates and the guide are found relative to the compiled `dist/init.js` (`new 
 - **Build the customer view from an allow-list.** When adding a field to stories, decide explicitly whether customers see it. The default must be no. The tests check that customer HTML and JSON contain none of the internal content.
 - **`canViewInternal` must return `true`.** Keep the strict comparison.
 - **Keep internal IDs out of the customer view.** Customer IDs are renumbered on purpose.
+- **Blocked and cut stay internal.** The customer projection drops them, and tests check that customer HTML and JSON never mention them or their reasons.
 - **History contains names.** Keep it internal-only and out of static assets.
 - **Responses are private.** The example host sends `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. Hosts are told to do the same, because the page differs per viewer.
 - **Only `http` and `https` sources become links.** React escapes all text, and the board never uses `dangerouslySetInnerHTML`. A test checks that story text renders as text.
@@ -334,10 +340,12 @@ All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert
 - parsing defaults, duplicate keys and IDs, dangling references, customer-label rules, and error lines and item IDs,
 - audience rules on the HTML page and JSON endpoint through `example/host.mjs`, including that customer output contains no internal content,
 - card faces, popover panels, engineering links, sources after a JSON round trip, themes and escaping,
-- filters, including that searches only see the projected view,
+- filters, including that searches only see the projected view, the default that hides blocked and cut stories, and the checkbox on boards without filters,
+- that customers never see blocked or cut stories,
+- validator warnings, `--strict` and `::warning` annotations,
 - the CLI's text and GitHub output, `diff` against a Git ref, `init` in a temporary directory, source and plan checks, and GitHub anchor rules,
 - that the committed JSON Schema matches the validator,
-- history built from real temporary Git repositories, with merge commits, `updatedBy` credit and shallow clones, and history on the board.
+- history built from real temporary Git repositories, with merge commits, `updatedBy` credit, shallow clones and blocked or cut reasons, and history on the board.
 
 Tests that need Git create temporary repositories and clean them up. They need `git` on the path.
 
@@ -375,7 +383,7 @@ Before 1.0.0, a minor version may contain breaking changes. Each one needs a cha
 
 ### Add or change a status
 
-`storyStatuses` in `src/status.ts` drives the schema, history schema, filters, toolbar and diff. The board's `StatusIcon` and the `[data-status]` colours in `styles.css` need matching entries. Old history files with the previous statuses must still parse. The [0.4.0 plan](plans/0.4.0-enhancements.md) proposes `blocked` and `cut` statuses that are hidden by default.
+`storyStatuses` in `src/status.ts` drives the schema, history schema, filters, toolbar and diff. `activeStoryStatuses` decides what the board shows by default and what customers can see. The board's `StatusIcon`, the `[data-status]` colours in `styles.css` (in all three palettes) and the guide need matching entries. Never rely on colour alone: each status has an icon and a text label. Old history files with the previous statuses must still parse.
 
 ### Change the guide or agent instructions
 
@@ -394,13 +402,13 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 - The board is read-only. All edits go through PRs on the YAML file.
 - Each product has one map file. There is no merging of several maps.
 - History needs a full clone at build time. Squash and rebase merges on GitHub do not record who merged. Removing a story, or moving it between activities or releases, records no event.
-- The customer view shows the story's internal status unchanged. There is no separate customer status.
+- The customer view shows the story's internal status unchanged. There is no separate customer status. Blocked and cut stories are left out instead.
 - `--check-sources` does not check absolute URLs or free-text sources. `--plans` only recognises `PREFIX-number` IDs.
 - `init` only writes the CI workflow for npm projects.
 - Panels depend on the HTML popover API, which all current major browsers support. There is no fallback for older browsers.
 - Dates use the server's time zone unless the host passes `timeZone`.
 
-The [0.4.0 plan](plans/0.4.0-enhancements.md) is proposed, not built. It covers validator warnings, release notes and expected impact (editable on the board), blocked and cut statuses, flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
+The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings and blocked and cut statuses are built. Still proposed: release notes and expected impact, editing them on the board (which would add the library's first write path, through the GitHub API), flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
 
 ## Documentation precedence
 

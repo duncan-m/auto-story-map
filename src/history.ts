@@ -8,6 +8,8 @@ export interface StoryHistoryEvent {
   type: "added" | "status";
   from?: StoryStatus;
   to: StoryStatus;
+  /** The story’s `statusReason` when it became blocked or cut. */
+  reason?: string;
   /** UTC time the change reached the history’s branch, usually `main`, such as `2026-11-12T15:30:00.000Z`. */
   at: string;
   /** Who made the edit: the story’s `updatedBy` when that edit set it, otherwise the Git commit author. */
@@ -37,6 +39,7 @@ export const storyMapHistorySchema = z.object({
     type: z.enum(["added", "status"]),
     from: z.enum(storyStatuses).optional(),
     to: z.enum(storyStatuses),
+    reason: z.string().max(500).optional(),
     at: z.iso.datetime({ offset: true }),
     by: name.optional(),
     mergedBy: name.optional(),

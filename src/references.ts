@@ -80,7 +80,7 @@ export async function checkSources(loaded: LoadedStoryMap, root: string): Promis
     for (const [sourceIndex, source] of (story.sources ?? []).entries()) {
       if (!looksLikePath(source)) continue;
       const path = ["stories", storyIndex, "sources", sourceIndex];
-      const report = (message: string) => issues.push({ path, message, itemId: story.id, ...loaded.locate(path) });
+      const report = (message: string) => issues.push({ severity: "error", path, message, itemId: story.id, ...loaded.locate(path) });
 
       const [rawFile, rawFragment] = source.split("#", 2);
       let file: string;
@@ -150,7 +150,7 @@ export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, 
     const absolute = resolve(root, planPath);
     const files = await markdownFiles(absolute);
     if (!files.length) {
-      issues.push({ path: [], file: planPath, message: "No Markdown files found." });
+      issues.push({ severity: "error", path: [], file: planPath, message: "No Markdown files found." });
       continue;
     }
     for (const file of files) {
@@ -159,6 +159,7 @@ export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, 
         for (const match of line.matchAll(pattern)) {
           if (ids.has(match[0])) continue;
           issues.push({
+            severity: "error",
             path: [],
             file: relative(root, file).split(sep).join("/"),
             line: index + 1,

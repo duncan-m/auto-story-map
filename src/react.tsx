@@ -1,6 +1,6 @@
 import { useId, version } from "react";
 import type { CSSProperties } from "react";
-import { storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
+import { activeStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
 import type { InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
@@ -74,6 +74,7 @@ function HistoryList({ entries, settings, labelledBy }: { entries: StoryHistoryE
               <time dateTime={entry.at}>{formatDate(entry.at, settings)}</time>
               {people && ` · ${people}`}
             </span>
+            {entry.reason && <span className="esm-history-reason">{entry.reason}</span>}
           </li>
         );
       })}
@@ -136,6 +137,8 @@ function StatusIcon({ status }: { status: StoryStatus }) {
         : <circle cx="8" cy="8" r="6.2" />}
       {status === "in-progress" && <circle cx="8" cy="8" r="1.7" fill="currentColor" stroke="none" />}
       {status === "shipped" && <path d="m5.3 8.2 1.8 1.8 3.6-3.7" />}
+      {status === "blocked" && <path d="M5 8h6" />}
+      {status === "cut" && <path d="M3.6 12.4 12.4 3.6" />}
     </svg>
   );
 }
@@ -178,6 +181,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
         </button>
       </div>
       <Status status={story.status} />
+      {internal && story.statusReason && <p className="esm-status-reason">{story.statusReason}</p>}
       {story.summary && <p className="esm-detail-summary">{story.summary}</p>}
       <dl className="esm-detail-context">
         <dt>Activity</dt>
@@ -222,14 +226,28 @@ function storyCount(count: number) {
   return `${count} ${count === 1 ? "story" : "stories"}`;
 }
 
-function FilterToolbar({ filter, shown, preservedParams, showChanged }: {
+/** True when a filter narrows the board beyond the default of active stories. */
+function isFiltering(filter: StoryMapView["filter"]) {
+  return !!(filter && (filter.query || (filter.status && filter.status !== "all") || filter.changedWithinDays));
+}
+
+function hiddenSummary({ blocked, cut }: { blocked: number; cut: number }) {
+  return [blocked && `${blocked} blocked`, cut && `${cut} cut`].filter(Boolean).join(" and ");
+}
+
+function FilterToolbar({ filter, shown, preservedParams, showChanged, internal }: {
   filter: NonNullable<StoryMapView["filter"]>;
   shown: number;
   preservedParams?: Readonly<Record<string, string>>;
   showChanged: boolean;
+  internal: boolean;
 }) {
-  const filtering = !!(filter.query || filter.status || filter.changedWithinDays);
+  const filtering = isFiltering(filter);
   const clearHref = `?${new URLSearchParams(preservedParams ?? {})}`;
+  const showHiddenParams = new URLSearchParams(preservedParams ?? {});
+  if (filter.query) showHiddenParams.set("q", filter.query);
+  showHiddenParams.set("status", "all");
+  if (filter.changedWithinDays) showHiddenParams.set("changed", `${filter.changedWithinDays}d`);
   return (
     <>
       <div className="esm-toolbar">
@@ -248,8 +266,11 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged }: {
             <input type="search" name="q" placeholder="Search stories" aria-label="Search stories" maxLength={100} defaultValue={filter.query ?? ""} />
           </label>
           <select className="esm-select" name="status" aria-label="Filter by story status" defaultValue={filter.status ?? ""}>
-            <option value="">All statuses</option>
-            {storyStatuses.map(status => <option key={status} value={status}>{storyStatusLabels[status]}</option>)}
+            {internal ? <>
+              <option value="">Active</option>
+              <option value="all">All, including blocked and cut</option>
+            </> : <option value="">All statuses</option>}
+            {(internal ? storyStatuses : activeStoryStatuses).map(status => <option key={status} value={status}>{storyStatusLabels[status]}</option>)}
           </select>
           {showChanged && (
             <select
@@ -265,10 +286,16 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged }: {
           <button type="submit" className="esm-button">Apply</button>
         </form>
       </div>
-      {filtering && (
+      {(filtering || filter.hidden) && (
         <p className="esm-filter-results" role="status">
-          {shown === 0 ? "No stories match these filters." : `Showing ${shown} of ${storyCount(filter.total)}.`}{" "}
-          <a href={clearHref}>Clear filters</a>
+          {filtering && <>
+            {shown === 0 ? "No stories match these filters." : `Showing ${shown} of ${storyCount(filter.total)}.`}{" "}
+          </>}
+          {filter.hidden && <>
+            {`${hiddenSummary(filter.hidden)} hidden.`}{" "}
+            <a href={`?${showHiddenParams}`}>Show them</a>{filtering && " · "}
+          </>}
+          {filtering && <a href={clearHref}>Clear filters</a>}
         </p>
       )}
     </>
@@ -287,7 +314,7 @@ export function StoryMapBoard({
   const baseId = useId();
   const headingId = `${baseId}-heading`;
   const internal = map.audience === "internal";
-  const filtering = !!(map.filter && (map.filter.query || map.filter.status || map.filter.changedWithinDays));
+  const filtering = isFiltering(map.filter);
   const settings: DateSettings = { locale, timeZone, now: now ?? new Date() };
 
   const activityTitles = new Map(map.activities.map(activity => [activity.id, activity.title]));
@@ -305,10 +332,22 @@ export function StoryMapBoard({
     releaseCounts.set(story.release, (releaseCounts.get(story.release) ?? 0) + 1);
   }
   const releases = filtering ? map.releases.filter(release => releaseCounts.has(release.id)) : map.releases;
+
+  // Without filterStoryMapView, the board hides blocked and cut stories itself and offers a
+  // checkbox to show them. CSS does the hiding, so it works without JavaScript and without
+  // the host reading a query parameter. Browsers without :has() show every story.
+  const inactive = { blocked: 0, cut: 0 };
+  const activeCounts = new Map<string, number>();
+  for (const story of placed) {
+    if (isActiveStatus(story.status)) activeCounts.set(story.release, (activeCounts.get(story.release) ?? 0) + 1);
+    else inactive[story.status as keyof typeof inactive]++;
+  }
+  const hideInactive = !map.filter && (inactive.blocked > 0 || inactive.cut > 0);
+  const toggleId = `${baseId}-show-inactive`;
   const showGrid = releases.length > 0 && (placed.length > 0 || (internal && !filtering));
 
   return (
-    <section className="esm-board" data-theme={theme} aria-labelledby={headingId}>
+    <section className="esm-board" data-theme={theme} data-hide-inactive={hideInactive ? "" : undefined} aria-labelledby={headingId}>
       <header className="esm-header">
         <p className="esm-eyebrow">{internal ? "User story map" : "Roadmap"}</p>
         <h2 id={headingId}>{map.title}</h2>
@@ -321,7 +360,14 @@ export function StoryMapBoard({
             shown={placed.length}
             preservedParams={preservedParams}
             showChanged={internal && !!map.history}
+            internal={internal}
           />
+        )}
+        {hideInactive && (
+          <p className="esm-inactive-toggle">
+            <input type="checkbox" className="esm-inactive-input" id={toggleId} />
+            <label htmlFor={toggleId}>Show blocked and cut stories ({hiddenSummary(inactive)})</label>
+          </p>
         )}
         {showGrid ? (
           <div className="esm-scroll" role="region" tabIndex={0} aria-label="Story map by release and activity">
@@ -350,18 +396,28 @@ export function StoryMapBoard({
                   <div className="esm-release" role="rowheader">
                     <span className="esm-release-name"><span className="esm-release-dot" aria-hidden="true" />{release.title}</span>
                     {release.summary && <span className="esm-release-summary">{release.summary}</span>}
-                    <span className="esm-release-count">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>
+                    {hideInactive && (activeCounts.get(release.id) ?? 0) !== (releaseCounts.get(release.id) ?? 0) ? <>
+                      <span className="esm-release-count esm-count-active">{storyCount(activeCounts.get(release.id) ?? 0)}</span>
+                      <span className="esm-release-count esm-count-all">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>
+                    </> : <span className="esm-release-count">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>}
                   </div>
                   {map.activities.map(activity => {
                     const stories = cells.get(`${release.id}:${activity.id}`) ?? [];
                     return (
-                      <div className="esm-cell" role="cell" data-empty={stories.length ? undefined : ""} key={activity.id}>
+                      <div
+                        className="esm-cell"
+                        role="cell"
+                        data-empty={stories.length ? undefined : ""}
+                        data-inactive-only={stories.length && stories.every(story => !isActiveStatus(story.status)) ? "" : undefined}
+                        key={activity.id}
+                      >
                         <span className="esm-cell-label" aria-hidden="true">{activity.title}</span>
                         {stories.map(story => (
                           <button
                             type="button"
                             className="esm-card"
                             aria-haspopup="dialog"
+                            data-inactive={isActiveStatus(story.status) ? undefined : ""}
                             key={story.id}
                             {...popoverTarget(panelIds.get(story)!)}
                           >

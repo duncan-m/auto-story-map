@@ -19,6 +19,8 @@
   --esm-status-planned: #52617a;
   --esm-status-in-progress: #5347be;
   --esm-status-shipped: #086d57;
+  --esm-status-blocked: #a34400;
+  --esm-status-cut: #9b2c4b;
   --esm-lane-0-bg: #edefff;
   --esm-lane-0-ink: #5146c9;
   --esm-lane-0-chip: #e0e3fd;
@@ -53,6 +55,8 @@
   --esm-status-planned: #a8b2c5;
   --esm-status-in-progress: #b0aaff;
   --esm-status-shipped: #63d3b4;
+  --esm-status-blocked: #f5b072;
+  --esm-status-cut: #f29bb0;
   --esm-lane-0-bg: #1d1e3c;
   --esm-lane-0-ink: #b0aaff;
   --esm-lane-0-chip: #2c2d5a;
@@ -85,6 +89,8 @@
     --esm-status-planned: #a8b2c5;
     --esm-status-in-progress: #b0aaff;
     --esm-status-shipped: #63d3b4;
+    --esm-status-blocked: #f5b072;
+    --esm-status-cut: #f29bb0;
     --esm-lane-0-bg: #1d1e3c;
     --esm-lane-0-ink: #b0aaff;
     --esm-lane-0-chip: #2c2d5a;
@@ -155,6 +161,15 @@
 .esm-button:hover { background: var(--esm-hover); }
 .esm-filter-results { margin: 0; padding: 0 17px 12px; color: var(--esm-muted); font-size: .875rem; }
 .esm-filter-results a, .esm-detail a { color: var(--esm-accent-ink); }
+
+/* Boards rendered without filterStoryMapView hide blocked and cut stories until the checkbox is ticked.
+   Browsers without :has() ignore these rules and show every story with the full counts. */
+.esm-inactive-toggle { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 17px; color: var(--esm-muted); font-size: .875rem; }
+.esm-inactive-input { width: 16px; height: 16px; margin: 0; accent-color: var(--esm-accent); }
+.esm-count-active { display: none; }
+.esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-card[data-inactive],
+.esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-count-all { display: none; }
+.esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-count-active { display: inline; }
 .esm-empty { margin: 0; padding: 24px 17px; color: var(--esm-muted); }
 
 /* Grid */
@@ -224,6 +239,9 @@
 .esm-status { display: inline-flex; align-items: center; gap: 4px; color: var(--esm-status-planned); font-size: .8125rem; line-height: 1.2; }
 .esm-status[data-status="in-progress"] { color: var(--esm-status-in-progress); }
 .esm-status[data-status="shipped"] { color: var(--esm-status-shipped); }
+.esm-status[data-status="blocked"] { color: var(--esm-status-blocked); }
+.esm-status[data-status="cut"] { color: var(--esm-status-cut); }
+.esm-status-reason { margin: 8px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
 .esm-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
 .esm-changed { color: var(--esm-faint); font-size: .75rem; }
 .esm-changed::before { content: "·"; margin-right: 8px; }
@@ -281,6 +299,7 @@
 .esm-history li { display: grid; gap: 3px; }
 .esm-history-change { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--esm-muted); }
 .esm-history-meta { color: var(--esm-muted); font-size: .8125rem; overflow-wrap: anywhere; }
+.esm-history-reason { font-size: .875rem; line-height: 1.4; overflow-wrap: anywhere; }
 .esm-updater { margin: 18px 0 0; color: var(--esm-muted); font-size: .875rem; }
 
 /* Narrow screens: stack each release lane instead of scrolling sideways. */
@@ -309,5 +328,7 @@
   .esm-cell { min-height: 0; padding: 4px 0; }
   .esm-row > .esm-cell:last-child { padding-right: 0; }
   .esm-cell[data-empty] { display: none; }
+  .esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-cell[data-inactive-only] { display: none; }
+  .esm-inactive-toggle { padding: 12px; }
   .esm-cell-label { display: block; margin-top: 6px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; }
 }
