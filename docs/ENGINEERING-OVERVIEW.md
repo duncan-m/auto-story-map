@@ -1,6 +1,6 @@
 # Embedded Story Map: engineering overview
 
-Prepared 20 November 2026 for version 0.3.0, and updated for version 0.4.0: validator warnings, the merged, blocked and cut statuses, release notes and impact, stalled stories, and “last updated” from Git. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
+Prepared 20 November 2026 for version 0.3.0, updated for version 0.4.0 (validator warnings, the merged, blocked and cut statuses, release notes and impact, stalled stories, and “last updated” from Git), and updated for version 0.6.0, the first npm release (the fixes from the code review). Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
@@ -87,9 +87,9 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `styles.css` | Board styles, light, dark and `auto` themes, and the narrow-screen layout |
 | `templates/` | Files `init` copies into a host: starter `story-map.yaml`, `AGENTS.md` section and `story-map-ci.yml` |
 | `docs/story-map.md` | The user guide. **It is also shipped in the package and copied into hosts by `init`.** |
-| `docs/plans/` | Delivery plans. `0.4.0-enhancements.md` records what 0.4.0 built and the items still proposed. |
+| `docs/plans/` | Delivery plans. `0.4.0-enhancements.md` records what 0.4.0 built and the items still proposed. `0.6.0-review-fixes.md` records the fixes from the code review and the decisions on them. `export-to-external-tools.md` is proposed. |
 | `docs/releasing.md` | How to publish a version |
-| `product/story-map.yaml` | This library's own story map, with `ESM-` story IDs: one release per version, the 0.4.0 work as `merged` until it is on npm, one cut story and the proposed next items. The demo shows it, and CI validates it with `--check-sources`, so its doc links must stay valid. Keep it up to date like any product's map. |
+| `product/story-map.yaml` | This library's own story map, with `ESM-` story IDs: one release per version, with each version's work `merged` until it is on npm, cut stories with their reasons, and the proposed next items. The demo shows it, and CI validates it with `--check-sources`, so its doc links must stay valid. Keep it up to date like any product's map. |
 | `test/fixtures/builder-estimates.yaml` | The builder estimates sample map, including one cut story (`FINANCE-202`). It is test data with stable IDs that the tests and the guide's examples rely on. Tests that need FINANCE-202 still planned use the `planningMap` copy. |
 | `example/host.mjs` | Reference host integration: one function that returns a web `Response` for the page or the JSON endpoint |
 | `example/demo.mjs` | Local demo server on `127.0.0.1:4173` with a role switcher |

@@ -110,14 +110,30 @@ releases:
         draft: true
     customer:
       title: "0.5.0"
-  - id: planning
-    title: Planning
-    summary: Fixes from the November 2026 code review, planned for the first npm release.
+  - id: v0-6
+    title: "0.6.0: Fixes from the code review"
+    summary: Fixes from the November 2026 code review, shipped together as the first npm release.
+    notes: |
+      History files always load: long Git names are cut to fit, and past versions of the map in an older format still count.
+
+      Hosts get one call that projects and then filters, plus the response headers to send. The CLI no longer reads a flag as an option's value, source checks stay inside the repository, diff summaries do not notify people, and the board survives a bad locale or time zone.
+
+      Customer IDs and the default internal access rule were reviewed and left as they are.
     impact:
       - metric: Known bugs and security risks from the code review
         expected: Fixed, or recorded as a decision, before the first npm release
         solves: Publishing a first version with known problems
         draft: true
+      - metric: Builds that fail because the history file does not load
+        expected: None from long Git names or from a later change to the map format
+        solves: A host's build or page breaking on history it wrote itself
+        draft: true
+      - metric: Steps a host needs to serve the map safely
+        expected: One call and one set of headers, instead of two calls in the right order and hand-written headers
+        solves: Searches that reveal hidden stories when the steps are done in the wrong order
+        draft: true
+    customer:
+      title: "0.6.0"
   - id: export
     title: Export to external tools
     summary: Internal viewers download the map as a Visio or CSV file to import into Miro or Lucidchart.
@@ -401,11 +417,11 @@ stories:
     customer:
       title: Keep the map in step with the code
       summary: A scheduled check compares the map with your code and proposes corrections for you to review.
-  # Fixes from the November 2026 code review
+  # 0.6.0: fixes from the November 2026 code review
   - id: ESM-601
     title: Keep long Git names from breaking the history file
     activity: track
-    release: planning
+    release: v0-6
     status: merged
     summary: story-map history truncates author and merger names to the history format's 120-character limit, so parseStoryMapHistory always accepts what it writes.
     sources:
@@ -413,7 +429,7 @@ stories:
   - id: ESM-602
     title: Keep history and diffs working when the map format changes
     activity: track
-    release: planning
+    release: v0-6
     status: merged
     summary: Past versions of the map are read leniently with a migration step, history reports versions it skipped, and diff compares an older-format base instead of failing.
     sources:
@@ -421,7 +437,7 @@ stories:
   - id: ESM-603
     title: Use real IDs in the customer view
     activity: explore
-    release: planning
+    release: v0-6
     status: cut
     statusReason: Out of scope for this release. The customer view keeps its positional IDs, so customers see no internal IDs.
     summary: Would have kept the real activity, release and story IDs in the customer view, so a collapsed lane stays on the same release when other releases become visible.
@@ -430,7 +446,7 @@ stories:
   - id: ESM-604
     title: Make hosts choose who sees the internal map
     activity: set-up
-    release: planning
+    release: v0-6
     status: cut
     statusReason: The library is set up mainly for internal use, so the default engineer and super-admin rule stays. The risk is documented in the engineering overview instead.
     summary: Would have warned when the default engineer and super-admin rule was used, then required canViewInternal.
@@ -440,7 +456,7 @@ stories:
   - id: ESM-605
     title: Project and filter the map in one call
     activity: set-up
-    release: planning
+    release: v0-6
     status: merged
     summary: getStoryMapPage projects for the viewer and then filters, and storyMapResponseHeaders gives the no-store headers, so the safe order is the easy one. Documents page sizes for large maps.
     sources:
@@ -448,7 +464,7 @@ stories:
   - id: ESM-606
     title: Fix CLI and source check edge cases
     activity: review
-    release: planning
+    release: v0-6
     status: merged
     summary: Stop options taking the next flag as their value, and refuse sources that reach outside the repository through a symbolic link.
     sources:
@@ -456,7 +472,7 @@ stories:
   - id: ESM-607
     title: Stop diff summaries notifying people
     activity: review
-    release: planning
+    release: v0-6
     status: merged
     summary: The diff escapes @mentions and #references in map text, so pasting the summary into a PR does not notify people or link issues.
     sources:
@@ -464,7 +480,7 @@ stories:
   - id: ESM-608
     title: Keep the board working with bad date settings
     activity: explore
-    release: planning
+    release: v0-6
     status: merged
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
