@@ -118,6 +118,18 @@ releases:
         expected: Fixed, or recorded as a decision, before the first npm release
         solves: Publishing a first version with known problems
         draft: true
+  - id: export
+    title: Export to external tools
+    summary: Internal viewers download the map as a Visio or CSV file to import into Miro or Lucidchart.
+    notes: |
+      A one-way snapshot of the board for workshops and planning sessions held in other tools. The YAML file stays the source of truth.
+
+      Exports include every lane, with collapsed lanes kept collapsed, and at most the 200 most recently changed stories.
+    impact:
+      - metric: Time to get the story map into Miro or Lucidchart
+        expected: One download and an import, instead of copying cards by hand
+        solves: Teams retyping the map to run a workshop in another tool
+        draft: true
   - id: next
     title: Next
     summary: Proposed for 0.5.x or 0.6.0.
@@ -457,3 +469,46 @@ stories:
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
       - docs/plans/0.6.0-review-fixes.md#9-a-board-that-survives-bad-date-settings
+  # Export to external tools
+  - id: ESM-701
+    title: Check that Miro and Lucidchart import a test file
+    activity: explore
+    release: export
+    status: planned
+    summary: Import a hand-made Visio file and CSV into Miro, Lucidchart and LibreOffice before building the export, and record what survives.
+    sources:
+      - docs/plans/export-to-external-tools.md#1-check-that-miro-and-lucidchart-import-a-test-file
+  - id: ESM-702
+    title: Export the internal map as a Visio file
+    activity: explore
+    release: export
+    status: planned
+    summary: storyMapToVsdx writes the whole internal map as a .vsdx file, with collapsed lanes, release notes and impact, and at most 200 stories.
+    notes: Hand-rolled stored zip, no new dependency. Refuses customer views. Includes the LibreOffice check in CI.
+    sources:
+      - docs/plans/export-to-external-tools.md#2-write-a-visio-file-from-the-internal-view
+      - docs/plans/export-to-external-tools.md#6-check-exported-files-in-ci
+  - id: ESM-703
+    title: Export the map from the command line
+    activity: explore
+    release: export
+    status: planned
+    summary: story-map export writes a Visio or CSV file from the YAML file, optionally using history to choose the most recent stories.
+    sources:
+      - docs/plans/export-to-external-tools.md#3-export-from-the-command-line
+  - id: ESM-704
+    title: Download the export from the board
+    activity: explore
+    release: export
+    status: planned
+    summary: Internal viewers get Export links on the board when the host sets exportHref, and lanes they collapsed stay collapsed in the file.
+    sources:
+      - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
+  - id: ESM-705
+    title: Export the map as CSV
+    activity: explore
+    release: export
+    status: planned
+    summary: One row per story with its activity, release, ID and title, safe to open in spreadsheets and importable into Miro and Lucidchart.
+    sources:
+      - docs/plans/export-to-external-tools.md#5-export-the-map-as-csv
