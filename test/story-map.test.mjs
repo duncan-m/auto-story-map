@@ -79,7 +79,10 @@ test("customer HTML and JSON only contain the customer projection", async () => 
   const internal = await makeStoryMapResponse("/story-map", map, engineer).text();
   assert.match(internal, /BUILDER-102/);
   assert.match(internal, /Confirm how a catalogue price/);
-  assert.match(internal, /Explore duplicate approval handling/);
+  // The demo’s cut story is hidden by default and shown on request.
+  assert.doesNotMatch(internal, /Explore duplicate approval handling/);
+  assert.match(internal, /1 cut hidden\./);
+  assert.match(await makeStoryMapResponse("/story-map?status=all", map, engineer).text(), /Explore duplicate approval handling/);
 
   const view = await makeStoryMapResponse("/api/story-map", map, regular).json();
   assert.equal(view.stories.length, 4);
@@ -119,7 +122,7 @@ test("card faces show only the ID, title and status", async () => {
   assert.match(card, /Draft an estimate against a project/);
   assert.match(card, /In progress/);
   assert.doesNotMatch(card, /Record material quantities|Last updated by|Alex Morgan/);
-  assert.equal(cardsIn(internal).length, 5);
+  assert.equal(cardsIn(internal).length, 4);
 
   const customer = await makeStoryMapResponse("/story-map", map, regular).text();
   const customerCard = cardsIn(customer).find(card => card.includes("Draft a project estimate"));
@@ -213,7 +216,7 @@ test("filters search only what the viewer can see", () => {
   assert.deepEqual(filterStoryMapView(internal, { query: "builder-102" }).stories.map(story => story.id), ["BUILDER-102"]);
   assert.deepEqual(filterStoryMapView(internal, { query: "catalogue price" }).stories.map(story => story.id), ["BUILDER-102"]);
   assert.deepEqual(filterStoryMapView(internal, { status: "in-progress" }).stories.map(story => story.id), ["BUILDER-101"]);
-  assert.deepEqual(filterStoryMapView(internal).filter, { query: undefined, status: undefined, total: 5 });
+  assert.deepEqual(filterStoryMapView(internal).filter, { query: undefined, status: undefined, total: 5, hidden: { blocked: 0, cut: 1 } });
 
   const customer = getStoryMapForViewer(map, regular);
   assert.equal(filterStoryMapView(customer, { query: "BUILDER-102" }).stories.length, 0);
@@ -390,8 +393,8 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
 });
 
-function editedSample(edit) {
-  const document = structuredClone(map);
+function editedSample(edit, base = map) {
+  const document = structuredClone(base);
   edit(document);
   return parseStoryMap(stringify(document));
 }
@@ -619,7 +622,7 @@ test("history records additions and status changes with editor, merger and date"
     ["BUILDER-102", "added", undefined, "planned", "2026-11-01T10:00", "Sam Patel", "Alice"],
     ["BUILDER-103", "added", undefined, "planned", "2026-11-01T10:00", "Alex Morgan", "Alice"],
     ["FINANCE-201", "added", undefined, "planned", "2026-11-01T10:00", "Taylor Reed", "Alice"],
-    ["FINANCE-202", "added", undefined, "planned", "2026-11-01T10:00", "Taylor Reed", "Alice"],
+    ["FINANCE-202", "added", undefined, "cut", "2026-11-01T10:00", "Taylor Reed", "Alice"],
     ["BUILDER-101", "status", "in-progress", "shipped", "2026-11-12T15:30", "Bob Builder", "Carol"],
     ["BUILDER-102", "status", "planned", "in-progress", "2026-11-16T08:00", "Dan", "Carol"],
     ["BUILDER-104", "added", undefined, "planned", "2026-11-18T16:45", "Erin", undefined],
@@ -662,7 +665,7 @@ test("only internal viewers see history, and it drives the “changed in” filt
   assert.equal(Object.hasOwn(customer, "history"), false);
   assert.ok(customer.stories.every(story => !("history" in story) && !("lastChangedAt" in story)));
 
-  const ids = (view, days) => filterStoryMapView(view, { changedWithinDays: days }, { now }).stories.map(story => story.id);
+  const ids = (view, days) => filterStoryMapView(view, { status: "all", changedWithinDays: days }, { now }).stories.map(story => story.id);
   assert.deepEqual(ids(internal, 1), []);
   assert.deepEqual(ids(internal, 7), ["BUILDER-102", "BUILDER-104"]);
   assert.deepEqual(ids(internal, 14), ["BUILDER-101", "BUILDER-102", "BUILDER-104"]);
@@ -708,9 +711,17 @@ test("the board shows when each story changed and its history to internal viewer
   assert.doesNotMatch(noHistory, /name="changed"|esm-changed|>History</);
 });
 
+// The demo map before FINANCE-202 was cut, so tests can watch stories become blocked or cut.
+const planningMap = editedSample(document => {
+  const story = document.stories.find(story => story.id === "FINANCE-202");
+  story.status = "planned";
+  delete story.statusReason;
+});
+
 // A copy of the demo map with one blocked customer-facing story and one cut internal story.
 function withInactiveStories({ reasons = true } = {}) {
   return editedSample(document => {
+    for (const story of document.stories) delete story.statusReason;
     Object.assign(document.stories.find(story => story.id === "FINANCE-201"), {
       status: "blocked",
       ...(reasons ? { statusReason: "Waiting on the finance system’s purchase order API." } : {}),
@@ -774,7 +785,7 @@ test("blocked and cut stories are hidden by default and shown on request", async
   assert.deepEqual(ids({ status: "blocked" }), ["FINANCE-201"]);
   // The hidden count only counts stories that match the other filters. Reasons are searchable.
   assert.deepEqual(filterStoryMapView(internal, { query: "duplicates manually" }).filter.hidden, { blocked: 0, cut: 1 });
-  assert.equal(filterStoryMapView(getStoryMapForViewer(map, engineer)).filter.hidden, undefined);
+  assert.equal(filterStoryMapView(getStoryMapForViewer(planningMap, engineer)).filter.hidden, undefined);
 
   assert.equal(readStoryMapFilters(new URLSearchParams("status=all")).status, "all");
   assert.equal(readStoryMapFilters(new URLSearchParams("status=cut")).status, "cut");
@@ -817,7 +828,7 @@ test("customers never see blocked or cut stories", async () => {
 
 test("diffs call out stories that become blocked or cut, with their reasons", () => {
   const inactive = withInactiveStories();
-  const diff = diffStoryMaps(map, inactive);
+  const diff = diffStoryMaps(planningMap, inactive);
   assert.deepEqual(diff.blockedOrCut.map(({ id, change, from, to }) => [id, change, from, to]), [
     ["FINANCE-201", "entered", "planned", "blocked"],
     ["FINANCE-202", "entered", "planned", "cut"],
@@ -832,7 +843,7 @@ test("diffs call out stories that become blocked or cut, with their reasons", ()
 
   const unblocked = editedSample(document => {
     Object.assign(document.stories.find(story => story.id === "FINANCE-201"), { status: "in-progress" });
-  });
+  }, planningMap);
   const back = diffStoryMaps(inactive, unblocked);
   assert.deepEqual(back.blockedOrCut.map(({ id, change, from, to }) => [id, change, from, to]), [
     ["FINANCE-201", "left", "blocked", "in-progress"],
@@ -848,10 +859,11 @@ test("history records why a story was blocked or cut", async t => {
   await writeFile(join(root, "product/story-map.yaml"), stringify(withInactiveStories()));
   git(["commit", "-q", "-am", "Cut duplicate handling"], { author: "Fay", committer: "Fay", date: "2026-11-19T09:00:00Z" });
   const history = await buildStoryMapHistory({ cwd: root });
-  const latest = history.events.filter(event => event.at.startsWith("2026-11-19") && event.storyId.startsWith("FINANCE"));
-  assert.deepEqual(latest.map(({ storyId, to, reason }) => [storyId, to, reason]), [
-    ["FINANCE-201", "blocked", "Waiting on the finance system’s purchase order API."],
-    ["FINANCE-202", "cut", "Finance will handle duplicates manually until volumes justify it."],
+  const finance = history.events.filter(event => event.storyId.startsWith("FINANCE") && event.to !== "planned");
+  assert.deepEqual(finance.map(({ storyId, type, to, reason }) => [storyId, type, to, reason]), [
+    // The demo map adds FINANCE-202 as already cut.
+    ["FINANCE-202", "added", "cut", "Finance will handle duplicate approvals manually until volumes justify it."],
+    ["FINANCE-201", "status", "blocked", "Waiting on the finance system’s purchase order API."],
   ]);
   assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
 
@@ -860,5 +872,5 @@ test("history records why a story was blocked or cut", async t => {
     map: filterStoryMapView(getStoryMapForViewer(current, engineer, { history }), { status: "all" }),
     timeZone: "UTC",
   }));
-  assert.match(panelFor(board, "Explore duplicate approval handling"), /<span class="esm-history-reason">Finance will handle duplicates manually until volumes justify it\.<\/span>/);
+  assert.match(panelFor(board, "Explore duplicate approval handling"), /<span class="esm-history-reason">Finance will handle duplicate approvals manually until volumes justify it\.<\/span>/);
 });
