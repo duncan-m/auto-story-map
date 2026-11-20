@@ -188,9 +188,9 @@
 .esm-frame > .esm-scroll:first-child { border-top: 0; border-radius: calc(var(--esm-radius) - 1px); }
 .esm-grid {
   display: grid;
-  grid-template-columns: minmax(9.5rem, .88fr) repeat(var(--esm-columns), minmax(10.5rem, 1fr));
+  grid-template-columns: minmax(11.4rem, 1.06fr) repeat(var(--esm-columns), minmax(10.5rem, 1fr));
   gap: 10px;
-  min-width: calc(9.5rem + var(--esm-columns) * (10.5rem + 10px) + 24px);
+  min-width: calc(11.4rem + var(--esm-columns) * (10.5rem + 10px) + 24px);
   padding: 12px;
   background: var(--esm-canvas);
 }
@@ -242,7 +242,9 @@
 /* Collapsible release lanes. The toggle only appears where :has() works, so other browsers keep every lane open. */
 .esm-collapse { display: none; }
 @supports selector(:has(*)) {
-  .esm-release { position: relative; padding-right: 36px; }
+  .esm-release { position: relative; padding-right: 12px; }
+  /* Only the name line shares space with the toggle, so only it keeps clear of it. */
+  .esm-release-name { padding-right: 24px; }
   .esm-collapse {
     position: absolute;
     top: 8px;
@@ -266,6 +268,7 @@
   .esm-lane:has(.esm-collapse-input:checked) > .esm-release { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 4px; padding-right: 11px; }
   .esm-lane:has(.esm-collapse-input:checked) .esm-collapse { position: relative; top: auto; right: auto; order: 1; }
   .esm-lane:has(.esm-collapse-input:checked) .esm-release-count { order: 2; margin-left: 4px; }
+  .esm-lane:has(.esm-collapse-input:checked) .esm-release-name { padding-right: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .esm-collapse .esm-icon { transition: none; }
