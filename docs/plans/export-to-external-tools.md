@@ -142,6 +142,13 @@ It is exported from `embedded-story-map`, uses no Node-only APIs, and throws a `
 5. **Shape data.** Each card gets a `Property` section with `ID`, `Title`, `Status`, `Activity` and `Release`. Lanes get `Release` and `Collapsed`.
 6. **Docs.** A new "Export the map" section in `docs/story-map.md` covers the API, the audience rule, the 200-story limit and the import steps for each tool. Add the new files to the code map in `docs/ENGINEERING-OVERVIEW.md`, and add the export to [Security boundaries to preserve](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve).
 
+**Built.** As planned, with these choices made while building it:
+
+- `prepareStoryMapExport` also refuses a filtered view (`view.filter` is set), so a host can't export part of the map by mistake.
+- Card shape data uses readable status labels, such as "In progress".
+- Lane heights grow to fit the release header's text. Wrapping is estimated from an average character width, because Visio does not size text itself.
+- Only `storyMapToVsdx`, `vsdxContentType` and `StoryMapExportOptions` are public. `prepareStoryMapExport` stays internal until the CSV export (ESM-705) needs it.
+
 **Tests** (`test/story-map.test.mjs`):
 
 - The zip round-trips with a small test-only reader, and the CRCs match.

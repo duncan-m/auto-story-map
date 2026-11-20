@@ -74,6 +74,10 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `src/schema.ts` | Zod schema for the YAML, cross-reference checks, warnings (`storyMapWarnings`), `parseStoryMap`, `loadStoryMap`, `StoryMapValidationError` and source-line lookup. Also `migrateStoryMap` and `loadHistoricalStoryMap`, the lenient parser for past versions |
 | `src/view.ts` | `getStoryMapForViewer`: the internal and customer projections, role check, and attaching history to stories. `getStoryMapPage`, which projects then filters, and `storyMapResponseHeaders` |
 | `src/filter.ts` | `readStoryMapFilters` (URL parameters) and `filterStoryMapView` (search, status and “changed in” filters) |
+| `src/export.ts` | `prepareStoryMapExport`: the shared export model. Refuses customer and filtered views, marks collapsed lanes and keeps the most recently changed stories up to `maxStories` |
+| `src/export-layout.ts` | Lays out the export as a board in inches, and estimates text wrapping to size lanes and shorten card titles |
+| `src/export-vsdx.ts` | `storyMapToVsdx`: writes the layout as Visio XML parts and zips them |
+| `src/zip.ts` | A stored (uncompressed) zip writer with CRC-32 and a fixed timestamp, so output is stable |
 | `src/history.ts` | History file types and `parseStoryMapHistory` |
 | `src/history-git.ts` | `buildStoryMapHistory`: walks the map's Git history and records additions and status changes |
 | `src/diff.ts` | `diffStoryMaps` and `formatStoryMapDiff`: compares two map versions and renders the PR summary |
@@ -95,9 +99,11 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `example/demo.mjs` | Local demo server on `127.0.0.1:4173` with a role switcher |
 | `scripts/write-version.mjs` | Writes `src/version.ts` before `tsc` runs |
 | `scripts/build-schema.mjs` | Generates `story-map.schema.json` from the compiled Zod schema |
+| `scripts/export-sample-vsdx.mjs` | Exports the sample map as a `.vsdx` for the LibreOffice check in `export-check.yml` |
+| `scripts/make-export-test-files.mjs` | The ESM-701 spike: writes the hand-made test files in `test/fixtures/export-spike/` |
 | `scripts/smoke-package.sh` | Packs the tarball, installs it into an empty project and checks the imports, CLI and board |
 | `test/story-map.test.mjs` | All tests, using `node:test` |
-| `.github/workflows/` | `ci.yml` for PRs and `main`, `release.yml` for version tags |
+| `.github/workflows/` | `ci.yml` for PRs and `main`, `release.yml` for version tags, and `export-check.yml`, which checks LibreOffice opens the `.vsdx` on PRs that change export code |
 
 ## The map file
 
@@ -358,6 +364,7 @@ Templates and the guide are found relative to the compiled `dist/init.js` (`new 
 - **Git arguments are not shell input.** `git` runs through `execFile` with an argument array, and refs starting with `-` are rejected so they cannot be read as options.
 - **Source checks stay inside the repository.** Paths that resolve outside `--root`, directly or through a symbolic link, are reported, not read, for sources and `--plans` alike. Never `stat` or read a link's target before checking it is inside.
 - **Diff summaries notify nobody.** Text from the map has `@` and `#` escaped, so pasting the summary does not mention people or link issues.
+- **Exports are internal only.** `prepareStoryMapExport` refuses customer views, so every export format inherits the rule. Keep that check in the shared model, not in each writer or host route.
 - **Bounded input.** Keep the schema's length and count limits and the YAML alias limit.
 - **The demo is not an auth model.** `example/demo.mjs` picks a role from `?as=` and listens only on `127.0.0.1`. Real hosts must take roles from their verified session.
 

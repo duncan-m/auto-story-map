@@ -482,7 +482,7 @@ stories:
     title: Export the internal map as a Visio file
     activity: explore
     release: export
-    status: planned
+    status: merged
     summary: storyMapToVsdx writes the whole internal map as a .vsdx file, with collapsed lanes, release notes and impact, and at most 200 stories.
     notes: Hand-rolled stored zip, no new dependency. Refuses customer views. Includes the LibreOffice check in CI.
     sources:
