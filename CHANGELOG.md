@@ -2,6 +2,12 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+- New `getStoryMapPage(document, viewer, { canViewInternal, history, stalledAfterWeeks, now, searchParams })` projects the map for the viewer and then applies the filters from `searchParams`, so the safe order is the easy one. It returns the same as `filterStoryMapView(getStoryMapForViewer(...), readStoryMapFilters(searchParams), { now })`, which remain available. New type `StoryMapPageOptions`.
+- New `storyMapResponseHeaders`: `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`, for every story map response.
+- The example host and the integration guide use both. The guide has a new [Large maps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#large-maps) section with measured page sizes.
+
 ## 0.5.0
 
 No upgrade steps. Hosts with custom CSS for `.esm-release` should check the new toggle fits.

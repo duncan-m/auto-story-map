@@ -1,3 +1,4 @@
+import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { defaultStalledAfterWeeks, type ReleaseImpact, type StoryMapDocument } from "./schema.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus } from "./status.js";
@@ -234,3 +235,40 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     stories,
   };
 }
+
+export interface StoryMapPageOptions<Viewer extends StoryMapViewer = StoryMapViewer> extends StoryMapAccessOptions<Viewer> {
+  /**
+   * The request's query parameters, such as `url.searchParams`. The `q`,
+   * `status` and `changed` filters are read from them, and anything else is ignored.
+   */
+  searchParams?: URLSearchParams;
+}
+
+/**
+ * Builds what a viewer sees on the story map page or JSON endpoint in one
+ * call: projects the map for the viewer, then reads the filters from
+ * `searchParams` and applies them. Filtering always runs on the projection, so
+ * a search only ever sees what the viewer may see. Returns `null` when the
+ * viewer has no access: answer 401 for a guest and 403 otherwise.
+ *
+ * The same as `filterStoryMapView(getStoryMapForViewer(...), readStoryMapFilters(searchParams), { now })`,
+ * which remain available for hosts that need the steps separately.
+ */
+export function getStoryMapPage<Viewer extends StoryMapViewer>(
+  map: StoryMapDocument,
+  viewer: Viewer | null,
+  options: StoryMapPageOptions<Viewer> = {},
+): StoryMapView | null {
+  const { searchParams, ...access } = options;
+  const view = getStoryMapForViewer(map, viewer, access);
+  return view && filterStoryMapView(view, readStoryMapFilters(searchParams ?? new URLSearchParams()), { now: access.now });
+}
+
+/**
+ * Headers for every story map response, page or JSON. The content differs per
+ * viewer, so it must never be cached or shared, and browsers must not guess its type.
+ */
+export const storyMapResponseHeaders: Readonly<Record<"Cache-Control" | "X-Content-Type-Options", string>> = Object.freeze({
+  "Cache-Control": "private, no-store",
+  "X-Content-Type-Options": "nosniff",
+});
