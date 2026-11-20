@@ -85,12 +85,14 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 | Tool | Opened | Layout and colours | Text and styling | Overflow | Shape data | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | LibreOffice Draw 24.2 (`soffice --headless`) | Yes | Correct | Correct, except styling after non-ASCII characters (see below) | Text spills below the card | Not checked | The stored zip and all 10 XML parts read cleanly. |
-| Lucidchart | To do | | | | | |
+| Lucidchart | Yes | Correct, and matches the LibreOffice reference | Correct, including grey and italic after "·" | Text spills below the card | Not checked | Curly quotes became straight quotes, and the 🚀 was dropped. `&`, `<` and `·` came through. |
 | Miro (plan: ?) | To do | | | | | |
 | Lucidchart, CSV | To do | | | | | |
 | Miro, CSV | To do | | | | | |
 
-LibreOffice applies styling from the wrong position after non-ASCII characters. After the two "·" in the story counts line, the grey style carries into the first letter of the notes, and the italic in the impact line starts 8 characters late. With ASCII hyphens instead, every style lands correctly, so the XML is right and this is how LibreOffice reads it. For ESM-702: if Miro or Lucidchart show the same shift, put each differently styled line in its own shape instead of using text runs.
+LibreOffice applies styling from the wrong position after non-ASCII characters. After the two "·" in the story counts line, the grey style carries into the first letter of the notes, and the italic in the impact line starts 8 characters late. With ASCII hyphens instead, every style lands correctly, so the XML is right and this is how LibreOffice reads it. Lucidchart places the styling correctly, so this only affects LibreOffice. For ESM-702, keep using text runs, and only switch to a shape per styled line if Miro also shows the shift.
+
+Lucidchart replaced curly quotes with straight ones and dropped the emoji. Neither affects reading the map, so the export writes text as it is. The docs for ESM-702 should mention that emoji may not survive the import.
 
 **Outcome.** If Miro's Visio import is poor or unavailable, the board's download menu recommends CSV for Miro, and item 4's docs say so. If no tool opens the stored zip, use `fflate` in item 2 (decision G).
 
