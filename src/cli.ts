@@ -9,9 +9,11 @@ import { initStoryMap } from "./init.js";
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
 import {
   describeIssueTarget,
+  loadHistoricalStoryMap,
   loadStoryMap,
   parseStoryMap,
   StoryMapValidationError,
+  type HistoricalStoryMap,
   type StoryMapDocument,
 } from "./schema.js";
 
@@ -66,11 +68,19 @@ history
 
 type Format = "text" | "github";
 
-/** Reads `--name value` and `--name=value`. Returns undefined when the value is missing. */
-function optionValue(rest: string[], index: number, name: string): [string | undefined, number] {
+/** A problem with the command line, reported before the usage text. */
+class ArgumentError extends Error {}
+
+/**
+ * Reads `--name value` and `--name=value`. A missing value, or a next argument
+ * that is another option, such as `--map --strict`, is an error rather than
+ * the value. Use `--name=-value` for a value that starts with a hyphen.
+ */
+function optionValue(rest: string[], index: number, name: string): [string, number] {
   const arg = rest[index];
-  if (arg === name) return [rest[index + 1], index + 1];
-  return [arg.slice(name.length + 1), index];
+  const [value, next] = arg === name ? [rest[index + 1], index + 1] : [arg.slice(name.length + 1), index];
+  if (!value || (arg === name && value.startsWith("-"))) throw new ArgumentError(`${name} needs a value`);
+  return [value, next];
 }
 
 function parseValidateArgs(rest: string[]) {
@@ -85,7 +95,6 @@ function parseValidateArgs(rest: string[]) {
     const name = arg.split("=")[0];
     if (name === "--format" || name === "--plans" || name === "--root") {
       const [value, next] = optionValue(rest, index, name);
-      if (!value) return null;
       index = next;
       if (name === "--format") {
         if (value !== "text" && value !== "github") return null;
@@ -117,7 +126,6 @@ function parseDiffArgs(rest: string[]) {
     const name = arg.split("=")[0];
     if (name === "--format" || name === "--map") {
       const [value, next] = optionValue(rest, index, name);
-      if (!value) return null;
       index = next;
       if (name === "--map") map = value;
       else if (value === "markdown" || value === "json") format = value;
@@ -137,8 +145,7 @@ function parseInitArgs(rest: string[]) {
   for (let index = 0; index < rest.length; index++) {
     const arg = rest[index];
     if (arg === "--no-ci") ci = false;
-    else if (arg === "--dir" && rest[index + 1]) dir = rest[++index];
-    else if (arg.startsWith("--dir=")) dir = arg.slice("--dir=".length);
+    else if (arg.split("=")[0] === "--dir") [dir, index] = optionValue(rest, index, "--dir");
     else return null;
   }
   return { ci, dir: resolve(dir) };
@@ -199,7 +206,8 @@ async function validate(options: NonNullable<ReturnType<typeof parseValidateArgs
 
 class UsageError extends Error {}
 
-async function readMapAt(ref: string, mapPath: string): Promise<StoryMapDocument | null> {
+/** Reads the base version leniently, since it may use an earlier format. The current map is always checked strictly. */
+async function readMapAt(ref: string, mapPath: string): Promise<HistoricalStoryMap | null> {
   if (ref.startsWith("-")) throw new UsageError(`'${ref}' is not a Git reference.`);
   const gitPath = `./${relative(process.cwd(), resolve(mapPath)).split(sep).join("/")}`;
   let source: string;
@@ -211,7 +219,7 @@ async function readMapAt(ref: string, mapPath: string): Promise<StoryMapDocument
     throw new UsageError(stderr.trim() || `Could not read ${mapPath} at ${ref}.`);
   }
   try {
-    return parseStoryMap(source);
+    return loadHistoricalStoryMap(source);
   } catch (error) {
     throw new Error(`The map at ${ref} is not valid, so it cannot be compared:\n${error instanceof Error ? error.message : String(error)}`);
   }
@@ -232,8 +240,23 @@ async function diff(options: NonNullable<ReturnType<typeof parseDiffArgs>>) {
   }
   try {
     const before = await readMapAt(options.base, options.map);
-    const result = diffStoryMaps(before, after);
-    console.log(options.format === "json" ? JSON.stringify(result, null, 2) : formatStoryMapDiff(result));
+    const result = diffStoryMaps(before?.map ?? null, after);
+    const dropped = before && (before.dropped.stories || before.dropped.fields) ? before.dropped : undefined;
+    if (options.format === "json") {
+      console.log(JSON.stringify(dropped ? { ...result, baseDropped: dropped } : result, null, 2));
+      return;
+    }
+    let markdown = formatStoryMapDiff(result);
+    if (dropped) {
+      const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+      const parts = [
+        dropped.fields && `${count(dropped.fields, "field")} the format no longer has`,
+        dropped.stories && `${count(dropped.stories, "story")} that no longer ${dropped.stories === 1 ? "validates" : "validate"}${dropped.storyIds.length ? ` (${dropped.storyIds.map(id => `\`${id}\``).join(", ")})` : ""}`,
+      ].filter(Boolean);
+      const note = `> [!NOTE]\n> The map at \`${options.base}\` uses an older format, so this comparison leaves out ${parts.join(" and ")} from it.`;
+      markdown = markdown.replace(/^## Story map changes\n\n/, match => `${match}${note}\n\n`);
+    }
+    console.log(markdown);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = error instanceof UsageError ? 2 : 1;
@@ -261,12 +284,10 @@ function parseHistoryArgs(rest: string[]) {
     const name = arg.split("=")[0];
     if (name === "--map" || name === "--ref" || name === "--out") {
       const [value, next] = optionValue(rest, index, name);
-      if (!value) return null;
       index = next;
       options[name.slice(2) as "map" | "ref" | "out"] = value;
     } else if (name === "--bot-names") {
       const [value, next] = optionValue(rest, index, name);
-      if (!value) return null;
       index = next;
       options.botNames.push(...value.split(",").map(botName => botName.trim()).filter(Boolean));
     } else if (arg === "--allow-shallow") {
@@ -281,6 +302,7 @@ function parseHistoryArgs(rest: string[]) {
 async function history(options: NonNullable<ReturnType<typeof parseHistoryArgs>>) {
   try {
     const result = await buildStoryMapHistory({ map: options.map, ref: options.ref, allowShallow: options.allowShallow, botNames: options.botNames });
+    warnSkipped(result);
     const json = JSON.stringify(result, null, 2) + "\n";
     if (!options.out) {
       process.stdout.write(json);
@@ -296,11 +318,31 @@ async function history(options: NonNullable<ReturnType<typeof parseHistoryArgs>>
   }
 }
 
+/** Warns about versions of the map that history could not read. They do not fail the build. */
+function warnSkipped(result: Awaited<ReturnType<typeof buildStoryMapHistory>>) {
+  if (!result.skippedCount) return;
+  const shown = (result.skipped ?? []).slice(0, 3);
+  const versions = result.skippedCount === 1 ? "1 version" : `${result.skippedCount} versions`;
+  console.error(`warning: skipped ${versions} of the map that could not be read, so changes made in ${result.skippedCount === 1 ? "it are" : "them are"} missing:`);
+  for (const version of shown) console.error(`  ${version.commit.slice(0, 12)}: ${version.reason}`);
+  if (result.skippedCount > shown.length) console.error(`  and ${result.skippedCount - shown.length} more, listed in the file's skipped field`);
+}
+
 const [command, ...rest] = process.argv.slice(2);
-const validateOptions = command === "validate" ? parseValidateArgs(rest) : null;
-const initOptions = command === "init" ? parseInitArgs(rest) : null;
-const diffOptions = command === "diff" ? parseDiffArgs(rest) : null;
-const historyOptions = command === "history" ? parseHistoryArgs(rest) : null;
+function parse<T>(name: string, parser: (rest: string[]) => T | null): T | null {
+  if (command !== name) return null;
+  try {
+    return parser(rest);
+  } catch (error) {
+    if (!(error instanceof ArgumentError)) throw error;
+    console.error(`story-map: ${error.message}\n`);
+    return null;
+  }
+}
+const validateOptions = parse("validate", parseValidateArgs);
+const initOptions = parse("init", parseInitArgs);
+const diffOptions = parse("diff", parseDiffArgs);
+const historyOptions = parse("history", parseHistoryArgs);
 if (validateOptions) {
   await validate(validateOptions);
 } else if (diffOptions) {

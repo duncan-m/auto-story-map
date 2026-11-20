@@ -118,6 +118,18 @@ releases:
         expected: Fixed, or recorded as a decision, before the first npm release
         solves: Publishing a first version with known problems
         draft: true
+  - id: export
+    title: Export to external tools
+    summary: Internal viewers download the map as a Visio or CSV file to import into Miro or Lucidchart.
+    notes: |
+      A one-way snapshot of the board for workshops and planning sessions held in other tools. The YAML file stays the source of truth.
+
+      Exports include every lane, with collapsed lanes kept collapsed, and at most the 200 most recently changed stories.
+    impact:
+      - metric: Time to get the story map into Miro or Lucidchart
+        expected: One download and an import, instead of copying cards by hand
+        solves: Teams retyping the map to run a workshop in another tool
+        draft: true
   - id: next
     title: Next
     summary: Proposed for 0.5.x or 0.6.0.
@@ -394,7 +406,7 @@ stories:
     title: Keep long Git names from breaking the history file
     activity: track
     release: planning
-    status: planned
+    status: merged
     summary: story-map history truncates author and merger names to the history format's 120-character limit, so parseStoryMapHistory always accepts what it writes.
     sources:
       - docs/plans/0.6.0-review-fixes.md#2-history-names-that-fit-the-history-format
@@ -402,7 +414,7 @@ stories:
     title: Keep history and diffs working when the map format changes
     activity: track
     release: planning
-    status: planned
+    status: merged
     summary: Past versions of the map are read leniently with a migration step, history reports versions it skipped, and diff compares an older-format base instead of failing.
     sources:
       - docs/plans/0.6.0-review-fixes.md#3-history-and-diff-that-survive-format-changes
@@ -410,11 +422,11 @@ stories:
     title: Use real IDs in the customer view
     activity: explore
     release: planning
-    status: planned
-    summary: The customer view keeps the real activity, release and story IDs instead of numbering them by position, so a collapsed lane stays on the same release when other releases become visible.
-    notes: Customers can see internal IDs for now. Breaking for hosts that read the old positional IDs, so it ships in 0.6.0.
+    status: cut
+    statusReason: Out of scope for this release. The customer view keeps its positional IDs, so customers see no internal IDs.
+    summary: Would have kept the real activity, release and story IDs in the customer view, so a collapsed lane stays on the same release when other releases become visible.
     sources:
-      - docs/plans/0.6.0-review-fixes.md#4-real-ids-in-the-customer-view
+      - docs/plans/0.6.0-review-fixes.md#4-real-ids-in-the-customer-view-out-of-scope
   - id: ESM-604
     title: Make hosts choose who sees the internal map
     activity: set-up
@@ -423,13 +435,13 @@ stories:
     statusReason: The library is set up mainly for internal use, so the default engineer and super-admin rule stays. The risk is documented in the engineering overview instead.
     summary: Would have warned when the default engineer and super-admin rule was used, then required canViewInternal.
     sources:
-      - docs/plans/0.6.0-review-fixes.md#5-the-default-rule-for-who-sees-the-internal-map
+      - docs/plans/0.6.0-review-fixes.md#5-the-default-rule-for-who-sees-the-internal-map-out-of-scope
       - docs/ENGINEERING-OVERVIEW.md#audience-projection
   - id: ESM-605
     title: Project and filter the map in one call
     activity: set-up
     release: planning
-    status: planned
+    status: merged
     summary: getStoryMapPage projects for the viewer and then filters, and storyMapResponseHeaders gives the no-store headers, so the safe order is the easy one. Documents page sizes for large maps.
     sources:
       - docs/plans/0.6.0-review-fixes.md#6-one-call-that-projects-and-filters
@@ -437,7 +449,7 @@ stories:
     title: Fix CLI and source check edge cases
     activity: review
     release: planning
-    status: planned
+    status: merged
     summary: Stop options taking the next flag as their value, and refuse sources that reach outside the repository through a symbolic link.
     sources:
       - docs/plans/0.6.0-review-fixes.md#7-cli-and-source-check-fixes
@@ -445,7 +457,7 @@ stories:
     title: Stop diff summaries notifying people
     activity: review
     release: planning
-    status: planned
+    status: merged
     summary: The diff escapes @mentions and #references in map text, so pasting the summary into a PR does not notify people or link issues.
     sources:
       - docs/plans/0.6.0-review-fixes.md#8-diff-summaries-that-do-not-notify-people
@@ -457,3 +469,46 @@ stories:
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
       - docs/plans/0.6.0-review-fixes.md#9-a-board-that-survives-bad-date-settings
+  # Export to external tools
+  - id: ESM-701
+    title: Check that Miro and Lucidchart import a test file
+    activity: explore
+    release: export
+    status: planned
+    summary: Import a hand-made Visio file and CSV into Miro, Lucidchart and LibreOffice before building the export, and record what survives.
+    sources:
+      - docs/plans/export-to-external-tools.md#1-check-that-miro-and-lucidchart-import-a-test-file
+  - id: ESM-702
+    title: Export the internal map as a Visio file
+    activity: explore
+    release: export
+    status: planned
+    summary: storyMapToVsdx writes the whole internal map as a .vsdx file, with collapsed lanes, release notes and impact, and at most 200 stories.
+    notes: Hand-rolled stored zip, no new dependency. Refuses customer views. Includes the LibreOffice check in CI.
+    sources:
+      - docs/plans/export-to-external-tools.md#2-write-a-visio-file-from-the-internal-view
+      - docs/plans/export-to-external-tools.md#6-check-exported-files-in-ci
+  - id: ESM-703
+    title: Export the map from the command line
+    activity: explore
+    release: export
+    status: planned
+    summary: story-map export writes a Visio or CSV file from the YAML file, optionally using history to choose the most recent stories.
+    sources:
+      - docs/plans/export-to-external-tools.md#3-export-from-the-command-line
+  - id: ESM-704
+    title: Download the export from the board
+    activity: explore
+    release: export
+    status: planned
+    summary: Internal viewers get Export links on the board when the host sets exportHref, and lanes they collapsed stay collapsed in the file.
+    sources:
+      - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
+  - id: ESM-705
+    title: Export the map as CSV
+    activity: explore
+    release: export
+    status: planned
+    summary: One row per story with its activity, release, ID and title, safe to open in spreadsheets and importable into Miro and Lucidchart.
+    sources:
+      - docs/plans/export-to-external-tools.md#5-export-the-map-as-csv

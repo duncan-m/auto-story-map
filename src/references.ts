@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { lstat, readdir, readFile, readlink, realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { LoadedStoryMap, StoryMapIssue } from "./schema.js";
 
@@ -68,6 +68,47 @@ async function statOrNull(path: string) {
   }
 }
 
+const insideRoot = (root: string, path: string) => {
+  const fromRoot = relative(root, path);
+  return !fromRoot.startsWith("..") && !isAbsolute(fromRoot);
+};
+
+type Resolved = { kind: "inside"; path: string } | { kind: "missing" } | { kind: "outside" };
+
+/** Most symbolic links followed for one path, so a loop of links ends. */
+const maxLinks = 40;
+
+/**
+ * Resolves a path inside `realRoot` one component at a time, following
+ * symbolic links only while they stay inside it. It never looks at anything
+ * outside the repository, so a link cannot reveal whether a file outside
+ * exists. The result is made only of real directories and files inside the
+ * root, so it is safe to read.
+ */
+async function resolveInRepository(realRoot: string, path: string): Promise<Resolved> {
+  const lexical = resolve(realRoot, path);
+  if (!insideRoot(realRoot, lexical)) return { kind: "outside" };
+  let current = realRoot;
+  let segments = relative(realRoot, lexical).split(sep).filter(Boolean);
+  let links = 0;
+  while (segments.length) {
+    const next = join(current, segments.shift()!);
+    const info = await lstat(next).catch(() => null);
+    if (!info) return { kind: "missing" };
+    if (!info.isSymbolicLink()) {
+      current = next;
+      continue;
+    }
+    if (++links > maxLinks) return { kind: "missing" };
+    const target = resolve(current, await readlink(next));
+    if (!insideRoot(realRoot, target)) return { kind: "outside" };
+    // Walk the link's target from the root, so links within it are checked too.
+    segments = [...relative(realRoot, target).split(sep).filter(Boolean), ...segments];
+    current = realRoot;
+  }
+  return { kind: "inside", path: current };
+}
+
 /**
  * Checks that repository-relative sources exist and that Markdown heading
  * fragments match a heading. Absolute URLs and free text are not checked.
@@ -75,6 +116,7 @@ async function statOrNull(path: string) {
 export async function checkSources(loaded: LoadedStoryMap, root: string): Promise<ReferenceIssue[]> {
   const issues: ReferenceIssue[] = [];
   const anchorCache = new Map<string, Set<string>>();
+  const realRoot = await realpath(root);
 
   for (const [storyIndex, story] of loaded.map.stories.entries()) {
     for (const [sourceIndex, source] of (story.sources ?? []).entries()) {
@@ -94,14 +136,18 @@ export async function checkSources(loaded: LoadedStoryMap, root: string): Promis
       }
       if (!file) continue;
 
-      const absolute = resolve(root, file);
-      const fromRoot = relative(root, absolute);
-      if (fromRoot.startsWith("..") || isAbsolute(fromRoot)) {
+      if (!insideRoot(root, resolve(root, file))) {
         report(`Source '${source}' points outside the repository.`);
         continue;
       }
-      const info = await statOrNull(absolute);
-      if (!info) {
+      const resolved = await resolveInRepository(realRoot, file);
+      if (resolved.kind === "outside") {
+        report(`Source '${source}' points outside the repository through a symbolic link.`);
+        continue;
+      }
+      const absolute = resolved.kind === "inside" ? resolved.path : undefined;
+      const info = absolute && await statOrNull(absolute);
+      if (!absolute || !info) {
         report(`Source file '${file}' does not exist.`);
         continue;
       }
@@ -118,18 +164,34 @@ export async function checkSources(loaded: LoadedStoryMap, root: string): Promis
   return issues;
 }
 
-async function markdownFiles(path: string): Promise<string[]> {
+/**
+ * Lists Markdown files under a real path inside the root. Symbolic links are
+ * followed only while they stay inside the root, and each is reported in
+ * `outside` otherwise. Each directory is listed once, so a loop of links ends.
+ */
+async function markdownFiles(realRoot: string, path: string, outside: string[], seen = new Set<string>()): Promise<string[]> {
   const info = await statOrNull(path);
   if (!info) return [];
   if (info.isFile()) return [path];
+  if (seen.has(path)) return [];
+  seen.add(path);
   const files: string[] = [];
   for (const entry of await readdir(path, { withFileTypes: true })) {
     if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
-    const child = join(path, entry.name);
-    if (entry.isDirectory()) files.push(...await markdownFiles(child));
-    else if (entry.isFile() && markdownExtensions.has(extname(entry.name).toLowerCase())) files.push(child);
+    let child = join(path, entry.name);
+    let kind: "file" | "directory" | undefined = entry.isDirectory() ? "directory" : entry.isFile() ? "file" : undefined;
+    if (entry.isSymbolicLink()) {
+      const resolved = await resolveInRepository(realRoot, relative(realRoot, child));
+      if (resolved.kind === "outside") outside.push(child);
+      if (resolved.kind !== "inside") continue;
+      child = resolved.path;
+      const target = await statOrNull(child);
+      kind = target?.isDirectory() ? "directory" : target?.isFile() ? "file" : undefined;
+    }
+    if (kind === "directory") files.push(...await markdownFiles(realRoot, child, outside, seen));
+    else if (kind === "file" && markdownExtensions.has(extname(entry.name).toLowerCase())) files.push(child);
   }
-  return files.sort();
+  return [...new Set(files)].sort();
 }
 
 /**
@@ -144,11 +206,25 @@ export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, 
   if (!prefixes.size) return issues;
 
   const escaped = [...prefixes].map(prefix => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const realRoot = await realpath(root);
+  const shown = (file: string) => relative(realRoot, file).split(sep).join("/");
   const pattern = new RegExp(`(?<![A-Za-z0-9_-])(?:${escaped.join("|")})-\\d+(?![A-Za-z0-9_-])`, "g");
 
   for (const planPath of planPaths) {
-    const absolute = resolve(root, planPath);
-    const files = await markdownFiles(absolute);
+    if (!insideRoot(root, resolve(root, planPath))) {
+      issues.push({ severity: "error", path: [], file: planPath, message: "Points outside the repository." });
+      continue;
+    }
+    const resolved = await resolveInRepository(realRoot, relative(root, resolve(root, planPath)));
+    if (resolved.kind === "outside") {
+      issues.push({ severity: "error", path: [], file: planPath, message: "Points outside the repository through a symbolic link." });
+      continue;
+    }
+    const outside: string[] = [];
+    const files = resolved.kind === "inside" ? await markdownFiles(realRoot, resolved.path, outside) : [];
+    for (const link of outside) {
+      issues.push({ severity: "error", path: [], file: shown(link), message: "Points outside the repository through a symbolic link, so it was not read." });
+    }
     if (!files.length) {
       issues.push({ severity: "error", path: [], file: planPath, message: "No Markdown files found." });
       continue;
@@ -161,7 +237,7 @@ export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, 
           issues.push({
             severity: "error",
             path: [],
-            file: relative(root, file).split(sep).join("/"),
+            file: shown(file),
             line: index + 1,
             column: match.index + 1,
             message: `Unknown story ID '${match[0]}'. Add it to the map or correct the reference.`,

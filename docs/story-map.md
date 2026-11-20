@@ -196,6 +196,7 @@ Two optional checks look beyond the map file. Run them from the repository root,
 
 - `--check-sources` checks that each repository-relative source exists and that each Markdown `#heading` fragment matches a heading in that file, using GitHub’s anchor rules. Absolute URLs and free text such as “Agreed in planning” are not checked.
 - `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. Repeat the option for several folders.
+- Both checks stay inside the repository. A source or plan that points outside it, directly or through a symbolic link, is reported and never read. Symbolic links that stay inside the repository are followed as usual.
 
 ```sh
 npx --no-install story-map validate --check-sources --plans docs product/story-map.yaml
@@ -229,6 +230,8 @@ npx --no-install story-map diff origin/main
 
 The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Next, **Blocked and cut** lists stories that became blocked or cut, with their reasons, and stories that are no longer blocked or cut. Then it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
 
+The base version may use an older format of the map, such as when this change upgrades the package. It is read leniently: fields the format no longer has, and stories that no longer validate, are left out of the comparison, and the summary starts with a note saying what was left out. The JSON has the same counts as `baseDropped`. Your current map is still validated strictly.
+
 The workflow from `npx story-map init` adds the summary to each PR’s job summary. In your own workflow, check out with `fetch-depth: 0` so the base branch is available:
 
 ```yaml
@@ -256,12 +259,13 @@ The command reads every version of the map on the current branch’s first-paren
 - **By** is the story’s `updatedBy` when that edit set it, otherwise the author of the commit that made the change. When the author is a bot, such as a coding agent, the person who merged the change is credited instead. Authors whose names end in `[bot]` are bots. Name other bot accounts with `--bot-names "Audit Agent,Release Helper"`. If Git does not record who merged, as with GitHub squash merges, the bot is credited.
 - **Merged by** is the person who merged the pull request. Git records this for merge commits and direct pushes, but not for GitHub squash or rebase merges, so those entries show only the editor.
 
+Older versions of the map may use an earlier format. The command reads them leniently, so their changes still count: it ignores fields the format no longer has, and leaves out a story that no longer validates, such as one with a status that has since been removed, until a later version of the map has it again. A version it cannot read at all, because the map was missing or was not valid YAML, is skipped, and the next readable version is compared with the last readable one. The command prints a warning naming the first few skipped commits and still succeeds. The file lists them, oldest first, in `skipped` (up to 100, each with its `commit` and a `reason`) and counts them all in `skippedCount`. Both fields are absent when nothing was skipped.
+
 Load the file on the server and pass it in. Keep it with the map, outside the static asset directory, because it contains names:
 
 ```ts
 const history = parseStoryMapHistory(await readFile("build/story-map-history.json", "utf8"));
-const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
-const map = view && filterStoryMapView(view, readStoryMapFilters(url.searchParams));
+const map = getStoryMapPage(document, viewer, { canViewInternal, history, searchParams: url.searchParams });
 ```
 
 Pass `timeZone`, such as `Europe/London`, and optionally `locale` to `StoryMapBoard` so dates match your team. If the runtime does not recognise either, the board still renders: it uses `en-GB` or the server's time zone instead, and logs a warning once. Without a history file, the board works as before with no dates and no **Changed** filter, and the panel shows the story’s `updatedBy` as “Last updated by …”.
@@ -299,9 +303,31 @@ Pass `now` to `getStoryMapForViewer` as well as to `filterStoryMapView` and the 
 ## Integrate with a product
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.
-2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapForViewer(document, viewer)` with roles from the verified session. Pass `null` for a guest. A null result indicates denied access. By default, viewers whose roles include `engineer` or `super-admin` see the internal map. To use your own rule, pass `canViewInternal`, for example `getStoryMapForViewer(document, viewer, { canViewInternal: viewer => viewer.roles.includes("product") })`. The rule receives the viewer object you passed, so it can check permissions as well as roles. Only a return value of `true` grants the internal view.
-3. To offer search, pass the view to `filterStoryMapView(view, readStoryMapFilters(url.searchParams))`. Always filter after `getStoryMapForViewer`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer picks them in the status filter or passes `status=all`. They submit a GET form with `q` and `status` parameters to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs.
+2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapPage(document, viewer, { searchParams: url.searchParams })` with roles from the verified session. Pass `null` for a guest. A null result means no access: answer 401 for a guest and 403 for anyone else. By default, viewers whose roles include `engineer` or `super-admin` see the internal map. To use your own rule, pass `canViewInternal`, for example `getStoryMapPage(document, viewer, { canViewInternal: viewer => viewer.roles.includes("product"), searchParams: url.searchParams })`. The rule receives the viewer object you passed, so it can check permissions as well as roles. Only a return value of `true` grants the internal view.
+3. `getStoryMapPage` projects the map for the viewer and then applies the search and filters from `searchParams`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer picks them in the status filter or passes `status=all`. The toolbar submits a GET form with `q`, `status` and `changed` parameters to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs. If you need the steps separately, `getStoryMapPage` is the same as `filterStoryMapView(getStoryMapForViewer(document, viewer, options), readStoryMapFilters(url.searchParams), { now })`. Always filter after projecting, never before.
 4. Render `StoryMapBoard` using the returned view and import `embedded-story-map/styles.css` through the host’s CSS pipeline. Pass `sourceBaseUrl` if the map uses [repository-relative Markdown links](#link-an-engineering-overview). The board is light by default. Pass `theme="dark"` for a dark host, or `theme="auto"` to follow the viewer’s system setting. Colours are CSS custom properties on `.esm-board`, such as `--esm-accent`, so a host can override them. A footer under the board shows the running version of Embedded Story Map, its author and its licence. Internal viewers also get links to the changelog, source code, licence and author. Pass `showVersion={false}` to remove it. Viewers can collapse a release lane to its title and story count with the chevron in its header, which needs no JavaScript but does need a browser that supports CSS `:has()`; other browsers show every lane open with no toggle. To apply filters as soon as a viewer changes them, also load the optional browser script: serve `node_modules/embedded-story-map/dist/board.js` (exported as `embedded-story-map/board.js`) with the host’s other static files and add `<script type="module" src="…/board.js"></script>` to the page. It hides **Apply**, applies a select as soon as it changes and a search when the viewer presses Enter, returns focus to the filter they used, and remembers which release lanes the viewer collapsed. Without it, the form works as before, and collapsed lanes open again when the page reloads. Use the same server-side projection and filters if adding a JSON endpoint.
-5. Set `Cache-Control: private, no-store` for the page and endpoint. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
+5. Send `storyMapResponseHeaders` with the page and endpoint, including error responses. They set `Cache-Control: private, no-store`, because the page differs per viewer, and `X-Content-Type-Options: nosniff`. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
+
+```ts
+import { getStoryMapPage, storyMapResponseHeaders } from "embedded-story-map";
+
+const map = getStoryMapPage(document, viewer, { canViewInternal, history, searchParams: url.searchParams });
+if (!map) return new Response(viewer ? "Forbidden" : "Sign in", { status: viewer ? 403 : 401, headers: storyMapResponseHeaders });
+return Response.json(map, { headers: storyMapResponseHeaders });
+```
+
+[`example/host.mjs`](https://github.com/duncan-m/embedable-story-map/blob/main/example/host.mjs) is a complete example for the page and a JSON endpoint.
+
+### Large maps
+
+The board renders every story's detail panel into the page, so it works without JavaScript, and the page grows with the map. Measured with the example host, for stories with a title, a summary, a few lines of notes and two sources:
+
+| Stories | Internal page | Gzipped | Customer page | Gzipped |
+| --- | --- | --- | --- | --- |
+| 100 | 350 KB | 35 KB | 189 KB | 16 KB |
+| 500 | 1.6 MB | 154 KB | 885 KB | 69 KB |
+| 1,000 | 3.1 MB | 304 KB | 1.8 MB | 136 KB |
+
+Up to a few hundred stories this is comfortable, especially with compression turned on. Above that, split the product into several maps, such as one per area of the product, or open the page with a filter by default, such as linking to `?status=in-progress`, so viewers start from a smaller board.
 
 The map is edited through a PR and ships with the product. The example JSON endpoint is read-only. An app that needs in-app authoring can submit a PR against the same YAML file.
