@@ -473,7 +473,7 @@ stories:
     title: See when the map last changed and where
     activity: track
     release: planning
-    status: in-progress
+    status: merged
     summary: The internal board's header says when the map was last updated, by whom, and which releases most recent changes were in, instead of a fixed summary.
     sources:
       - docs/story-map.md#show-status-history
