@@ -2,7 +2,9 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
-## Unreleased
+## 0.6.0
+
+No upgrade steps. Existing maps and history files stay valid. Mainly fixes from a code review of 0.5.0, several of them security fixes, plus new exports and a new board header.
 
 - `getStoryMapForViewer` and `getStoryMapPage` group history events in linear time. They used to copy each story's growing list for every event, so a history with many events for one story took quadratic time: 100,000 events took over a minute and now take well under a second. Entry order is unchanged, including for events with the same timestamp.
 - With history, the internal board's header says when the map was last updated and by whom, and which releases recent changes focused on, such as “Last updated 4 hours ago by Sam Patel. Recent changes focused on 0.6.0 (12 stories) and 0.5.0 (3 stories).” It replaces the map's `summary` there. Without history, and for customers, the header still shows the summary. Internal views carry the data in a new `recentUpdates` field. New export `recentUpdateDays` and type `StoryMapRecentUpdates`.
@@ -20,6 +22,11 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 - `--check-sources` reads heading anchors in linear time, so a Markdown heading full of unclosed `<`, `[` or trailing spaces can no longer stall validation. A 200 KB heading used to take about 14 seconds. Heading anchors are not checked in Markdown files over 5 MB, and the source is reported instead.
 - `story-map diff` escapes `@` and `#` in text from the map, so pasting the summary into a PR does not mention people or teams, or link issues.
 - `StoryMapBoard` no longer fails to render when given a `locale` or `timeZone` the runtime does not recognise, such as `timeZone="Nowhere/Nope"`. It uses `en-GB` or the server's time zone instead, and logs a warning once. The board also builds its date formatters once per render instead of once per date. Rendered markup is otherwise unchanged.
+- `story-map init` no longer follows symbolic links out of the host repository. A link at `AGENTS.md`, the map, the guide or the workflow that points outside the chosen directory, or is broken, is refused with a message instead of being written through. It skips a read-only `AGENTS.md` that already has the story map section, and accepts in-repository names that start with two dots, such as `..docs`.
+- Text output from `story-map validate` escapes line breaks and control characters in messages and paths, so map text cannot add lines that look like other diagnostics or send terminal escape codes.
+- Validation locates problems in linear time. A map with many unknown or duplicate fields used to make validation quadratic.
+- The diff's note about stories dropped from an older-format base shows each rejected ID as inline code, so an ID with backticks, links, mentions or line breaks cannot change the summary.
+- The release workflow checks that the packed `package.json` matches the committed one and pins the npm registry, so a tampered tarball cannot redirect the publish.
 
 ## 0.5.0
 
