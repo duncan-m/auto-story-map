@@ -268,7 +268,7 @@ const history = parseStoryMapHistory(await readFile("build/story-map-history.jso
 const map = getStoryMapPage(document, viewer, { canViewInternal, history, searchParams: url.searchParams });
 ```
 
-Pass `timeZone`, such as `Europe/London`, and optionally `locale` to `StoryMapBoard` so dates match your team. Without a history file, the board works as before with no dates and no **Changed** filter, and the panel shows the story’s `updatedBy` as “Last updated by …”.
+Pass `timeZone`, such as `Europe/London`, and optionally `locale` to `StoryMapBoard` so dates match your team. If the runtime does not recognise either, the board still renders: it uses `en-GB` or the server's time zone instead, and logs a warning once. Without a history file, the board works as before with no dates and no **Changed** filter, and the panel shows the story’s `updatedBy` as “Last updated by …”.
 
 The build needs the full Git history. Many CI and hosting systems clone only the latest commits, and Docker builds often have no `.git` folder:
 

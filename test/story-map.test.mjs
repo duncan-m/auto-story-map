@@ -1307,6 +1307,43 @@ test("history records each story's last edit to any field and credits mergers fo
   assert.equal(spawnSync(process.execPath, [cli, "history", "--bot-names"], { cwd: root }).status, 2);
 });
 
+test("the board survives a locale or time zone that Intl rejects", t => {
+  const now = new Date("2026-11-20T12:00:00Z");
+  const history = {
+    version: 1, generatedAt: now.toISOString(), complete: true,
+    events: [
+      { storyId: "BUILDER-101", type: "added", to: "in-progress", at: "2026-09-01T10:00:00.000Z", by: "Alex Morgan", commit: "abcdef1" },
+      { storyId: "BUILDER-102", type: "added", to: "planned", at: "2026-11-19T10:00:00.000Z", by: "Sam Patel", commit: "abcdef2" },
+    ],
+    lastEdits: [{ storyId: "BUILDER-102", at: "2026-11-19T10:00:00.000Z", by: "Sam Patel", commit: "abcdef2" }],
+  };
+  const view = filterStoryMapView(getStoryMapForViewer(map, engineer, { history, now }), {}, { now });
+  const render = props => renderToStaticMarkup(createElement(StoryMapBoard, { map: view, now, ...props }));
+  const warnings = [];
+  t.mock.method(console, "warn", message => warnings.push(message));
+
+  const badZone = render({ timeZone: "Nowhere/Nope" });
+  assert.equal(badZone, render({}));
+  assert.match(badZone, /<time class="esm-changed" dateTime="2026-11-19T10:00:00\.000Z" title="[^"]*19 Nov 2026[^"]*">yesterday<\/time>/);
+  assert.match(badZone, /1 Sept? 2026/);
+
+  const badLocale = render({ locale: "not a locale", timeZone: "UTC" });
+  assert.equal(badLocale, render({ locale: "en-GB", timeZone: "UTC" }));
+  assert.match(badLocale, /19 Nov 2026, 10:00/);
+  // Both problems at once still render.
+  assert.match(render({ locale: "not a locale", timeZone: "Nowhere/Nope" }), /yesterday/);
+
+  // One warning for each bad setting, however often the board renders.
+  render({ timeZone: "Nowhere/Nope" });
+  render({ locale: "not a locale" });
+  assert.deepEqual(warnings, [
+    'embedded-story-map: Unknown time zone "Nowhere/Nope", so dates use the server\'s time zone.',
+    'embedded-story-map: Unknown locale "not a locale", so dates use en-GB.',
+  ]);
+  // A valid locale and zone are used as given.
+  assert.match(render({ locale: "de-DE", timeZone: "Asia/Tokyo" }), /19\.11\.2026, 19:00/);
+});
+
 test("getStoryMapPage projects and filters in one call", () => {
   const now = new Date("2026-11-20T12:00:00Z");
   const separately = (viewer, query, options = {}) => {

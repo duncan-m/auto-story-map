@@ -465,7 +465,7 @@ stories:
     title: Keep the board working with bad date settings
     activity: explore
     release: planning
-    status: planned
+    status: merged
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
       - docs/plans/0.6.0-review-fixes.md#9-a-board-that-survives-bad-date-settings

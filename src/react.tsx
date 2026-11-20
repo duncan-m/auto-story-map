@@ -30,23 +30,63 @@ export interface StoryMapBoardProps {
 }
 
 interface DateSettings {
-  locale: string;
-  timeZone?: string;
   now: Date;
+  date: Intl.DateTimeFormat;
+  dateTime: Intl.DateTimeFormat;
+  relative: Intl.RelativeTimeFormat;
+}
+
+const defaultLocale = "en-GB";
+const warned = new Set<string>();
+
+/** Warns once per message, so a host that renders on every request does not fill its logs. */
+function warnOnce(message: string) {
+  if (warned.has(message)) return;
+  warned.add(message);
+  console.warn(`embedded-story-map: ${message}`);
+}
+
+/** Whether `Intl` accepts the options. An unknown locale tag or time zone throws a RangeError. */
+function accepted(locale: string, timeZone?: string) {
+  try {
+    new Intl.DateTimeFormat(locale, { timeZone });
+    new Intl.RelativeTimeFormat(locale);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Builds the board's date formatters once per render. A locale or time zone
+ * that `Intl` rejects falls back to `en-GB` or the runtime's zone, with a
+ * warning, instead of failing the whole page.
+ */
+function dateFormatters(locale: string, timeZone: string | undefined, now: Date): DateSettings {
+  if (!accepted(locale)) {
+    warnOnce(`Unknown locale ${JSON.stringify(locale)}, so dates use ${defaultLocale}.`);
+    locale = defaultLocale;
+  }
+  if (timeZone !== undefined && !accepted(locale, timeZone)) {
+    warnOnce(`Unknown time zone ${JSON.stringify(timeZone)}, so dates use the server's time zone.`);
+    timeZone = undefined;
+  }
+  return {
+    now,
+    date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone }),
+    dateTime: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone }),
+    relative: new Intl.RelativeTimeFormat(locale, { numeric: "auto" }),
+  };
 }
 
 function formatDate(at: string, settings: DateSettings, withTime = true) {
-  return new Intl.DateTimeFormat(settings.locale, {
-    dateStyle: "medium",
-    ...(withTime ? { timeStyle: "short" } : {}),
-    timeZone: settings.timeZone,
-  }).format(new Date(at));
+  return (withTime ? settings.dateTime : settings.date).format(new Date(at));
 }
 
 /** “5 hours ago”, “yesterday”, “12 days ago”, then the date after 30 days. */
 function formatRelative(at: string, settings: DateSettings) {
   const minutes = Math.floor((settings.now.getTime() - Date.parse(at)) / 60_000);
-  const relative = new Intl.RelativeTimeFormat(settings.locale, { numeric: "auto" });
+  const relative = settings.relative;
   if (minutes < 1) return "just now";
   if (minutes < 60) return relative.format(-minutes, "minute");
   if (minutes < 24 * 60) return relative.format(-Math.floor(minutes / 60), "hour");
@@ -531,7 +571,7 @@ export function StoryMapBoard({
   sourceBaseUrl,
   theme = "light",
   preservedParams,
-  locale = "en-GB",
+  locale = defaultLocale,
   timeZone,
   now,
   showVersion = true,
@@ -541,7 +581,7 @@ export function StoryMapBoard({
   const internal = map.audience === "internal";
   const stalledAfterWeeks = map.audience === "internal" ? map.stalledAfterWeeks : undefined;
   const filtering = isFiltering(map.filter);
-  const settings: DateSettings = { locale, timeZone, now: now ?? new Date() };
+  const settings = dateFormatters(locale, timeZone, now ?? new Date());
 
   const activityTitles = new Map(map.activities.map(activity => [activity.id, activity.title]));
   const releaseTitles = new Map(map.releases.map(release => [release.id, release.title]));
@@ -555,7 +595,9 @@ export function StoryMapBoard({
   const releaseCounts = new Map<string, number>();
   for (const story of placed) {
     const key = `${story.release}:${story.activity}`;
-    cells.set(key, [...(cells.get(key) ?? []), story]);
+    const cell = cells.get(key);
+    if (cell) cell.push(story);
+    else cells.set(key, [story]);
     releaseCounts.set(story.release, (releaseCounts.get(story.release) ?? 0) + 1);
   }
   const releases = filtering ? map.releases.filter(release => releaseCounts.has(release.id)) : map.releases;
