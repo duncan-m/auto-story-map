@@ -2,10 +2,9 @@
 
 A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
 
-
 ## Screenshot
 
-![Story Map](story-map-screenshot.png)
+![The builder estimates demo map as an engineer sees it: activities across the top, a lane for each release, and story cards showing each story's ID, title, status and when it last changed.](https://raw.githubusercontent.com/duncan-m/embedable-story-map/main/story-map-screenshot.png)
 
 ## Try the builder estimates example
 
