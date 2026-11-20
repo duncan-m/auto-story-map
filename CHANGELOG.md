@@ -4,6 +4,9 @@ All notable changes to `embedded-story-map` are recorded here. The project follo
 
 ## Unreleased
 
+- `story-map history` and `story-map diff` read past versions of the map leniently, so a future format change that removes or renames a field or status no longer breaks them. Fields the format no longer has are ignored, and a story that no longer validates is left out of that version only. History used to skip every such version silently, losing its events and dates, and diff failed until the change merged.
+- History now records each version it cannot read, because the map was missing or not valid YAML, in new optional `skipped` and `skippedCount` fields, and `story-map history` warns about them and still exits 0. `parseStoryMapHistory` accepts files with and without these fields. New type `SkippedStoryMapVersion`.
+- When the diff's base drops anything, the summary starts with a note saying what, and `--format json` adds `baseDropped`.
 - `story-map history` fits names to the history format, so `parseStoryMapHistory` always accepts the file it writes. Git author and committer names have no length limit, and a name over 120 characters used to produce a history file that failed to load. Names are trimmed and cut to 120 characters ending in “…”, and blocked or cut reasons to 500, counting characters rather than UTF-16 code units so emoji are never split. `parseStoryMapHistory` counts the same way, so it now accepts names of up to 120 emoji.
 
 ## 0.5.0

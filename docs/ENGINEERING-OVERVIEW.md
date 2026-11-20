@@ -69,7 +69,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 | Path | Responsibility |
 | --- | --- |
 | `src/status.ts` | The six statuses, the active and customer subsets, `customerStatus`, and their display labels. The single list every other module reads. |
-| `src/schema.ts` | Zod schema for the YAML, cross-reference checks, warnings (`storyMapWarnings`), `parseStoryMap`, `loadStoryMap`, `StoryMapValidationError` and source-line lookup |
+| `src/schema.ts` | Zod schema for the YAML, cross-reference checks, warnings (`storyMapWarnings`), `parseStoryMap`, `loadStoryMap`, `StoryMapValidationError` and source-line lookup. Also `migrateStoryMap` and `loadHistoricalStoryMap`, the lenient parser for past versions |
 | `src/view.ts` | `getStoryMapForViewer`: the internal and customer projections, role check, and attaching history to stories |
 | `src/filter.ts` | `readStoryMapFilters` (URL parameters) and `filterStoryMapView` (search, status and “changed in” filters) |
 | `src/history.ts` | History file types and `parseStoryMapHistory` |
@@ -109,7 +109,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 - A release can have `notes` (plain text, up to 800 characters, blank lines between paragraphs) and up to 10 `impact` items, each with a required `metric` and `expected`, and optional `solves`, `actual` and `draft`. Activities do not take these fields. Impact items have no ID, so the diff matches them by `metric`.
 - Optional `settings` hold map-wide options. The only one is `stalledAfterWeeks` (whole weeks, 0 to 104, default 4 from `defaultStalledAfterWeeks`, 0 turns the flag off).
 - `sources` is a list of up to 20 strings. A string is either a URL, a repository-relative path (optionally with a `#heading`), or free text such as “Agreed in planning”.
-- Every object is `.strict()`, so an unknown field is an error rather than being silently dropped. This catches typos such as `staus`.
+- Every object is `.strict()`, so an unknown field is an error rather than being silently dropped. This catches typos such as `staus`. Past versions of the map are the exception: see [Reading past versions](#reading-past-versions).
 - Size limits (titles 120 characters, summaries 500, notes 4,000, 50 activities or releases, 1,000 stories) keep a malformed or hostile file from producing an unusable page.
 
 Cross-reference rules, checked in `crossReferenceIssues`:
@@ -135,6 +135,18 @@ How `loadStoryMap` gets there:
 6. Sort issues by line.
 
 `loadStoryMap` also returns `warnings` and `locate(path)` so later checks, such as `--check-sources`, can report positions in the same file.
+
+### Reading past versions
+
+History and `story-map diff` read earlier versions of the map from Git, and those may use an earlier format. `loadHistoricalStoryMap` reads them leniently. It is not exported from the package index.
+
+- The schemas come from one factory, `formatSchemas(strict)`, so there is a single description of the format. Strict mode rejects unknown fields. Lenient mode drops them.
+- It uses the same YAML settings as `loadStoryMap`: unique keys and `maxAliasCount: 20`.
+- Each story is parsed on its own. A story that still fails, such as one with a status that no longer exists, is dropped rather than failing the whole version.
+- Cross-reference checks are skipped.
+- It returns `{ map, dropped: { stories, storyIds, fields } }`. A YAML error, or a map whose other parts do not validate, still throws.
+
+Both parsers run `migrateStoryMap` on the raw data before validating. It does nothing today. When a format change renames a field or a status, map the old form to the new one there.
 
 ### JSON Schema
 
@@ -264,7 +276,7 @@ Status history shows when each story was added or changed status, who made the c
 
 1. Refuse a shallow clone unless `--allow-shallow` is passed. In a shallow clone, the oldest version found is used only as a baseline, so stories that already existed are not reported as added on that date. The output then has `complete: false`.
 2. List commits that touched the map with `git log --first-parent --reverse` on the chosen ref, usually `main`. First-parent means each change is dated when it reached that branch, not when it was written on a feature branch.
-3. Read each version with `git show <sha>:<path>` and parse it. Versions that are missing or do not validate are skipped, and the next valid version is compared with the last valid one.
+3. Read each version with `git show <sha>:<path>` and parse it leniently with `loadHistoricalStoryMap`, so versions in an older format still count. A story dropped from a version keeps its previous state, so it is not recorded as removed and then added again. A version is skipped only when the map is missing or cannot be read at all. Skipped versions are listed in `skipped` (at most 100, as `{ commit, reason }`) and counted in `skippedCount`, both absent when there are none, and the next readable version is compared with the last readable one. The CLI prints a warning naming the first three and still exits 0.
 4. Compare each version's stories with the previous one by ID. A new ID produces an `added` event. A changed `status` produces a `status` event with `from` and `to`. When the new status is blocked or cut and the story has a `statusReason`, the event records it as `reason`. Moves, renames and other edits produce no event, and removing a story produces no event.
 5. Separately, any difference in a story's fields (compared with `canonical`, which ignores key order), including a move or a new story, updates that story's last edit. Reordering the stories list is not an edit. At the end, `lastEdits` keeps one entry for each story in the newest valid version.
 6. Store `at` as the commit's committer date, normalised with `toISOString()`. Git versions print UTC as either `+00:00` or `Z`, and a canonical form keeps the file stable and comparable.
@@ -303,7 +315,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 
 ### diff
 
-`diff` reads the base version with `git show <ref>:<path>`. If the file did not exist at that ref, the map is reported as new. If the base version is invalid, the command fails rather than guessing.
+`diff` reads the base version with `git show <ref>:<path>`. If the file did not exist at that ref, the map is reported as new. The base is read leniently with `loadHistoricalStoryMap`, because a PR that changes the format would otherwise fail CI until it merges. When anything was dropped, the Markdown summary starts with a `[!NOTE]` saying what, the JSON adds `baseDropped`, and the exit code stays 0. If the base cannot be read even leniently, the command fails rather than guessing. The current map is always checked strictly.
 
 `diffStoryMaps(before, after)` matches stories, activities and releases by ID, so a rename is a rename rather than a removal and an addition. It reports:
 
@@ -418,9 +430,11 @@ Before 1.0.0, a minor version may contain breaking changes. Each one needs a cha
 5. Run `npm run build` and commit the regenerated `story-map.schema.json`.
 6. Document it in `docs/story-map.md`, add tests, and add a changelog entry.
 
+Adding an optional field is the only change that needs nothing else. Any change that is not purely additive, such as removing or renaming a field or a status, needs a mapping in `migrateStoryMap` and a history test that builds a repository with commits in the old format, so past versions keep their events and dates.
+
 ### Add or change a status
 
-`storyStatuses` in `src/status.ts` drives the schema, history schema, filters, toolbar and diff. `activeStoryStatuses` decides what the board shows by default and which stories customers can see. `customerStatus` and `customerStoryStatuses` decide which status customers see for them; a new active status that customers should not see by name needs a mapping there. The board's `StatusIcon`, the `[data-status]` colours in `styles.css` (in all three palettes) and the guide need matching entries. Never rely on colour alone: each status has an icon and a text label. Old history files with the previous statuses must still parse.
+`storyStatuses` in `src/status.ts` drives the schema, history schema, filters, toolbar and diff. `activeStoryStatuses` decides what the board shows by default and which stories customers can see. `customerStatus` and `customerStoryStatuses` decide which status customers see for them; a new active status that customers should not see by name needs a mapping there. The board's `StatusIcon`, the `[data-status]` colours in `styles.css` (in all three palettes) and the guide need matching entries. Never rely on colour alone: each status has an icon and a text label. Old history files with the previous statuses must still parse. Removing or renaming a status also needs a mapping in `migrateStoryMap`, or past versions lose the stories that use it (see [Add a field to the map](#add-a-field-to-the-map)).
 
 ### Change the guide or agent instructions
 

@@ -402,7 +402,7 @@ stories:
     title: Keep history and diffs working when the map format changes
     activity: track
     release: planning
-    status: planned
+    status: merged
     summary: Past versions of the map are read leniently with a migration step, history reports versions it skipped, and diff compares an older-format base instead of failing.
     sources:
       - docs/plans/0.6.0-review-fixes.md#3-history-and-diff-that-survive-format-changes

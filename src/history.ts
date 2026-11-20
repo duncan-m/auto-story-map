@@ -30,6 +30,16 @@ export interface StoryLastEdit {
   commit: string;
 }
 
+/** A version of the map that history could not read, so its changes are missing. */
+export interface SkippedStoryMapVersion {
+  commit: string;
+  /** Why it could not be read, such as the map being missing or not valid YAML. */
+  reason: string;
+}
+
+/** Most skipped versions a history file lists. `skippedCount` counts them all. */
+export const historySkippedMaxItems = 100;
+
 export interface StoryMapHistory {
   version: 1;
   generatedAt: string;
@@ -38,6 +48,10 @@ export interface StoryMapHistory {
   events: StoryHistoryEvent[];
   /** Each current story’s last edit. Absent in files written before 0.4.0. */
   lastEdits?: StoryLastEdit[];
+  /** The first versions of the map that could not be read, oldest first. Absent when none were skipped, and in files written before 0.6.0. */
+  skipped?: SkippedStoryMapVersion[];
+  /** How many versions were skipped in all, which can be more than `skipped` lists. */
+  skippedCount?: number;
 }
 
 /** The longest `by` or `mergedBy` name a history file can hold, in Unicode code points. */
@@ -90,6 +104,11 @@ export const storyMapHistorySchema = z.object({
     by: name.optional(),
     commit,
   })).max(100_000).optional(),
+  skipped: z.array(z.object({
+    commit,
+    reason: reason.min(1),
+  })).max(historySkippedMaxItems).optional(),
+  skippedCount: z.number().int().min(0).optional(),
 });
 
 // The interfaces above document the format and the schema checks it. Fail the
