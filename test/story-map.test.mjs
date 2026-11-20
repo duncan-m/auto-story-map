@@ -402,6 +402,24 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
 });
 
+test("text diagnostics escape line breaks and control characters from the map", async t => {
+  const source = stringify(editedSample(document => {
+    document.stories.find(story => story.id === "BUILDER-101").status = "shipped";
+    document.releases[0].impact[1].metric = "Turnaround\nmap.yaml:1:1: error: forged\r\u001b[2Kdone";
+  }));
+  const directory = await mkdtemp(join(tmpdir(), "story-map-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const file = join(directory, "map.yaml");
+  await writeFile(file, source);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
+  assert.equal(text.status, 0);
+  const lines = text.stderr.trimEnd().split("\n");
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0].includes("“Turnaround\\nmap.yaml:1:1: error: forged\\r\\u001b[2Kdone”"), lines[0]);
+  assert.doesNotMatch(text.stderr, /[\r\u001b]/);
+});
+
 function editedSample(edit, base = map) {
   const document = structuredClone(base);
   edit(document);

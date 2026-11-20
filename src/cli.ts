@@ -159,6 +159,12 @@ function escapeProperty(value: string) {
   return escapeData(value).replace(/:/g, "%3A").replace(/,/g, "%2C");
 }
 
+// Map text reaches diagnostics, so a line break or terminal control in it must not start what looks like another record.
+function escapeText(value: string) {
+  return value.replace(/[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u2028\u2029]/g, char =>
+    char === "\n" ? "\\n" : char === "\r" ? "\\r" : `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
+}
+
 function report(mapPath: string, issue: ReferenceIssue, format: Format) {
   const path = issue.file ?? mapPath;
   const message = issue.path.length ? `${describeIssueTarget(issue)}: ${issue.message}` : issue.message;
@@ -171,7 +177,7 @@ function report(mapPath: string, issue: ReferenceIssue, format: Format) {
     console.log(`::${warning ? "warning" : "error"} ${properties.join(",")}::${escapeData(message)}`);
   } else {
     const position = issue.line ? `:${issue.line}${issue.column ? `:${issue.column}` : ""}` : "";
-    console.error(`${path}${position}: ${warning ? "warning: " : ""}${message}`);
+    console.error(`${escapeText(path)}${position}: ${warning ? "warning: " : ""}${escapeText(message)}`);
   }
 }
 
