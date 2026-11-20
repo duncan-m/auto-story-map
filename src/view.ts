@@ -1,6 +1,6 @@
 import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { defaultStalledAfterWeeks, type ReleaseImpact, type StoryMapDocument } from "./schema.js";
-import { isActiveStatus, storyStatuses, type StoryStatus } from "./status.js";
+import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus } from "./status.js";
 
 export interface StoryMapViewer {
   roles?: readonly string[];
@@ -220,7 +220,8 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       summary: copy.summary,
       activity,
       release,
-      status: story.status,
+      // A merged story is not available to customers yet.
+      status: customerStatus(story.status),
     });
   }
 

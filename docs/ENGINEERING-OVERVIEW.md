@@ -1,10 +1,10 @@
 # Embedded Story Map: engineering overview
 
-Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings, blocked and cut statuses, release notes and impact, stalled stories, and “last updated” from Git. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
+Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings, blocked and cut statuses, release notes and impact, stalled stories, and “last updated” from Git, and the merged status. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
-Embedded Story Map lets a product show its own user story map at `/story-map`, behind the product's existing sign-in. Activities (the steps of the user journey) run left to right. Releases (delivery slices) run top to bottom. Each story sits in one activity and one release and has a status of `planned`, `in-progress`, `shipped`, `blocked` or `cut`. The first three are the active statuses. Blocked and cut stories are hidden by default and never shown to customers.
+Embedded Story Map lets a product show its own user story map at `/story-map`, behind the product's existing sign-in. Activities (the steps of the user journey) run left to right. Releases (delivery slices) run top to bottom. Each story sits in one activity and one release and has a status of `planned`, `in-progress`, `merged`, `shipped`, `blocked` or `cut`. The first four are the active statuses. Merged means the work is on the default branch but not yet available to its users, and customers see it as in progress. Blocked and cut stories are hidden by default and never shown to customers.
 
 The map is a YAML file, `product/story-map.yaml`, committed in the host product's repository. It is edited through pull requests, like code, and ships with each deployment. Nothing is stored in a database, and the board is read-only.
 
@@ -67,7 +67,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 
 | Path | Responsibility |
 | --- | --- |
-| `src/status.ts` | The five statuses, the active subset, and their display labels. The single list every other module reads. |
+| `src/status.ts` | The six statuses, the active and customer subsets, `customerStatus`, and their display labels. The single list every other module reads. |
 | `src/schema.ts` | Zod schema for the YAML, cross-reference checks, warnings (`storyMapWarnings`), `parseStoryMap`, `loadStoryMap`, `StoryMapValidationError` and source-line lookup |
 | `src/view.ts` | `getStoryMapForViewer`: the internal and customer projections, role check, and attaching history to stories |
 | `src/filter.ts` | `readStoryMapFilters` (URL parameters) and `filterStoryMapView` (search, status and “changed in” filters) |
@@ -158,7 +158,7 @@ The customer view is built from scratch, not by deleting fields from the interna
 - Only activities and releases that contain a published story and have customer copy are included.
 - Real IDs are replaced with sequential ones (`story-1`, `activity-1`, `release-1`), so internal IDs and the number of hidden stories do not leak.
 - Notes, sources, `statusReason`, `updatedBy`, history, and release notes, impact and story counts are never copied.
-- The status is shown as it is. Reviewers must check that a customer-facing story's status is right for customers.
+- The status goes through `customerStatus`, which shows `merged` as `in-progress` because customers cannot use the work yet. Other active statuses are shown as they are, so reviewers must still check that a customer-facing story's status is right for customers.
 
 Both views have the same `StoryMapView` shape apart from `audience`, so the board and JSON endpoint treat them alike.
 
@@ -175,12 +175,12 @@ With history, the internal view also works out which in-progress stories are sta
 `readStoryMapFilters(url.searchParams)` reads three parameters and ignores anything unknown:
 
 - `q`: trimmed and cut to 100 characters
-- `status`: one of the five statuses, `all`, or `stalled`
+- `status`: one of the six statuses, `all`, or `stalled`
 - `changed`: `1d`, `7d`, `14d` or `30d`
 
 `filterStoryMapView(view, filters, { now })` returns a copy of the view with fewer stories and a `filter` object recording the active filters and the unfiltered total. The board shows its toolbar only when `filter` is present, so hosts that do not call it get a board without search.
 
-With no `status`, the filter keeps only active stories and records in `filter.hidden` how many blocked and cut stories matched the other filters but were hidden. The board shows that count with a link to `status=all`. A host that never calls `filterStoryMapView` gets no toolbar, so the board hides blocked and cut stories itself: it sets `data-hide-inactive` on the board, marks those cards `data-inactive`, and renders a **Show blocked and cut stories** checkbox. CSS `:has()` hides the cards, cells that only hold them, and the active-only lane counts until the box is ticked. Browsers without `:has()` ignore those rules and show every story with full counts, which fails safe for internal viewers. Customer views contain no blocked or cut stories, so for them the default changes nothing, and their status select offers only the active statuses.
+With no `status`, the filter keeps only active stories and records in `filter.hidden` how many blocked and cut stories matched the other filters but were hidden. The board shows that count with a link to `status=all`. A host that never calls `filterStoryMapView` gets no toolbar, so the board hides blocked and cut stories itself: it sets `data-hide-inactive` on the board, marks those cards `data-inactive`, and renders a **Show blocked and cut stories** checkbox. CSS `:has()` hides the cards, cells that only hold them, and the active-only lane counts until the box is ticked. Browsers without `:has()` ignore those rules and show every story with full counts, which fails safe for internal viewers. Customer views contain no blocked or cut stories, so for them the default changes nothing, and their status select offers only the customer statuses: planned, in progress and shipped.
 
 Always filter after projecting. The search runs over the projected view, so a customer's search matches only approved titles and summaries, while an internal search also matches IDs and notes. Filtering the raw document first would let a search reveal hidden content through which results come back.
 
@@ -210,7 +210,7 @@ On internal boards, each release title is also a `<button>` that opens a release
 
 A stalled card shows “In progress for 6 weeks” (`.esm-stalled`, with a warning icon and the start date as a tooltip) in place of its relative time. The story panel shows “In progress since …” for any in-progress story with a known start (`.esm-progress-since`), and stalled stories add a warning note (`.esm-stalled-note`). Weeks shown are whole weeks from the board's `now`.
 
-The lane shows the first impact item in one line with “+N more”, and a **Draft** label on drafts. Progress reads “3 of 5 stories shipped, 1 cut”: cut stories are left out of the total because they have left the release.
+The lane shows the first impact item in one line with “+N more”, and a **Draft** label on drafts. Progress reads “3 of 5 stories shipped, 1 merged, 1 cut”: cut stories are left out of the total because they have left the release.
 
 Panel IDs come from `useId()`, so two boards on one page do not collide.
 
@@ -227,7 +227,7 @@ Engineering links open in a new tab with `rel="noopener noreferrer"`, an icon an
 
 ### Filter toolbar
 
-The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history. Internal views get **Active** (the default) and **All, including blocked and cut** at the top of the status select; customer views get **All statuses** and the three active statuses. When `filter.hidden` is set, the results line says how many blocked and cut stories are hidden and links to the same filters with `status=all`.
+The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history. Internal views get **Active** (the default) and **All, including blocked and cut** at the top of the status select; customer views get **All statuses** and `customerStoryStatuses` (planned, in progress and shipped). When `filter.hidden` is set, the results line says how many blocked and cut stories are hidden and links to the same filters with `status=all`.
 
 ### Dates
 
@@ -294,7 +294,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 
 `diffStoryMaps(before, after)` matches stories, activities and releases by ID, so a rename is a rename rather than a removal and an addition. It reports:
 
-- **Customer-facing changes** first: stories that become visible or stop being visible to signed-in customers, and visible stories whose customer title, summary, status or customer-facing activity or release changes. A story counts as visible only when the map is `all-users`, has map customer copy and the story has customer copy.
+- **Customer-facing changes** first: stories that become visible or stop being visible to signed-in customers, and visible stories whose customer title, summary, customer-facing status (through `customerStatus`, so in progress → merged is not a change) or customer-facing activity or release changes. A story counts as visible only when the map is `all-users`, has map customer copy and the story has customer copy.
 - Visibility switches, as a GitHub `[!IMPORTANT]` or `[!NOTE]` alert.
 - A **Blocked and cut** section (`blockedOrCut`): stories that became blocked or cut, with their reasons, and stories that returned to an active status. A blocked or cut story does not count as customer-visible, so a published story that becomes blocked or cut also appears under “No longer visible”.
 - Added, moved, renamed, re-statused, edited and removed stories, in one table.
@@ -403,7 +403,7 @@ Before 1.0.0, a minor version may contain breaking changes. Each one needs a cha
 
 ### Add or change a status
 
-`storyStatuses` in `src/status.ts` drives the schema, history schema, filters, toolbar and diff. `activeStoryStatuses` decides what the board shows by default and what customers can see. The board's `StatusIcon`, the `[data-status]` colours in `styles.css` (in all three palettes) and the guide need matching entries. Never rely on colour alone: each status has an icon and a text label. Old history files with the previous statuses must still parse.
+`storyStatuses` in `src/status.ts` drives the schema, history schema, filters, toolbar and diff. `activeStoryStatuses` decides what the board shows by default and which stories customers can see. `customerStatus` and `customerStoryStatuses` decide which status customers see for them; a new active status that customers should not see by name needs a mapping there. The board's `StatusIcon`, the `[data-status]` colours in `styles.css` (in all three palettes) and the guide need matching entries. Never rely on colour alone: each status has an icon and a text label. Old history files with the previous statuses must still parse.
 
 ### Change the guide or agent instructions
 

@@ -9,7 +9,7 @@ export interface StoryMapFilters {
   query?: string;
   /**
    * One status, or `all` for every story. When absent, only active stories
-   * (planned, in progress and shipped) are kept, and blocked and cut stories are hidden.
+   * (planned, in progress, merged and shipped) are kept, and blocked and cut stories are hidden.
    * `stalled` keeps stories in progress for longer than the view’s threshold.
    */
   status?: StoryStatus | "all" | "stalled";

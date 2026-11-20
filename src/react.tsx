@@ -1,6 +1,6 @@
 import { useId, version } from "react";
 import type { CSSProperties } from "react";
-import { activeStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
+import { customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
 import type { ReleaseImpact } from "./schema.js";
 import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
 
@@ -167,6 +167,7 @@ function StatusIcon({ status }: { status: StoryStatus }) {
         ? <circle cx="8" cy="8" r="6.2" strokeDasharray="2.4 2.2" />
         : <circle cx="8" cy="8" r="6.2" />}
       {status === "in-progress" && <circle cx="8" cy="8" r="1.7" fill="currentColor" stroke="none" />}
+      {status === "merged" && <path d="M8 8V4.2A3.8 3.8 0 1 1 4.2 8Z" fill="currentColor" stroke="none" />}
       {status === "shipped" && <path d="m5.3 8.2 1.8 1.8 3.6-3.7" />}
       {status === "blocked" && <path d="M5 8h6" />}
       {status === "cut" && <path d="M3.6 12.4 12.4 3.6" />}
@@ -301,7 +302,7 @@ function ImpactLine({ impact }: { impact: ReleaseImpact[] }) {
   );
 }
 
-/** “3 of 5 stories shipped, 1 cut.” Cut stories have left the release, so they are not in the total. */
+/** “3 of 5 stories shipped, 1 merged, 1 cut.” Cut stories have left the release, so they are not in the total. */
 function releaseProgress(counts: Record<StoryStatus, number>) {
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
   if (total === 0) return "No stories yet.";
@@ -309,6 +310,7 @@ function releaseProgress(counts: Record<StoryStatus, number>) {
   if (kept === 0) return `${storyCount(total)}, all cut.`;
   return [
     `${counts.shipped} of ${storyCount(kept)} shipped`,
+    counts.merged && `${counts.merged} merged`,
     counts.blocked && `${counts.blocked} blocked`,
     counts.cut && `${counts.cut} cut`,
   ].filter(Boolean).join(", ") + ".";
@@ -437,7 +439,7 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
               <option value="">Active</option>
               <option value="all">All, including blocked and cut</option>
             </> : <option value="">All statuses</option>}
-            {(internal ? storyStatuses : activeStoryStatuses).map(status => <option key={status} value={status}>{storyStatusLabels[status]}</option>)}
+            {(internal ? storyStatuses : customerStoryStatuses).map(status => <option key={status} value={status}>{storyStatusLabels[status]}</option>)}
             {internal && !!stalledAfterWeeks && <option value="stalled">{`Stalled: in progress over ${weeks(stalledAfterWeeks)}`}</option>}
           </select>
           {showChanged && (

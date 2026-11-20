@@ -1,5 +1,5 @@
 import { defaultStalledAfterWeeks, type StoryMapDocument } from "./schema.js";
-import { isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js";
+import { customerStatus, isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js";
 
 type Story = StoryMapDocument["stories"][number];
 type Group = StoryMapDocument["activities"][number];
@@ -212,8 +212,11 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
       const details: string[] = [];
       if (previous!.customer!.title !== story!.customer!.title) details.push(`title was “${previous!.customer!.title}”`);
       if (!same(previous!.customer!.summary, story!.customer!.summary)) details.push("summary changed");
-      if (previous!.status !== story!.status) {
-        details.push(`status ${storyStatusLabels[previous!.status]} → ${storyStatusLabels[story!.status]}`);
+      // Compare what customers see, so in progress → merged is not a customer-facing change.
+      const statusBefore = customerStatus(previous!.status);
+      const statusAfter = customerStatus(story!.status);
+      if (statusBefore !== statusAfter) {
+        details.push(`status ${storyStatusLabels[statusBefore]} → ${storyStatusLabels[statusAfter]}`);
       }
       const activityBefore = customerLabel(before!, "activities", previous!.activity);
       const activityAfter = customerLabel(after, "activities", story!.activity);

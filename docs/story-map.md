@@ -8,18 +8,18 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id` and `title`, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
-3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
+3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, `merged` when the work is on the default branch but not yet available to its users, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
 4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
 ## Upgrade to 0.4.0
 
 0.4.0 is not released yet. These steps cover the changes merged so far. Existing maps stay valid.
 
-1. Story statuses now include [`blocked` and `cut`](#blocked-and-cut-stories). If host code switches over every value of `storyStatuses` or `StoryStatus`, add cases for both. `activeStoryStatuses` lists the original three.
+1. Story statuses now include [`merged`](#merged-and-shipped), [`blocked` and `cut`](#blocked-and-cut-stories). If host code switches over every value of `storyStatuses` or `StoryStatus`, add cases for all three. `activeStoryStatuses` lists planned, in progress, merged and shipped. Customers see merged stories as in progress, so the customer view’s statuses are `customerStoryStatuses`.
 2. `filterStoryMapView` now hides blocked and cut stories when no status is given, and records how many it hid in `filter.hidden`. Pass `status: "all"`, or `?status=all` in the URL, to include them. Boards rendered without `filterStoryMapView` hide them too, with a **Show blocked and cut stories** checkbox above the grid.
 3. The customer view never includes blocked or cut stories. Check that customer-facing stories you plan to block or cut are ones customers can stop seeing.
 4. Validation now has warnings as well as errors. Warnings, such as a blocked story with no `statusReason`, are printed but do not fail validation. Add `--strict` to the CI step to fail on warnings. Each issue in `StoryMapValidationError.issues` now has `severity: "error"`.
-5. Add styles for the new statuses if the host overrides status colours: `--esm-status-blocked` and `--esm-status-cut`.
+5. Add styles for the new statuses if the host overrides status colours: `--esm-status-merged`, `--esm-status-blocked` and `--esm-status-cut`.
 6. Releases accept optional [`notes` and `impact`](#release-notes-and-impact). The validator warns about each release with active stories but no impact, so expect new warnings on existing maps. Add impact, or ask an agent to draft it, before turning on `--strict`.
 7. In the internal view, each release is now an `InternalReleaseLabel` with `notes`, `impact` and `storyCounts`. Release titles on internal boards are buttons that open a release panel. Check any host CSS that targets `.esm-release-name`.
 8. Hosts with a history file now see [stalled stories](#flag-stalled-stories) flagged after 4 weeks in progress. Set `settings.stalledAfterWeeks` in the map, or pass `stalledAfterWeeks` to `getStoryMapForViewer`, to change the threshold or turn it off with `0`. The status filter accepts `stalled`, so the type of `StoryMapFilters.status` and `filter.status` now includes `"stalled"`. Pass the same `now` to `getStoryMapForViewer` as to `filterStoryMapView` and the board if the host fixes the time.
@@ -47,7 +47,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 | Where one story sits | Change its `activity` or `release` to an existing ID. |
 | The order within a cell | Reorder the affected stories in the `stories` list. |
 | Implementation details | Update the delivery plan, then add the relevant Markdown section to `sources`. |
-| Progress | Set `status` to `planned`, `in-progress` or `shipped`. Shipped means the intended audience can use it. |
+| Progress | Set `status` to `planned`, `in-progress`, `merged` or `shipped`. Merged means the work is on the default branch. Shipped means the intended audience can use it. See [Merged and shipped](#merged-and-shipped). |
 | What a release is for | Edit the release’s `notes` and `impact`. See [Release notes and impact](#release-notes-and-impact). |
 | Work that stopped or was dropped | Set `status` to `blocked` or `cut` and explain why in `statusReason`. See [Blocked and cut stories](#blocked-and-cut-stories). |
 
@@ -70,7 +70,18 @@ When price catalogue lookup is agreed for the builder workflow, put the story un
   updatedBy: Sam Patel
 ```
 
-If the agreed release changes, edit `release` on this story. If implementation starts, set its status to `in-progress`. Once deployed and available to builders, set it to `shipped`.
+If the agreed release changes, edit `release` on this story. If implementation starts, set its status to `in-progress`. When the work is merged but not yet deployed, set it to `merged`. Once deployed and available to builders, set it to `shipped`.
+
+## Merged and shipped
+
+Two statuses separate finishing the work from releasing it:
+
+- `merged`: the work is merged to the default branch (`main` or `master`), but its intended users cannot use it yet, for example because it waits for a deploy, a feature flag or an app store release.
+- `shipped`: the intended users can use it.
+
+If the product deploys every merge straight away, skip `merged` and set `shipped` when the work merges. Otherwise, set `merged` in the PR that finishes the work, and `shipped` once it is released.
+
+Merged stories are active, so the board shows them by default, with their own status in the filter and in release progress, such as “2 of 5 stories shipped, 1 merged”. A story stops counting as [stalled](#flag-stalled-stories) once it is merged. Signed-in customers see a merged story as **In progress**, because they cannot use it yet. Moving a customer-facing story from in progress to merged is therefore not a customer-facing change in `story-map diff`, but moving it from merged to shipped is.
 
 ## Blocked and cut stories
 
@@ -157,7 +168,7 @@ Cards show only the story ID, title and status. Select a card to open its panel,
 | Signed-in user | Access denied | Customer-facing view |
 | Internal viewer (engineer or super admin by default) | Full map | Full map |
 
-Set the map’s `visibility` to `internal` or `all-users`. The default is `internal`. To show a story to signed-in users, add its `customer.title` and optional `customer.summary`. Add customer-facing copy to its activity and release, and to the map itself. Review the wording and verify that the story’s displayed status is suitable for this audience before merging.
+Set the map’s `visibility` to `internal` or `all-users`. The default is `internal`. To show a story to signed-in users, add its `customer.title` and optional `customer.summary`. Add customer-facing copy to its activity and release, and to the map itself. Review the wording and verify that the story’s displayed status is suitable for this audience before merging. Customers see `merged` as in progress, and never see blocked or cut stories.
 
 The customer view includes the approved copy and story status, and its story panels show only that copy with the customer-facing activity and release labels. It excludes engineering notes, release notes and impact, source paths, editor names, internal IDs and activities or releases with no published stories. Customer searches match only the approved title and summary. Story records without a `customer` section stay internal, and blocked and cut stories never appear. Engineers and super admins can see the recorded editor on the card and in the JSON view.
 

@@ -18,6 +18,7 @@
   --esm-activity-accent: #6a63bd;
   --esm-status-planned: #52617a;
   --esm-status-in-progress: #5347be;
+  --esm-status-merged: #0a5f8f;
   --esm-status-shipped: #086d57;
   --esm-status-blocked: #a34400;
   --esm-status-cut: #9b2c4b;
@@ -56,6 +57,7 @@
   --esm-activity-accent: #aaa4ff;
   --esm-status-planned: #a8b2c5;
   --esm-status-in-progress: #b0aaff;
+  --esm-status-merged: #7cc4ec;
   --esm-status-shipped: #63d3b4;
   --esm-status-blocked: #f5b072;
   --esm-status-cut: #f29bb0;
@@ -92,6 +94,7 @@
     --esm-activity-accent: #aaa4ff;
     --esm-status-planned: #a8b2c5;
     --esm-status-in-progress: #b0aaff;
+    --esm-status-merged: #7cc4ec;
     --esm-status-shipped: #63d3b4;
     --esm-status-blocked: #f5b072;
     --esm-status-cut: #f29bb0;
@@ -261,6 +264,7 @@
 .esm-card-title { font-size: .9rem; font-weight: 650; line-height: 1.33; overflow-wrap: anywhere; }
 .esm-status { display: inline-flex; align-items: center; gap: 4px; color: var(--esm-status-planned); font-size: .8125rem; line-height: 1.2; }
 .esm-status[data-status="in-progress"] { color: var(--esm-status-in-progress); }
+.esm-status[data-status="merged"] { color: var(--esm-status-merged); }
 .esm-status[data-status="shipped"] { color: var(--esm-status-shipped); }
 .esm-status[data-status="blocked"] { color: var(--esm-status-blocked); }
 .esm-status[data-status="cut"] { color: var(--esm-status-cut); }

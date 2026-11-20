@@ -295,7 +295,7 @@ test("validation errors name the item and source line", () => {
   assert.deepEqual(byPath["activities.3.title"], { severity: "error", path: ["activities", 3, "title"], message: "Missing required field.", itemId: "finance-ops", line: lineOf("- id: finance-ops"), column: 5 });
   assert.equal(byPath["stories.0.status"].itemId, "BUILDER-101");
   assert.equal(byPath["stories.0.status"].line, lineOf("status: started"));
-  assert.match(byPath["stories.0.status"].message, /Use one of 'planned', 'in-progress', 'shipped', 'blocked', 'cut'\./);
+  assert.match(byPath["stories.0.status"].message, /Use one of 'planned', 'in-progress', 'merged', 'shipped', 'blocked', 'cut'\./);
   assert.equal(byPath["stories.1.owner"].message, "Unknown field.");
   assert.equal(byPath["stories.1.owner"].line, lineOf("owner: Sam"));
   // Reference checks still run when another field is invalid.
@@ -1226,4 +1226,59 @@ test("panels show the last edit from history, and fall back to updatedBy without
 
   const customer = await makeStoryMapResponse("/api/story-map", map, regular, { history, now }).json();
   assert.doesNotMatch(JSON.stringify(customer), /lastEdit|Sam Patel|a000002/);
+});
+
+// BUILDER-101 is customer-facing and merged, but not yet available to its users.
+const mergedMap = editedSample(document => {
+  document.stories.find(story => story.id === "BUILDER-101").status = "merged";
+});
+
+test("merged stories are active and shown with their own status to internal viewers", async () => {
+  const internal = getStoryMapForViewer(mergedMap, engineer);
+  assert.equal(internal.stories.find(story => story.id === "BUILDER-101").status, "merged");
+  assert.deepEqual(filterStoryMapView(internal, { status: "merged" }).stories.map(story => story.id), ["BUILDER-101"]);
+  assert.ok(filterStoryMapView(internal).stories.some(story => story.id === "BUILDER-101"));
+  assert.equal(filterStoryMapView(internal, { status: "in-progress" }).stories.length, 0);
+
+  const html = await makeStoryMapResponse("/story-map", mergedMap, engineer).text();
+  assert.match(cardsIn(html).find(card => card.includes("BUILDER-101")), /<span class="esm-status" data-status="merged"><svg[^>]*>[\s\S]*?<\/svg>Merged<\/span>/);
+  assert.match(html, /<option value="merged">Merged<\/option>/);
+  assert.match(releasePanel(html, "Builder workflow"), /0 of 3 stories shipped, 1 merged\./);
+});
+
+test("customers see merged stories as in progress", async () => {
+  const customer = getStoryMapForViewer(mergedMap, regular);
+  const story = customer.stories.find(story => story.title === "Draft a project estimate");
+  assert.equal(story.status, "in-progress");
+  assert.deepEqual(filterStoryMapView(customer, { status: "in-progress" }).stories.map(story => story.title), ["Draft a project estimate"]);
+
+  const html = await makeStoryMapResponse("/story-map", mergedMap, regular).text();
+  const json = await makeStoryMapResponse("/api/story-map", mergedMap, regular).json();
+  for (const output of [html, JSON.stringify(json)]) assert.doesNotMatch(output, /merged/i);
+});
+
+test("diffs list merged as a status change but not as a customer-facing one", () => {
+  const toMerged = diffStoryMaps(map, mergedMap);
+  assert.deepEqual(toMerged.stories.updated.map(update => [update.id, update.status]), [["BUILDER-101", { from: "in-progress", to: "merged" }]]);
+  assert.deepEqual(toMerged.customer, []);
+  assert.doesNotMatch(formatStoryMapDiff(toMerged), /Customer-facing/);
+
+  const shipped = editedSample(document => { document.stories.find(story => story.id === "BUILDER-101").status = "shipped"; });
+  assert.deepEqual(diffStoryMaps(mergedMap, shipped).customer.map(change => change.details), [["status In progress → Shipped"]]);
+});
+
+test("stalled stories stop counting once merged", () => {
+  const history = parseStoryMapHistory({
+    version: 1,
+    generatedAt: "2026-11-20T08:00:00Z",
+    complete: true,
+    events: [
+      { storyId: "BUILDER-101", type: "added", to: "in-progress", at: "2026-09-01T10:00:00Z", commit: "a000001" },
+      { storyId: "BUILDER-101", type: "status", from: "in-progress", to: "merged", at: "2026-11-01T10:00:00Z", commit: "a000002" },
+    ],
+  });
+  const story = getStoryMapForViewer(mergedMap, engineer, { history, now: new Date("2026-11-20T12:00:00Z") })
+    .stories.find(story => story.id === "BUILDER-101");
+  assert.equal(story.stalled, undefined);
+  assert.equal(story.inProgressSince, undefined);
 });
