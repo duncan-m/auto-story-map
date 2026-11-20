@@ -1852,7 +1852,7 @@ test("the board shows the running version, with links for internal viewers", asy
   const internal = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) }));
   const footer = /<footer class="esm-footer">.*?<\/footer>/.exec(internal)?.[0];
   assert.ok(footer);
-  assert.match(footer, new RegExp(`Embedded Story Map ${pkg.version.replaceAll(".", "\\.")}`));
+  assert.match(footer, new RegExp(`Auto Story Map ${pkg.version.replaceAll(".", "\\.")}`));
   const anchor = pkg.version.replaceAll(".", "");
   assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/embedable-story-map/blob/main/CHANGELOG\\.md#${anchor}" target="_blank" rel="noopener noreferrer">Changelog`));
   assert.match(footer, /href="https:\/\/github\.com\/duncan-m\/embedable-story-map" target="_blank" rel="noopener noreferrer">Source code/);
@@ -1863,7 +1863,7 @@ test("the board shows the running version, with links for internal viewers", asy
 
   const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, regular) }));
   const customerFooter = /<footer class="esm-footer">.*?<\/footer>/.exec(customer)?.[0];
-  assert.ok(customerFooter?.includes(`Embedded Story Map ${pkg.version}`));
+  assert.ok(customerFooter?.includes(`Auto Story Map ${pkg.version}`));
   assert.match(customerFooter, />By Duncan Malcolm</);
   assert.match(customerFooter, />Apache-2\.0 licence</);
   assert.doesNotMatch(customerFooter, /<a /, "customers see the version, author and licence without links");

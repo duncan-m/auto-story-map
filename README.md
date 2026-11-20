@@ -1,4 +1,4 @@
-# Embedded Story Map
+# Auto Story Map
 
 A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
 
@@ -74,7 +74,7 @@ See [the changelog][changelog] for what changed in each version and [the release
 
 ## Disclaimer
 
-Embedded Story Map is pre-1.0 software. Until 1.0.0, any minor version, such as 0.4.0 to 0.5.0, can include breaking changes to the map format, the API, the CLI, or the board’s markup and class names. Each breaking change is marked **Breaking** in [the changelog][changelog] with its upgrade steps. Pin the version you install, read the changelog before you upgrade, and check the board and your CI after each upgrade.
+Auto Story Map is pre-1.0 software. Until 1.0.0, any minor version, such as 0.4.0 to 0.5.0, can include breaking changes to the map format, the API, the CLI, or the board’s markup and class names. Each breaking change is marked **Breaking** in [the changelog][changelog] with its upgrade steps. Pin the version you install, read the changelog before you upgrade, and check the board and your CI after each upgrade.
 
 This software and its documentation are provided “as is”, without warranties or conditions of any kind, either express or implied, including any warranties or conditions of title, non-infringement, merchantability or fitness for a particular purpose. No guarantee is made that the software will work as described, be free of errors or security vulnerabilities, or stay compatible with your product, its dependencies or future versions.
 

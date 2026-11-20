@@ -155,7 +155,7 @@ export const storyMapSchema = strictSchemas.map.superRefine((map, context) => {
     context.addIssue({ code: "custom", path, message });
   }
 }).meta({
-  title: "Embedded Story Map",
+  title: "Auto Story Map",
   description: "A Git-backed user story map. Validate cross-references with `story-map validate`.",
 });
 

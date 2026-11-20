@@ -50,7 +50,7 @@ export function describeProduct(name: string) {
 }
 
 /**
- * Sets up Embedded Story Map in a host repository: a starter map, the story
+ * Sets up Auto Story Map in a host repository: a starter map, the story
  * map guide, the agent instructions and a validation workflow. Existing files
  * are never overwritten, so it is safe to run again.
  */

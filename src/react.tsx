@@ -466,7 +466,7 @@ function VersionFooter({ internal }: { internal: boolean }) {
   const licenseUrl = `${storyMapRepositoryUrl}/blob/main/LICENSE`;
   return (
     <footer className="esm-footer">
-      <span className="esm-version">Embedded Story Map {storyMapVersion}</span>
+      <span className="esm-version">Auto Story Map {storyMapVersion}</span>
       <span className="esm-author">
         {"By "}
         {internal && storyMapAuthor.url

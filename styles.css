@@ -1,4 +1,4 @@
-/* Embedded Story Map. Every selector is scoped to .esm-* so the board can sit inside any host page. */
+/* Auto Story Map. Every selector is scoped to .esm-* so the board can sit inside any host page. */
 
 .esm-board {
   --esm-ink: #19223a;

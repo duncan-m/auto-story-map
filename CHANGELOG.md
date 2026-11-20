@@ -4,6 +4,7 @@ All notable changes to `embedded-story-map` are recorded here. The project follo
 
 ## Unreleased
 
+- The product is now called Auto Story Map. The board footer reads “Auto Story Map <version>”, and the schema title and docs use the new name. The npm package name, import paths and `AGENTS.md` markers are unchanged.
 - `story-map history` and `story-map diff` read past versions of the map leniently, so a future format change that removes or renames a field or status no longer breaks them. Fields the format no longer has are ignored, and a story that no longer validates is left out of that version only. History used to skip every such version silently, losing its events and dates, and diff failed until the change merged.
 - History now records each version it cannot read, because the map was missing or not valid YAML, in new optional `skipped` and `skippedCount` fields, and `story-map history` warns about them and still exits 0. `parseStoryMapHistory` accepts files with and without these fields. New type `SkippedStoryMapVersion`.
 - When the diff's base drops anything, the summary starts with a note saying what, and `--format json` adds `baseDropped`.
