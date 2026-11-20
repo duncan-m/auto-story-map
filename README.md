@@ -72,6 +72,12 @@ You can’t edit the map in the app. The map ships with each deployment, so an e
 
 See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one. To work on the library itself, start with [the engineering overview][overview].
 
+## Disclaimer
+
+Embedded Story Map is pre-1.0 software. Until 1.0.0, any minor version, such as 0.4.0 to 0.5.0, can include breaking changes to the map format, the API, the CLI, or the board’s markup and class names. Each breaking change is marked **Breaking** in [the changelog][changelog] with its upgrade steps. Pin the version you install, read the changelog before you upgrade, and check the board and your CI after each upgrade.
+
+The library is provided “as is”, without warranties or conditions of any kind, under the [Apache License 2.0][license]. You are responsible for how you use it in your product. That includes deciding who can see the map: the library decides what each viewer sees, but your product must sign viewers in, pass their roles from a verified session, and keep internal content out of public pages and caches.
+
 [source]: https://github.com/duncan-m/embedable-story-map
 [example-map]: https://github.com/duncan-m/embedable-story-map/blob/main/product/story-map.yaml
 [guide]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md
@@ -83,3 +89,4 @@ See [the changelog][changelog] for what changed in each version and [the release
 [changelog]: https://github.com/duncan-m/embedable-story-map/blob/main/CHANGELOG.md
 [releasing]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/releasing.md
 [overview]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/ENGINEERING-OVERVIEW.md
+[license]: https://github.com/duncan-m/embedable-story-map/blob/main/LICENSE
