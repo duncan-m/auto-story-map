@@ -2,3 +2,7 @@ node_modules/
 dist/
 *.tgz
 src/version.ts
+
+# Screenshots at the root are debugging output, apart from the one the README uses.
+/*.png
+!/story-map-screenshot.png

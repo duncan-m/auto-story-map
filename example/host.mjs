@@ -1,6 +1,6 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { filterStoryMapView, getStoryMapForViewer, readStoryMapFilters } from "embedded-story-map";
+import { getStoryMapPage, storyMapResponseHeaders } from "embedded-story-map";
 import { StoryMapBoard } from "embedded-story-map/react";
 
 // The enclosing app supplies a viewer from its verified session.
@@ -8,16 +8,15 @@ import { StoryMapBoard } from "embedded-story-map/react";
 export function makeStoryMapResponse(target, document, viewer, options = {}) {
   const { navigation = null, sourceBaseUrl, preservedParams, canViewInternal, history, stalledAfterWeeks, now } = options;
   const url = new URL(target, "http://localhost");
-  const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
+  const headers = storyMapResponseHeaders;
   const isApi = url.pathname === "/api/story-map";
 
   if (!isApi && url.pathname !== "/story-map") {
     return new Response("Page not found.", { status: 404, headers });
   }
 
-  // Project first, then filter, so a search only ever sees what this viewer may see.
-  const view = getStoryMapForViewer(document, viewer, { canViewInternal, history, stalledAfterWeeks, now });
-  const map = view && filterStoryMapView(view, readStoryMapFilters(url.searchParams), { now });
+  // Projects for this viewer, then filters, so a search only ever sees what this viewer may see.
+  const map = getStoryMapPage(document, viewer, { canViewInternal, history, stalledAfterWeeks, now, searchParams: url.searchParams });
   const status = map ? 200 : viewer ? 403 : 401;
   const message = viewer ? "This story map is only available to the product team." : "Sign in to view the story map.";
 
