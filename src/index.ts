@@ -9,7 +9,8 @@ export {
 } from "./schema.js";
 export { defaultStalledAfterWeeks, releaseImpactMaxItems, releaseNotesMaxLength } from "./schema.js";
 export type { ReleaseImpact, StoryMapDocument, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
-export { activeStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
+export { activeStoryStatuses, customerStatus, customerStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
+export type { CustomerStoryStatus } from "./status.js";
 export { defaultInternalRoles, getStoryMapForViewer } from "./view.js";
 export type {
   InternalReleaseLabel,

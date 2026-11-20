@@ -55,7 +55,7 @@ const story = z.object({
   release: id.describe("ID of the release lane this story belongs to."),
   summary: summary.describe("Optional internal summary, shown when the card is opened."),
   status: z.enum(storyStatuses).default("planned")
-    .describe("planned: agreed work awaiting implementation. in-progress: work has started. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers."),
+    .describe("planned: agreed work awaiting implementation. in-progress: work has started. merged: the work is merged to the default branch but not yet available to its intended users; customers see it as in progress. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers."),
   statusReason: z.string().trim().min(1).max(500).optional()
     .describe("Why the story is blocked or cut. Internal only."),
   updatedBy: z.string().trim().min(1).max(120).optional().describe("Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise."),
