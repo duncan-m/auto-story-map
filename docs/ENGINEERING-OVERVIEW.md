@@ -84,7 +84,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `docs/story-map.md` | The user guide. **It is also shipped in the package and copied into hosts by `init`.** |
 | `docs/plans/` | Delivery plans. `0.4.0-enhancements.md` is the proposed next release. |
 | `docs/releasing.md` | How to publish a version |
-| `product/story-map.yaml` | The builder estimates demo map. It is test data and the demo's content, not a map of this library. |
+| `product/story-map.yaml` | The builder estimates demo map, including one cut story (`FINANCE-202`). It is test data and the demo's content, not a map of this library. Tests that need FINANCE-202 still planned use the `planningMap` copy. |
 | `example/host.mjs` | Reference host integration: one function that returns a web `Response` for the page or the JSON endpoint |
 | `example/demo.mjs` | Local demo server on `127.0.0.1:4173` with a role switcher |
 | `scripts/build-schema.mjs` | Generates `story-map.schema.json` from the compiled Zod schema |
@@ -211,7 +211,7 @@ Engineering links open in a new tab with `rel="noopener noreferrer"`, an icon an
 
 ### Filter toolbar
 
-The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history.
+The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history. Internal views get **Active** (the default) and **All, including blocked and cut** at the top of the status select; customer views get **All statuses** and the three active statuses. When `filter.hidden` is set, the results line says how many blocked and cut stories are hidden and links to the same filters with `status=all`.
 
 ### Dates
 
@@ -340,10 +340,12 @@ All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert
 - parsing defaults, duplicate keys and IDs, dangling references, customer-label rules, and error lines and item IDs,
 - audience rules on the HTML page and JSON endpoint through `example/host.mjs`, including that customer output contains no internal content,
 - card faces, popover panels, engineering links, sources after a JSON round trip, themes and escaping,
-- filters, including that searches only see the projected view,
+- filters, including that searches only see the projected view, the default that hides blocked and cut stories, and the checkbox on boards without filters,
+- that customers never see blocked or cut stories,
+- validator warnings, `--strict` and `::warning` annotations,
 - the CLI's text and GitHub output, `diff` against a Git ref, `init` in a temporary directory, source and plan checks, and GitHub anchor rules,
 - that the committed JSON Schema matches the validator,
-- history built from real temporary Git repositories, with merge commits, `updatedBy` credit and shallow clones, and history on the board.
+- history built from real temporary Git repositories, with merge commits, `updatedBy` credit, shallow clones and blocked or cut reasons, and history on the board.
 
 Tests that need Git create temporary repositories and clean them up. They need `git` on the path.
 
