@@ -331,6 +331,26 @@ test("many unknown fields are located in linear time", () => {
   assert.ok(performance.now() - started < 3000);
 });
 
+test("unknown fields below many unknown top-level fields are located in linear time", () => {
+  const count = 20000;
+  const root = Array.from({ length: count }, (_, index) => `extra${index}: x\n`).join("");
+  const story = Array.from({ length: count }, (_, index) => `    field${index}: x\n`).join("");
+  const source = `version: 1\n${root}stories:\n  - id: A-1\n${story}`;
+  const started = performance.now();
+  let error;
+  try {
+    parseStoryMap(source);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const nested = error.issues.filter(issue => issue.message === "Unknown field." && issue.path[0] === "stories");
+  assert.equal(nested.length, count);
+  assert.deepEqual(nested.at(-1).path, ["stories", 0, `field${count - 1}`]);
+  assert.equal(nested.at(-1).line, 2 * count + 3);
+  assert.ok(performance.now() - started < 3000);
+});
+
 test("the CLI prints file positions and GitHub annotations", async t => {
   const directory = await mkdtemp(join(tmpdir(), "story-map-"));
   t.after(() => rm(directory, { recursive: true, force: true }));

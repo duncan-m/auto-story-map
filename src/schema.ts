@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LineCounter, isMap, isScalar, parseDocument, visit, type Document, type Node } from "yaml";
+import { LineCounter, isMap, isScalar, isSeq, parseDocument, visit, type Document, type Node } from "yaml";
 import { isActiveStatus, storyStatuses } from "./status.js";
 
 export { storyStatuses };
@@ -200,29 +200,43 @@ export class StoryMapValidationError extends Error {
   }
 }
 
-/** Key offsets per mapping, built once so locating many keys stays linear. */
-type KeyIndex = WeakMap<Node, Map<unknown, number | undefined>>;
+/** Each mapping's entries by key, built once so that every lookup is one step per path segment. */
+type KeyIndex = WeakMap<Node, Map<unknown, { offset?: number; value: unknown }>>;
 
-function keyOffset(node: Node, key: string, keyIndex: KeyIndex) {
+function entry(node: Node, key: string | number, keyIndex: KeyIndex) {
   if (!isMap(node)) return undefined;
-  let offsets = keyIndex.get(node);
-  if (!offsets) {
-    offsets = new Map();
+  let entries = keyIndex.get(node);
+  if (!entries) {
+    entries = new Map();
     for (const item of node.items) {
       const keyNode = item.key as (Node & { value?: unknown }) | null;
-      if (keyNode && !offsets.has(keyNode.value)) offsets.set(keyNode.value, keyNode.range?.[0]);
+      const name = isScalar(keyNode) ? keyNode.value : keyNode;
+      if (!entries.has(name)) entries.set(name, { offset: keyNode?.range?.[0], value: item.value });
     }
-    keyIndex.set(node, offsets);
+    keyIndex.set(node, entries);
   }
-  return offsets.get(key);
+  return entries.get(key);
 }
 
-function locate(document: Document, lineCounter: LineCounter, path: (string | number)[], key?: string, keyIndex: KeyIndex = new WeakMap()) {
-  for (let depth = path.length; depth >= 0; depth--) {
-    const node = document.getIn(path.slice(0, depth), true) as Node | undefined;
+/** The nodes from the document root down `path`, stopping where the path leaves the document. */
+function nodesAlong(document: Document, path: (string | number)[], keyIndex: KeyIndex) {
+  const nodes = [document.contents as Node | null];
+  for (const segment of path) {
+    const node = nodes[nodes.length - 1];
+    const next = isSeq(node) && typeof segment === "number" ? node.items[segment] : node ? entry(node, segment, keyIndex)?.value : undefined;
+    if (!next) break;
+    nodes.push(next as Node);
+  }
+  return nodes;
+}
+
+function locate(document: Document, lineCounter: LineCounter, keyIndex: KeyIndex, path: (string | number)[], key?: string) {
+  const nodes = nodesAlong(document, path, keyIndex);
+  for (let depth = nodes.length - 1; depth >= 0; depth--) {
+    const node = nodes[depth];
     if (!node?.range) continue;
     let offset = node.range[0];
-    if (key !== undefined && depth === path.length) offset = keyOffset(node, key, keyIndex) ?? offset;
+    if (key !== undefined && depth === path.length) offset = entry(node, key, keyIndex)?.offset ?? offset;
     const { line, col } = lineCounter.linePos(offset);
     return { line, column: col };
   }
@@ -367,7 +381,8 @@ export function loadStoryMap(source: string): LoadedStoryMap {
   const { document, lineCounter, data } = readYaml(source);
   const result = storyMapSchema.safeParse(data, { error: errorMessages });
   if (result.success) {
-    const find = (path: (string | number)[]) => locate(document, lineCounter, path);
+    const keyIndex: KeyIndex = new WeakMap();
+    const find = (path: (string | number)[]) => locate(document, lineCounter, keyIndex, path);
     const warnings = storyMapWarnings(result.data)
       .map(warning => ({ ...warning, ...find(warning.path) }))
       .sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
@@ -388,11 +403,11 @@ export function loadStoryMap(source: string): LoadedStoryMap {
     const itemId = itemIdAt(data, path);
     if (issue.code === "unrecognized_keys") {
       for (const key of issue.keys) {
-        issues.push({ severity: "error", path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, path, key, keyIndex) });
+        issues.push({ severity: "error", path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, keyIndex, path, key) });
       }
       continue;
     }
-    issues.push({ severity: "error", path, message: issue.message, itemId, ...locate(document, lineCounter, path) });
+    issues.push({ severity: "error", path, message: issue.message, itemId, ...locate(document, lineCounter, keyIndex, path) });
   }
   issues.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
   throw new StoryMapValidationError(issues);
