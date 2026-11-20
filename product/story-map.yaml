@@ -130,6 +130,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#validate
     customer:
       title: Validate the map in CI
+      summary: Catch mistakes in the map, such as a story in a release that does not exist, before they are merged.
   - id: ESM-103
     title: Show internal and customer views of the same map
     activity: set-up
@@ -150,6 +151,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#the-react-board
     customer:
       title: See the map inside your product
+      summary: The map appears at /story-map in your product, behind your existing sign-in.
   # 0.2.0
   - id: ESM-201
     title: Link stories to their engineering overview
@@ -161,6 +163,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#engineering-links
     customer:
       title: Link stories to engineering docs
+      summary: Open the document that explains how a story is built, straight from the story.
   - id: ESM-202
     title: Give agents a first-run workflow to populate the map
     activity: plan
@@ -170,6 +173,7 @@ stories:
       - docs/story-map.md#populate-the-first-map
     customer:
       title: Let an agent draft your first map
+      summary: A coding agent reads your product and drafts a first map for you to review.
   # 0.3.0
   - id: ESM-301
     title: Set up a host repository with story-map init
@@ -181,6 +185,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#init
     customer:
       title: Set up with one command
+      summary: One command adds a starter map, a guide for your team and a check for your pull requests.
   - id: ESM-302
     title: Publish the package to npm with provenance
     activity: set-up
@@ -190,6 +195,7 @@ stories:
       - docs/releasing.md#release-a-version
     customer:
       title: Install from npm
+      summary: Install the package from npm, with provenance that shows where it was built.
   - id: ESM-303
     title: Report validation problems by line on the PR diff
     activity: review
@@ -208,6 +214,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#diff
     customer:
       title: See map changes in each pull request
+      summary: Each pull request shows how the map changed, starting with what customers will see.
   - id: ESM-305
     title: Search and filter the board
     activity: explore
@@ -217,6 +224,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#search-and-filters
     customer:
       title: Search and filter the board
+      summary: Find stories by text, status or when they last changed.
   - id: ESM-306
     title: Open story details without client-side JavaScript
     activity: explore
@@ -227,6 +235,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#detail-panels-without-javascript
     customer:
       title: Open story details
+      summary: Open a story to see its summary and where it fits, without leaving the board.
   - id: ESM-307
     title: Show status history from Git
     activity: track
@@ -237,6 +246,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#status-history
     customer:
       title: See when each story changed
+      summary: See when each story was added or changed status, worked out from your repository’s history.
   # 0.4.0
   - id: ESM-401
     title: Warn about map problems without failing CI
@@ -247,6 +257,7 @@ stories:
       - docs/plans/0.4.0-enhancements.md#1-groundwork-validator-warnings
     customer:
       title: Get warnings as well as errors
+      summary: Get advice about the map, such as a missing reason, without failing your checks.
   - id: ESM-402
     title: Record blocked and cut stories with a reason
     activity: plan
@@ -263,6 +274,7 @@ stories:
       - docs/story-map.md#release-notes-and-impact
     customer:
       title: Say what each release should change
+      summary: Record release notes and the outcome each release is expected to change.
   - id: ESM-404
     title: Edit release notes and impact on the board
     activity: explore
@@ -280,6 +292,7 @@ stories:
       - docs/story-map.md#flag-stalled-stories
     customer:
       title: Spot work that has stalled
+      summary: Stories in progress for longer than you choose are flagged on the board.
   - id: ESM-406
     title: Show who last updated a story, from Git
     activity: track
@@ -290,6 +303,7 @@ stories:
       - docs/plans/0.4.0-enhancements.md#5-last-updated-from-git
     customer:
       title: See who last updated a story
+      summary: See who last changed a story and when, worked out from your repository.
   - id: ESM-407
     title: Separate merged work from shipped work
     activity: track
@@ -299,6 +313,7 @@ stories:
       - docs/story-map.md#merged-and-shipped
     customer:
       title: Tell finished work from released work
+      summary: Mark work as merged when it is finished, and shipped when your users have it.
   # 0.4.1
   - id: ESM-411
     title: Apply filters as soon as they change
@@ -312,6 +327,7 @@ stories:
       - docs/ENGINEERING-OVERVIEW.md#filter-toolbar
     customer:
       title: Filters apply as you choose them
+      summary: Choose a filter and the board updates, with no Apply button.
   # Next
   - id: ESM-501
     title: Expand activities into steps
@@ -322,6 +338,7 @@ stories:
       - docs/plans/0.4.0-enhancements.md#6-expandable-steps-within-activities
     customer:
       title: Break activities into steps
+      summary: Expand an activity to see its steps and the stories under each one.
   - id: ESM-502
     title: Audit the map against the code on a schedule
     activity: review
@@ -332,3 +349,4 @@ stories:
       - docs/plans/0.4.0-enhancements.md#7-scheduled-map-audit
     customer:
       title: Keep the map in step with the code
+      summary: A scheduled check compares the map with your code and proposes corrections for you to review.
