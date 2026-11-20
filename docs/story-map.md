@@ -16,7 +16,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 0.4.0 is not released yet. These steps cover the changes merged so far. Existing maps stay valid.
 
 1. Story statuses now include [`blocked` and `cut`](#blocked-and-cut-stories). If host code switches over every value of `storyStatuses` or `StoryStatus`, add cases for both. `activeStoryStatuses` lists the original three.
-2. `filterStoryMapView` now hides blocked and cut stories when no status is given, and records how many it hid in `filter.hidden`. Pass `status: "all"`, or `?status=all` in the URL, to include them. Hosts that render the board without `filterStoryMapView` still see every story.
+2. `filterStoryMapView` now hides blocked and cut stories when no status is given, and records how many it hid in `filter.hidden`. Pass `status: "all"`, or `?status=all` in the URL, to include them. Boards rendered without `filterStoryMapView` hide them too, with a **Show blocked and cut stories** checkbox above the grid.
 3. The customer view never includes blocked or cut stories. Check that customer-facing stories you plan to block or cut are ones customers can stop seeing.
 4. Validation now has warnings as well as errors. Warnings, such as a blocked story with no `statusReason`, are printed but do not fail validation. Add `--strict` to the CI step to fail on warnings. Each issue in `StoryMapValidationError.issues` now has `severity: "error"`.
 5. Add styles for the new statuses if the host overrides status colours: `--esm-status-blocked` and `--esm-status-cut`.
@@ -87,7 +87,7 @@ Explain why in `statusReason`, up to 500 characters. The validator warns when a 
 
 Keep the story in the map rather than deleting it, so the team can review what was not done. When the work resumes, set its status back and remove or update the reason.
 
-The board hides blocked and cut stories by default and says how many it hid, such as “1 blocked and 2 cut hidden”, with a link to show them. The status filter offers **Active** (the default), **All, including blocked and cut**, and each status on its own. The story panel shows the reason. Signed-in customers never see blocked or cut stories, even when they have customer-facing copy, and an activity or release with only such stories disappears from the customer view.
+The board hides blocked and cut stories by default and says how many it hid, such as “1 blocked and 2 cut hidden”, with a link to show them. The status filter offers **Active** (the default), **All, including blocked and cut**, and each status on its own. If the host renders the board without [search and filters](#integrate-with-a-product), a **Show blocked and cut stories** checkbox above the grid shows them instead. It works without JavaScript and resets when the page reloads. The story panel shows the reason. Signed-in customers never see blocked or cut stories, even when they have customer-facing copy, and an activity or release with only such stories disappears from the customer view.
 
 ## Link an engineering overview
 

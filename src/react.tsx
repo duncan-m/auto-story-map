@@ -1,6 +1,6 @@
 import { useId, version } from "react";
 import type { CSSProperties } from "react";
-import { activeStoryStatuses, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
+import { activeStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
 import type { InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
@@ -332,10 +332,22 @@ export function StoryMapBoard({
     releaseCounts.set(story.release, (releaseCounts.get(story.release) ?? 0) + 1);
   }
   const releases = filtering ? map.releases.filter(release => releaseCounts.has(release.id)) : map.releases;
+
+  // Without filterStoryMapView, the board hides blocked and cut stories itself and offers a
+  // checkbox to show them. CSS does the hiding, so it works without JavaScript and without
+  // the host reading a query parameter. Browsers without :has() show every story.
+  const inactive = { blocked: 0, cut: 0 };
+  const activeCounts = new Map<string, number>();
+  for (const story of placed) {
+    if (isActiveStatus(story.status)) activeCounts.set(story.release, (activeCounts.get(story.release) ?? 0) + 1);
+    else inactive[story.status as keyof typeof inactive]++;
+  }
+  const hideInactive = !map.filter && (inactive.blocked > 0 || inactive.cut > 0);
+  const toggleId = `${baseId}-show-inactive`;
   const showGrid = releases.length > 0 && (placed.length > 0 || (internal && !filtering));
 
   return (
-    <section className="esm-board" data-theme={theme} aria-labelledby={headingId}>
+    <section className="esm-board" data-theme={theme} data-hide-inactive={hideInactive ? "" : undefined} aria-labelledby={headingId}>
       <header className="esm-header">
         <p className="esm-eyebrow">{internal ? "User story map" : "Roadmap"}</p>
         <h2 id={headingId}>{map.title}</h2>
@@ -350,6 +362,12 @@ export function StoryMapBoard({
             showChanged={internal && !!map.history}
             internal={internal}
           />
+        )}
+        {hideInactive && (
+          <p className="esm-inactive-toggle">
+            <input type="checkbox" className="esm-inactive-input" id={toggleId} />
+            <label htmlFor={toggleId}>Show blocked and cut stories ({hiddenSummary(inactive)})</label>
+          </p>
         )}
         {showGrid ? (
           <div className="esm-scroll" role="region" tabIndex={0} aria-label="Story map by release and activity">
@@ -378,18 +396,28 @@ export function StoryMapBoard({
                   <div className="esm-release" role="rowheader">
                     <span className="esm-release-name"><span className="esm-release-dot" aria-hidden="true" />{release.title}</span>
                     {release.summary && <span className="esm-release-summary">{release.summary}</span>}
-                    <span className="esm-release-count">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>
+                    {hideInactive && (activeCounts.get(release.id) ?? 0) !== (releaseCounts.get(release.id) ?? 0) ? <>
+                      <span className="esm-release-count esm-count-active">{storyCount(activeCounts.get(release.id) ?? 0)}</span>
+                      <span className="esm-release-count esm-count-all">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>
+                    </> : <span className="esm-release-count">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>}
                   </div>
                   {map.activities.map(activity => {
                     const stories = cells.get(`${release.id}:${activity.id}`) ?? [];
                     return (
-                      <div className="esm-cell" role="cell" data-empty={stories.length ? undefined : ""} key={activity.id}>
+                      <div
+                        className="esm-cell"
+                        role="cell"
+                        data-empty={stories.length ? undefined : ""}
+                        data-inactive-only={stories.length && stories.every(story => !isActiveStatus(story.status)) ? "" : undefined}
+                        key={activity.id}
+                      >
                         <span className="esm-cell-label" aria-hidden="true">{activity.title}</span>
                         {stories.map(story => (
                           <button
                             type="button"
                             className="esm-card"
                             aria-haspopup="dialog"
+                            data-inactive={isActiveStatus(story.status) ? undefined : ""}
                             key={story.id}
                             {...popoverTarget(panelIds.get(story)!)}
                           >

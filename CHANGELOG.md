@@ -9,7 +9,7 @@ Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-ma
 ### Statuses
 
 - **Breaking:** new `blocked` and `cut` statuses, with an optional `statusReason` of up to 500 characters. `storyStatuses` and `StoryStatus` include them, so host code that handles every status needs two more cases. New `activeStoryStatuses`, `inactiveStoryStatuses` and `isActiveStatus`.
-- **Breaking:** `filterStoryMapView` hides blocked and cut stories unless a status is given, and reports how many it hid in `filter.hidden`. Pass `status: "all"` (`?status=all`) for every story. The board’s status filter offers **Active**, **All, including blocked and cut**, and each status, and says how many stories are hidden with a link to show them.
+- **Breaking:** `filterStoryMapView` hides blocked and cut stories unless a status is given, and reports how many it hid in `filter.hidden`. Pass `status: "all"` (`?status=all`) for every story. The board’s status filter offers **Active**, **All, including blocked and cut**, and each status, and says how many stories are hidden with a link to show them. Boards rendered without `filterStoryMapView` hide them too, behind a **Show blocked and cut stories** checkbox that works without JavaScript.
 - The customer view never includes blocked or cut stories, or activities and releases that only contain them.
 - Story panels show the reason. `story-map history` records it on changes to blocked or cut, and the panel’s history list shows it.
 - `story-map diff` has a **Blocked and cut** section, and a customer-facing story that becomes blocked or cut is listed as no longer visible.

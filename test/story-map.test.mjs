@@ -874,3 +874,21 @@ test("history records why a story was blocked or cut", async t => {
   }));
   assert.match(panelFor(board, "Explore duplicate approval handling"), /<span class="esm-history-reason">Finance will handle duplicate approvals manually until volumes justify it\.<\/span>/);
 });
+
+test("boards rendered without filters hide blocked and cut stories behind a checkbox", () => {
+  const board = view => renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+  const html = board(getStoryMapForViewer(map, engineer));
+  assert.match(html, /<section class="esm-board" data-theme="light" data-hide-inactive=""/);
+  assert.match(html, /<p class="esm-inactive-toggle"><input type="checkbox" class="esm-inactive-input" id="([^"]+)"\/><label for="\1">Show blocked and cut stories \(1 cut\)<\/label><\/p>/);
+  // The cut card is rendered for CSS to hide, and its cell and lane count know it.
+  const cut = cardsIn(html).find(card => card.includes("FINANCE-202"));
+  assert.match(cut, /data-inactive=""/);
+  assert.equal(cardsIn(html).filter(card => card.includes("data-inactive")).length, 1);
+  assert.match(html, /<div class="esm-cell" role="cell" data-inactive-only="">/);
+  assert.match(html, /Reconciliation discovery<\/span><span class="esm-release-count esm-count-active">0 stories<\/span><span class="esm-release-count esm-count-all">1 story<\/span>/);
+
+  // Filtered boards use the toolbar instead, and maps with nothing to hide get no checkbox.
+  assert.doesNotMatch(board(filterStoryMapView(getStoryMapForViewer(map, engineer))), /esm-inactive-toggle|data-hide-inactive/);
+  assert.doesNotMatch(board(getStoryMapForViewer(planningMap, engineer)), /esm-inactive-toggle|data-hide-inactive|data-inactive/);
+  assert.doesNotMatch(board(getStoryMapForViewer(map, regular)), /esm-inactive-toggle|data-inactive/);
+});

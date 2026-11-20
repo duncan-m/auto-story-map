@@ -161,6 +161,15 @@
 .esm-button:hover { background: var(--esm-hover); }
 .esm-filter-results { margin: 0; padding: 0 17px 12px; color: var(--esm-muted); font-size: .875rem; }
 .esm-filter-results a, .esm-detail a { color: var(--esm-accent-ink); }
+
+/* Boards rendered without filterStoryMapView hide blocked and cut stories until the checkbox is ticked.
+   Browsers without :has() ignore these rules and show every story with the full counts. */
+.esm-inactive-toggle { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 17px; color: var(--esm-muted); font-size: .875rem; }
+.esm-inactive-input { width: 16px; height: 16px; margin: 0; accent-color: var(--esm-accent); }
+.esm-count-active { display: none; }
+.esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-card[data-inactive],
+.esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-count-all { display: none; }
+.esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-count-active { display: inline; }
 .esm-empty { margin: 0; padding: 24px 17px; color: var(--esm-muted); }
 
 /* Grid */
@@ -319,5 +328,7 @@
   .esm-cell { min-height: 0; padding: 4px 0; }
   .esm-row > .esm-cell:last-child { padding-right: 0; }
   .esm-cell[data-empty] { display: none; }
+  .esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-cell[data-inactive-only] { display: none; }
+  .esm-inactive-toggle { padding: 12px; }
   .esm-cell-label { display: block; margin-top: 6px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; }
 }
