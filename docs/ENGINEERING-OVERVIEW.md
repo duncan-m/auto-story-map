@@ -1,6 +1,6 @@
 # Embedded Story Map: engineering overview
 
-Prepared 20 November 2026 for version 0.3.0 (`main` at `d7e13cc`). Start here before changing the library. The [README](README.md) and [the story map guide](docs/story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
+Prepared 20 November 2026 for version 0.3.0 (`main` at `d7e13cc`). Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
@@ -356,7 +356,7 @@ Actions are pinned to commit SHAs with the version in a comment. `templates/stor
 
 ## Releasing
 
-[The release steps](docs/releasing.md) are the full procedure. In short: bump `package.json` with `npm version <version> --no-git-tag-version`, add a `## <version>` section to `CHANGELOG.md`, merge, then push a `v<version>` tag.
+[The release steps](releasing.md) are the full procedure. In short: bump `package.json` with `npm version <version> --no-git-tag-version`, add a `## <version>` section to `CHANGELOG.md`, merge, then push a `v<version>` tag.
 
 `release.yml` reruns the full CI matrix, checks the tag matches `package.json` and has a changelog section, publishes with `npm publish --provenance` using npm trusted publishing (OpenID Connect, no stored token), and creates a GitHub release from the changelog section. It runs in the `npm` GitHub environment, where maintainers can require approval. If the version is already on npm, it only creates the GitHub release.
 
@@ -375,7 +375,7 @@ Before 1.0.0, a minor version may contain breaking changes. Each one needs a cha
 
 ### Add or change a status
 
-`storyStatuses` in `src/status.ts` drives the schema, history schema, filters, toolbar and diff. The board's `StatusIcon` and the `[data-status]` colours in `styles.css` need matching entries. Old history files with the previous statuses must still parse. The [0.4.0 plan](docs/plans/0.4.0-enhancements.md) proposes `blocked` and `cut` statuses that are hidden by default.
+`storyStatuses` in `src/status.ts` drives the schema, history schema, filters, toolbar and diff. The board's `StatusIcon` and the `[data-status]` colours in `styles.css` need matching entries. Old history files with the previous statuses must still parse. The [0.4.0 plan](plans/0.4.0-enhancements.md) proposes `blocked` and `cut` statuses that are hidden by default.
 
 ### Change the guide or agent instructions
 
@@ -400,14 +400,14 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 - Panels depend on the HTML popover API, which all current major browsers support. There is no fallback for older browsers.
 - Dates use the server's time zone unless the host passes `timeZone`.
 
-The [0.4.0 plan](docs/plans/0.4.0-enhancements.md) is proposed, not built. It covers validator warnings, release notes and expected impact (editable on the board), blocked and cut statuses, flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
+The [0.4.0 plan](plans/0.4.0-enhancements.md) is proposed, not built. It covers validator warnings, release notes and expected impact (editable on the board), blocked and cut statuses, flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
 
 ## Documentation precedence
 
 1. The source in `src/` and the tests. Where documents disagree with them, the code is right; fix the document.
 2. This overview, for architecture and the rules to preserve.
-3. [The story map guide](docs/story-map.md), for host-facing behaviour and editing rules.
-4. [The changelog](CHANGELOG.md), for what changed in each version and its upgrade steps.
-5. [The release steps](docs/releasing.md) and [plans](docs/plans/), for process and proposed work.
+3. [The story map guide](story-map.md), for host-facing behaviour and editing rules.
+4. [The changelog](../CHANGELOG.md), for what changed in each version and its upgrade steps.
+5. [The release steps](releasing.md) and [plans](plans/), for process and proposed work.
 
-The [README](README.md) is the entry point for people evaluating or installing the library.
+The [README](../README.md) is the entry point for people evaluating or installing the library.
