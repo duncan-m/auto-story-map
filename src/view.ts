@@ -1,6 +1,6 @@
 import type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
-import type { StoryMapDocument } from "./schema.js";
-import { isActiveStatus, type StoryStatus } from "./status.js";
+import type { ReleaseImpact, StoryMapDocument } from "./schema.js";
+import { isActiveStatus, storyStatuses, type StoryStatus } from "./status.js";
 
 export interface StoryMapViewer {
   roles?: readonly string[];
@@ -30,6 +30,15 @@ export interface StoryMapLabel {
   id: string;
   title: string;
   summary?: string;
+}
+
+/** A release as internal viewers see it, with its notes, expected impact and progress. */
+export interface InternalReleaseLabel extends StoryMapLabel {
+  /** Plain text. Blank lines separate paragraphs. */
+  notes?: string;
+  impact?: ReleaseImpact[];
+  /** Stories in the release by status, counted before any filter is applied. */
+  storyCounts: Record<StoryStatus, number>;
 }
 
 export interface StoryCard extends StoryMapLabel {
@@ -70,15 +79,14 @@ interface StoryMapBaseView {
   title: string;
   summary?: string;
   activities: StoryMapLabel[];
-  releases: StoryMapLabel[];
   filter?: StoryMapFilterState;
   /** Present on internal views when the host supplied history. */
   history?: { generatedAt: string; complete: boolean };
 }
 
 export type StoryMapView =
-  | (StoryMapBaseView & { audience: "internal"; stories: InternalStoryCard[] })
-  | (StoryMapBaseView & { audience: "all-users"; stories: StoryCard[] });
+  | (StoryMapBaseView & { audience: "internal"; releases: InternalReleaseLabel[]; stories: InternalStoryCard[] })
+  | (StoryMapBaseView & { audience: "all-users"; releases: StoryMapLabel[]; stories: StoryCard[] });
 
 function projectLabel(item: StoryMapLabel): StoryMapLabel {
   return { id: item.id, title: item.title, summary: item.summary };
@@ -99,12 +107,25 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       byStory.set(storyId, [entry, ...(byStory.get(storyId) ?? [])]);
     }
     for (const entries of byStory.values()) entries.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    const storyCounts = new Map(map.releases.map(release => [
+      release.id,
+      Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>,
+    ]));
+    for (const story of map.stories) {
+      const counts = storyCounts.get(story.release);
+      if (counts) counts[story.status]++;
+    }
     return {
       audience: "internal",
       title: map.title,
       summary: map.summary,
       activities: map.activities.map(projectLabel),
-      releases: map.releases.map(projectLabel),
+      releases: map.releases.map(release => ({
+        ...projectLabel(release),
+        notes: release.notes,
+        impact: release.impact?.map(item => ({ ...item })),
+        storyCounts: storyCounts.get(release.id)!,
+      })),
       stories: map.stories.map(story => {
         const entries = byStory.get(story.id);
         return {

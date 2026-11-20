@@ -17,7 +17,7 @@ npm test
 npm run demo
 ```
 
-Open [the local story map](http://127.0.0.1:4173/story-map). Choose **Engineer**, select **Look up prices in the material catalogue** to open its details, and follow the **Engineering overview** link. Search for “estimate”, filter by status, or use **Changed** to see recent changes. One story is cut, so it is hidden by default: choose **All, including blocked and cut** to see it and its reason. The demo reads this repository’s Git history to show when each story changed and who changed it. Switch to **Regular user** to see the customer-facing activity and release labels. The demo also offers **Product manager**, **Super admin** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves sample JSON at `/api/story-map`.
+Open [the local story map](http://127.0.0.1:4173/story-map). Choose **Engineer**, select **Look up prices in the material catalogue** to open its details, and follow the **Engineering overview** link. Select the **Builder workflow** release title to see its notes, expected impact and progress. Search for “estimate”, filter by status, or use **Changed** to see recent changes. One story is cut, so it is hidden by default: choose **All, including blocked and cut** to see it and its reason. The demo reads this repository’s Git history to show when each story changed and who changed it. Switch to **Regular user** to see the customer-facing activity and release labels. The demo also offers **Product manager**, **Super admin** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves sample JSON at `/api/story-map`.
 
 Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. The panel and the search form work without client-side JavaScript.
 
@@ -61,6 +61,12 @@ It never overwrites an existing file, so it is safe to run again. [The example m
 Start an agent in the host repo and give it this task.
 
 > Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, open a few story cards if the host renders the board, and flag any uncertain release or status decisions for review.
+
+## Limitations
+
+The board is read-only. Every change to the map, including release notes and expected impact, is made in `product/story-map.yaml` through a PR, usually by an agent working in the host repo, and appears once that PR is merged and deployed.
+
+You can’t edit the map in the app. The map ships with each deployment, so an edit saved from the board would only appear after a merge and redeploy, and could overwrite newer changes on the default branch. Editing in the app would need the map stored on a separate hosted service instead of in the product repo. That isn’t part of this library.
 
 ## Changes and releases
 

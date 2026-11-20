@@ -1,6 +1,6 @@
 # Embedded Story Map: engineering overview
 
-Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings and blocked and cut statuses. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
+Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings, blocked and cut statuses, and release notes and impact. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
@@ -101,6 +101,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 - The order of `activities` is the journey order. The order of `releases` is the delivery order. The order of `stories` is the order within each cell.
 - IDs match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`. Story IDs such as `BUILDER-102` are stable: renaming or moving a story keeps its ID, and history, diffs and delivery plans all key on it.
 - A story's `status` defaults to `planned`. `statusReason` (up to 500 characters) records why a story is blocked or cut.
+- A release can have `notes` (plain text, up to 800 characters, blank lines between paragraphs) and up to 10 `impact` items, each with a required `metric` and `expected`, and optional `solves`, `actual` and `draft`. Activities do not take these fields. Impact items have no ID, so the diff matches them by `metric`.
 - `sources` is a list of up to 20 strings. A string is either a URL, a repository-relative path (optionally with a `#heading`), or free text such as “Agreed in planning”.
 - Every object is `.strict()`, so an unknown field is an error rather than being silently dropped. This catches typos such as `staus`.
 - Size limits (titles 120 characters, summaries 500, notes 4,000, 50 activities or releases, 1,000 stories) keep a malformed or hostile file from producing an unusable page.
@@ -116,7 +117,7 @@ Cross-reference rules, checked in `crossReferenceIssues`:
 
 `parseStoryMap(text)` returns a typed `StoryMapDocument` or throws `StoryMapValidationError`, whose `issues` each have a `severity`, `path`, `message`, `line`, `column` and the `itemId` of the containing activity, release or story.
 
-Issues are errors or warnings. Errors make the map invalid and are thrown. Warnings are advice about a valid map, such as a blocked or cut story with no `statusReason`. `storyMapWarnings(map)` computes them from the parsed document, and `loadStoryMap` returns them, located in the source, as `warnings`. `parseStoryMap` drops them. Never make a warning depend on something an error would catch: warnings only run once the map is valid.
+Issues are errors or warnings. Errors make the map invalid and are thrown. Warnings are advice about a valid map: a blocked or cut story with no `statusReason`, a release with active stories but no `impact`, and an impact item still marked `draft: true` in a release with shipped stories. A release whose stories are all blocked or cut needs no impact. `storyMapWarnings(map)` computes them from the parsed document, and `loadStoryMap` returns them, located in the source, as `warnings`. `parseStoryMap` drops them. Never make a warning depend on something an error would catch: warnings only run once the map is valid.
 
 How `loadStoryMap` gets there:
 
@@ -144,7 +145,7 @@ The JSON Schema cannot express the cross-reference rules. Editors catch shape er
 | Viewer | Result |
 | --- | --- |
 | `null` (guest) | `null`. The host should answer 401. |
-| `canViewInternal(viewer) === true` | Internal view: all activities, releases and stories, with IDs, notes, sources, `updatedBy` and history |
+| `canViewInternal(viewer) === true` | Internal view: all activities, releases and stories, with IDs, notes, sources, `updatedBy`, history, and each release's notes, impact and `storyCounts` |
 | Anyone else, `visibility: all-users` | Customer view |
 | Anyone else, `visibility: internal` | `null`. The host should answer 403. |
 
@@ -155,10 +156,12 @@ The customer view is built from scratch, not by deleting fields from the interna
 - Only stories with `customer` copy and an active status are included, using the customer title and summary. Blocked and cut stories are dropped before activities and releases are chosen, so a release that only contains them disappears too.
 - Only activities and releases that contain a published story and have customer copy are included.
 - Real IDs are replaced with sequential ones (`story-1`, `activity-1`, `release-1`), so internal IDs and the number of hidden stories do not leak.
-- Notes, sources, `statusReason`, `updatedBy` and history are never copied.
+- Notes, sources, `statusReason`, `updatedBy`, history, and release notes, impact and story counts are never copied.
 - The status is shown as it is. Reviewers must check that a customer-facing story's status is right for customers.
 
 Both views have the same `StoryMapView` shape apart from `audience`, so the board and JSON endpoint treat them alike.
+
+Internal releases are `InternalReleaseLabel`s. `storyCounts` counts the release's stories by status in the projection, before any filter, so the release panel's progress describes the whole release whatever the board shows.
 
 When history is supplied, the internal view attaches each story's events newest first as `history`, and the newest event's time as `lastChangedAt`. It also records `history.generatedAt` and `history.complete` on the view so the board knows a history exists.
 
@@ -195,6 +198,10 @@ The “changed in” filter only applies to internal views that have history. It
 Each card is a `<button>` with a `popovertarget` pointing at its panel. Each panel is a `<div popover="auto" role="dialog">` rendered after the grid. The browser's HTML popover API opens and closes it, handles Escape and light dismiss, and shows a `::backdrop`. The close button uses `popovertargetaction="hide"` and `autofocus`.
 
 React 19 knows these attributes by their camelCase names, while React 18 only passes them through in lower case. `popoverTarget()` picks the right spelling from React's `version`. The smoke test renders the board with both React versions and checks that every card's target matches a panel ID, so keep that test passing when touching this code.
+
+On internal boards, each release title is also a `<button>` that opens a release panel (`ReleaseDetail`, class `esm-detail esm-release-detail`). The panel lists the release's stories that are on the board, grouped by status, and each one is a button targeting that story's panel. Because that button sits inside the release panel, the browser treats the release panel as the story panel's popover ancestor: opening a story keeps the release panel open underneath, and closing it returns there. Release panels exist only for the releases shown, and only on internal boards. Customer boards render release titles as plain text.
+
+The lane shows the first impact item in one line with “+N more”, and a **Draft** label on drafts. Progress reads “3 of 5 stories shipped, 1 cut”: cut stories are left out of the total because they have left the release.
 
 Panel IDs come from `useId()`, so two boards on one page do not collide.
 
@@ -281,6 +288,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 - Visibility switches, as a GitHub `[!IMPORTANT]` or `[!NOTE]` alert.
 - A **Blocked and cut** section (`blockedOrCut`): stories that became blocked or cut, with their reasons, and stories that returned to an active status. A blocked or cut story does not count as customer-visible, so a published story that becomes blocked or cut also appears under “No longer visible”.
 - Added, moved, renamed, re-statused, edited and removed stories, in one table.
+- A **Release notes and impact** section (`releaseDetails`): notes added, changed or removed, and impact items added, changed, confirmed (`draft` removed) or removed, with any `actual` result recorded called out. New releases are included, so a new map lists every release's impact.
 - Added, renamed, removed and reordered activities and releases, and changes to their customer labels.
 
 `formatStoryMapDiff` escapes all text taken from the map (HTML, Markdown punctuation, `|` and newlines), because the summary is written into PR job summaries and table cells. A story title must not be able to inject Markdown or break the table.
@@ -399,7 +407,7 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 
 ## Known limitations
 
-- The board is read-only. All edits go through PRs on the YAML file.
+- The board is read-only. All edits go through PRs on the YAML file. Editing in the app would need the map stored on a separate hosted service.
 - Each product has one map file. There is no merging of several maps.
 - History needs a full clone at build time. Squash and rebase merges on GitHub do not record who merged. Removing a story, or moving it between activities or releases, records no event.
 - The customer view shows the story's internal status unchanged. There is no separate customer status. Blocked and cut stories are left out instead.
@@ -408,7 +416,7 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 - Panels depend on the HTML popover API, which all current major browsers support. There is no fallback for older browsers.
 - Dates use the server's time zone unless the host passes `timeZone`.
 
-The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings and blocked and cut statuses are built. Still proposed: release notes and expected impact, editing them on the board (which would add the library's first write path, through the GitHub API), flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
+The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings, blocked and cut statuses, and release notes and impact are built. Release notes and impact are written in PRs, never on the board. Still proposed: flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
 
 ## Documentation precedence
 

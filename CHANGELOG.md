@@ -15,6 +15,14 @@ Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-ma
 - `story-map diff` has a **Blocked and cut** section, and a customer-facing story that becomes blocked or cut is listed as no longer visible.
 - New `--esm-status-blocked` and `--esm-status-cut` colours, with icons and text labels.
 
+### Release notes and impact
+
+- Releases accept optional `notes` (plain text, up to 800 characters) and `impact` (up to 10 items with `metric`, `expected`, and optional `solves`, `actual` and `draft`). New `ReleaseImpact`, `releaseNotesMaxLength` and `releaseImpactMaxItems`.
+- Validation warns about a release with active stories but no impact, and about a drafted impact item in a release with shipped stories.
+- Internal boards show each release’s first impact item under its title, and the release title opens a panel with the notes, impact, progress and the release’s stories grouped by status. The internal view’s releases are `InternalReleaseLabel`s with `notes`, `impact` and `storyCounts`. The customer view is unchanged.
+- `story-map diff` has a **Release notes and impact** section listing notes changes, added, changed, confirmed and removed impact items, and measured results being recorded. New `releaseDetails` on `StoryMapDiff`.
+- Release notes and impact are not editable on the board. Agents and people change them in PRs.
+
 ### Validation
 
 - Validation issues have a `severity` of `error` or `warning`. Warnings do not make a map invalid. The first warning is a blocked or cut story with no `statusReason`. New `storyMapWarnings(document)`.

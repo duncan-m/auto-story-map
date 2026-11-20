@@ -210,6 +210,23 @@
 .esm-release-name { display: flex; align-items: baseline; gap: 7px; font-weight: 750; line-height: 1.25; overflow-wrap: break-word; hyphens: auto; }
 .esm-release-dot { flex: 0 0 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--esm-lane-ink); transform: translateY(-1px); }
 .esm-release-summary { padding-left: 14px; color: var(--esm-muted); font-size: .875rem; line-height: 1.35; overflow-wrap: break-word; }
+.esm-release-button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.esm-release-button:hover { text-decoration-color: currentColor; }
+.esm-release-impact { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; padding-left: 14px; font-size: .8125rem; line-height: 1.35; overflow-wrap: break-word; }
+.esm-impact-more { color: var(--esm-muted); }
+.esm-draft { padding: 1px 5px; border: 1px dashed currentColor; border-radius: 4px; color: var(--esm-muted); font-size: .75rem; font-weight: 650; line-height: 1.3; }
 .esm-release-count { margin-left: 14px; padding: 3px 7px; border-radius: 5px; background: var(--esm-lane-chip); color: var(--esm-lane-ink); font-size: .8125rem; font-weight: 700; }
 .esm-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 4.5rem; padding: 8px 0; }
 .esm-row > .esm-cell:last-child { padding-right: 8px; }
@@ -300,6 +317,32 @@
 .esm-history-change { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--esm-muted); }
 .esm-history-meta { color: var(--esm-muted); font-size: .8125rem; overflow-wrap: anywhere; }
 .esm-history-reason { font-size: .875rem; line-height: 1.4; overflow-wrap: anywhere; }
+.esm-impact { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.esm-impact-metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin: 0; font-weight: 650; overflow-wrap: anywhere; }
+.esm-impact .esm-detail-context { margin-top: 6px; }
+.esm-release-progress { margin: 0; }
+.esm-release-group { margin-top: 12px; }
+.esm-release-group h5 { margin: 0 0 6px; font-size: inherit; font-weight: 400; }
+.esm-release-stories { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.esm-release-story {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--esm-card-line);
+  border-radius: 7px;
+  background: var(--esm-paper);
+  color: var(--esm-ink);
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.esm-release-story:hover { border-color: var(--esm-card-hover); }
+.esm-release-story .esm-card-id { flex: 0 0 auto; }
+.esm-release-hidden { margin: 10px 0 0; color: var(--esm-muted); }
 .esm-updater { margin: 18px 0 0; color: var(--esm-muted); font-size: .875rem; }
 
 /* Narrow screens: stack each release lane instead of scrolling sideways. */

@@ -149,6 +149,54 @@
               "title"
             ],
             "additionalProperties": false
+          },
+          "notes": {
+            "description": "Optional internal release notes: plain text up to 800 characters. Blank lines separate paragraphs. No Markdown.",
+            "type": "string",
+            "maxLength": 800
+          },
+          "impact": {
+            "description": "Optional, recommended. Up to 10 expected outcomes of the release. Internal only.",
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metric": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "description": "What is measured, such as “Estimate turnaround time”."
+                },
+                "expected": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "description": "The expected change, written for people, such as “Decrease from 3 days to 1 day”. Not parsed."
+                },
+                "solves": {
+                  "description": "Optional. The problem this addresses.",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "actual": {
+                  "description": "Optional. The measured result, added after shipping.",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "draft": {
+                  "description": "true when an agent drafted this item and nobody has confirmed it yet. Only a person removes it.",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "metric",
+                "expected"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [

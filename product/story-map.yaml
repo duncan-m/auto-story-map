@@ -28,11 +28,28 @@ releases:
   - id: builder-mvp
     title: Builder workflow
     summary: Deliver the builder interface and the backend it needs.
+    notes: |
+      Builders can price and submit estimates without emailing finance.
+
+      Catalogue prices are locked when the estimate is submitted, so finance reviews the prices the builder saw.
+    impact:
+      - metric: Estimate turnaround time
+        expected: Decrease from 3 days to 1 day
+        solves: Builders waiting on finance for prices
+      - metric: Estimates returned for corrections
+        expected: Decrease by 50%
+        solves: Wrong unit prices typed by hand
+        draft: true
     customer:
       title: Builder workflow
   - id: finance-follow-up
     title: Finance follow-up
     summary: Update the finance workflow where needed.
+    impact:
+      - metric: Time from approval to purchase order
+        expected: Same day for approved estimates
+        solves: Purchase orders retyped from emailed estimates
+        draft: true
     customer:
       title: Finance updates
   - id: reconciliation-internal
