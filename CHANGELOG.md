@@ -2,6 +2,10 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+- `StoryMapBoard` no longer fails to render when given a `locale` or `timeZone` the runtime does not recognise, such as `timeZone="Nowhere/Nope"`. It uses `en-GB` or the server's time zone instead, and logs a warning once. The board also builds its date formatters once per render instead of once per date. Rendered markup is otherwise unchanged.
+
 ## 0.5.0
 
 No upgrade steps. Hosts with custom CSS for `.esm-release` should check the new toggle fits.

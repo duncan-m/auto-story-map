@@ -244,6 +244,8 @@ The optional `board.js` script (`src/board.ts`) enhances the form without changi
 
 `locale` (default `en-GB`), `timeZone` and `now` control date output. Cards show relative times (“5 hours ago”, “yesterday”), switching to a date after 30 days. Without `timeZone`, dates use the server's zone, which may not match the team's. Tests pass a fixed `now` so output is deterministic.
 
+`dateFormatters` builds the `Intl` formatters once per render, not once per date. `Intl` throws a `RangeError` for a locale or time zone it does not recognise, which would fail the whole page, so the helper checks both first. A bad locale falls back to `en-GB` and a bad time zone to the runtime's zone, each with a `console.warn` that is logged once per process.
+
 ### Styling
 
 All classes start with `esm-` and all colours are `--esm-*` custom properties on `.esm-board`, so hosts can restyle without overriding selectors. `data-theme` selects `light`, `dark` or `auto`.
