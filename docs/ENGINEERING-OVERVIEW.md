@@ -1,6 +1,6 @@
 # Embedded Story Map: engineering overview
 
-Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings, blocked and cut statuses, release notes and impact, stalled stories, and “last updated” from Git, and the merged status. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
+Prepared 20 November 2026 for version 0.3.0, and updated for version 0.4.0: validator warnings, the merged, blocked and cut statuses, release notes and impact, stalled stories, and “last updated” from Git. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
@@ -82,7 +82,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `styles.css` | Board styles, light, dark and `auto` themes, and the narrow-screen layout |
 | `templates/` | Files `init` copies into a host: starter `story-map.yaml`, `AGENTS.md` section and `story-map-ci.yml` |
 | `docs/story-map.md` | The user guide. **It is also shipped in the package and copied into hosts by `init`.** |
-| `docs/plans/` | Delivery plans. `0.4.0-enhancements.md` is the proposed next release. |
+| `docs/plans/` | Delivery plans. `0.4.0-enhancements.md` records what 0.4.0 built and the items still proposed. |
 | `docs/releasing.md` | How to publish a version |
 | `product/story-map.yaml` | The builder estimates demo map, including one cut story (`FINANCE-202`). It is test data and the demo's content, not a map of this library. Tests that need FINANCE-202 still planned use the `planningMap` copy. |
 | `example/host.mjs` | Reference host integration: one function that returns a web `Response` for the page or the JSON endpoint |
@@ -429,7 +429,7 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 - Dates use the server's time zone unless the host passes `timeZone`.
 - Stalled stories need a history file. Hosts without one get no flag.
 
-The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings, blocked and cut statuses, release notes and impact, flagging stalled stories, and “last updated” from Git are built. Release notes and impact are written in PRs, never on the board. Still proposed: expandable steps within activities, and a scheduled agent that audits the map against the code.
+The [0.4.0 plan](plans/0.4.0-enhancements.md) records the 0.4.0 work. Validator warnings, the merged, blocked and cut statuses, release notes and impact, flagging stalled stories, and “last updated” from Git shipped in 0.4.0. Release notes and impact are written in PRs, never on the board. Still proposed: expandable steps within activities, and a scheduled agent that audits the map against the code.
 
 ## Documentation precedence
 

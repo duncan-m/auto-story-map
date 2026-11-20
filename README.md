@@ -45,7 +45,7 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Run `npm install embedded-story-map@0.3.0` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. The board markup and class names changed in 0.3.0, so remove any host CSS that targets the old table or `<details>` cards. Follow the [upgrade steps][upgrade] to validate the map, turn on search, and check the story panels.
+Run `npm install embedded-story-map@0.4.0` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.4.0 adds the `merged`, `blocked` and `cut` statuses, so host code that handles every status needs updating. It also adds release notes and impact, stalled stories and “last updated” from Git. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.2.0 or earlier, follow the [0.3.0 upgrade steps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030) first.
 
 ## Populate the first map
 
@@ -76,7 +76,7 @@ See [the changelog][changelog] for what changed in each version and [the release
 [example-map]: https://github.com/duncan-m/embedable-story-map/blob/main/product/story-map.yaml
 [guide]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md
 [first-run]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#populate-the-first-map
-[upgrade]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030
+[upgrade]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-040
 [engineering-overview]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#link-an-engineering-overview
 [delivery-plan]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/example-builder-estimate-plan.md
 [host]: https://github.com/duncan-m/embedable-story-map/blob/main/example/host.mjs
