@@ -110,8 +110,8 @@ releases:
         draft: true
     customer:
       title: "0.5.0"
-  - id: v0-6
-    title: "0.6.0: Review and security fixes"
+  - id: v0-6-1
+    title: "0.6.1: Review and security fixes"
     summary: Fixes from the November 2026 code review, several of them for security, with one call to project and filter the map and a header that shows recent changes.
     impact:
       - metric: Known bugs and security risks from the code review
@@ -401,11 +401,11 @@ stories:
     customer:
       title: Keep the map in step with the code
       summary: A scheduled check compares the map with your code and proposes corrections for you to review.
-  # 0.6.0: fixes from the November 2026 code review
+  # 0.6.1: fixes from the November 2026 code review
   - id: ESM-601
     title: Keep long Git names from breaking the history file
     activity: track
-    release: v0-6
+    release: v0-6-1
     status: merged
     summary: story-map history truncates author and merger names to the history format's 120-character limit, so parseStoryMapHistory always accepts what it writes.
     sources:
@@ -413,7 +413,7 @@ stories:
   - id: ESM-602
     title: Keep history and diffs working when the map format changes
     activity: track
-    release: v0-6
+    release: v0-6-1
     status: merged
     summary: Past versions of the map are read leniently with a migration step, history reports versions it skipped, and diff compares an older-format base instead of failing.
     sources:
@@ -421,7 +421,7 @@ stories:
   - id: ESM-603
     title: Use real IDs in the customer view
     activity: explore
-    release: v0-6
+    release: v0-6-1
     status: cut
     statusReason: Out of scope for this release. The customer view keeps its positional IDs, so customers see no internal IDs.
     summary: Would have kept the real activity, release and story IDs in the customer view, so a collapsed lane stays on the same release when other releases become visible.
@@ -430,7 +430,7 @@ stories:
   - id: ESM-604
     title: Make hosts choose who sees the internal map
     activity: set-up
-    release: v0-6
+    release: v0-6-1
     status: cut
     statusReason: The library is set up mainly for internal use, so the default engineer and super-admin rule stays. The risk is documented in the engineering overview instead.
     summary: Would have warned when the default engineer and super-admin rule was used, then required canViewInternal.
@@ -440,7 +440,7 @@ stories:
   - id: ESM-605
     title: Project and filter the map in one call
     activity: set-up
-    release: v0-6
+    release: v0-6-1
     status: merged
     summary: getStoryMapPage projects for the viewer and then filters, and storyMapResponseHeaders gives the no-store headers, so the safe order is the easy one. Documents page sizes for large maps.
     sources:
@@ -448,7 +448,7 @@ stories:
   - id: ESM-606
     title: Fix CLI and source check edge cases
     activity: review
-    release: v0-6
+    release: v0-6-1
     status: merged
     summary: Stop options taking the next flag as their value, and refuse sources that reach outside the repository through a symbolic link.
     sources:
@@ -456,7 +456,7 @@ stories:
   - id: ESM-607
     title: Stop diff summaries notifying people
     activity: review
-    release: v0-6
+    release: v0-6-1
     status: merged
     summary: The diff escapes @mentions and #references in map text, so pasting the summary into a PR does not notify people or link issues.
     sources:
@@ -464,7 +464,7 @@ stories:
   - id: ESM-608
     title: Keep the board working with bad date settings
     activity: explore
-    release: v0-6
+    release: v0-6-1
     status: merged
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
@@ -472,7 +472,7 @@ stories:
   - id: ESM-609
     title: See when the map last changed and where
     activity: track
-    release: v0-6
+    release: v0-6-1
     status: merged
     summary: The internal board's header says when the map was last updated, by whom, and which releases most recent changes were in, instead of a fixed summary.
     sources:
@@ -480,7 +480,7 @@ stories:
   - id: ESM-610
     title: Keep source checks fast on crafted headings
     activity: review
-    release: v0-6
+    release: v0-6-1
     status: merged
     summary: Heading anchors are read in linear time, and Markdown files over 5 MB are not read for anchors, so a crafted heading in a PR cannot stall CI.
     sources:
