@@ -1,6 +1,6 @@
 # Embedded Story Map: engineering overview
 
-Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings, blocked and cut statuses, and release notes and impact. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
+Prepared 20 November 2026 for version 0.3.0, and updated for the unreleased 0.4.0 work on validator warnings, blocked and cut statuses, release notes and impact, and stalled stories. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
@@ -102,6 +102,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 - IDs match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`. Story IDs such as `BUILDER-102` are stable: renaming or moving a story keeps its ID, and history, diffs and delivery plans all key on it.
 - A story's `status` defaults to `planned`. `statusReason` (up to 500 characters) records why a story is blocked or cut.
 - A release can have `notes` (plain text, up to 800 characters, blank lines between paragraphs) and up to 10 `impact` items, each with a required `metric` and `expected`, and optional `solves`, `actual` and `draft`. Activities do not take these fields. Impact items have no ID, so the diff matches them by `metric`.
+- Optional `settings` hold map-wide options. The only one is `stalledAfterWeeks` (whole weeks, 0 to 104, default 4 from `defaultStalledAfterWeeks`, 0 turns the flag off).
 - `sources` is a list of up to 20 strings. A string is either a URL, a repository-relative path (optionally with a `#heading`), or free text such as “Agreed in planning”.
 - Every object is `.strict()`, so an unknown field is an error rather than being silently dropped. This catches typos such as `staus`.
 - Size limits (titles 120 characters, summaries 500, notes 4,000, 50 activities or releases, 1,000 stories) keep a malformed or hostile file from producing an unusable page.
@@ -140,7 +141,7 @@ The JSON Schema cannot express the cross-reference rules. Editors catch shape er
 
 ## Audience projection
 
-`getStoryMapForViewer(map, viewer, { canViewInternal, history })` in `src/view.ts` decides what a viewer may see and builds a new object containing only that. It returns `null` for no access.
+`getStoryMapForViewer(map, viewer, { canViewInternal, history, stalledAfterWeeks, now })` in `src/view.ts` decides what a viewer may see and builds a new object containing only that. It returns `null` for no access.
 
 | Viewer | Result |
 | --- | --- |
@@ -165,12 +166,16 @@ Internal releases are `InternalReleaseLabel`s. `storyCounts` counts the release'
 
 When history is supplied, the internal view attaches each story's events newest first as `history`, and the newest event's time as `lastChangedAt`. It also records `history.generatedAt` and `history.complete` on the view so the board knows a history exists.
 
+### Stalled stories
+
+With history, the internal view also works out which in-progress stories are stalled. The threshold is the `stalledAfterWeeks` option if the host passes a number of 0 or more, otherwise the map's `settings.stalledAfterWeeks`, otherwise 4. A story gets `inProgressSince` only when it is in progress and its newest history entry moved it to in progress; any other newest entry means the history is older than the map, so the start date is unknown. It gets `stalled: true` when that start is more than the threshold before `now` (the option, defaulting to the current time). The view records the threshold as `stalledAfterWeeks` only when it has history and the flag is on, and the board and filter use that to decide whether to offer the **Stalled** filter. Stalled is a flag, never a status, and the customer view never carries any of these fields.
+
 ## Search and filters
 
 `readStoryMapFilters(url.searchParams)` reads three parameters and ignores anything unknown:
 
 - `q`: trimmed and cut to 100 characters
-- `status`: one of the five statuses, or `all`
+- `status`: one of the five statuses, `all`, or `stalled`
 - `changed`: `1d`, `7d`, `14d` or `30d`
 
 `filterStoryMapView(view, filters, { now })` returns a copy of the view with fewer stories and a `filter` object recording the active filters and the unfiltered total. The board shows its toolbar only when `filter` is present, so hosts that do not call it get a board without search.
@@ -178,6 +183,8 @@ When history is supplied, the internal view attaches each story's events newest 
 With no `status`, the filter keeps only active stories and records in `filter.hidden` how many blocked and cut stories matched the other filters but were hidden. The board shows that count with a link to `status=all`. A host that never calls `filterStoryMapView` gets no toolbar, so the board hides blocked and cut stories itself: it sets `data-hide-inactive` on the board, marks those cards `data-inactive`, and renders a **Show blocked and cut stories** checkbox. CSS `:has()` hides the cards, cells that only hold them, and the active-only lane counts until the box is ticked. Browsers without `:has()` ignore those rules and show every story with full counts, which fails safe for internal viewers. Customer views contain no blocked or cut stories, so for them the default changes nothing, and their status select offers only the active statuses.
 
 Always filter after projecting. The search runs over the projected view, so a customer's search matches only approved titles and summaries, while an internal search also matches IDs and notes. Filtering the raw document first would let a search reveal hidden content through which results come back.
+
+`status=stalled` keeps stories with `stalled: true`. On views without `stalledAfterWeeks` (customer views, no history, or the flag turned off) it is dropped and the default applies, so the URL never empties the board.
 
 The “changed in” filter only applies to internal views that have history. It keeps stories whose `lastChangedAt` falls in the window, measured from `now`. Moving a story between activities or releases is not a change for this purpose; only additions and status changes are.
 
@@ -200,6 +207,8 @@ Each card is a `<button>` with a `popovertarget` pointing at its panel. Each pan
 React 19 knows these attributes by their camelCase names, while React 18 only passes them through in lower case. `popoverTarget()` picks the right spelling from React's `version`. The smoke test renders the board with both React versions and checks that every card's target matches a panel ID, so keep that test passing when touching this code.
 
 On internal boards, each release title is also a `<button>` that opens a release panel (`ReleaseDetail`, class `esm-detail esm-release-detail`). The panel lists the release's stories that are on the board, grouped by status, and each one is a button targeting that story's panel. Because that button sits inside the release panel, the browser treats the release panel as the story panel's popover ancestor: opening a story keeps the release panel open underneath, and closing it returns there. Release panels exist only for the releases shown, and only on internal boards. Customer boards render release titles as plain text.
+
+A stalled card shows “In progress for 6 weeks” (`.esm-stalled`, with a warning icon and the start date as a tooltip) in place of its relative time. The story panel shows “In progress since …” for any in-progress story with a known start (`.esm-progress-since`), and stalled stories add a warning note (`.esm-stalled-note`). Weeks shown are whole weeks from the board's `now`.
 
 The lane shows the first impact item in one line with “+N more”, and a **Draft** label on drafts. Progress reads “3 of 5 stories shipped, 1 cut”: cut stories are left out of the total because they have left the release.
 
@@ -290,6 +299,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 - Added, moved, renamed, re-statused, edited and removed stories, in one table.
 - A **Release notes and impact** section (`releaseDetails`): notes added, changed or removed, and impact items added, changed, confirmed (`draft` removed) or removed, with any `actual` result recorded called out. New releases are included, so a new map lists every release's impact.
 - Added, renamed, removed and reordered activities and releases, and changes to their customer labels.
+- A **Settings** section (`stalledAfterWeeks`) when the effective stalled threshold changes, counting a missing setting as the default of 4.
 
 `formatStoryMapDiff` escapes all text taken from the map (HTML, Markdown punctuation, `|` and newlines), because the summary is written into PR job summaries and table cells. A story title must not be able to inject Markdown or break the table.
 
@@ -353,7 +363,8 @@ All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert
 - validator warnings, `--strict` and `::warning` annotations,
 - the CLI's text and GitHub output, `diff` against a Git ref, `init` in a temporary directory, source and plan checks, and GitHub anchor rules,
 - that the committed JSON Schema matches the validator,
-- history built from real temporary Git repositories, with merge commits, `updatedBy` credit, shallow clones and blocked or cut reasons, and history on the board.
+- history built from real temporary Git repositories, with merge commits, `updatedBy` credit, shallow clones and blocked or cut reasons, and history on the board,
+- stalled stories: the threshold from the map, the host override and 0, measuring from the latest start, no flag without history or with an out-of-date history, the filter, the board and the customer view.
 
 Tests that need Git create temporary repositories and clean them up. They need `git` on the path.
 
@@ -415,8 +426,9 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 - `init` only writes the CI workflow for npm projects.
 - Panels depend on the HTML popover API, which all current major browsers support. There is no fallback for older browsers.
 - Dates use the server's time zone unless the host passes `timeZone`.
+- Stalled stories need a history file. Hosts without one get no flag.
 
-The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings, blocked and cut statuses, and release notes and impact are built. Release notes and impact are written in PRs, never on the board. Still proposed: flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
+The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings, blocked and cut statuses, release notes and impact, and flagging stalled stories are built. Release notes and impact are written in PRs, never on the board. Still proposed: “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
 
 ## Documentation precedence
 

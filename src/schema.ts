@@ -65,6 +65,14 @@ const story = z.object({
   customer: customerCopy.optional().describe("Customer-facing copy. Add only when the story is approved for all users."),
 }).strict();
 
+/** Weeks a story can stay in progress before it is flagged as stalled, when the map does not say. */
+export const defaultStalledAfterWeeks = 4;
+
+const settings = z.object({
+  stalledAfterWeeks: z.number().int().min(0).max(104).optional()
+    .describe("Flag a story as stalled when it has been in progress for longer than this many weeks. Defaults to 4. 0 turns the flag off. Needs the history file from `story-map history`."),
+}).strict().describe("Optional settings for everyone who views the map. Hosts can override them.");
+
 type Path = (string | number)[];
 type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown };
 
@@ -122,6 +130,7 @@ export const storyMapSchema = z.object({
   visibility: z.enum(["internal", "all-users"]).default("internal")
     .describe("internal: only internal viewers can see the map. all-users: signed-in users see the customer-facing view."),
   customer: customerCopy.optional().describe("Customer-facing map title and summary. Required when visibility is all-users."),
+  settings: settings.optional(),
   activities: z.array(activity).min(1).max(50),
   releases: z.array(release).min(1).max(50),
   stories: z.array(story.describe("Stories appear in this order within each cell.")).max(1000),

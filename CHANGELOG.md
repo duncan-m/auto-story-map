@@ -23,6 +23,14 @@ Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-ma
 - `story-map diff` has a **Release notes and impact** section listing notes changes, added, changed, confirmed and removed impact items, and measured results being recorded. New `releaseDetails` on `StoryMapDiff`.
 - Release notes and impact are not editable on the board. Agents and people change them in PRs.
 
+### Stalled stories
+
+- Internal boards flag stories that have been in progress for longer than 4 weeks: the card reads “In progress for 6 weeks”, the story panel says when the story became in progress and that it is stalled, and the status filter has a **Stalled** option (`?status=stalled`). The flag needs a history file and is never shown to customers.
+- New optional map `settings.stalledAfterWeeks` (whole weeks, 0 to 104, 0 turns the flag off) and `defaultStalledAfterWeeks`. Hosts can override it with the `stalledAfterWeeks` option on `getStoryMapForViewer`, which also takes `now`.
+- Internal stories have `inProgressSince` and `stalled`, and the internal view has `stalledAfterWeeks` when the flag is on. `StoryMapFilters.status` and `filter.status` accept `"stalled"`.
+- `story-map diff` lists a changed threshold under **Settings**, with a new `stalledAfterWeeks` on `StoryMapDiff`.
+- New `--esm-stalled` and `--esm-stalled-bg` colours.
+
 ### Validation
 
 - Validation issues have a `severity` of `error` or `warning`. Warnings do not make a map invalid. The first warning is a blocked or cut story with no `statusReason`. New `storyMapWarnings(document)`.

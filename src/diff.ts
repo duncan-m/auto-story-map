@@ -1,4 +1,4 @@
-import type { StoryMapDocument } from "./schema.js";
+import { defaultStalledAfterWeeks, type StoryMapDocument } from "./schema.js";
 import { isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js";
 
 type Story = StoryMapDocument["stories"][number];
@@ -90,6 +90,8 @@ export interface StoryMapDiff {
   releases: GroupChanges;
   /** Releases whose notes or expected impact changed, including new releases that have them. */
   releaseDetails: ReleaseDetailChange[];
+  /** The stalled threshold in weeks, including the default of 4 when the map does not set it. 0 is off. */
+  stalledAfterWeeks?: Change<number>;
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -225,6 +227,8 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
 
   const order = { "now-visible": 0, updated: 1, "no-longer-visible": 2 };
   customer.sort((a, b) => order[a.change] - order[b.change]);
+  const stalledBefore = before?.settings?.stalledAfterWeeks ?? defaultStalledAfterWeeks;
+  const stalledAfter = after.settings?.stalledAfterWeeks ?? defaultStalledAfterWeeks;
 
   return {
     created: before === null,
@@ -240,6 +244,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
       const change = releaseDetailChange(base.releases.find(previous => previous.id === release.id), release);
       return change ? [change] : [];
     }),
+    stalledAfterWeeks: before && stalledBefore !== stalledAfter ? { from: stalledBefore, to: stalledAfter } : undefined,
   };
 }
 
@@ -248,7 +253,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     changes.added.length || changes.removed.length || changes.renamed.length || changes.reordered || changes.customerLabelChanged.length;
   return !!(diff.created || diff.visibility || diff.titleChange || diff.customerCopyChanged || diff.customer.length || diff.blockedOrCut.length
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
-    || groups(diff.activities) || groups(diff.releases) || diff.releaseDetails.length);
+    || groups(diff.activities) || groups(diff.releases) || diff.releaseDetails.length || diff.stalledAfterWeeks);
 }
 
 /** Escapes text from the map so it renders literally in GitHub Markdown, including inside table cells. */
@@ -348,6 +353,14 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
   const structure = [...groupLines("activity", diff.activities), ...groupLines("release", diff.releases)];
   if (diff.titleChange) structure.unshift(`- Renamed the map from “${text(diff.titleChange.from)}” to “${text(diff.titleChange.to)}”`);
   if (structure.length) lines.push("### Activities and releases", "", ...structure, "");
+
+  if (diff.stalledAfterWeeks) {
+    const { from, to } = diff.stalledAfterWeeks;
+    const weeks = (count: number) => `${count} ${count === 1 ? "week" : "weeks"}`;
+    lines.push("### Settings", "", to === 0
+      ? `- Turned off the stalled flag (was ${weeks(from)}).`
+      : `- Stories are flagged as stalled after ${weeks(to)} in progress (was ${from === 0 ? "off" : weeks(from)}).`, "");
+  }
 
   return lines.join("\n");
 }

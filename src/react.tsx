@@ -57,6 +57,36 @@ function ChangedAt({ at, settings }: { at: string; settings: DateSettings }) {
   );
 }
 
+const weekMs = 7 * 24 * 60 * 60 * 1000;
+
+function weeks(count: number) {
+  return `${count} ${count === 1 ? "week" : "weeks"}`;
+}
+
+/** Whole weeks since `at`, such as 6 for 45 days. */
+function weeksSince(at: string, settings: DateSettings) {
+  return Math.max(0, Math.floor((settings.now.getTime() - Date.parse(at)) / weekMs));
+}
+
+function WarningIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 2.2 14.2 13H1.8L8 2.2Z" />
+      <path d="M8 6.5v2.8M8 11.2v.1" />
+    </svg>
+  );
+}
+
+/** Replaces the card’s “3 days ago” on a stalled story. */
+function StalledLabel({ since, settings }: { since: string; settings: DateSettings }) {
+  return (
+    <span className="esm-stalled" title={`In progress since ${formatDate(since, settings)}`}>
+      <WarningIcon />
+      {`In progress for ${weeks(weeksSince(since, settings))}`}
+    </span>
+  );
+}
+
 function HistoryList({ entries, settings, labelledBy }: { entries: StoryHistoryEntry[]; settings: DateSettings; labelledBy: string }) {
   return (
     <ol className="esm-history" aria-labelledby={labelledBy}>
@@ -153,7 +183,7 @@ function Status({ status }: { status: StoryStatus }) {
   );
 }
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings }: {
+function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks }: {
   story: InternalStoryCard;
   panelId: string;
   activityTitle: string;
@@ -161,6 +191,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
   internal: boolean;
   sourceBaseUrl?: string;
   settings: DateSettings;
+  stalledAfterWeeks?: number;
 }) {
   const titleId = `${panelId}-title`;
   const sources = internal ? resolveSources(story.sources, sourceBaseUrl) : [];
@@ -179,6 +210,20 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
       </div>
       <Status status={story.status} />
       {internal && story.statusReason && <p className="esm-status-reason">{story.statusReason}</p>}
+      {internal && story.inProgressSince && (
+        <p className="esm-progress-since">
+          In progress since <time dateTime={story.inProgressSince}>{formatDate(story.inProgressSince, settings, false)}</time>
+        </p>
+      )}
+      {internal && story.stalled && story.inProgressSince && (
+        <p className="esm-stalled-note">
+          <WarningIcon />
+          <span>
+            {`Stalled: in progress for ${weeks(weeksSince(story.inProgressSince, settings))}.`}
+            {stalledAfterWeeks ? ` Stories are flagged after ${weeks(stalledAfterWeeks)}.` : ""}
+          </span>
+        </p>
+      )}
       {story.summary && <p className="esm-detail-summary">{story.summary}</p>}
       <dl className="esm-detail-context">
         <dt>Activity</dt>
@@ -349,12 +394,13 @@ function hiddenSummary({ blocked, cut }: { blocked: number; cut: number }) {
   return [blocked && `${blocked} blocked`, cut && `${cut} cut`].filter(Boolean).join(" and ");
 }
 
-function FilterToolbar({ filter, shown, preservedParams, showChanged, internal }: {
+function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks }: {
   filter: NonNullable<StoryMapView["filter"]>;
   shown: number;
   preservedParams?: Readonly<Record<string, string>>;
   showChanged: boolean;
   internal: boolean;
+  stalledAfterWeeks?: number;
 }) {
   const filtering = isFiltering(filter);
   const clearHref = `?${new URLSearchParams(preservedParams ?? {})}`;
@@ -385,6 +431,7 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal }
               <option value="all">All, including blocked and cut</option>
             </> : <option value="">All statuses</option>}
             {(internal ? storyStatuses : activeStoryStatuses).map(status => <option key={status} value={status}>{storyStatusLabels[status]}</option>)}
+            {internal && !!stalledAfterWeeks && <option value="stalled">{`Stalled: in progress over ${weeks(stalledAfterWeeks)}`}</option>}
           </select>
           {showChanged && (
             <select
@@ -428,6 +475,7 @@ export function StoryMapBoard({
   const baseId = useId();
   const headingId = `${baseId}-heading`;
   const internal = map.audience === "internal";
+  const stalledAfterWeeks = map.audience === "internal" ? map.stalledAfterWeeks : undefined;
   const filtering = isFiltering(map.filter);
   const settings: DateSettings = { locale, timeZone, now: now ?? new Date() };
 
@@ -476,6 +524,7 @@ export function StoryMapBoard({
             preservedParams={preservedParams}
             showChanged={internal && !!map.history}
             internal={internal}
+            stalledAfterWeeks={stalledAfterWeeks}
           />
         )}
         {hideInactive && (
@@ -546,7 +595,9 @@ export function StoryMapBoard({
                             <span className="esm-card-title">{story.title}</span>
                             <span className="esm-card-meta">
                               <Status status={story.status} />
-                              {internal && story.lastChangedAt && <ChangedAt at={story.lastChangedAt} settings={settings} />}
+                              {internal && (story.stalled && story.inProgressSince
+                                ? <StalledLabel since={story.inProgressSince} settings={settings} />
+                                : story.lastChangedAt && <ChangedAt at={story.lastChangedAt} settings={settings} />)}
                             </span>
                           </button>
                         ))}
@@ -569,6 +620,7 @@ export function StoryMapBoard({
           internal={internal}
           sourceBaseUrl={sourceBaseUrl}
           settings={settings}
+          stalledAfterWeeks={stalledAfterWeeks}
         />
       ))}
       {internalReleases && showGrid && releases.map((release, index) => (

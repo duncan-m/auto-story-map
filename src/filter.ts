@@ -10,8 +10,9 @@ export interface StoryMapFilters {
   /**
    * One status, or `all` for every story. When absent, only active stories
    * (planned, in progress and shipped) are kept, and blocked and cut stories are hidden.
+   * `stalled` keeps stories in progress for longer than the view’s threshold.
    */
-  status?: StoryStatus | "all";
+  status?: StoryStatus | "all" | "stalled";
   /** Only stories added or changed in this many days. Needs history and an internal view. */
   changedWithinDays?: ChangedWithinDays;
 }
@@ -24,12 +25,12 @@ export interface FilterOptions {
 const maxQueryLength = 100;
 const dayMs = 24 * 60 * 60 * 1000;
 
-function readStatus(value: unknown): StoryStatus | "all" | undefined {
-  return value === "all" ? "all" : storyStatuses.find(status => status === value);
+function readStatus(value: unknown): StoryStatus | "all" | "stalled" | undefined {
+  return value === "all" || value === "stalled" ? value : storyStatuses.find(status => status === value);
 }
 
 /**
- * Reads the board’s `q`, `status` (a status or `all`) and `changed` (`1d`, `7d`,
+ * Reads the board’s `q`, `status` (a status, `all` or `stalled`) and `changed` (`1d`, `7d`,
  * `14d` or `30d`) parameters. Unknown values are ignored.
  */
 export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
@@ -44,7 +45,8 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
  * Narrows a projected view to the stories that match the filters. Call it after
  * `getStoryMapForViewer`, so searches only see what the viewer is allowed to see.
  * Without a status filter, blocked and cut stories are hidden and counted in
- * `filter.hidden`. The “changed in” filter applies only to internal views with history.
+ * `filter.hidden`. The “changed in” and `stalled` filters apply only to internal views
+ * with history; otherwise they are ignored.
  */
 export function filterStoryMapView<View extends StoryMapView>(
   view: View,
@@ -53,8 +55,9 @@ export function filterStoryMapView<View extends StoryMapView>(
 ): View {
   const query = filters.query?.trim().slice(0, maxQueryLength) || undefined;
   const needle = query?.toLocaleLowerCase();
-  const status = readStatus(filters.status);
   const internal = view.audience === "internal";
+  const requested = readStatus(filters.status);
+  const status = requested === "stalled" && !(internal && view.stalledAfterWeeks) ? undefined : requested;
   const changedWithinDays = internal && view.history && changedWithinOptions.includes(filters.changedWithinDays!)
     ? filters.changedWithinDays
     : undefined;
@@ -62,7 +65,9 @@ export function filterStoryMapView<View extends StoryMapView>(
 
   const hidden = { blocked: 0, cut: 0 };
   const stories = (view.stories as InternalStoryCard[]).filter(story => {
-    if (status && status !== "all" && story.status !== status) return false;
+    if (status === "stalled") {
+      if (!story.stalled) return false;
+    } else if (status && status !== "all" && story.status !== status) return false;
     if (since !== undefined && !(story.lastChangedAt && Date.parse(story.lastChangedAt) >= since)) return false;
     if (needle) {
       const fields = internal
