@@ -613,13 +613,19 @@ async function historyRepo(t) {
     document.stories.push({ id: "BUILDER-104", title: "Check the estimate total", activity: "prepare", release: "builder-mvp", status: "planned" });
   });
   git(["commit", "-q", "-am", "Add totals (#7)"], { author: "Erin", committer: "GitHub", date: "2026-11-18T16:45:00Z" });
-  return { root, git };
+  // Builds the history and checks that the reader accepts everything the writer produces.
+  const build = async (options = {}) => {
+    const { buildStoryMapHistory } = await import("../dist/history-git.js");
+    const history = await buildStoryMapHistory({ cwd: root, ...options });
+    assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
+    return history;
+  };
+  return { root, git, build };
 }
 
 test("history records additions and status changes with editor, merger and date", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root, git } = await historyRepo(t);
-  const history = await buildStoryMapHistory({ cwd: root, now: new Date("2026-11-20T12:00:00Z") });
+  const { root, git, build } = await historyRepo(t);
+  const history = await build({ now: new Date("2026-11-20T12:00:00Z") });
 
   assert.equal(history.complete, true);
   assert.equal(history.generatedAt, "2026-11-20T12:00:00.000Z");
@@ -644,13 +650,12 @@ test("history records additions and status changes with editor, merger and date"
     ["FINANCE-202", "2026-11-01T10:00", "Taylor Reed"],
     ["BUILDER-104", "2026-11-18T16:45", "Erin"],
   ]);
-  assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
   assert.throws(() => parseStoryMapHistory({ ...history, events: [{ storyId: "X" }] }), /Invalid story map history/);
 
   const shallow = join(root, "shallow");
   git(["clone", "-q", "--depth", "3", `file://${root}`, shallow]);
-  await assert.rejects(buildStoryMapHistory({ cwd: shallow }), /shallow clone/);
-  const partial = await buildStoryMapHistory({ cwd: shallow, allowShallow: true });
+  await assert.rejects(build({ cwd: shallow }), /shallow clone/);
+  const partial = await build({ cwd: shallow, allowShallow: true });
   assert.equal(partial.complete, false);
   assert.deepEqual(partial.events.map(event => event.storyId), ["BUILDER-104"]);
   assert.deepEqual(partial.lastEdits.map(edit => edit.storyId), ["BUILDER-104"]);
@@ -665,9 +670,8 @@ test("history records additions and status changes with editor, merger and date"
 });
 
 test("only internal viewers see history, and it drives the “changed in” filter", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root } = await historyRepo(t);
-  const history = await buildStoryMapHistory({ cwd: root });
+  const { root, build } = await historyRepo(t);
+  const history = await build();
   const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
   const now = new Date("2026-11-20T12:00:00Z");
 
@@ -697,9 +701,8 @@ test("only internal viewers see history, and it drives the “changed in” filt
 });
 
 test("the board shows when each story changed and its history to internal viewers only", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root } = await historyRepo(t);
-  const history = await buildStoryMapHistory({ cwd: root });
+  const { root, build } = await historyRepo(t);
+  const history = await build();
   const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
   const now = new Date("2026-11-20T12:00:00Z");
   const props = { now, timeZone: "UTC", preservedParams: { as: "engineer" } };
@@ -871,18 +874,16 @@ test("diffs call out stories that become blocked or cut, with their reasons", ()
 });
 
 test("history records why a story was blocked or cut", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root, git } = await historyRepo(t);
+  const { root, git, build } = await historyRepo(t);
   await writeFile(join(root, "product/story-map.yaml"), stringify(withInactiveStories()));
   git(["commit", "-q", "-am", "Cut duplicate handling"], { author: "Fay", committer: "Fay", date: "2026-11-19T09:00:00Z" });
-  const history = await buildStoryMapHistory({ cwd: root });
+  const history = await build();
   const finance = history.events.filter(event => event.storyId.startsWith("FINANCE") && event.to !== "planned");
   assert.deepEqual(finance.map(({ storyId, type, to, reason }) => [storyId, type, to, reason]), [
     // The demo map adds FINANCE-202 as already cut.
     ["FINANCE-202", "added", "cut", "Finance will handle duplicate approvals manually until volumes justify it."],
     ["FINANCE-201", "status", "blocked", "Waiting on the finance system’s purchase order API."],
   ]);
-  assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
 
   const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
   const board = renderToStaticMarkup(createElement(StoryMapBoard, {
@@ -1150,8 +1151,7 @@ test("diffs report a change to the stalled threshold", () => {
 });
 
 test("history records each story's last edit to any field and credits mergers for bot edits", async t => {
-  const { buildStoryMapHistory } = await import("../dist/history-git.js");
-  const { root, git } = await historyRepo(t);
+  const { root, git, build } = await historyRepo(t);
   const writeMap = edit => writeFile(join(root, "product/story-map.yaml"), stringify(edit(parseStoryMap(git(["show", "HEAD:product/story-map.yaml"])))));
   const story = (document, id) => document.stories.find(story => story.id === id);
 
@@ -1183,7 +1183,7 @@ test("history records each story's last edit to any field and credits mergers fo
   git(["commit", "-q", "-am", "Reorder"], { author: "Hana", date: "2026-11-19T12:00:00Z" });
 
   const edits = history => Object.fromEntries(history.lastEdits.map(({ storyId, at, by }) => [storyId, [at.slice(0, 16), by]]));
-  const withBots = await buildStoryMapHistory({ cwd: root, botNames: ["audit agent"] });
+  const withBots = await build({ botNames: ["audit agent"] });
   assert.deepEqual(edits(withBots), {
     "BUILDER-101": ["2026-11-12T15:30", "Bob Builder"],
     "BUILDER-102": ["2026-11-19T11:00", "Grace"],
@@ -1197,7 +1197,7 @@ test("history records each story's last edit to any field and credits mergers fo
     at: "2026-11-19T09:00:00.000Z", by: "Frank", mergedBy: "Frank", commit: withBots.lastEdits.find(edit => edit.storyId === "FINANCE-201").commit,
   });
   // Without the bot list, the named agent is credited as an ordinary author.
-  assert.equal(edits(await buildStoryMapHistory({ cwd: root }))["BUILDER-102"][1], "Audit Agent");
+  assert.equal(edits(await build())["BUILDER-102"][1], "Audit Agent");
 
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   const out = join(root, "build/history.json");
@@ -1205,6 +1205,55 @@ test("history records each story's last edit to any field and credits mergers fo
   assert.equal(written.status, 0, written.stderr);
   assert.equal(edits(parseStoryMapHistory(await readFile(out, "utf8")))["BUILDER-102"][1], "Grace");
   assert.equal(spawnSync(process.execPath, [cli, "history", "--bot-names"], { cwd: root }).status, 2);
+});
+
+test("history fits long Git names to the history format", async t => {
+  const { root, git, build } = await historyRepo(t);
+  const writeMap = edit => writeFile(join(root, "product/story-map.yaml"), stringify(edit(parseStoryMap(git(["show", "HEAD:product/story-map.yaml"])))));
+  const story = (document, id) => document.stories.find(story => story.id === id);
+  const longName = "A".repeat(130);
+  const emojiName = "🙂".repeat(130);
+
+  await writeMap(document => {
+    story(document, "BUILDER-103").status = "in-progress";
+    return document;
+  });
+  git(["commit", "-q", "-am", "Start checks"], { author: longName, committer: emojiName, date: "2026-11-19T09:00:00Z" });
+  await writeMap(document => {
+    story(document, "FINANCE-201").status = "in-progress";
+    return document;
+  });
+  git(["commit", "-q", "-am", "Start approvals"], { author: `  ${emojiName}  `, committer: "Erin", date: "2026-11-19T10:00:00Z" });
+
+  // build() checks that parseStoryMapHistory accepts the file.
+  const history = await build();
+  const [checks, approvals] = history.events.slice(-2);
+  assert.equal(checks.by, `${"A".repeat(119)}…`);
+  assert.equal(Array.from(checks.mergedBy).length, 120);
+  assert.equal(checks.mergedBy, `${"🙂".repeat(119)}…`);
+  assert.equal(approvals.by, `${"🙂".repeat(119)}…`);
+  for (const name of [checks.by, checks.mergedBy, approvals.by]) assert.ok(name.isWellFormed(), "no lone surrogates");
+  assert.equal(history.lastEdits.find(edit => edit.storyId === "BUILDER-103").by, checks.by);
+});
+
+test("the history format limits names and reasons by code points", async () => {
+  const { fitHistoryText, historyNameMaxLength, historyReasonMaxLength } = await import("../dist/history.js");
+  assert.equal(historyNameMaxLength, 120);
+  assert.equal(fitHistoryText("  Bob  ", 120), "Bob");
+  assert.equal(fitHistoryText("   ", 120), undefined);
+  assert.equal(fitHistoryText(undefined, 120), undefined);
+  assert.equal(fitHistoryText("B".repeat(120), 120), "B".repeat(120));
+  // No trailing space before the ellipsis.
+  assert.equal(fitHistoryText(`${"B".repeat(118)} more`, 120), `${"B".repeat(118)}…`);
+  assert.equal(fitHistoryText("x".repeat(600), historyReasonMaxLength).length, 500);
+
+  const event = { storyId: "X-1", type: "added", to: "planned", at: "2026-11-01T10:00:00.000Z", commit: "abcdef1" };
+  const history = events => ({ version: 1, generatedAt: "2026-11-20T12:00:00.000Z", complete: true, events });
+  // 120 emoji are 240 UTF-16 code units, but 120 characters.
+  assert.equal(parseStoryMapHistory(history([{ ...event, by: "🙂".repeat(120) }])).events[0].by, "🙂".repeat(120));
+  assert.throws(() => parseStoryMapHistory(history([{ ...event, by: "B".repeat(121) }])), /at most 120 characters/);
+  assert.throws(() => parseStoryMapHistory(history([{ ...event, mergedBy: "   " }])), /Invalid story map history/);
+  assert.throws(() => parseStoryMapHistory(history([{ ...event, reason: "r".repeat(501) }])), /at most 500 characters/);
 });
 
 test("panels show the last edit from history, and fall back to updatedBy without it", async () => {

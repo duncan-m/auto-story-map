@@ -394,7 +394,7 @@ stories:
     title: Keep long Git names from breaking the history file
     activity: track
     release: planning
-    status: planned
+    status: merged
     summary: story-map history truncates author and merger names to the history format's 120-character limit, so parseStoryMapHistory always accepts what it writes.
     sources:
       - docs/plans/0.6.0-review-fixes.md#2-history-names-that-fit-the-history-format
