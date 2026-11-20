@@ -72,7 +72,25 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 3. Import it into Lucidchart and Miro, and open it in LibreOffice Draw.
 4. Hand-write a matching CSV and import it into both tools.
 
-**Record here** for each tool: whether it opened, whether positions, sizes, text and wrapping survived, whether shape data survived, and which Miro plan was used.
+**Test files.** `scripts/make-export-test-files.mjs` writes them to `test/fixtures/export-spike/`. To regenerate them, run `node scripts/make-export-test-files.mjs`.
+
+- `story-map-test.vsdx`: one page, 9.4 × 5.7 inches, with 11 shapes. It has no stencils or masters, and the zip is stored without compression.
+- `story-map-test.csv`: the same stories, plus a `TEST-1` row whose title starts with `=` to check that spreadsheets don't run it as a formula.
+- `story-map-test.libreoffice.png`: how LibreOffice draws the `.vsdx`. Use it as the reference when comparing imports.
+
+**What to check in each tool.** Did the file open? Did positions, sizes and colours survive? Did the text and its bold, italic and grey styling survive, and does it wrap? What happens to the ESM-702 title, which is too long for its card? Do `&`, `<`, the curly quotes and the 🚀 show correctly? Did shape data (ID, Status, Activity, Release) survive? Which plan was used?
+
+**Results.**
+
+| Tool | Opened | Layout and colours | Text and styling | Overflow | Shape data | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| LibreOffice Draw 24.2 (`soffice --headless`) | Yes | Correct | Correct, except styling after non-ASCII characters (see below) | Text spills below the card | Not checked | The stored zip and all 10 XML parts read cleanly. |
+| Lucidchart | To do | | | | | |
+| Miro (plan: ?) | To do | | | | | |
+| Lucidchart, CSV | To do | | | | | |
+| Miro, CSV | To do | | | | | |
+
+LibreOffice applies styling from the wrong position after non-ASCII characters. After the two "·" in the story counts line, the grey style carries into the first letter of the notes, and the italic in the impact line starts 8 characters late. With ASCII hyphens instead, every style lands correctly, so the XML is right and this is how LibreOffice reads it. For ESM-702: if Miro or Lucidchart show the same shift, put each differently styled line in its own shape instead of using text runs.
 
 **Outcome.** If Miro's Visio import is poor or unavailable, the board's download menu recommends CSV for Miro, and item 4's docs say so. If no tool opens the stored zip, use `fflate` in item 2 (decision G).
 
