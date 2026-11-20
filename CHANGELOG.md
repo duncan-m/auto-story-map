@@ -8,6 +8,9 @@ All notable changes to `embedded-story-map` are recorded here. The project follo
 - History now records each version it cannot read, because the map was missing or not valid YAML, in new optional `skipped` and `skippedCount` fields, and `story-map history` warns about them and still exits 0. `parseStoryMapHistory` accepts files with and without these fields. New type `SkippedStoryMapVersion`.
 - When the diff's base drops anything, the summary starts with a note saying what, and `--format json` adds `baseDropped`.
 - `story-map history` fits names to the history format, so `parseStoryMapHistory` always accepts the file it writes. Git author and committer names have no length limit, and a name over 120 characters used to produce a history file that failed to load. Names are trimmed and cut to 120 characters ending in “…”, and blocked or cut reasons to 500, counting characters rather than UTF-16 code units so emoji are never split. `parseStoryMapHistory` counts the same way, so it now accepts names of up to 120 emoji.
+- New `getStoryMapPage(document, viewer, { canViewInternal, history, stalledAfterWeeks, now, searchParams })` projects the map for the viewer and then applies the filters from `searchParams`, so the safe order is the easy one. It returns the same as `filterStoryMapView(getStoryMapForViewer(...), readStoryMapFilters(searchParams), { now })`, which remain available. New type `StoryMapPageOptions`.
+- New `storyMapResponseHeaders`: `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`, for every story map response.
+- The example host and the integration guide use both. The guide has a new [Large maps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#large-maps) section with measured page sizes.
 
 ## 0.5.0
 

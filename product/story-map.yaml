@@ -441,7 +441,7 @@ stories:
     title: Project and filter the map in one call
     activity: set-up
     release: planning
-    status: planned
+    status: merged
     summary: getStoryMapPage projects for the viewer and then filters, and storyMapResponseHeaders gives the no-store headers, so the safe order is the easy one. Documents page sizes for large maps.
     sources:
       - docs/plans/0.6.0-review-fixes.md#6-one-call-that-projects-and-filters

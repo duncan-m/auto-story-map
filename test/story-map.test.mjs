@@ -19,9 +19,11 @@ import {
   hasStoryMapChanges,
   parseStoryMapHistory,
   getStoryMapForViewer,
+  getStoryMapPage,
   parseStoryMap,
   readStoryMapFilters,
   StoryMapValidationError,
+  storyMapResponseHeaders,
   storyMapSchema,
 } from "embedded-story-map";
 import { StoryMapBoard } from "embedded-story-map/react";
@@ -1210,6 +1212,48 @@ test("history records each story's last edit to any field and credits mergers fo
   assert.equal(written.status, 0, written.stderr);
   assert.equal(edits(parseStoryMapHistory(await readFile(out, "utf8")))["BUILDER-102"][1], "Grace");
   assert.equal(spawnSync(process.execPath, [cli, "history", "--bot-names"], { cwd: root }).status, 2);
+});
+
+test("getStoryMapPage projects and filters in one call", () => {
+  const now = new Date("2026-11-20T12:00:00Z");
+  const separately = (viewer, query, options = {}) => {
+    const view = getStoryMapForViewer(map, viewer, { now, ...options });
+    return view && filterStoryMapView(view, readStoryMapFilters(new URLSearchParams(query)), { now });
+  };
+  const queries = ["", "q=estimate", "status=all", "status=shipped&q=draft", "status=stalled", "changed=7d", "q=" + "x".repeat(300)];
+  for (const viewer of [engineer, superAdmin, regular, null]) {
+    for (const query of queries) {
+      assert.deepEqual(getStoryMapPage(map, viewer, { now, searchParams: new URLSearchParams(query) }), separately(viewer, query), `${JSON.stringify(viewer)} ${query}`);
+    }
+  }
+  // Options reach the projection, and no searchParams means the default filters.
+  const productManager = { roles: ["product-manager"] };
+  const canViewInternal = viewer => viewer.roles.includes("product-manager");
+  assert.deepEqual(getStoryMapPage(map, productManager, { now, canViewInternal }), separately(productManager, "", { canViewInternal }));
+  assert.equal(getStoryMapPage(map, productManager, { now, canViewInternal }).audience, "internal");
+  assert.deepEqual(getStoryMapPage(map, engineer).filter, { query: undefined, status: undefined, total: map.stories.length, hidden: { blocked: 0, cut: 1 } });
+  assert.equal(getStoryMapPage(parseStoryMap(stringify({ ...structuredClone(map), visibility: "internal" })), regular), null);
+
+  // A search for internal-only text finds nothing for a customer.
+  const search = (viewer, q) => getStoryMapPage(map, viewer, { searchParams: new URLSearchParams({ q }) }).stories.map(story => story.title);
+  assert.deepEqual(search(engineer, "carried"), ["Look up prices in the material catalogue"]);
+  assert.deepEqual(search(regular, "carried"), []);
+  assert.deepEqual(search(engineer, "BUILDER-102"), ["Look up prices in the material catalogue"]);
+  assert.deepEqual(search(regular, "BUILDER-102"), []);
+  assert.deepEqual(search(regular, "catalogue"), ["Find material prices"]);
+});
+
+test("storyMapResponseHeaders keep story map responses private", () => {
+  assert.deepEqual({ ...storyMapResponseHeaders }, { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
+  assert.ok(Object.isFrozen(storyMapResponseHeaders));
+  const headers = new Headers(storyMapResponseHeaders);
+  assert.equal(headers.get("cache-control"), "private, no-store");
+  for (const path of ["/story-map", "/api/story-map", "/elsewhere"]) {
+    for (const viewer of [engineer, regular, null]) {
+      const response = makeStoryMapResponse(path, map, viewer);
+      for (const [name, value] of Object.entries(storyMapResponseHeaders)) assert.equal(response.headers.get(name), value, `${path} ${name}`);
+    }
+  }
 });
 
 test("history fits long Git names to the history format", async t => {

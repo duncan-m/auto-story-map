@@ -264,8 +264,7 @@ Load the file on the server and pass it in. Keep it with the map, outside the st
 
 ```ts
 const history = parseStoryMapHistory(await readFile("build/story-map-history.json", "utf8"));
-const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
-const map = view && filterStoryMapView(view, readStoryMapFilters(url.searchParams));
+const map = getStoryMapPage(document, viewer, { canViewInternal, history, searchParams: url.searchParams });
 ```
 
 Pass `timeZone`, such as `Europe/London`, and optionally `locale` to `StoryMapBoard` so dates match your team. Without a history file, the board works as before with no dates and no **Changed** filter, and the panel shows the story’s `updatedBy` as “Last updated by …”.
@@ -303,9 +302,31 @@ Pass `now` to `getStoryMapForViewer` as well as to `filterStoryMapView` and the 
 ## Integrate with a product
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.
-2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapForViewer(document, viewer)` with roles from the verified session. Pass `null` for a guest. A null result indicates denied access. By default, viewers whose roles include `engineer` or `super-admin` see the internal map. To use your own rule, pass `canViewInternal`, for example `getStoryMapForViewer(document, viewer, { canViewInternal: viewer => viewer.roles.includes("product") })`. The rule receives the viewer object you passed, so it can check permissions as well as roles. Only a return value of `true` grants the internal view.
-3. To offer search, pass the view to `filterStoryMapView(view, readStoryMapFilters(url.searchParams))`. Always filter after `getStoryMapForViewer`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer picks them in the status filter or passes `status=all`. They submit a GET form with `q` and `status` parameters to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs.
+2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapPage(document, viewer, { searchParams: url.searchParams })` with roles from the verified session. Pass `null` for a guest. A null result means no access: answer 401 for a guest and 403 for anyone else. By default, viewers whose roles include `engineer` or `super-admin` see the internal map. To use your own rule, pass `canViewInternal`, for example `getStoryMapPage(document, viewer, { canViewInternal: viewer => viewer.roles.includes("product"), searchParams: url.searchParams })`. The rule receives the viewer object you passed, so it can check permissions as well as roles. Only a return value of `true` grants the internal view.
+3. `getStoryMapPage` projects the map for the viewer and then applies the search and filters from `searchParams`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer picks them in the status filter or passes `status=all`. The toolbar submits a GET form with `q`, `status` and `changed` parameters to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs. If you need the steps separately, `getStoryMapPage` is the same as `filterStoryMapView(getStoryMapForViewer(document, viewer, options), readStoryMapFilters(url.searchParams), { now })`. Always filter after projecting, never before.
 4. Render `StoryMapBoard` using the returned view and import `embedded-story-map/styles.css` through the host’s CSS pipeline. Pass `sourceBaseUrl` if the map uses [repository-relative Markdown links](#link-an-engineering-overview). The board is light by default. Pass `theme="dark"` for a dark host, or `theme="auto"` to follow the viewer’s system setting. Colours are CSS custom properties on `.esm-board`, such as `--esm-accent`, so a host can override them. A footer under the board shows the running version of Embedded Story Map, its author and its licence. Internal viewers also get links to the changelog, source code, licence and author. Pass `showVersion={false}` to remove it. Viewers can collapse a release lane to its title and story count with the chevron in its header, which needs no JavaScript but does need a browser that supports CSS `:has()`; other browsers show every lane open with no toggle. To apply filters as soon as a viewer changes them, also load the optional browser script: serve `node_modules/embedded-story-map/dist/board.js` (exported as `embedded-story-map/board.js`) with the host’s other static files and add `<script type="module" src="…/board.js"></script>` to the page. It hides **Apply**, applies a select as soon as it changes and a search when the viewer presses Enter, returns focus to the filter they used, and remembers which release lanes the viewer collapsed. Without it, the form works as before, and collapsed lanes open again when the page reloads. Use the same server-side projection and filters if adding a JSON endpoint.
-5. Set `Cache-Control: private, no-store` for the page and endpoint. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
+5. Send `storyMapResponseHeaders` with the page and endpoint, including error responses. They set `Cache-Control: private, no-store`, because the page differs per viewer, and `X-Content-Type-Options: nosniff`. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
+
+```ts
+import { getStoryMapPage, storyMapResponseHeaders } from "embedded-story-map";
+
+const map = getStoryMapPage(document, viewer, { canViewInternal, history, searchParams: url.searchParams });
+if (!map) return new Response(viewer ? "Forbidden" : "Sign in", { status: viewer ? 403 : 401, headers: storyMapResponseHeaders });
+return Response.json(map, { headers: storyMapResponseHeaders });
+```
+
+[`example/host.mjs`](https://github.com/duncan-m/embedable-story-map/blob/main/example/host.mjs) is a complete example for the page and a JSON endpoint.
+
+### Large maps
+
+The board renders every story's detail panel into the page, so it works without JavaScript, and the page grows with the map. Measured with the example host, for stories with a title, a summary, a few lines of notes and two sources:
+
+| Stories | Internal page | Gzipped | Customer page | Gzipped |
+| --- | --- | --- | --- | --- |
+| 100 | 350 KB | 35 KB | 189 KB | 16 KB |
+| 500 | 1.6 MB | 154 KB | 885 KB | 69 KB |
+| 1,000 | 3.1 MB | 304 KB | 1.8 MB | 136 KB |
+
+Up to a few hundred stories this is comfortable, especially with compression turned on. Above that, split the product into several maps, such as one per area of the product, or open the page with a filter by default, such as linking to `?status=in-progress`, so viewers start from a smaller board.
 
 The map is edited through a PR and ships with the product. The example JSON endpoint is read-only. An app that needs in-app authoring can submit a PR against the same YAML file.

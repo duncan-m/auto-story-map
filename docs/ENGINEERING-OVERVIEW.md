@@ -36,16 +36,18 @@ flowchart LR
   yaml["product/story-map.yaml"] --> parse["parseStoryMap"]
   git["Git history"] -- "story-map history (build)" --> hist["story-map-history.json"]
   hist --> parseHist["parseStoryMapHistory"]
-  parse --> project["getStoryMapForViewer"]
+  subgraph page["getStoryMapPage"]
+    project["getStoryMapForViewer"] --> filter["filterStoryMapView"]
+  end
+  parse --> project
   parseHist --> project
   session["Host's verified session"] --> project
-  project --> filter["filterStoryMapView"]
   query["URL query: q, status, changed"] --> filter
   filter --> board["StoryMapBoard (React SSR)"]
   filter --> json["JSON endpoint"]
 ```
 
-`getStoryMapForViewer` is the security boundary. Everything after it only sees what the viewer is allowed to see.
+`getStoryMapForViewer` is the security boundary. Everything after it only sees what the viewer is allowed to see. `getStoryMapPage` runs it and then the filters, so the safe order is the default. Hosts send `storyMapResponseHeaders` with every response.
 
 ### Package entry points
 
@@ -70,7 +72,7 @@ The tests and the demo import the package by its own name (`import … from "emb
 | --- | --- |
 | `src/status.ts` | The six statuses, the active and customer subsets, `customerStatus`, and their display labels. The single list every other module reads. |
 | `src/schema.ts` | Zod schema for the YAML, cross-reference checks, warnings (`storyMapWarnings`), `parseStoryMap`, `loadStoryMap`, `StoryMapValidationError` and source-line lookup. Also `migrateStoryMap` and `loadHistoricalStoryMap`, the lenient parser for past versions |
-| `src/view.ts` | `getStoryMapForViewer`: the internal and customer projections, role check, and attaching history to stories |
+| `src/view.ts` | `getStoryMapForViewer`: the internal and customer projections, role check, and attaching history to stories. `getStoryMapPage`, which projects then filters, and `storyMapResponseHeaders` |
 | `src/filter.ts` | `readStoryMapFilters` (URL parameters) and `filterStoryMapView` (search, status and “changed in” filters) |
 | `src/history.ts` | History file types and `parseStoryMapHistory` |
 | `src/history-git.ts` | `buildStoryMapHistory`: walks the map's Git history and records additions and status changes |
@@ -342,13 +344,13 @@ Templates and the guide are found relative to the compiled `dist/init.js` (`new 
 
 ## Security boundaries to preserve
 
-- **Project, then filter, then render.** Never pass the parsed document to the board or a JSON response, and never filter before projecting.
+- **Project, then filter, then render.** Never pass the parsed document to the board or a JSON response, and never filter before projecting. `getStoryMapPage` does both in the right order. Keep it a thin wrapper, and keep `getStoryMapForViewer` and `filterStoryMapView` exported for hosts that need the steps separately.
 - **Build the customer view from an allow-list.** When adding a field to stories, decide explicitly whether customers see it. The default must be no. The tests check that customer HTML and JSON contain none of the internal content.
 - **`canViewInternal` must return `true`.** Keep the strict comparison.
 - **Keep internal IDs out of the customer view.** Customer IDs are renumbered on purpose.
 - **Blocked and cut stay internal.** The customer projection drops them, and tests check that customer HTML and JSON never mention them or their reasons.
 - **History contains names.** Keep it internal-only and out of static assets.
-- **Responses are private.** The example host sends `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. Hosts are told to do the same, because the page differs per viewer.
+- **Responses are private.** `storyMapResponseHeaders` is `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. The example host sends it with every response, and hosts are told to do the same, because the page differs per viewer.
 - **Only `http` and `https` sources become links.** React escapes all text, and the board never uses `dangerouslySetInnerHTML`. A test checks that story text renders as text.
 - **The publish job installs nothing.** It is the only job that can get an npm publishing token, so it publishes the tarball built by `pack` and never runs `npm ci` or dependency scripts.
 - **Git arguments are not shell input.** `git` runs through `execFile` with an argument array, and refs starting with `-` are rejected so they cannot be read as options.
@@ -459,6 +461,7 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 - The customer view shows the story's internal status unchanged. There is no separate customer status. Blocked and cut stories are left out instead.
 - `--check-sources` does not check absolute URLs or free-text sources. `--plans` only recognises `PREFIX-number` IDs.
 - `init` only writes the CI workflow for npm projects.
+- Every story's panel is rendered into the page, so its size grows with the map: about 3 KB per story for internal viewers before compression. The guide's [Large maps](story-map.md#large-maps) section has measured sizes. Loading panels on demand would need client JavaScript.
 - Panels depend on the HTML popover API, which all current major browsers support. There is no fallback for older browsers.
 - Dates use the server's time zone unless the host passes `timeZone`.
 - Stalled stories need a history file. Hosts without one get no flag.
