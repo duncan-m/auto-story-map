@@ -491,6 +491,28 @@ test("Markdown anchors follow GitHub’s heading rules", async () => {
   assert.deepEqual([...anchors].sort(), ["custom-anchor", "overview", "overview-1", "setext-heading"]);
 });
 
+test("Markdown anchors stay linear for headings with unclosed markup", async () => {
+  const { markdownAnchors, slugify } = await import("../dist/references.js");
+  assert.equal(slugify("a <b>bold</b> ![img](x.png) `<code>` <> < [x]y"), "a-bold-img----xy");
+  assert.deepEqual([...markdownAnchors("## Title ## \n# Keep # hash#\n<a name='One' id=\"two\">")].sort(), ["keep--hash", "one", "title", "two"]);
+  const size = 200_000;
+  const started = performance.now();
+  for (const text of ["<", "[", "[a](", "![a]", "`"]) markdownAnchors(`# ${text.repeat(size / text.length)}`);
+  markdownAnchors(`# a${" ".repeat(size)}x\n${"<a ".repeat(size / 3)}`);
+  assert.ok(performance.now() - started < 1000, "anchor extraction took too long");
+});
+
+test("source checks skip heading anchors in oversized Markdown files", async t => {
+  const { checkSources, maxMarkdownBytes } = await import("../dist/references.js");
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const root = await mkdtemp(join(tmpdir(), "story-map-large-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(join(root, "big.md"), `# Big\n${"x".repeat(maxMarkdownBytes)}`);
+  const loaded = loadStoryMap(sample.replace("docs/example-builder-estimate-plan.md#builder-workflow", "big.md#big"));
+  const issues = await checkSources(loaded, root);
+  assert.ok(issues.some(issue => issue.message === "'big.md' is larger than 5 MB, so '#big' was not checked."));
+});
+
 test("source and plan checks report missing files, headings and story IDs", async t => {
   const { checkPlanReferences, checkSources } = await import("../dist/references.js");
   const { loadStoryMap } = await import("../dist/schema.js");

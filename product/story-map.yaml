@@ -477,6 +477,14 @@ stories:
     summary: The internal board's header says when the map was last updated, by whom, and which releases most recent changes were in, instead of a fixed summary.
     sources:
       - docs/story-map.md#show-status-history
+  - id: ESM-610
+    title: Keep source checks fast on crafted headings
+    activity: review
+    release: planning
+    status: in-progress
+    summary: Heading anchors are read in linear time, and Markdown files over 5 MB are not read for anchors, so a crafted heading in a PR cannot stall CI.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#11-source-checks-that-stay-fast
   # Export to external tools
   - id: ESM-701
     title: Check that Miro and Lucidchart import a test file
