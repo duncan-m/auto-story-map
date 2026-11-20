@@ -399,7 +399,7 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 
 ## Known limitations
 
-- The board is read-only. All edits go through PRs on the YAML file.
+- The board is read-only. All edits go through PRs on the YAML file. Editing in the app would need the map stored on a separate hosted service.
 - Each product has one map file. There is no merging of several maps.
 - History needs a full clone at build time. Squash and rebase merges on GitHub do not record who merged. Removing a story, or moving it between activities or releases, records no event.
 - The customer view shows the story's internal status unchanged. There is no separate customer status. Blocked and cut stories are left out instead.
@@ -408,7 +408,7 @@ Treat it as a breaking change for hosts with custom CSS. Update the smoke test's
 - Panels depend on the HTML popover API, which all current major browsers support. There is no fallback for older browsers.
 - Dates use the server's time zone unless the host passes `timeZone`.
 
-The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings and blocked and cut statuses are built. Still proposed: release notes and expected impact, editing them on the board (which would add the library's first write path, through the GitHub API), flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
+The [0.4.0 plan](plans/0.4.0-enhancements.md) lists the next release. Validator warnings and blocked and cut statuses are built. Still proposed: release notes and expected impact (written by agents, not edited on the board), flagging stories that stay in progress too long, “last updated” from Git, expandable steps within activities, and a scheduled agent that audits the map against the code.
 
 ## Documentation precedence
 
