@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import { diffStoryMaps, formatStoryMapDiff } from "./diff.js";
+import { code, diffStoryMaps, formatStoryMapDiff } from "./diff.js";
 import { buildStoryMapHistory, StoryMapHistoryError } from "./history-git.js";
 import { initStoryMap } from "./init.js";
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
@@ -251,9 +251,9 @@ async function diff(options: NonNullable<ReturnType<typeof parseDiffArgs>>) {
       const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
       const parts = [
         dropped.fields && `${count(dropped.fields, "field")} the format no longer has`,
-        dropped.stories && `${count(dropped.stories, "story")} that no longer ${dropped.stories === 1 ? "validates" : "validate"}${dropped.storyIds.length ? ` (${dropped.storyIds.map(id => `\`${id}\``).join(", ")})` : ""}`,
+        dropped.stories && `${count(dropped.stories, "story")} that no longer ${dropped.stories === 1 ? "validates" : "validate"}${dropped.storyIds.length ? ` (${dropped.storyIds.map(code).join(", ")})` : ""}`,
       ].filter(Boolean);
-      const note = `> [!NOTE]\n> The map at \`${options.base}\` uses an older format, so this comparison leaves out ${parts.join(" and ")} from it.`;
+      const note = `> [!NOTE]\n> The map at ${code(options.base)} uses an older format, so this comparison leaves out ${parts.join(" and ")} from it.`;
       markdown = markdown.replace(/^## Story map changes\n\n/, match => `${match}${note}\n\n`);
     }
     console.log(markdown);
