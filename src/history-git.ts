@@ -1,8 +1,17 @@
 import { execFile } from "node:child_process";
 import { relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import { fitHistoryText, historyNameMaxLength, historyReasonMaxLength, type StoryHistoryEvent, type StoryLastEdit, type StoryMapHistory } from "./history.js";
-import { parseStoryMap, type StoryMapDocument } from "./schema.js";
+import {
+  fitHistoryText,
+  historyNameMaxLength,
+  historyReasonMaxLength,
+  historySkippedMaxItems,
+  type SkippedStoryMapVersion,
+  type StoryHistoryEvent,
+  type StoryLastEdit,
+  type StoryMapHistory,
+} from "./history.js";
+import { formatStoryMapIssue, loadHistoricalStoryMap, StoryMapValidationError, type StoryMapDocument } from "./schema.js";
 
 const run = promisify(execFile);
 
@@ -101,17 +110,46 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
 
   const events: StoryHistoryEvent[] = [];
   const lastEdits = new Map<string, StoryLastEdit>();
+  const skipped: SkippedStoryMapVersion[] = [];
+  let skippedCount = 0;
+  const skip = (commit: string, reason: string) => {
+    skippedCount++;
+    if (skipped.length < historySkippedMaxItems) {
+      skipped.push({ commit, reason: fitHistoryText(reason, historyReasonMaxLength) ?? "Could not read the map." });
+    }
+  };
   let previous: StoryMapDocument | null = null;
   // In a shallow clone, the oldest version is only a starting point: its stories were added before the history begins.
   let baselineOnly = shallow;
 
   for (const commit of commits) {
+    let source: string;
+    try {
+      source = await git(cwd, ["show", `${commit.sha}:${mapPath}`]);
+    } catch {
+      skip(commit.sha, "The map does not exist at this commit.");
+      continue;
+    }
     let current: StoryMapDocument;
     try {
-      current = parseStoryMap(await git(cwd, ["show", `${commit.sha}:${mapPath}`]));
-    } catch {
-      // The map was deleted or did not validate in this commit. Compare the next
-      // valid version with the last valid one.
+      // Read leniently: older versions may use an earlier format. A field the
+      // format no longer has is dropped, and so is a story that still does not validate.
+      const loaded = loadHistoricalStoryMap(source);
+      current = loaded.map;
+      // A dropped story is unknown in this version, not removed. Keep its last
+      // known version so it is not recorded as added again later.
+      const kept = new Set(current.stories.map(story => story.id));
+      for (const id of loaded.dropped.storyIds) {
+        const earlier = previous?.stories.find(story => story.id === id);
+        if (earlier && !kept.has(id)) current.stories.push(earlier);
+      }
+    } catch (error) {
+      // The YAML could not be read, or the map's structure does not validate even
+      // leniently. Compare the next readable version with the last readable one.
+      const issues = error instanceof StoryMapValidationError ? error.issues : [];
+      const first = issues[0] ? formatStoryMapIssue(issues[0]) : error instanceof Error ? error.message : String(error);
+      const more = issues.length > 1 ? ` (and ${issues.length - 1} more ${issues.length === 2 ? "problem" : "problems"})` : "";
+      skip(commit.sha, `The map could not be read: ${first}${more}`);
       continue;
     }
     if (baselineOnly) {
@@ -174,5 +212,6 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     events,
     // Only stories still in the map. A story first seen in a shallow clone's baseline has no known edit.
     lastEdits: (previous?.stories ?? []).flatMap(story => lastEdits.get(story.id) ?? []),
+    ...(skippedCount ? { skipped, skippedCount } : {}),
   };
 }

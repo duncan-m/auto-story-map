@@ -8,70 +8,98 @@ export type { StoryStatus } from "./status.js";
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/);
 const title = z.string().trim().min(1).max(120);
 const summary = z.string().trim().max(500).optional();
-const customerCopy = z.object({
-  title: title.describe("Customer-facing title. Add only after the wording is approved."),
-  summary: summary.describe("Optional customer-facing summary."),
-}).strict();
-
-function groupFields(kind: "activity" | "release") {
-  return {
-    id: id.describe(`Stable ${kind} ID that stories reference. Keep it when renaming.`),
-    title: title.describe(`Internal ${kind} title.`),
-    summary: summary.describe(`Optional internal ${kind} summary.`),
-    customer: customerCopy.optional().describe(`Customer-facing ${kind} label. Required before a customer-facing story can use this ${kind}.`),
-  };
-}
-
-const activity = z.object(groupFields("activity")).strict()
-  .describe("Activities run left to right in the order of the user journey.");
 
 /** Longest release notes, in characters. */
 export const releaseNotesMaxLength = 800;
 /** Most impact items on one release. */
 export const releaseImpactMaxItems = 10;
 
-const impactItem = z.object({
-  metric: z.string().trim().min(1).max(120).describe("What is measured, such as “Estimate turnaround time”."),
-  expected: z.string().trim().min(1).max(200)
-    .describe("The expected change, written for people, such as “Decrease from 3 days to 1 day”. Not parsed."),
-  solves: z.string().trim().min(1).max(300).optional().describe("Optional. The problem this addresses."),
-  actual: z.string().trim().min(1).max(200).optional().describe("Optional. The measured result, added after shipping."),
-  draft: z.boolean().optional()
-    .describe("true when an agent drafted this item and nobody has confirmed it yet. Only a person removes it."),
-}).strict();
-
-const release = z.object({
-  ...groupFields("release"),
-  notes: z.string().trim().max(releaseNotesMaxLength).optional()
-    .describe("Optional internal release notes: plain text up to 800 characters. Blank lines separate paragraphs. No Markdown."),
-  impact: z.array(impactItem).max(releaseImpactMaxItems).optional()
-    .describe("Optional, recommended. Up to 10 expected outcomes of the release. Internal only."),
-}).strict().describe("Releases run top to bottom in delivery order.");
-
-const story = z.object({
-  id: id.describe("Stable story ID, such as BUILDER-102. Keep it when renaming or moving the story."),
-  title: title.describe("Outcome-focused internal title."),
-  activity: id.describe("ID of the activity column this story sits under."),
-  release: id.describe("ID of the release lane this story belongs to."),
-  summary: summary.describe("Optional internal summary, shown when the card is opened."),
-  status: z.enum(storyStatuses).default("planned")
-    .describe("planned: agreed work awaiting implementation. in-progress: work has started. merged: the work is merged to the default branch but not yet available to its intended users; customers see it as in progress. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers."),
-  statusReason: z.string().trim().min(1).max(500).optional()
-    .describe("Why the story is blocked or cut. Internal only."),
-  updatedBy: z.string().trim().min(1).max(120).optional().describe("Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise."),
-  notes: z.string().trim().max(4000).optional().describe("Internal engineering notes."),
-  sources: z.array(z.string().trim().min(1).max(250)).max(20).optional()
-    .describe("Supporting docs, tests or links. The first Markdown link with a #heading becomes the Engineering overview link."),
-  customer: customerCopy.optional().describe("Customer-facing copy. Add only when the story is approved for all users."),
-}).strict();
-
 /** Weeks a story can stay in progress before it is flagged as stalled, when the map does not say. */
 export const defaultStalledAfterWeeks = 4;
 
-const settings = z.object({
-  stalledAfterWeeks: z.number().int().min(0).max(104).optional()
-    .describe("Flag a story as stalled when it has been in progress for longer than this many weeks. Defaults to 4. 0 turns the flag off. Needs the history file from `story-map history`."),
-}).strict().describe("Optional settings for everyone who views the map. Hosts can override them.");
+/**
+ * Builds the format's schemas. There is one description of the format:
+ * `strict` rejects unknown fields, for the current map, and lenient mode
+ * drops them, for reading past versions of the map.
+ */
+function formatSchemas(strict: boolean) {
+  const object = <Shape extends z.ZodRawShape>(shape: Shape) => strict ? z.object(shape).strict() : z.object(shape);
+
+  const customerCopy = object({
+    title: title.describe("Customer-facing title. Add only after the wording is approved."),
+    summary: summary.describe("Optional customer-facing summary."),
+  });
+
+  function groupFields(kind: "activity" | "release") {
+    return {
+      id: id.describe(`Stable ${kind} ID that stories reference. Keep it when renaming.`),
+      title: title.describe(`Internal ${kind} title.`),
+      summary: summary.describe(`Optional internal ${kind} summary.`),
+      customer: customerCopy.optional().describe(`Customer-facing ${kind} label. Required before a customer-facing story can use this ${kind}.`),
+    };
+  }
+
+  const activity = object(groupFields("activity"))
+    .describe("Activities run left to right in the order of the user journey.");
+
+  const impactItem = object({
+    metric: z.string().trim().min(1).max(120).describe("What is measured, such as “Estimate turnaround time”."),
+    expected: z.string().trim().min(1).max(200)
+      .describe("The expected change, written for people, such as “Decrease from 3 days to 1 day”. Not parsed."),
+    solves: z.string().trim().min(1).max(300).optional().describe("Optional. The problem this addresses."),
+    actual: z.string().trim().min(1).max(200).optional().describe("Optional. The measured result, added after shipping."),
+    draft: z.boolean().optional()
+      .describe("true when an agent drafted this item and nobody has confirmed it yet. Only a person removes it."),
+  });
+
+  const release = object({
+    ...groupFields("release"),
+    notes: z.string().trim().max(releaseNotesMaxLength).optional()
+      .describe("Optional internal release notes: plain text up to 800 characters. Blank lines separate paragraphs. No Markdown."),
+    impact: z.array(impactItem).max(releaseImpactMaxItems).optional()
+      .describe("Optional, recommended. Up to 10 expected outcomes of the release. Internal only."),
+  }).describe("Releases run top to bottom in delivery order.");
+
+  const story = object({
+    id: id.describe("Stable story ID, such as BUILDER-102. Keep it when renaming or moving the story."),
+    title: title.describe("Outcome-focused internal title."),
+    activity: id.describe("ID of the activity column this story sits under."),
+    release: id.describe("ID of the release lane this story belongs to."),
+    summary: summary.describe("Optional internal summary, shown when the card is opened."),
+    status: z.enum(storyStatuses).default("planned")
+      .describe("planned: agreed work awaiting implementation. in-progress: work has started. merged: the work is merged to the default branch but not yet available to its intended users; customers see it as in progress. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers."),
+    statusReason: z.string().trim().min(1).max(500).optional()
+      .describe("Why the story is blocked or cut. Internal only."),
+    updatedBy: z.string().trim().min(1).max(120).optional().describe("Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise."),
+    notes: z.string().trim().max(4000).optional().describe("Internal engineering notes."),
+    sources: z.array(z.string().trim().min(1).max(250)).max(20).optional()
+      .describe("Supporting docs, tests or links. The first Markdown link with a #heading becomes the Engineering overview link."),
+    customer: customerCopy.optional().describe("Customer-facing copy. Add only when the story is approved for all users."),
+  });
+
+  const settings = object({
+    stalledAfterWeeks: z.number().int().min(0).max(104).optional()
+      .describe("Flag a story as stalled when it has been in progress for longer than this many weeks. Defaults to 4. 0 turns the flag off. Needs the history file from `story-map history`."),
+  }).describe("Optional settings for everyone who views the map. Hosts can override them.");
+
+  const map = object({
+    version: z.literal(1).describe("Story map format version."),
+    id: id.describe("Product-specific map ID."),
+    title: title.describe("Internal map title."),
+    summary: summary.describe("Optional internal map summary."),
+    visibility: z.enum(["internal", "all-users"]).default("internal")
+      .describe("internal: only internal viewers can see the map. all-users: signed-in users see the customer-facing view."),
+    customer: customerCopy.optional().describe("Customer-facing map title and summary. Required when visibility is all-users."),
+    settings: settings.optional(),
+    activities: z.array(activity).min(1).max(50),
+    releases: z.array(release).min(1).max(50),
+    stories: z.array(story.describe("Stories appear in this order within each cell.")).max(1000),
+  });
+  return { map, story, impactItem };
+}
+
+const strictSchemas = formatSchemas(true);
+const lenientSchemas = formatSchemas(false);
 
 type Path = (string | number)[];
 type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown };
@@ -122,19 +150,7 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
   return issues;
 }
 
-export const storyMapSchema = z.object({
-  version: z.literal(1).describe("Story map format version."),
-  id: id.describe("Product-specific map ID."),
-  title: title.describe("Internal map title."),
-  summary: summary.describe("Optional internal map summary."),
-  visibility: z.enum(["internal", "all-users"]).default("internal")
-    .describe("internal: only internal viewers can see the map. all-users: signed-in users see the customer-facing view."),
-  customer: customerCopy.optional().describe("Customer-facing map title and summary. Required when visibility is all-users."),
-  settings: settings.optional(),
-  activities: z.array(activity).min(1).max(50),
-  releases: z.array(release).min(1).max(50),
-  stories: z.array(story.describe("Stories appear in this order within each cell.")).max(1000),
-}).strict().superRefine((map, context) => {
+export const storyMapSchema = strictSchemas.map.superRefine((map, context) => {
   for (const { path, message } of crossReferenceIssues(map)) {
     context.addIssue({ code: "custom", path, message });
   }
@@ -144,7 +160,7 @@ export const storyMapSchema = z.object({
 });
 
 export type StoryMapDocument = z.infer<typeof storyMapSchema>;
-export type ReleaseImpact = z.infer<typeof impactItem>;
+export type ReleaseImpact = z.infer<typeof strictSchemas.impactItem>;
 
 export type StoryMapIssueSeverity = "error" | "warning";
 
@@ -270,8 +286,18 @@ export interface LoadedStoryMap {
   locate(path: (string | number)[]): { line?: number; column?: number };
 }
 
-/** Like `parseStoryMap`, but keeps source positions for reporting problems found later. */
-export function loadStoryMap(source: string): LoadedStoryMap {
+/**
+ * Brings data written in an earlier version of the format up to date. Both
+ * parsers run it before validating. It changes nothing today: when a change
+ * to the format renames a field or a status, map the old form to the new one
+ * here, so past versions of the map still read correctly.
+ */
+export function migrateStoryMap(data: unknown): unknown {
+  return data;
+}
+
+/** Reads the YAML with the same safety settings for every parser: unique keys and a limit on aliases. */
+function readYaml(source: string) {
   const lineCounter = new LineCounter();
   const document = parseDocument(source, { uniqueKeys: true, lineCounter });
   if (document.errors.length) {
@@ -286,17 +312,21 @@ export function loadStoryMap(source: string): LoadedStoryMap {
       };
     }));
   }
+  return { document, lineCounter, data: migrateStoryMap(document.toJS({ maxAliasCount: 20 })) };
+}
 
-  const data = document.toJS({ maxAliasCount: 20 });
-  const result = storyMapSchema.safeParse(data, {
-    error: issue => {
-      if (issue.code === "invalid_type" && issue.input === undefined) return "Missing required field.";
-      if (issue.code === "invalid_value" && issue.values.length > 1) {
-        return `Use one of ${issue.values.map(value => `'${String(value)}'`).join(", ")}.`;
-      }
-      return undefined;
-    },
-  });
+const errorMessages: z.core.$ZodErrorMap = issue => {
+  if (issue.code === "invalid_type" && issue.input === undefined) return "Missing required field.";
+  if (issue.code === "invalid_value" && issue.values.length > 1) {
+    return `Use one of ${issue.values.map(value => `'${String(value)}'`).join(", ")}.`;
+  }
+  return undefined;
+};
+
+/** Like `parseStoryMap`, but keeps source positions for reporting problems found later. */
+export function loadStoryMap(source: string): LoadedStoryMap {
+  const { document, lineCounter, data } = readYaml(source);
+  const result = storyMapSchema.safeParse(data, { error: errorMessages });
   if (result.success) {
     const find = (path: (string | number)[]) => locate(document, lineCounter, path);
     const warnings = storyMapWarnings(result.data)
@@ -326,4 +356,74 @@ export function loadStoryMap(source: string): LoadedStoryMap {
   }
   issues.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
   throw new StoryMapValidationError(issues);
+}
+
+export interface HistoricalStoryMap {
+  map: StoryMapDocument;
+  /** What was left out to read this version with today's format. */
+  dropped: {
+    /** Stories that still did not validate, such as one with a status that no longer exists. */
+    stories: number;
+    /** IDs of the dropped stories, where they had one. */
+    storyIds: string[];
+    /** Fields the format no longer has. */
+    fields: number;
+  };
+}
+
+const plain = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
+/** Counts the keys in `input` that the parse left out of `output`. */
+function droppedFields(input: unknown, output: unknown): number {
+  if (Array.isArray(input) && Array.isArray(output)) {
+    return input.reduce<number>((total, item, index) => total + droppedFields(item, output[index]), 0);
+  }
+  if (!plain(input) || !plain(output)) return 0;
+  let total = 0;
+  for (const [key, value] of Object.entries(input)) {
+    if (value === undefined) continue;
+    total += Object.hasOwn(output, key) ? droppedFields(value, output[key]) : 1;
+  }
+  return total;
+}
+
+const lenientMap = lenientSchemas.map.extend({ stories: z.array(z.unknown()).max(1000) });
+
+/**
+ * Reads a past version of the map, which may use an earlier format. Unlike
+ * `loadStoryMap`, it drops fields the format no longer has, drops stories that
+ * still do not validate instead of failing the whole map, and skips the
+ * cross-reference checks. It still fails on YAML errors and on a map whose
+ * other parts do not validate. History and `story-map diff` use it for
+ * earlier versions only: the current map is always checked strictly.
+ */
+export function loadHistoricalStoryMap(source: string): HistoricalStoryMap {
+  const { data } = readYaml(source);
+  const result = lenientMap.safeParse(data, { error: errorMessages });
+  if (!result.success) {
+    throw new StoryMapValidationError(result.error.issues.map(issue => ({
+      severity: "error" as const,
+      path: issue.path.map(segment => typeof segment === "number" ? segment : String(segment)),
+      message: issue.message,
+    })));
+  }
+
+  const { stories: rawStories, ...rest } = result.data;
+  let fields = droppedFields({ ...(data as Record<string, unknown>), stories: undefined }, rest);
+  const stories: StoryMapDocument["stories"] = [];
+  const storyIds: string[] = [];
+  for (const raw of rawStories) {
+    const story = lenientSchemas.story.safeParse(raw);
+    if (story.success) {
+      stories.push(story.data);
+      fields += droppedFields(raw, story.data);
+    } else if (plain(raw) && typeof raw.id === "string") {
+      storyIds.push(raw.id);
+    }
+  }
+  return {
+    map: { ...rest, stories },
+    dropped: { stories: rawStories.length - stories.length, storyIds, fields },
+  };
 }
