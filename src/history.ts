@@ -48,7 +48,7 @@ export interface StoryMapHistory {
   events: StoryHistoryEvent[];
   /** Each current story’s last edit. Absent in files written before 0.4.0. */
   lastEdits?: StoryLastEdit[];
-  /** The first versions of the map that could not be read, oldest first. Absent when none were skipped, and in files written before 0.6.0. */
+  /** The first versions of the map that could not be read, oldest first. Absent when none were skipped, and in files written before 0.6.1. */
   skipped?: SkippedStoryMapVersion[];
   /** How many versions were skipped in all, which can be more than `skipped` lists. */
   skippedCount?: number;
