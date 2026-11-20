@@ -342,7 +342,7 @@ stories:
     activity: explore
     release: next
     status: in-progress
-    summary: A footer shows the library version. Internal viewers also get links to the changelog and source code.
+    summary: A footer shows the library version, author and licence. Internal viewers also get links to the changelog, source code, licence and author.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
   - id: ESM-501

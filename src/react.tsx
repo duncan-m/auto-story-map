@@ -2,7 +2,7 @@ import { useId, version } from "react";
 import type { CSSProperties } from "react";
 import { customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
 import type { ReleaseImpact } from "./schema.js";
-import { storyMapRepositoryUrl, storyMapVersion } from "./version.js";
+import { storyMapAuthor, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
@@ -421,14 +421,24 @@ function changelogAnchor(version: string) {
   return version.toLowerCase().replace(/[^a-z0-9 _-]/g, "").replace(/ /g, "-");
 }
 
-/** The running version. Internal viewers also get links to what changed and the source. */
+/** The running version, licence and author. Internal viewers also get links. */
 function VersionFooter({ internal }: { internal: boolean }) {
+  const licenseUrl = `${storyMapRepositoryUrl}/blob/main/LICENSE`;
   return (
     <footer className="esm-footer">
       <span className="esm-version">Embedded Story Map {storyMapVersion}</span>
+      <span className="esm-author">
+        {"By "}
+        {internal && storyMapAuthor.url
+          ? <a href={storyMapAuthor.url} {...newTab}>{storyMapAuthor.name}<NewTabHint /></a>
+          : storyMapAuthor.name}
+      </span>
+      <span className="esm-license">
+        {internal ? <a href={licenseUrl} {...newTab}>{storyMapLicense} licence<NewTabHint /></a> : `${storyMapLicense} licence`}
+      </span>
       {internal && <>
-        <a href={`${storyMapRepositoryUrl}/blob/main/CHANGELOG.md#${changelogAnchor(storyMapVersion)}`} {...newTab}>Changelog<NewTabHint /></a>
-        <a href={storyMapRepositoryUrl} {...newTab}>Source code<NewTabHint /></a>
+        <span><a href={`${storyMapRepositoryUrl}/blob/main/CHANGELOG.md#${changelogAnchor(storyMapVersion)}`} {...newTab}>Changelog<NewTabHint /></a></span>
+        <span><a href={storyMapRepositoryUrl} {...newTab}>Source code<NewTabHint /></a></span>
       </>}
     </footer>
   );

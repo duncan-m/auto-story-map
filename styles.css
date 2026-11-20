@@ -262,7 +262,10 @@
   .esm-lane:has(.esm-collapse-input:checked) .esm-collapse .esm-icon { transform: rotate(-90deg); }
   .esm-lane:has(.esm-collapse-input:checked) > .esm-cell,
   .esm-lane:has(.esm-collapse-input:checked) :is(.esm-release-summary, .esm-release-impact) { display: none; }
-  .esm-lane:has(.esm-collapse-input:checked) > .esm-release { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 4px; }
+  /* A collapsed lane is one line: name, then the expand chevron, then the story count. */
+  .esm-lane:has(.esm-collapse-input:checked) > .esm-release { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 4px; padding-right: 11px; }
+  .esm-lane:has(.esm-collapse-input:checked) .esm-collapse { position: relative; top: auto; right: auto; order: 1; }
+  .esm-lane:has(.esm-collapse-input:checked) .esm-release-count { order: 2; margin-left: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .esm-collapse .esm-icon { transition: none; }
@@ -274,6 +277,7 @@
 /* Version footer */
 .esm-footer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 14px; padding: 0 4px; color: var(--esm-faint); font-size: .8125rem; }
 .esm-footer a { color: var(--esm-muted); }
+.esm-footer > * + *::before { content: "·"; margin-right: 16px; color: var(--esm-faint); }
 .esm-footer a:hover { color: var(--esm-accent-ink); }
 
 /* Story cards */

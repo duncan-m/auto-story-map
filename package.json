@@ -3,6 +3,10 @@
   "version": "0.4.1",
   "description": "Git-backed user story maps embedded in product applications",
   "license": "Apache-2.0",
+  "author": {
+    "name": "Duncan Malcolm",
+    "url": "https://github.com/duncan-m"
+  },
   "keywords": [
     "story-map",
     "user-story-mapping",

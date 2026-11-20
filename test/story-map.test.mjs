@@ -1453,13 +1453,17 @@ test("the board shows the running version, with links for internal viewers", asy
   const anchor = pkg.version.replaceAll(".", "");
   assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/embedable-story-map/blob/main/CHANGELOG\\.md#${anchor}" target="_blank" rel="noopener noreferrer">Changelog`));
   assert.match(footer, /href="https:\/\/github\.com\/duncan-m\/embedable-story-map" target="_blank" rel="noopener noreferrer">Source code/);
+  assert.match(footer, /By <a href="https:\/\/github\.com\/duncan-m" target="_blank" rel="noopener noreferrer">Duncan Malcolm/);
+  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/embedable-story-map/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">${pkg.license.replaceAll(".", "\\.")} licence`));
   const changelog = await readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8");
   assert.match(changelog, new RegExp(`^## ${pkg.version.replaceAll(".", "\\.")}$`, "m"), "the changelog link has a heading to land on");
 
   const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, regular) }));
   const customerFooter = /<footer class="esm-footer">.*?<\/footer>/.exec(customer)?.[0];
   assert.ok(customerFooter?.includes(`Embedded Story Map ${pkg.version}`));
-  assert.doesNotMatch(customerFooter, /<a /, "customers see the version without links");
+  assert.match(customerFooter, />By Duncan Malcolm</);
+  assert.match(customerFooter, />Apache-2\.0 licence</);
+  assert.doesNotMatch(customerFooter, /<a /, "customers see the version, author and licence without links");
 
   const hidden = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer), showVersion: false }));
   assert.doesNotMatch(hidden, /esm-footer/);
