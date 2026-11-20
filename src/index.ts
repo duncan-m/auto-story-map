@@ -7,10 +7,12 @@ export {
   storyMapWarnings,
   storyStatuses,
 } from "./schema.js";
-export type { StoryMapDocument, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
+export { releaseImpactMaxItems, releaseNotesMaxLength } from "./schema.js";
+export type { ReleaseImpact, StoryMapDocument, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
 export { activeStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
 export { defaultInternalRoles, getStoryMapForViewer } from "./view.js";
 export type {
+  InternalReleaseLabel,
   InternalStoryCard,
   StoryCard,
   StoryHistoryEntry,
@@ -25,4 +27,4 @@ export type { ChangedWithinDays, FilterOptions, StoryMapFilters } from "./filter
 export { parseStoryMapHistory, storyMapHistorySchema } from "./history.js";
 export type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
-export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
+export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";

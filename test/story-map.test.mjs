@@ -112,7 +112,7 @@ function cardsIn(html) {
 }
 
 function panelFor(html, text) {
-  const panels = html.match(/<div class="esm-detail"[\s\S]*?(?=<div class="esm-detail"|<\/section>$|<\/section><\/main>)/g) ?? [];
+  const panels = html.match(/<div class="esm-detail[" ][\s\S]*?(?=<div class="esm-detail[" ]|<\/section>$|<\/section><\/main>)/g) ?? [];
   return panels.find(panel => panel.includes(text));
 }
 
@@ -800,7 +800,7 @@ test("blocked and cut stories are hidden by default and shown on request", async
   const plain = await makeStoryMapResponse("/story-map", inactive, engineer).text();
   assert.match(plain, /<p class="esm-filter-results" role="status">1 blocked and 1 cut hidden\. <a href="\?status=all">Show them<\/a><\/p>/);
   assert.match(plain, /Reconciliation discovery/);
-  assert.match(plain, /Finance follow-up<\/span>[\s\S]*?0 stories/);
+  assert.match(plain, /Finance follow-up<\/button><\/span>[\s\S]*?0 stories/);
 
   const all = await makeStoryMapResponse("/story-map?status=all", inactive, engineer).text();
   assert.equal(cardsIn(all).length, 5);
@@ -885,10 +885,126 @@ test("boards rendered without filters hide blocked and cut stories behind a chec
   assert.match(cut, /data-inactive=""/);
   assert.equal(cardsIn(html).filter(card => card.includes("data-inactive")).length, 1);
   assert.match(html, /<div class="esm-cell" role="cell" data-inactive-only="">/);
-  assert.match(html, /Reconciliation discovery<\/span><span class="esm-release-count esm-count-active">0 stories<\/span><span class="esm-release-count esm-count-all">1 story<\/span>/);
+  assert.match(html, /Reconciliation discovery<\/button><\/span><span class="esm-release-count esm-count-active">0 stories<\/span><span class="esm-release-count esm-count-all">1 story<\/span>/);
 
   // Filtered boards use the toolbar instead, and maps with nothing to hide get no checkbox.
   assert.doesNotMatch(board(filterStoryMapView(getStoryMapForViewer(map, engineer))), /esm-inactive-toggle|data-hide-inactive/);
   assert.doesNotMatch(board(getStoryMapForViewer(planningMap, engineer)), /esm-inactive-toggle|data-hide-inactive|data-inactive/);
   assert.doesNotMatch(board(getStoryMapForViewer(map, regular)), /esm-inactive-toggle|data-inactive/);
+});
+
+// Release notes and expected impact (0.4.0 item 2).
+
+function releasePanel(html, title) {
+  return panelFor(html, `<h3 id="${html.match(new RegExp(`id="([^"]+-release-\\d+)-title">${title}<`))[1]}-title">`);
+}
+
+test("release notes and impact are validated", () => {
+  const withRelease = edit => stringify(editedSample(document => edit(document.releases[0])));
+  assert.equal(parseStoryMap(withRelease(release => { release.notes = "x".repeat(800); })).releases[0].notes.length, 800);
+  assert.throws(() => parseStoryMap(withRelease(release => { release.notes = "x".repeat(801); })), /releases\.0\.notes/);
+  assert.throws(() => parseStoryMap(withRelease(release => {
+    release.impact = Array.from({ length: 11 }, (_, index) => ({ metric: `Metric ${index}`, expected: "Up" }));
+  })), /releases\.0\.impact/);
+  assert.throws(() => parseStoryMap(withRelease(release => { release.impact = [{ metric: "Turnaround" }]; })), /releases\.0\.impact\.0\.expected[^\n]*Missing required field/);
+  assert.throws(() => parseStoryMap(withRelease(release => { release.impact = [{ metric: "Turnaround", expected: "Down", target: 1 }]; })), /releases\.0\.impact\.0\.target[^\n]*Unknown field/);
+  assert.throws(() => parseStoryMap(withRelease(release => { release.impact = [{ metric: "Turnaround", expected: "Down", draft: "yes" }]; })), /draft/);
+  // Activities do not take release fields.
+  assert.throws(() => parseStoryMap(stringify(editedSample(document => { document.activities[0].notes = "No"; }))), /activities\.0\.notes[^\n]*Unknown field/);
+});
+
+test("warnings ask for release impact and for drafts to be confirmed once stories ship", async () => {
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const source = stringify(editedSample(document => {
+    delete document.releases[1].impact;
+    // FINANCE-202 is cut, so Reconciliation discovery has no active stories and no warning.
+    document.stories.find(story => story.id === "FINANCE-201").status = "in-progress";
+    document.stories.find(story => story.id === "BUILDER-101").status = "shipped";
+  }));
+  const warnings = loadStoryMap(source).warnings;
+  assert.deepEqual(warnings.map(({ path, itemId, message }) => [path.join("."), itemId, message]), [
+    ["releases.0.impact.1.draft", "builder-mvp", "Confirm the drafted impact for “Estimates returned for corrections” and remove draft: true. The release has shipped stories."],
+    ["releases.1", "finance-follow-up", "Add impact: what the release is expected to change, and how it will be measured."],
+  ]);
+  assert.equal(warnings[0].line, source.split("\n").findIndex(line => line.includes("draft: true")) + 1);
+  assert.ok(warnings.every(warning => warning.severity === "warning"));
+  // Releases with no stories need no impact.
+  assert.deepEqual(loadStoryMap(stringify(editedSample(document => { for (const release of document.releases) delete release.impact; document.stories = []; }))).warnings, []);
+});
+
+test("internal boards show release impact in the lane and a release panel", async () => {
+  const html = await makeStoryMapResponse("/story-map", map, engineer).text();
+  assert.match(html, /<button type="button" class="esm-release-button" aria-haspopup="dialog" popoverTarget="([^"]+-release-0)">Builder workflow<\/button>/);
+  assert.match(html, /<span class="esm-release-impact"><span class="esm-impact-text">Estimate turnaround time: Decrease from 3 days to 1 day<\/span><span class="esm-impact-more">\+1 more<\/span><\/span>/);
+  assert.match(html, /<span class="esm-impact-text">Time from approval to purchase order: Same day for approved estimates<\/span><span class="esm-draft"[^>]*>Draft<\/span><\/span>/);
+
+  const builder = releasePanel(html, "Builder workflow");
+  assert.match(builder, /^<div class="esm-detail esm-release-detail" id="[^"]+-release-0" popover="auto" role="dialog"/);
+  assert.match(builder, /<h4[^>]*>Release notes<\/h4><p class="esm-notes">Builders can price and submit estimates without emailing finance\.<\/p><p class="esm-notes">Catalogue prices are locked/);
+  assert.match(builder, /<p class="esm-impact-metric">Estimates returned for corrections<span class="esm-draft"[^>]*>Draft<\/span><\/p><dl class="esm-detail-context"><dt>Expected<\/dt><dd>Decrease by 50%<\/dd><dt>Solves<\/dt><dd>Wrong unit prices typed by hand<\/dd><\/dl>/);
+  assert.match(builder, /<p class="esm-release-progress">0 of 3 stories shipped\.<\/p>/);
+  // Stories are grouped by status and open their own panels.
+  assert.match(builder, /<h5><span class="esm-status" data-status="planned">[\s\S]*?BUILDER-102[\s\S]*?BUILDER-103/);
+  const target = builder.match(/class="esm-release-story" aria-haspopup="dialog" popoverTarget="([^"]+)"><span class="esm-card-id">BUILDER-101</)[1];
+  assert.match(html, new RegExp(`<div class="esm-detail" id="${target}"[^>]*><div class="esm-detail-head"><div><p class="esm-card-id">BUILDER-101<`));
+
+  // The cut story is hidden by the default filter, and the panel says so.
+  const reconciliation = releasePanel(html, "Reconciliation discovery");
+  assert.match(reconciliation, /<p class="esm-release-progress">1 story, all cut\.<\/p>/);
+  assert.match(reconciliation, /1 more hidden by the current filters\./);
+  assert.doesNotMatch(reconciliation, /Release notes|Expected impact/);
+
+  const shipped = editedSample(document => {
+    document.stories[0].status = "shipped";
+    document.stories[2].status = "cut";
+    document.stories[2].statusReason = "Not needed.";
+    document.releases[0].impact[0].actual = "Down to 1.5 days";
+  });
+  const all = await makeStoryMapResponse("/story-map?status=all", shipped, engineer).text();
+  const panel = releasePanel(all, "Builder workflow");
+  assert.match(panel, /<p class="esm-release-progress">1 of 2 stories shipped, 1 cut\.<\/p>/);
+  assert.match(panel, /<dt>Expected<\/dt><dd>Decrease from 3 days to 1 day<\/dd><dt>Actual<\/dt><dd>Down to 1\.5 days<\/dd>/);
+  assert.doesNotMatch(panel, /hidden by the current filters/);
+
+  // Progress counts the whole release, whatever the filters show.
+  const searched = await makeStoryMapResponse("/story-map?q=catalogue", map, engineer).text();
+  const filtered = releasePanel(searched, "Builder workflow");
+  assert.match(filtered, /0 of 3 stories shipped\./);
+  assert.match(filtered, /2 more hidden by the current filters\./);
+  assert.equal(getStoryMapForViewer(map, engineer).releases[0].storyCounts["in-progress"], 1);
+});
+
+test("customers never see release notes, impact or progress", async () => {
+  for (const path of ["/story-map", "/story-map?status=all", "/api/story-map"]) {
+    const payload = await (await makeStoryMapResponse(path, map, regular)).text();
+    assert.doesNotMatch(payload, /esm-release-button|esm-release-impact|esm-release-detail|Estimate turnaround|without emailing finance|storyCounts|impact|notes/i);
+  }
+  const view = getStoryMapForViewer(map, regular);
+  assert.deepEqual(Object.keys(view.releases[0]).sort(), ["id", "summary", "title"]);
+});
+
+test("diffs list release notes and impact changes and call out measured results", () => {
+  const after = editedSample(document => {
+    const [builder, finance] = document.releases;
+    builder.notes = "Builders price estimates themselves.";
+    builder.impact[0].actual = "Down to 1.5 days";
+    delete builder.impact[1].draft;
+    finance.impact[0].expected = "Within 4 hours";
+    finance.impact.push({ metric: "Retyped purchase orders", expected: "None" });
+    document.releases.push({ id: "later", title: "Later", impact: [{ metric: "NPS", expected: "Up 5 points" }] });
+  });
+  const diff = diffStoryMaps(map, after);
+  assert.deepEqual(diff.releaseDetails.map(({ id, notes, impact }) => [id, notes, impact]), [
+    ["builder-mvp", "changed", { added: [], changed: [], removed: [], confirmed: ["Estimates returned for corrections"], actualRecorded: [{ metric: "Estimate turnaround time", actual: "Down to 1.5 days" }] }],
+    ["finance-follow-up", undefined, { added: ["Retyped purchase orders"], changed: ["Time from approval to purchase order"], removed: [], confirmed: [], actualRecorded: [] }],
+    ["later", undefined, { added: ["NPS"], changed: [], removed: [], confirmed: [], actualRecorded: [] }],
+  ]);
+  assert.equal(hasStoryMapChanges(diffStoryMaps(map, editedSample(document => { document.releases[0].impact[0].actual = "1 day"; }))), true);
+
+  const markdown = formatStoryMapDiff(diff);
+  assert.ok(markdown.indexOf("### Release notes and impact") > 0);
+  assert.match(markdown, /- `builder-mvp` Builder workflow: notes changed; confirmed drafted impact “Estimates returned for corrections”\n  - \*\*Actual recorded\*\* for “Estimate turnaround time”: Down to 1\.5 days/);
+  assert.match(markdown, /- `finance-follow-up` Finance follow-up: added impact “Retyped purchase orders”; changed impact “Time from approval to purchase order”/);
+  assert.doesNotMatch(markdown, /### Customer-facing changes/);
+  assert.deepEqual(diffStoryMaps(map, map).releaseDetails, []);
 });

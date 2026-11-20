@@ -1,7 +1,8 @@
 import { useId, version } from "react";
 import type { CSSProperties } from "react";
 import { activeStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
-import type { InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
+import type { ReleaseImpact } from "./schema.js";
+import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -174,11 +175,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
           {internal && <p className="esm-card-id">{story.id}</p>}
           <h3 id={titleId}>{story.title}</h3>
         </div>
-        <button type="button" className="esm-close" aria-label="Close" autoFocus {...popoverTarget(panelId, "hide")}>
-          <svg className="esm-icon" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-            <path d="m4 4 8 8M12 4l-8 8" />
-          </svg>
-        </button>
+        <CloseButton panelId={panelId} />
       </div>
       <Status status={story.status} />
       {internal && story.statusReason && <p className="esm-status-reason">{story.statusReason}</p>}
@@ -224,6 +221,123 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
 
 function storyCount(count: number) {
   return `${count} ${count === 1 ? "story" : "stories"}`;
+}
+
+function CloseButton({ panelId }: { panelId: string }) {
+  return (
+    <button type="button" className="esm-close" aria-label="Close" autoFocus {...popoverTarget(panelId, "hide")}>
+      <svg className="esm-icon" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+        <path d="m4 4 8 8M12 4l-8 8" />
+      </svg>
+    </button>
+  );
+}
+
+function DraftLabel() {
+  return <span className="esm-draft" title="Drafted by an agent and not yet confirmed">Draft</span>;
+}
+
+/** The first impact item, in one line under the release title. */
+function ImpactLine({ impact }: { impact: ReleaseImpact[] }) {
+  const [first] = impact;
+  return (
+    <span className="esm-release-impact">
+      <span className="esm-impact-text">{`${first.metric}: ${first.expected}`}</span>
+      {first.draft && <DraftLabel />}
+      {impact.length > 1 && <span className="esm-impact-more">{`+${impact.length - 1} more`}</span>}
+    </span>
+  );
+}
+
+/** “3 of 5 stories shipped, 1 cut.” Cut stories have left the release, so they are not in the total. */
+function releaseProgress(counts: Record<StoryStatus, number>) {
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  if (total === 0) return "No stories yet.";
+  const kept = total - counts.cut;
+  if (kept === 0) return `${storyCount(total)}, all cut.`;
+  return [
+    `${counts.shipped} of ${storyCount(kept)} shipped`,
+    counts.blocked && `${counts.blocked} blocked`,
+    counts.cut && `${counts.cut} cut`,
+  ].filter(Boolean).join(", ") + ".";
+}
+
+function paragraphs(text: string) {
+  return text.split(/\n[ \t]*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
+}
+
+function ReleaseDetail({ release, panelId, stories, storyPanelIds, filtered }: {
+  release: InternalReleaseLabel;
+  panelId: string;
+  /** The release’s stories that are on the board. */
+  stories: InternalStoryCard[];
+  storyPanelIds: Map<InternalStoryCard, string>;
+  filtered: boolean;
+}) {
+  const titleId = `${panelId}-title`;
+  const total = Object.values(release.storyCounts).reduce((sum, count) => sum + count, 0);
+  const hidden = total - stories.length;
+  const groups = storyStatuses.flatMap(status => {
+    const matching = stories.filter(story => story.status === status);
+    return matching.length ? [{ status, stories: matching }] : [];
+  });
+
+  return (
+    <div className="esm-detail esm-release-detail" id={panelId} popover="auto" role="dialog" aria-labelledby={titleId}>
+      <div className="esm-detail-head">
+        <div>
+          <p className="esm-card-id">Release</p>
+          <h3 id={titleId}>{release.title}</h3>
+        </div>
+        <CloseButton panelId={panelId} />
+      </div>
+      {release.summary && <p className="esm-detail-summary">{release.summary}</p>}
+      {release.notes && (
+        <section className="esm-detail-section" aria-labelledby={`${panelId}-notes`}>
+          <h4 id={`${panelId}-notes`}>Release notes</h4>
+          {paragraphs(release.notes).map((paragraph, index) => <p className="esm-notes" key={index}>{paragraph}</p>)}
+        </section>
+      )}
+      {!!release.impact?.length && (
+        <section className="esm-detail-section" aria-labelledby={`${panelId}-impact`}>
+          <h4 id={`${panelId}-impact`}>Expected impact</h4>
+          <ul className="esm-impact">
+            {release.impact.map((item, index) => (
+              <li key={index}>
+                <p className="esm-impact-metric">{item.metric}{item.draft && <DraftLabel />}</p>
+                <dl className="esm-detail-context">
+                  <dt>Expected</dt>
+                  <dd>{item.expected}</dd>
+                  {item.actual && <><dt>Actual</dt><dd>{item.actual}</dd></>}
+                  {item.solves && <><dt>Solves</dt><dd>{item.solves}</dd></>}
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <section className="esm-detail-section" aria-labelledby={`${panelId}-stories`}>
+        <h4 id={`${panelId}-stories`}>Stories</h4>
+        <p className="esm-release-progress">{releaseProgress(release.storyCounts)}</p>
+        {groups.map(group => (
+          <div className="esm-release-group" key={group.status}>
+            <h5><Status status={group.status} /></h5>
+            <ul className="esm-release-stories">
+              {group.stories.map(story => (
+                <li key={story.id}>
+                  <button type="button" className="esm-release-story" aria-haspopup="dialog" {...popoverTarget(storyPanelIds.get(story)!)}>
+                    <span className="esm-card-id">{story.id}</span>
+                    <span>{story.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {filtered && hidden > 0 && <p className="esm-release-hidden">{`${hidden} more hidden by the current filters.`}</p>}
+      </section>
+    </div>
+  );
 }
 
 /** True when a filter narrows the board beyond the default of active stories. */
@@ -323,6 +437,7 @@ export function StoryMapBoard({
     activityTitles.has(story.activity) && releaseTitles.has(story.release)
   );
   const panelIds = new Map(placed.map((story, index) => [story, `${baseId}-story-${index}`]));
+  const internalReleases = map.audience === "internal" ? new Map(map.releases.map(release => [release.id, release])) : undefined;
 
   const cells = new Map<string, InternalStoryCard[]>();
   const releaseCounts = new Map<string, number>();
@@ -394,8 +509,14 @@ export function StoryMapBoard({
               {releases.map((release, laneIndex) => (
                 <div className="esm-row esm-lane" role="row" data-lane={laneIndex % 3} key={release.id}>
                   <div className="esm-release" role="rowheader">
-                    <span className="esm-release-name"><span className="esm-release-dot" aria-hidden="true" />{release.title}</span>
+                    <span className="esm-release-name">
+                      <span className="esm-release-dot" aria-hidden="true" />
+                      {internalReleases
+                        ? <button type="button" className="esm-release-button" aria-haspopup="dialog" {...popoverTarget(`${baseId}-release-${laneIndex}`)}>{release.title}</button>
+                        : release.title}
+                    </span>
                     {release.summary && <span className="esm-release-summary">{release.summary}</span>}
+                    {!!internalReleases?.get(release.id)?.impact?.length && <ImpactLine impact={internalReleases.get(release.id)!.impact!} />}
                     {hideInactive && (activeCounts.get(release.id) ?? 0) !== (releaseCounts.get(release.id) ?? 0) ? <>
                       <span className="esm-release-count esm-count-active">{storyCount(activeCounts.get(release.id) ?? 0)}</span>
                       <span className="esm-release-count esm-count-all">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>
@@ -448,6 +569,16 @@ export function StoryMapBoard({
           internal={internal}
           sourceBaseUrl={sourceBaseUrl}
           settings={settings}
+        />
+      ))}
+      {internalReleases && showGrid && releases.map((release, index) => (
+        <ReleaseDetail
+          key={release.id}
+          release={internalReleases.get(release.id)!}
+          panelId={`${baseId}-release-${index}`}
+          stories={placed.filter(story => story.release === release.id)}
+          storyPanelIds={panelIds}
+          filtered={!!map.filter}
         />
       ))}
     </section>

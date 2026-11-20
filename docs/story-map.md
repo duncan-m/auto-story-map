@@ -8,7 +8,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id` and `title`, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
-3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Record `updatedBy` when you know the editor’s display name. Add customer-facing copy only after approval.
+3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Record `updatedBy` when you know the editor’s display name. Add customer-facing copy only after approval.
 4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
 ## Upgrade to 0.4.0
@@ -20,6 +20,8 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 3. The customer view never includes blocked or cut stories. Check that customer-facing stories you plan to block or cut are ones customers can stop seeing.
 4. Validation now has warnings as well as errors. Warnings, such as a blocked story with no `statusReason`, are printed but do not fail validation. Add `--strict` to the CI step to fail on warnings. Each issue in `StoryMapValidationError.issues` now has `severity: "error"`.
 5. Add styles for the new statuses if the host overrides status colours: `--esm-status-blocked` and `--esm-status-cut`.
+6. Releases accept optional [`notes` and `impact`](#release-notes-and-impact). The validator warns about each release with active stories but no impact, so expect new warnings on existing maps. Add impact, or ask an agent to draft it, before turning on `--strict`.
+7. In the internal view, each release is now an `InternalReleaseLabel` with `notes`, `impact` and `storyCounts`. Release titles on internal boards are buttons that open a release panel. Check any host CSS that targets `.esm-release-name`.
 
 ## Upgrade to 0.3.0
 
@@ -44,6 +46,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 | The order within a cell | Reorder the affected stories in the `stories` list. |
 | Implementation details | Update the delivery plan, then add the relevant Markdown section to `sources`. |
 | Progress | Set `status` to `planned`, `in-progress` or `shipped`. Shipped means the intended audience can use it. |
+| What a release is for | Edit the release’s `notes` and `impact`. See [Release notes and impact](#release-notes-and-impact). |
 | Work that stopped or was dropped | Set `status` to `blocked` or `cut` and explain why in `statusReason`. See [Blocked and cut stories](#blocked-and-cut-stories). |
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
@@ -89,6 +92,46 @@ Keep the story in the map rather than deleting it, so the team can review what w
 
 The board hides blocked and cut stories by default and says how many it hid, such as “1 blocked and 2 cut hidden”, with a link to show them. The status filter offers **Active** (the default), **All, including blocked and cut**, and each status on its own. If the host renders the board without [search and filters](#integrate-with-a-product), a **Show blocked and cut stories** checkbox above the grid shows them instead. It works without JavaScript and resets when the page reloads. The story panel shows the reason. Signed-in customers never see blocked or cut stories, even when they have customer-facing copy, and an activity or release with only such stories disappears from the customer view.
 
+## Release notes and impact
+
+Each release can say what it delivers and what it is expected to change. Both fields are optional and internal only.
+
+```yaml
+releases:
+  - id: builder-mvp
+    title: Builder workflow
+    notes: |
+      Builders can price and submit estimates without emailing finance.
+
+      Catalogue prices are locked when the estimate is submitted.
+    impact:
+      - metric: Estimate turnaround time
+        expected: Decrease from 3 days to 1 day
+        solves: Builders waiting on finance for prices
+      - metric: Estimates returned for corrections
+        expected: Decrease by 50%
+        solves: Wrong unit prices typed by hand
+        draft: true
+```
+
+| Field | Rules |
+| --- | --- |
+| `notes` | Plain text, up to 800 characters. A blank line starts a new paragraph. Markdown is shown as typed. |
+| `impact` | Up to 10 items. |
+| `impact[].metric` | Required. What is measured. |
+| `impact[].expected` | Required. The expected change, written for people. |
+| `impact[].solves` | Optional. The problem it addresses. |
+| `impact[].actual` | Optional. The measured result, added after the release ships. |
+| `impact[].draft` | Optional. `true` while an agent’s draft waits for a person to confirm it. |
+
+Impact is recommended. The validator warns about a release with active stories but no impact, and about a drafted item in a release that has shipped stories. Neither fails validation unless you add `--strict`.
+
+Agents can draft impact from plans, issues and the code, and mark each item `draft: true`. A person confirms it by removing `draft`, usually while reviewing the PR. The board cannot edit notes or impact: change them in a PR like any other map change.
+
+On the internal board, each release lane shows its first impact item under the title, with “+1 more” when there are more and a **Draft** label on drafts. Select the release title to open its panel: the summary, notes, every impact item with its expected and actual result, progress such as “3 of 5 stories shipped, 1 cut”, and the release’s stories grouped by status. Cut stories are left out of the total, because they have left the release. Progress counts every story in the release, while the list shows only the stories that match the current filters and says how many are hidden. Each story opens its own panel.
+
+The customer view never includes notes, impact or progress. It keeps the release’s `customer.title` and `customer.summary`.
+
 ## Link an engineering overview
 
 Add the URL of the relevant Markdown heading to the story’s `sources`, including the fragment after `#`. For a repository-relative reference such as `ENGINEERING-OVERVIEW.md#payment-controls`, pass the repository file URL prefix to `StoryMapBoard` as `sourceBaseUrl`. Include the trailing slash, for example `https://github.com/your-org/your-product/blob/main/`. Absolute Markdown URLs work without this prop.
@@ -114,7 +157,7 @@ Cards show only the story ID, title and status. Select a card to open its panel,
 
 Set the map’s `visibility` to `internal` or `all-users`. The default is `internal`. To show a story to signed-in users, add its `customer.title` and optional `customer.summary`. Add customer-facing copy to its activity and release, and to the map itself. Review the wording and verify that the story’s displayed status is suitable for this audience before merging.
 
-The customer view includes the approved copy and story status, and its story panels show only that copy with the customer-facing activity and release labels. It excludes engineering notes, source paths, editor names, internal IDs and activities or releases with no published stories. Customer searches match only the approved title and summary. Story records without a `customer` section stay internal, and blocked and cut stories never appear. Engineers and super admins can see the recorded editor on the card and in the JSON view.
+The customer view includes the approved copy and story status, and its story panels show only that copy with the customer-facing activity and release labels. It excludes engineering notes, release notes and impact, source paths, editor names, internal IDs and activities or releases with no published stories. Customer searches match only the approved title and summary. Story records without a `customer` section stay internal, and blocked and cut stories never appear. Engineers and super admins can see the recorded editor on the card and in the JSON view.
 
 ## Validate a change
 
@@ -132,7 +175,7 @@ product/story-map.yaml:74:14: stories.3.release (FINANCE-201): Unknown release '
 
 The checks cover YAML syntax, duplicate keys and IDs, missing and unknown fields, invalid statuses, broken references and missing customer-facing labels. All problems are reported in one run.
 
-Some problems are warnings rather than errors, such as a blocked or cut story with no `statusReason`. Warnings are printed with `warning:` after the position, but the map is still valid and the command exits successfully. Add `--strict` to treat warnings as errors.
+Some problems are warnings rather than errors, such as a blocked or cut story with no `statusReason`, or a release with active stories but no [impact](#release-notes-and-impact). Warnings are printed with `warning:` after the position, but the map is still valid and the command exits successfully. Add `--strict` to treat warnings as errors.
 
 Two optional checks look beyond the map file. Run them from the repository root, or pass `--root`:
 

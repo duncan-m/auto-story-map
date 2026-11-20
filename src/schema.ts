@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LineCounter, isMap, parseDocument, type Document, type Node } from "yaml";
-import { storyStatuses } from "./status.js";
+import { isActiveStatus, storyStatuses } from "./status.js";
 
 export { storyStatuses };
 export type { StoryStatus } from "./status.js";
@@ -13,14 +13,40 @@ const customerCopy = z.object({
   summary: summary.describe("Optional customer-facing summary."),
 }).strict();
 
-function group(kind: "activity" | "release", order: string) {
-  return z.object({
+function groupFields(kind: "activity" | "release") {
+  return {
     id: id.describe(`Stable ${kind} ID that stories reference. Keep it when renaming.`),
     title: title.describe(`Internal ${kind} title.`),
     summary: summary.describe(`Optional internal ${kind} summary.`),
     customer: customerCopy.optional().describe(`Customer-facing ${kind} label. Required before a customer-facing story can use this ${kind}.`),
-  }).strict().describe(order);
+  };
 }
+
+const activity = z.object(groupFields("activity")).strict()
+  .describe("Activities run left to right in the order of the user journey.");
+
+/** Longest release notes, in characters. */
+export const releaseNotesMaxLength = 800;
+/** Most impact items on one release. */
+export const releaseImpactMaxItems = 10;
+
+const impactItem = z.object({
+  metric: z.string().trim().min(1).max(120).describe("What is measured, such as “Estimate turnaround time”."),
+  expected: z.string().trim().min(1).max(200)
+    .describe("The expected change, written for people, such as “Decrease from 3 days to 1 day”. Not parsed."),
+  solves: z.string().trim().min(1).max(300).optional().describe("Optional. The problem this addresses."),
+  actual: z.string().trim().min(1).max(200).optional().describe("Optional. The measured result, added after shipping."),
+  draft: z.boolean().optional()
+    .describe("true when an agent drafted this item and nobody has confirmed it yet. Only a person removes it."),
+}).strict();
+
+const release = z.object({
+  ...groupFields("release"),
+  notes: z.string().trim().max(releaseNotesMaxLength).optional()
+    .describe("Optional internal release notes: plain text up to 800 characters. Blank lines separate paragraphs. No Markdown."),
+  impact: z.array(impactItem).max(releaseImpactMaxItems).optional()
+    .describe("Optional, recommended. Up to 10 expected outcomes of the release. Internal only."),
+}).strict().describe("Releases run top to bottom in delivery order.");
 
 const story = z.object({
   id: id.describe("Stable story ID, such as BUILDER-102. Keep it when renaming or moving the story."),
@@ -96,8 +122,8 @@ export const storyMapSchema = z.object({
   visibility: z.enum(["internal", "all-users"]).default("internal")
     .describe("internal: only internal viewers can see the map. all-users: signed-in users see the customer-facing view."),
   customer: customerCopy.optional().describe("Customer-facing map title and summary. Required when visibility is all-users."),
-  activities: z.array(group("activity", "Activities run left to right in the order of the user journey.")).min(1).max(50),
-  releases: z.array(group("release", "Releases run top to bottom in delivery order.")).min(1).max(50),
+  activities: z.array(activity).min(1).max(50),
+  releases: z.array(release).min(1).max(50),
   stories: z.array(story.describe("Stories appear in this order within each cell.")).max(1000),
 }).strict().superRefine((map, context) => {
   for (const { path, message } of crossReferenceIssues(map)) {
@@ -109,6 +135,7 @@ export const storyMapSchema = z.object({
 });
 
 export type StoryMapDocument = z.infer<typeof storyMapSchema>;
+export type ReleaseImpact = z.infer<typeof impactItem>;
 
 export type StoryMapIssueSeverity = "error" | "warning";
 
@@ -187,6 +214,32 @@ export function parseStoryMap(source: string): StoryMapDocument {
  */
 export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
   const warnings: StoryMapIssue[] = [];
+  const releasesWithShipped = new Set<string>();
+  const releasesWithActive = new Set<string>();
+  for (const story of map.stories) {
+    if (isActiveStatus(story.status)) releasesWithActive.add(story.release);
+    if (story.status === "shipped") releasesWithShipped.add(story.release);
+  }
+  map.releases.forEach((release, index) => {
+    if (releasesWithActive.has(release.id) && !release.impact?.length) {
+      warnings.push({
+        severity: "warning",
+        path: ["releases", index],
+        message: "Add impact: what the release is expected to change, and how it will be measured.",
+        itemId: release.id,
+      });
+    }
+    if (!releasesWithShipped.has(release.id)) return;
+    release.impact?.forEach((item, itemIndex) => {
+      if (!item.draft) return;
+      warnings.push({
+        severity: "warning",
+        path: ["releases", index, "impact", itemIndex, "draft"],
+        message: `Confirm the drafted impact for “${item.metric}” and remove draft: true. The release has shipped stories.`,
+        itemId: release.id,
+      });
+    });
+  });
   map.stories.forEach((story, index) => {
     if ((story.status === "blocked" || story.status === "cut") && !story.statusReason) {
       warnings.push({

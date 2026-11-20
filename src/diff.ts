@@ -3,6 +3,8 @@ import { isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js
 
 type Story = StoryMapDocument["stories"][number];
 type Group = StoryMapDocument["activities"][number];
+type Release = StoryMapDocument["releases"][number];
+type ImpactItem = NonNullable<Release["impact"]>[number];
 type Change<T> = { from: T; to: T };
 
 export interface StoryDiffRef {
@@ -56,6 +58,22 @@ export interface GroupChanges {
   customerLabelChanged: StoryDiffRef[];
 }
 
+/** Changes to a release’s notes or expected impact. Impact items are matched by `metric`. */
+export interface ReleaseDetailChange extends StoryDiffRef {
+  notes?: "added" | "changed" | "removed";
+  impact: {
+    /** Metrics of new impact items. */
+    added: string[];
+    /** Metrics whose `expected` or `solves` changed, or that were marked as drafts again. */
+    changed: string[];
+    removed: string[];
+    /** Drafts a person confirmed by removing `draft: true`. */
+    confirmed: string[];
+    /** Measured results that were recorded or changed. */
+    actualRecorded: { metric: string; actual: string }[];
+  };
+}
+
 export interface StoryMapDiff {
   /** True when the earlier map did not exist. */
   created: boolean;
@@ -70,6 +88,8 @@ export interface StoryMapDiff {
   stories: { added: StoryAddition[]; removed: StoryDiffRef[]; updated: StoryUpdate[] };
   activities: GroupChanges;
   releases: GroupChanges;
+  /** Releases whose notes or expected impact changed, including new releases that have them. */
+  releaseDetails: ReleaseDetailChange[];
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -94,6 +114,28 @@ function groupChanges(before: Group[], after: Group[]): GroupChanges {
     customerLabelChanged: after.flatMap(({ id, title, customer }) =>
       old.has(id) && !same(old.get(id)!.customer, customer) ? [{ id, title }] : []),
   };
+}
+
+function releaseDetailChange(previous: Release | undefined, release: Release): ReleaseDetailChange | undefined {
+  const notes = previous?.notes === release.notes ? undefined
+    : !previous?.notes ? "added" : !release.notes ? "removed" : "changed";
+  const old = new Map((previous?.impact ?? []).map(item => [item.metric, item]));
+  const current = new Map((release.impact ?? []).map(item => [item.metric, item]));
+  const impact: ReleaseDetailChange["impact"] = { added: [], changed: [], removed: [], confirmed: [], actualRecorded: [] };
+  for (const item of current.values()) {
+    const before: ImpactItem | undefined = old.get(item.metric);
+    if (!before) {
+      impact.added.push(item.metric);
+      if (item.actual) impact.actualRecorded.push({ metric: item.metric, actual: item.actual });
+      continue;
+    }
+    if (before.expected !== item.expected || before.solves !== item.solves || (!before.draft && item.draft)) impact.changed.push(item.metric);
+    if (before.draft && !item.draft) impact.confirmed.push(item.metric);
+    if (item.actual && before.actual !== item.actual) impact.actualRecorded.push({ metric: item.metric, actual: item.actual });
+  }
+  impact.removed = [...old.keys()].filter(metric => !current.has(metric));
+  const changed = notes || Object.values(impact).some(list => list.length);
+  return changed ? { id: release.id, title: release.title, ...(notes ? { notes } : {}), impact } : undefined;
 }
 
 /** Compares two versions of a map. Pass `null` for `before` when the map is new. */
@@ -194,6 +236,10 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     stories: { added, removed, updated },
     activities: groupChanges(base.activities, after.activities),
     releases: groupChanges(base.releases, after.releases),
+    releaseDetails: after.releases.flatMap(release => {
+      const change = releaseDetailChange(base.releases.find(previous => previous.id === release.id), release);
+      return change ? [change] : [];
+    }),
   };
 }
 
@@ -202,7 +248,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     changes.added.length || changes.removed.length || changes.renamed.length || changes.reordered || changes.customerLabelChanged.length;
   return !!(diff.created || diff.visibility || diff.titleChange || diff.customerCopyChanged || diff.customer.length || diff.blockedOrCut.length
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
-    || groups(diff.activities) || groups(diff.releases));
+    || groups(diff.activities) || groups(diff.releases) || diff.releaseDetails.length);
 }
 
 /** Escapes text from the map so it renders literally in GitHub Markdown, including inside table cells. */
@@ -272,6 +318,24 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
   for (const removed of diff.stories.removed) rows.push([story(removed), "Removed"]);
   if (rows.length) {
     lines.push("### Stories", "", "| Story | Change |", "| --- | --- |", ...rows.map(([name, change]) => `| ${name} | ${change} |`), "");
+  }
+
+  if (diff.releaseDetails.length) {
+    lines.push("### Release notes and impact", "");
+    for (const change of diff.releaseDetails) {
+      const parts: string[] = [];
+      if (change.notes) parts.push(`notes ${change.notes}`);
+      const metrics = (list: string[]) => list.map(metric => `“${text(metric)}”`).join(", ");
+      if (change.impact.added.length) parts.push(`added impact ${metrics(change.impact.added)}`);
+      if (change.impact.changed.length) parts.push(`changed impact ${metrics(change.impact.changed)}`);
+      if (change.impact.confirmed.length) parts.push(`confirmed drafted impact ${metrics(change.impact.confirmed)}`);
+      if (change.impact.removed.length) parts.push(`removed impact ${metrics(change.impact.removed)}`);
+      lines.push(`- ${story(change)}: ${parts.join("; ") || "recorded measured results"}`);
+      for (const { metric, actual } of change.impact.actualRecorded) {
+        lines.push(`  - **Actual recorded** for “${text(metric)}”: ${text(actual)}`);
+      }
+    }
+    lines.push("");
   }
 
   const groupLines = (label: string, changes: GroupChanges) => [
