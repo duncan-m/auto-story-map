@@ -2,6 +2,24 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-040). Existing maps stay valid.
+
+### Statuses
+
+- **Breaking:** new `blocked` and `cut` statuses, with an optional `statusReason` of up to 500 characters. `storyStatuses` and `StoryStatus` include them, so host code that handles every status needs two more cases. New `activeStoryStatuses`, `inactiveStoryStatuses` and `isActiveStatus`.
+- **Breaking:** `filterStoryMapView` hides blocked and cut stories unless a status is given, and reports how many it hid in `filter.hidden`. Pass `status: "all"` (`?status=all`) for every story. The board’s status filter offers **Active**, **All, including blocked and cut**, and each status, and says how many stories are hidden with a link to show them.
+- The customer view never includes blocked or cut stories, or activities and releases that only contain them.
+- Story panels show the reason. `story-map history` records it on changes to blocked or cut, and the panel’s history list shows it.
+- `story-map diff` has a **Blocked and cut** section, and a customer-facing story that becomes blocked or cut is listed as no longer visible.
+- New `--esm-status-blocked` and `--esm-status-cut` colours, with icons and text labels.
+
+### Validation
+
+- Validation issues have a `severity` of `error` or `warning`. Warnings do not make a map invalid. The first warning is a blocked or cut story with no `statusReason`. New `storyMapWarnings(document)`.
+- `story-map validate` prints warnings with `warning:`, emits `::warning` annotations with `--format github` and exits 0 when there are only warnings. Add `--strict` to fail on warnings.
+
 ## 0.3.0
 
 Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030). The YAML format is unchanged.

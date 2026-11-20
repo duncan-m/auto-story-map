@@ -1,6 +1,6 @@
 import type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
 import type { StoryMapDocument } from "./schema.js";
-import type { StoryStatus } from "./status.js";
+import { isActiveStatus, type StoryStatus } from "./status.js";
 
 export interface StoryMapViewer {
   roles?: readonly string[];
@@ -42,6 +42,8 @@ export interface StoryCard extends StoryMapLabel {
 export type StoryHistoryEntry = Omit<StoryHistoryEvent, "storyId">;
 
 export interface InternalStoryCard extends StoryCard {
+  /** Why the story is blocked or cut. */
+  statusReason?: string;
   updatedBy?: string;
   notes?: string;
   sources?: string[];
@@ -54,11 +56,14 @@ export interface InternalStoryCard extends StoryCard {
 /** Present when the host has applied `filterStoryMapView`. The board shows its search toolbar only then. */
 export interface StoryMapFilterState {
   query?: string;
-  status?: StoryStatus;
+  /** The status filter. Absent means the default: active stories only. */
+  status?: StoryStatus | "all";
   /** Only stories added or changed in this many days. */
   changedWithinDays?: number;
   /** Number of stories in the view before filtering. */
   total: number;
+  /** Blocked and cut stories that match the other filters but are hidden by the default status filter. */
+  hidden?: { blocked: number; cut: number };
 }
 
 interface StoryMapBaseView {
@@ -107,6 +112,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           activity: story.activity,
           release: story.release,
           status: story.status,
+          statusReason: story.statusReason,
           updatedBy: story.updatedBy,
           notes: story.notes,
           sources: story.sources,
@@ -119,8 +125,9 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
 
   if (map.visibility !== "all-users" || !map.customer) return null;
 
+  // Blocked and cut stories are never shown to customers, and do not make their activity or release visible.
   const publishedStories = map.stories.flatMap(story =>
-    story.customer ? [{ story, copy: story.customer }] : []
+    story.customer && isActiveStatus(story.status) ? [{ story, copy: story.customer }] : []
   );
   const activityIds = new Set(publishedStories.map(({ story }) => story.activity));
   const releaseIds = new Set(publishedStories.map(({ story }) => story.release));

@@ -193,13 +193,21 @@
           },
           "status": {
             "default": "planned",
-            "description": "planned: agreed work awaiting implementation. in-progress: work has started. shipped: available to its intended users.",
+            "description": "planned: agreed work awaiting implementation. in-progress: work has started. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers.",
             "type": "string",
             "enum": [
               "planned",
               "in-progress",
-              "shipped"
+              "shipped",
+              "blocked",
+              "cut"
             ]
+          },
+          "statusReason": {
+            "description": "Why the story is blocked or cut. Internal only.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
           },
           "updatedBy": {
             "description": "Display name of the person who last added or edited the story.",

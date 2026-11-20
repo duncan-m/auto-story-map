@@ -8,8 +8,18 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id` and `title`, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
-3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Flag uncertain statuses for review. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Record `updatedBy` when you know the editor’s display name. Add customer-facing copy only after approval.
+3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. Record `updatedBy` when you know the editor’s display name. Add customer-facing copy only after approval.
 4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
+
+## Upgrade to 0.4.0
+
+0.4.0 is not released yet. These steps cover the changes merged so far. Existing maps stay valid.
+
+1. Story statuses now include [`blocked` and `cut`](#blocked-and-cut-stories). If host code switches over every value of `storyStatuses` or `StoryStatus`, add cases for both. `activeStoryStatuses` lists the original three.
+2. `filterStoryMapView` now hides blocked and cut stories when no status is given, and records how many it hid in `filter.hidden`. Pass `status: "all"`, or `?status=all` in the URL, to include them. Hosts that render the board without `filterStoryMapView` still see every story.
+3. The customer view never includes blocked or cut stories. Check that customer-facing stories you plan to block or cut are ones customers can stop seeing.
+4. Validation now has warnings as well as errors. Warnings, such as a blocked story with no `statusReason`, are printed but do not fail validation. Add `--strict` to the CI step to fail on warnings. Each issue in `StoryMapValidationError.issues` now has `severity: "error"`.
+5. Add styles for the new statuses if the host overrides status colours: `--esm-status-blocked` and `--esm-status-cut`.
 
 ## Upgrade to 0.3.0
 
@@ -34,6 +44,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 | The order within a cell | Reorder the affected stories in the `stories` list. |
 | Implementation details | Update the delivery plan, then add the relevant Markdown section to `sources`. |
 | Progress | Set `status` to `planned`, `in-progress` or `shipped`. Shipped means the intended audience can use it. |
+| Work that stopped or was dropped | Set `status` to `blocked` or `cut` and explain why in `statusReason`. See [Blocked and cut stories](#blocked-and-cut-stories). |
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
 
@@ -55,6 +66,28 @@ When price catalogue lookup is agreed for the builder workflow, put the story un
 ```
 
 If the agreed release changes, edit `release` on this story. If implementation starts, set its status to `in-progress`. Once deployed and available to builders, set it to `shipped`.
+
+## Blocked and cut stories
+
+Two statuses record work that is not going ahead as planned:
+
+- `blocked`: the work was started or agreed, but cannot continue.
+- `cut`: the work was deliberately dropped from its release.
+
+Explain why in `statusReason`, up to 500 characters. The validator warns when a blocked or cut story has none.
+
+```yaml
+- id: FINANCE-202
+  title: Explore duplicate approval handling
+  activity: finance-ops
+  release: reconciliation-internal
+  status: cut
+  statusReason: Finance will handle duplicates manually until volumes justify it.
+```
+
+Keep the story in the map rather than deleting it, so the team can review what was not done. When the work resumes, set its status back and remove or update the reason.
+
+The board hides blocked and cut stories by default and says how many it hid, such as “1 blocked and 2 cut hidden”, with a link to show them. The status filter offers **Active** (the default), **All, including blocked and cut**, and each status on its own. The story panel shows the reason. Signed-in customers never see blocked or cut stories, even when they have customer-facing copy, and an activity or release with only such stories disappears from the customer view.
 
 ## Link an engineering overview
 
@@ -81,7 +114,7 @@ Cards show only the story ID, title and status. Select a card to open its panel,
 
 Set the map’s `visibility` to `internal` or `all-users`. The default is `internal`. To show a story to signed-in users, add its `customer.title` and optional `customer.summary`. Add customer-facing copy to its activity and release, and to the map itself. Review the wording and verify that the story’s displayed status is suitable for this audience before merging.
 
-The customer view includes the approved copy and story status, and its story panels show only that copy with the customer-facing activity and release labels. It excludes engineering notes, source paths, editor names, internal IDs and activities or releases with no published stories. Customer searches match only the approved title and summary. Story records without a `customer` section stay internal. Engineers and super admins can see the recorded editor on the card and in the JSON view.
+The customer view includes the approved copy and story status, and its story panels show only that copy with the customer-facing activity and release labels. It excludes engineering notes, source paths, editor names, internal IDs and activities or releases with no published stories. Customer searches match only the approved title and summary. Story records without a `customer` section stay internal, and blocked and cut stories never appear. Engineers and super admins can see the recorded editor on the card and in the JSON view.
 
 ## Validate a change
 
@@ -99,6 +132,8 @@ product/story-map.yaml:74:14: stories.3.release (FINANCE-201): Unknown release '
 
 The checks cover YAML syntax, duplicate keys and IDs, missing and unknown fields, invalid statuses, broken references and missing customer-facing labels. All problems are reported in one run.
 
+Some problems are warnings rather than errors, such as a blocked or cut story with no `statusReason`. Warnings are printed with `warning:` after the position, but the map is still valid and the command exits successfully. Add `--strict` to treat warnings as errors.
+
 Two optional checks look beyond the map file. Run them from the repository root, or pass `--root`:
 
 - `--check-sources` checks that each repository-relative source exists and that each Markdown `#heading` fragment matches a heading in that file, using GitHub’s anchor rules. Absolute URLs and free text such as “Agreed in planning” are not checked.
@@ -108,13 +143,13 @@ Two optional checks look beyond the map file. Run them from the repository root,
 npx --no-install story-map validate --check-sources --plans docs product/story-map.yaml
 ```
 
-Run the validator in CI for story map changes. In GitHub Actions, add `--format github` so each problem appears as an annotation on the PR diff:
+Run the validator in CI for story map changes. In GitHub Actions, add `--format github` so each problem appears as an annotation on the PR diff. Errors appear as error annotations and warnings as warning annotations:
 
 ```yaml
 - run: npx --no-install story-map validate --format github --check-sources product/story-map.yaml
 ```
 
-In code, `parseStoryMap` throws a `StoryMapValidationError`. Its `issues` list gives each problem’s `path`, `message`, `line`, `column` and the `itemId` of the activity, release or story it belongs to.
+In code, `parseStoryMap` throws a `StoryMapValidationError`. Its `issues` list gives each problem’s `severity`, `path`, `message`, `line`, `column` and the `itemId` of the activity, release or story it belongs to. `storyMapWarnings(document)` returns the warnings for a parsed map.
 
 ### Check the map as you edit
 
@@ -134,7 +169,7 @@ The schema covers the shape of each field. Run the validator for the checks that
 npx --no-install story-map diff origin/main
 ```
 
-The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Then it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
+The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Next, **Blocked and cut** lists stories that became blocked or cut, with their reasons, and stories that are no longer blocked or cut. Then it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
 
 The workflow from `npx story-map init` adds the summary to each PR’s job summary. In your own workflow, check out with `fetch-depth: 0` so the base branch is available:
 
@@ -184,7 +219,7 @@ The command stops with an explanation when the clone is shallow. Pass `--allow-s
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.
 2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapForViewer(document, viewer)` with roles from the verified session. Pass `null` for a guest. A null result indicates denied access. By default, viewers whose roles include `engineer` or `super-admin` see the internal map. To use your own rule, pass `canViewInternal`, for example `getStoryMapForViewer(document, viewer, { canViewInternal: viewer => viewer.roles.includes("product") })`. The rule receives the viewer object you passed, so it can check permissions as well as roles. Only a return value of `true` grants the internal view.
-3. To offer search, pass the view to `filterStoryMapView(view, readStoryMapFilters(url.searchParams))`. Always filter after `getStoryMapForViewer`, so a search only sees what the viewer may see. The board then shows a search box and status filter. They submit a GET form with `q` and `status` parameters to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs.
+3. To offer search, pass the view to `filterStoryMapView(view, readStoryMapFilters(url.searchParams))`. Always filter after `getStoryMapForViewer`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer picks them in the status filter or passes `status=all`. They submit a GET form with `q` and `status` parameters to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs.
 4. Render `StoryMapBoard` using the returned view and import `embedded-story-map/styles.css` through the host’s CSS pipeline. Pass `sourceBaseUrl` if the map uses [repository-relative Markdown links](#link-an-engineering-overview). The board is light by default. Pass `theme="dark"` for a dark host, or `theme="auto"` to follow the viewer’s system setting. Colours are CSS custom properties on `.esm-board`, such as `--esm-accent`, so a host can override them. Use the same server-side projection and filters if adding a JSON endpoint.
 5. Set `Cache-Control: private, no-store` for the page and endpoint. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
 

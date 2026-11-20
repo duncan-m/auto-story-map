@@ -1,5 +1,5 @@
 import type { StoryMapDocument } from "./schema.js";
-import { storyStatusLabels, type StoryStatus } from "./status.js";
+import { isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js";
 
 type Story = StoryMapDocument["stories"][number];
 type Group = StoryMapDocument["activities"][number];
@@ -26,6 +26,16 @@ export interface StoryUpdate extends StoryDiffRef {
   release?: Change<string>;
   /** Other fields that changed, such as `summary`, `notes` or `sources`. */
   details: string[];
+}
+
+/** A story that became blocked or cut, or stopped being blocked or cut. */
+export interface InactiveStoryChange extends StoryDiffRef {
+  change: "entered" | "left";
+  /** Absent when the story was added in this change. */
+  from?: StoryStatus;
+  to: StoryStatus;
+  /** The story’s `statusReason` after the change. */
+  reason?: string;
 }
 
 export interface CustomerStoryChange {
@@ -55,6 +65,8 @@ export interface StoryMapDiff {
   customerCopyChanged: boolean;
   /** Changes that signed-in customers will see. Empty unless a version of the map is visible to all users. */
   customer: CustomerStoryChange[];
+  /** Stories that became blocked or cut, or returned from those statuses. */
+  blockedOrCut: InactiveStoryChange[];
   stories: { added: StoryAddition[]; removed: StoryDiffRef[]; updated: StoryUpdate[] };
   activities: GroupChanges;
   releases: GroupChanges;
@@ -63,7 +75,7 @@ export interface StoryMapDiff {
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 function customerVisible(map: StoryMapDocument | null, story: Story | undefined) {
-  return !!(map && story?.customer && map.visibility === "all-users" && map.customer);
+  return !!(map && story?.customer && isActiveStatus(story.status) && map.visibility === "all-users" && map.customer);
 }
 
 function groupChanges(before: Group[], after: Group[]): GroupChanges {
@@ -98,8 +110,14 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
 
   const added: StoryAddition[] = [];
   const updated: StoryUpdate[] = [];
+  const blockedOrCut: InactiveStoryChange[] = [];
   for (const story of after.stories) {
     const previous = oldStories.get(story.id);
+    if (!isActiveStatus(story.status) && previous?.status !== story.status) {
+      blockedOrCut.push({ id: story.id, title: story.title, change: "entered", from: previous?.status, to: story.status, reason: story.statusReason });
+    } else if (previous && !isActiveStatus(previous.status) && isActiveStatus(story.status)) {
+      blockedOrCut.push({ id: story.id, title: story.title, change: "left", from: previous.status, to: story.status, reason: story.statusReason });
+    }
     if (!previous) {
       added.push({
         id: story.id,
@@ -125,7 +143,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
         to: releaseTitles[1].get(story.release) ?? story.release,
       };
     }
-    for (const field of ["summary", "notes", "sources", "customer", "updatedBy"] as const) {
+    for (const field of ["summary", "statusReason", "notes", "sources", "customer", "updatedBy"] as const) {
       if (!same(previous[field], story[field])) update.details.push(field);
     }
     if (update.titleChange || update.status || update.activity || update.release || update.details.length) {
@@ -172,6 +190,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     titleChange: before && before.title !== after.title ? { from: before.title, to: after.title } : undefined,
     customerCopyChanged: !!before && !same(before.customer, after.customer),
     customer,
+    blockedOrCut,
     stories: { added, removed, updated },
     activities: groupChanges(base.activities, after.activities),
     releases: groupChanges(base.releases, after.releases),
@@ -181,7 +200,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
 export function hasStoryMapChanges(diff: StoryMapDiff) {
   const groups = (changes: GroupChanges) =>
     changes.added.length || changes.removed.length || changes.renamed.length || changes.reordered || changes.customerLabelChanged.length;
-  return !!(diff.created || diff.visibility || diff.titleChange || diff.customerCopyChanged || diff.customer.length
+  return !!(diff.created || diff.visibility || diff.titleChange || diff.customerCopyChanged || diff.customer.length || diff.blockedOrCut.length
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
     || groups(diff.activities) || groups(diff.releases));
 }
@@ -219,6 +238,20 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
       if (change.change === "now-visible") lines.push(`- **Now visible:** ${label}`);
       else if (change.change === "no-longer-visible") lines.push(`- **No longer visible:** ${label}`);
       else lines.push(`- **Updated:** ${label}: ${change.details.map(text).join("; ")}`);
+    }
+    lines.push("");
+  }
+
+  if (diff.blockedOrCut.length) {
+    lines.push("### Blocked and cut", "");
+    for (const change of diff.blockedOrCut) {
+      const reason = change.reason ? ` Reason: ${text(change.reason)}` : "";
+      if (change.change === "entered") {
+        const was = change.from ? `was ${status(change.from)}` : "added";
+        lines.push(`- **${status(change.to)}:** ${story(change)} (${was}).${reason}`);
+      } else {
+        lines.push(`- **No longer ${status(change.from!).toLowerCase()}:** ${story(change)}, now ${status(change.to)}.`);
+      }
     }
     lines.push("");
   }
