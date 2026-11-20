@@ -110,6 +110,14 @@ releases:
         draft: true
     customer:
       title: "0.5.0"
+  - id: planning
+    title: Planning
+    summary: Fixes from the November 2026 code review, planned for the first npm release.
+    impact:
+      - metric: Known bugs and security risks from the code review
+        expected: Fixed, or recorded as a decision, before the first npm release
+        solves: Publishing a first version with known problems
+        draft: true
   - id: next
     title: Next
     summary: Proposed for 0.5.x or 0.6.0.
@@ -345,7 +353,7 @@ stories:
     title: Collapse release lanes
     activity: explore
     release: v0-5
-    status: merged
+    status: shipped
     summary: A chevron in each release header collapses the lane to its title and story count. It works without JavaScript, and board.js remembers collapsed lanes across reloads.
     notes: CSS :has() does the collapsing. Browsers without :has() do not show the toggle, so every lane stays open.
     sources:
@@ -355,7 +363,7 @@ stories:
     title: Show the running version on the board
     activity: explore
     release: v0-5
-    status: merged
+    status: shipped
     summary: A footer shows the library version, author and licence. Internal viewers also get links to the changelog, source code, licence and author.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
@@ -381,3 +389,71 @@ stories:
     customer:
       title: Keep the map in step with the code
       summary: A scheduled check compares the map with your code and proposes corrections for you to review.
+  # Fixes from the November 2026 code review
+  - id: ESM-601
+    title: Keep long Git names from breaking the history file
+    activity: track
+    release: planning
+    status: planned
+    summary: story-map history truncates author and merger names to the history format's 120-character limit, so parseStoryMapHistory always accepts what it writes.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#2-history-names-that-fit-the-history-format
+  - id: ESM-602
+    title: Keep history and diffs working when the map format changes
+    activity: track
+    release: planning
+    status: planned
+    summary: Past versions of the map are read leniently with a migration step, history reports versions it skipped, and diff compares an older-format base instead of failing.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#3-history-and-diff-that-survive-format-changes
+  - id: ESM-603
+    title: Use real IDs in the customer view
+    activity: explore
+    release: planning
+    status: planned
+    summary: The customer view keeps the real activity, release and story IDs instead of numbering them by position, so a collapsed lane stays on the same release when other releases become visible.
+    notes: Customers can see internal IDs for now. Breaking for hosts that read the old positional IDs, so it ships in 0.6.0.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#4-real-ids-in-the-customer-view
+  - id: ESM-604
+    title: Make hosts choose who sees the internal map
+    activity: set-up
+    release: planning
+    status: cut
+    statusReason: The library is set up mainly for internal use, so the default engineer and super-admin rule stays. The risk is documented in the engineering overview instead.
+    summary: Would have warned when the default engineer and super-admin rule was used, then required canViewInternal.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#5-the-default-rule-for-who-sees-the-internal-map
+      - docs/ENGINEERING-OVERVIEW.md#audience-projection
+  - id: ESM-605
+    title: Project and filter the map in one call
+    activity: set-up
+    release: planning
+    status: planned
+    summary: getStoryMapPage projects for the viewer and then filters, and storyMapResponseHeaders gives the no-store headers, so the safe order is the easy one. Documents page sizes for large maps.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#6-one-call-that-projects-and-filters
+  - id: ESM-606
+    title: Fix CLI and source check edge cases
+    activity: review
+    release: planning
+    status: planned
+    summary: Stop options taking the next flag as their value, and refuse sources that reach outside the repository through a symbolic link.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#7-cli-and-source-check-fixes
+  - id: ESM-607
+    title: Stop diff summaries notifying people
+    activity: review
+    release: planning
+    status: planned
+    summary: The diff escapes @mentions and #references in map text, so pasting the summary into a PR does not notify people or link issues.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#8-diff-summaries-that-do-not-notify-people
+  - id: ESM-608
+    title: Keep the board working with bad date settings
+    activity: explore
+    release: planning
+    status: planned
+    summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
+    sources:
+      - docs/plans/0.6.0-review-fixes.md#9-a-board-that-survives-bad-date-settings

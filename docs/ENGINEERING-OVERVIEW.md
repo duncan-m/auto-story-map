@@ -157,6 +157,8 @@ The JSON Schema cannot express the cross-reference rules. Editors catch shape er
 
 The default `canViewInternal` checks for the `engineer` or `super-admin` role (`defaultInternalRoles`). Hosts can pass their own rule. Only a strict `true` grants access, so a rule that returns a truthy string or a promise does not accidentally open the internal map.
 
+**Risk: the default rule trusts role names.** The library is set up mainly for internal use, so a host that passes no rule shows the internal map to any viewer with the `engineer` or `super-admin` role. That is deliberate, but those names are generic. In a product where customers can have a role called `engineer`, they would see engineering notes, block and cut reasons, and the names in the history. Hosts with roles like that must pass `canViewInternal` when they install the library. This was reviewed and kept on purpose in the [review fixes plan](plans/0.6.0-review-fixes.md#5-the-default-rule-for-who-sees-the-internal-map) (ESM-604).
+
 The customer view is built from scratch, not by deleting fields from the internal one:
 
 - Only stories with `customer` copy and an active status are included, using the customer title and summary. Blocked and cut stories are dropped before activities and releases are chosen, so a release that only contains them disappears too.
