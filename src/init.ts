@@ -1,5 +1,6 @@
-import { access, appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { constants } from "node:fs";
+import { access, lstat, mkdir, open, readFile, realpath, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative } from "node:path";
 
 export interface InitOptions {
   /** Write a GitHub Actions workflow that validates the map. Defaults to true. */
@@ -26,9 +27,71 @@ async function exists(path: string) {
   }
 }
 
-async function writeNew(path: string, contents: string) {
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, contents, { flag: "wx" });
+const isMissing = (error: unknown) => (error as NodeJS.ErrnoException).code === "ENOENT";
+
+function isInside(realRoot: string, path: string) {
+  const rel = relative(realRoot, path);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+/**
+ * Resolves a destination inside the host repository, following any symbolic
+ * links along the way only while they stay inside it. The result contains no
+ * links, so later writes cannot be redirected outside the root by one.
+ */
+async function destination(realRoot: string, path: string) {
+  let current = realRoot;
+  const parts = path.split("/");
+  for (const [index, part] of parts.entries()) {
+    const next = join(current, part);
+    let info;
+    try {
+      info = await lstat(next);
+    } catch (error) {
+      if (isMissing(error)) return join(next, ...parts.slice(index + 1));
+      throw error;
+    }
+    if (!info.isSymbolicLink()) {
+      current = next;
+      continue;
+    }
+    let target;
+    try {
+      target = await realpath(next);
+    } catch (error) {
+      if (isMissing(error)) throw new Error(`${path}: ${relative(realRoot, next)} is a broken symbolic link; remove it and run init again`);
+      throw error;
+    }
+    if (!isInside(realRoot, target)) {
+      throw new Error(`${path}: ${relative(realRoot, next)} is a symbolic link that points outside the repository`);
+    }
+    current = target;
+  }
+  return current;
+}
+
+async function writeNew(realRoot: string, path: string, contents: string) {
+  const target = await destination(realRoot, path);
+  await mkdir(dirname(target), { recursive: true });
+  // Check again in case a link appeared while the folders were created.
+  if ((await destination(realRoot, path)) !== target) throw new Error(`${path} changed while it was being created`);
+  // `wx` fails if anything, including a link, already exists at the path.
+  await writeFile(target, contents, { flag: "wx" });
+}
+
+/** Appends the guidance through one handle opened without following a final link. */
+async function appendGuidance(realRoot: string, path: string, agents: string) {
+  const handle = await open(await destination(realRoot, path), constants.O_RDWR | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0));
+  try {
+    if (!(await handle.stat()).isFile()) throw new Error(`${path} is not a file`);
+    const current = await handle.readFile("utf8");
+    if (current.includes(agentsMarker)) return false;
+    const separator = current.length === 0 || current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
+    await handle.appendFile(separator + agents);
+    return true;
+  } finally {
+    await handle.close();
+  }
 }
 
 async function productName(root: string) {
@@ -57,23 +120,25 @@ export function describeProduct(name: string) {
  */
 export async function initStoryMap(root: string, options: InitOptions = {}): Promise<InitStep[]> {
   const steps: InitStep[] = [];
+  const realRoot = await realpath(root);
+  const at = (path: string) => destination(realRoot, path);
 
   const mapPath = "product/story-map.yaml";
-  if (await exists(join(root, mapPath))) {
+  if (await exists(await at(mapPath))) {
     steps.push({ path: mapPath, action: "skipped", reason: "already exists" });
   } else {
     const { id, title } = describeProduct(await productName(root));
     const map = (await template("story-map.yaml")).replace("__ID__", id).replace("__TITLE__", title);
-    await writeNew(join(root, mapPath), map);
+    await writeNew(realRoot, mapPath, map);
     steps.push({ path: mapPath, action: "created" });
   }
 
   const guidePath = "docs/story-map.md";
   const guide = await readFile(new URL("docs/story-map.md", packageRoot), "utf8");
-  if (!(await exists(join(root, guidePath)))) {
-    await writeNew(join(root, guidePath), guide);
+  if (!(await exists(await at(guidePath)))) {
+    await writeNew(realRoot, guidePath, guide);
     steps.push({ path: guidePath, action: "created" });
-  } else if (await readFile(join(root, guidePath), "utf8") === guide) {
+  } else if (await readFile(await at(guidePath), "utf8") === guide) {
     steps.push({ path: guidePath, action: "skipped", reason: "already up to date" });
   } else {
     steps.push({
@@ -85,23 +150,18 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
 
   const agentsPath = "AGENTS.md";
   const agents = await template("AGENTS.md");
-  if (!(await exists(join(root, agentsPath)))) {
-    await writeNew(join(root, agentsPath), agents);
+  if (!(await exists(await at(agentsPath)))) {
+    await writeNew(realRoot, agentsPath, agents);
     steps.push({ path: agentsPath, action: "created" });
+  } else if (await appendGuidance(realRoot, agentsPath, agents)) {
+    steps.push({ path: agentsPath, action: "updated", reason: "added the story map section" });
   } else {
-    const current = await readFile(join(root, agentsPath), "utf8");
-    if (current.includes(agentsMarker)) {
-      steps.push({ path: agentsPath, action: "skipped", reason: "already has the story map section" });
-    } else {
-      const separator = current.length === 0 || current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
-      await appendFile(join(root, agentsPath), separator + agents);
-      steps.push({ path: agentsPath, action: "updated", reason: "added the story map section" });
-    }
+    steps.push({ path: agentsPath, action: "skipped", reason: "already has the story map section" });
   }
 
   if (options.ci !== false) {
     const workflowPath = ".github/workflows/story-map.yml";
-    if (await exists(join(root, workflowPath))) {
+    if (await exists(await at(workflowPath))) {
       steps.push({ path: workflowPath, action: "skipped", reason: "already exists" });
     } else if (!(await exists(join(root, "package-lock.json")))) {
       steps.push({
@@ -110,7 +170,7 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
         reason: "no package-lock.json; add `story-map validate --format github product/story-map.yaml` to your CI",
       });
     } else {
-      await writeNew(join(root, workflowPath), await template("story-map-ci.yml"));
+      await writeNew(realRoot, workflowPath, await template("story-map-ci.yml"));
       steps.push({ path: workflowPath, action: "created" });
     }
   }

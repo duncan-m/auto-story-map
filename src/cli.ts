@@ -264,7 +264,14 @@ async function diff(options: NonNullable<ReturnType<typeof parseDiffArgs>>) {
 }
 
 async function init(options: NonNullable<ReturnType<typeof parseInitArgs>>) {
-  const steps = await initStoryMap(options.dir, { ci: options.ci });
+  let steps;
+  try {
+    steps = await initStoryMap(options.dir, { ci: options.ci });
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+    return;
+  }
   for (const step of steps) {
     console.log(`${step.action.padEnd(8)} ${step.path}${step.reason ? ` (${step.reason})` : ""}`);
   }

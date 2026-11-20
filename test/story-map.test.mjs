@@ -385,6 +385,49 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.equal(describeProduct("x".repeat(100)).id.length, 64);
 });
 
+test("init refuses links that lead outside the repository", async t => {
+  const { initStoryMap } = await import("../dist/init.js");
+  const base = await mkdtemp(join(tmpdir(), "story-map-links-"));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const outside = join(base, "outside");
+  await mkdir(outside);
+  await writeFile(join(outside, "AGENTS.md"), "outside\n");
+  const host = async name => {
+    const root = join(base, name);
+    await mkdir(root);
+    return root;
+  };
+
+  const agentsLink = await host("agents-link");
+  await symlink(join(outside, "AGENTS.md"), join(agentsLink, "AGENTS.md"));
+  await assert.rejects(initStoryMap(agentsLink), /AGENTS\.md is a symbolic link that points outside the repository/);
+  assert.equal(await readFile(join(outside, "AGENTS.md"), "utf8"), "outside\n");
+
+  const dirLink = await host("dir-link");
+  await symlink(outside, join(dirLink, "product"));
+  await assert.rejects(initStoryMap(dirLink), /product\/story-map\.yaml: product is a symbolic link that points outside/);
+
+  const dangling = await host("dangling");
+  await symlink(join(outside, "missing"), join(dangling, "docs"));
+  await assert.rejects(initStoryMap(dangling), /docs is a broken symbolic link/);
+  await assert.rejects(readFile(join(outside, "missing", "story-map.md")));
+
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const run = spawnSync(process.execPath, [cli, "init", "--dir", agentsLink], { encoding: "utf8" });
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /points outside the repository/);
+
+  const inside = await host("inside");
+  await mkdir(join(inside, "documentation"));
+  await symlink("documentation", join(inside, "docs"));
+  await writeFile(join(inside, "RULES.md"), "# Rules\n");
+  await symlink("RULES.md", join(inside, "AGENTS.md"));
+  const steps = await initStoryMap(inside);
+  assert.deepEqual(steps.slice(1, 3).map(step => [step.path, step.action]), [["docs/story-map.md", "created"], ["AGENTS.md", "updated"]]);
+  assert.match(await readFile(join(inside, "documentation/story-map.md"), "utf8"), /./);
+  assert.match(await readFile(join(inside, "RULES.md"), "utf8"), /^# Rules\n\n<!-- auto-story-map:start -->/);
+});
+
 test("init skips the workflow without npm or when asked", async t => {
   const root = await mkdtemp(join(tmpdir(), "story-map-host-"));
   t.after(() => rm(root, { recursive: true, force: true }));
