@@ -121,7 +121,8 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
         type: earlier ? "status" : "added",
         ...(earlier ? { from: earlier.status } : {}),
         to: story.status,
-        at: commit.committedAt,
+        // Git versions differ in how they print UTC (+00:00 or Z), so store one canonical form.
+        at: new Date(commit.committedAt).toISOString(),
         ...(by ? { by } : {}),
         ...(merger ? { mergedBy: merger } : {}),
         commit: commit.sha,

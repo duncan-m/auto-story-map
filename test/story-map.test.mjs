@@ -654,7 +654,7 @@ test("only internal viewers see history, and it drives the “changed in” filt
   const internal = getStoryMapForViewer(current, engineer, { history });
   assert.deepEqual(internal.history, { generatedAt: history.generatedAt, complete: true });
   const drafting = internal.stories.find(story => story.id === "BUILDER-101");
-  assert.equal(drafting.lastChangedAt, "2026-11-12T15:30:00+00:00");
+  assert.equal(drafting.lastChangedAt, "2026-11-12T15:30:00.000Z");
   assert.deepEqual(drafting.history.map(entry => [entry.type, entry.to, entry.by]), [["status", "shipped", "Bob Builder"], ["added", "in-progress", "Alex Morgan"]]);
   assert.equal(Object.hasOwn(drafting.history[0], "storyId"), false);
 
@@ -690,11 +690,11 @@ test("the board shows when each story changed and its history to internal viewer
 
   const board = renderToStaticMarkup(createElement(StoryMapBoard, { map: filterStoryMapView(getStoryMapForViewer(current, engineer, { history }), {}, { now }), ...props }));
   const card = cardsIn(board).find(card => card.includes("BUILDER-101"));
-  assert.match(card, /<time class="esm-changed" dateTime="2026-11-12T15:30:00\+00:00" title="12 Nov 2026, 15:30">7 days ago<\/time>/i);
+  assert.match(card, /<time class="esm-changed" dateTime="2026-11-12T15:30:00\.000Z" title="12 Nov 2026, 15:30">7 days ago<\/time>/i);
   assert.match(cardsIn(board).find(card => card.includes("BUILDER-104")), />yesterday<\/time>/);
   const panel = panelFor(board, "Draft an estimate against a project");
   assert.match(panel, /<h4 id="[^"]+-history">History<\/h4>/);
-  assert.match(panel, /Shipped<\/span><\/span><span class="esm-history-meta"><time dateTime="2026-11-12T15:30:00\+00:00">12 Nov 2026, 15:30<\/time> · by Bob Builder, merged by Carol<\/span>/i);
+  assert.match(panel, /Shipped<\/span><\/span><span class="esm-history-meta"><time dateTime="2026-11-12T15:30:00\.000Z">12 Nov 2026, 15:30<\/time> · by Bob Builder, merged by Carol<\/span>/i);
   assert.match(panel, /Added as <span class="esm-status" data-status="in-progress">[\s\S]*?1 Nov 2026, 10:00<\/time> · by Alex Morgan, merged by Alice/);
   const totals = panelFor(board, "Check the estimate total");
   assert.match(totals, /18 Nov 2026, 16:45<\/time> · by Erin<\/span>/);

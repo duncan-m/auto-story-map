@@ -8,7 +8,7 @@ export interface StoryHistoryEvent {
   type: "added" | "status";
   from?: StoryStatus;
   to: StoryStatus;
-  /** ISO 8601 time the change reached the history’s branch, usually `main`. */
+  /** UTC time the change reached the history’s branch, usually `main`, such as `2026-11-12T15:30:00.000Z`. */
   at: string;
   /** Who made the edit: the story’s `updatedBy` when that edit set it, otherwise the Git commit author. */
   by?: string;
