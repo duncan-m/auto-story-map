@@ -331,7 +331,7 @@ stories:
     title: Collapse release lanes
     activity: explore
     release: next
-    status: in-progress
+    status: merged
     summary: A chevron in each release header collapses the lane to its title and story count. It works without JavaScript, and board.js remembers collapsed lanes across reloads.
     notes: CSS :has() does the collapsing. Browsers without :has() do not show the toggle, so every lane stays open.
     sources:
@@ -341,7 +341,7 @@ stories:
     title: Show the running version on the board
     activity: explore
     release: next
-    status: in-progress
+    status: merged
     summary: A footer shows the library version, author and licence. Internal viewers also get links to the changelog, source code, licence and author.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
