@@ -406,7 +406,7 @@ stories:
     title: Keep long Git names from breaking the history file
     activity: track
     release: v0-6-1
-    status: merged
+    status: shipped
     summary: story-map history truncates author and merger names to the history format's 120-character limit, so parseStoryMapHistory always accepts what it writes.
     sources:
       - docs/plans/0.6.0-review-fixes.md#2-history-names-that-fit-the-history-format
@@ -414,7 +414,7 @@ stories:
     title: Keep history and diffs working when the map format changes
     activity: track
     release: v0-6-1
-    status: merged
+    status: shipped
     summary: Past versions of the map are read leniently with a migration step, history reports versions it skipped, and diff compares an older-format base instead of failing.
     sources:
       - docs/plans/0.6.0-review-fixes.md#3-history-and-diff-that-survive-format-changes
@@ -441,7 +441,7 @@ stories:
     title: Project and filter the map in one call
     activity: set-up
     release: v0-6-1
-    status: merged
+    status: shipped
     summary: getStoryMapPage projects for the viewer and then filters, and storyMapResponseHeaders gives the no-store headers, so the safe order is the easy one. Documents page sizes for large maps.
     sources:
       - docs/plans/0.6.0-review-fixes.md#6-one-call-that-projects-and-filters
@@ -449,7 +449,7 @@ stories:
     title: Fix CLI and source check edge cases
     activity: review
     release: v0-6-1
-    status: merged
+    status: shipped
     summary: Stop options taking the next flag as their value, and refuse sources that reach outside the repository through a symbolic link.
     sources:
       - docs/plans/0.6.0-review-fixes.md#7-cli-and-source-check-fixes
@@ -457,7 +457,7 @@ stories:
     title: Stop diff summaries notifying people
     activity: review
     release: v0-6-1
-    status: merged
+    status: shipped
     summary: The diff escapes @mentions and #references in map text, so pasting the summary into a PR does not notify people or link issues.
     sources:
       - docs/plans/0.6.0-review-fixes.md#8-diff-summaries-that-do-not-notify-people
@@ -465,7 +465,7 @@ stories:
     title: Keep the board working with bad date settings
     activity: explore
     release: v0-6-1
-    status: merged
+    status: shipped
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
       - docs/plans/0.6.0-review-fixes.md#9-a-board-that-survives-bad-date-settings
@@ -473,7 +473,7 @@ stories:
     title: See when the map last changed and where
     activity: track
     release: v0-6-1
-    status: merged
+    status: shipped
     summary: The internal board's header says when the map was last updated, by whom, and which releases most recent changes were in, instead of a fixed summary.
     sources:
       - docs/story-map.md#show-status-history
@@ -481,7 +481,7 @@ stories:
     title: Keep source checks fast on crafted headings
     activity: review
     release: v0-6-1
-    status: merged
+    status: shipped
     summary: Heading anchors are read in linear time, and Markdown files over 5 MB are not read for anchors, so a crafted heading in a PR cannot stall CI.
     sources:
       - docs/plans/0.6.0-review-fixes.md#11-source-checks-that-stay-fast
