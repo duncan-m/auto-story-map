@@ -2,11 +2,21 @@
 
 Releases are published to npm by [the release workflow](../.github/workflows/release.yml) when a version tag is pushed. The workflow runs the full test matrix, publishes with provenance, and creates a GitHub release from the matching [changelog](../CHANGELOG.md) section.
 
+## How the workflow publishes
+
+The workflow has three jobs:
+
+1. **check** runs the full test matrix. It installs with `npm ci --ignore-scripts` and then runs `npm run build` itself.
+2. **pack** builds the package once and packs it with `npm pack`. It has only read access to the repository and cannot publish. It uploads the `.tgz` as a workflow artifact.
+3. **publish** downloads that tarball, checks that the tag matches the version in `package.json`, in the tarball and in the changelog, and publishes it with `npm publish <tarball> --provenance`. Then it creates the GitHub release.
+
+The publish job must never install dependencies or run `npm ci`. It has `id-token: write`, so any step in it can ask GitHub for the OpenID Connect token that npm trusted publishing accepts. A compromised dependency's install script could use that token to publish a malicious version, and npm would give it a valid provenance statement. Publishing a tarball runs no lifecycle scripts, so nothing but the workflow's own steps runs there. Keep any new build or test step in **check** or **pack**.
+
 ## Set up publishing once
 
 npm can only trust a workflow for a package that already exists, so publish the first version from a maintainer’s machine.
 
-1. Check out the release commit on `main`, then run `npm ci`, `npm test` and `npm publish --access public`. npm asks you to sign in and confirm with two-factor authentication.
+1. Check out the release commit on `main` in a clean clone, then run `npm ci --ignore-scripts`, `npm run build`, `npm test` and `npm publish --access public --ignore-scripts`. Skipping install scripts keeps dependencies from running code on your machine while you are signed in to npm. npm asks you to sign in and confirm with two-factor authentication.
 2. In the package’s settings on npmjs.com, add a trusted publisher for GitHub Actions with these values:
    - Organization or user: `duncan-m`
    - Repository: `embedable-story-map`
