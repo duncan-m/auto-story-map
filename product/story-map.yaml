@@ -74,8 +74,6 @@ releases:
     title: "0.4.0: Delivery tracking"
     summary: Statuses for work that is merged, blocked or cut, release impact, stalled stories and “last updated” from Git.
     notes: |
-      Merged on main and waiting to be published to npm.
-
       Teams can record why work stopped, what each release should change, and see which stories have been in progress too long.
     impact:
       - metric: Stories in progress for more than 4 weeks
@@ -252,7 +250,7 @@ stories:
     title: Warn about map problems without failing CI
     activity: review
     release: v0-4
-    status: merged
+    status: shipped
     sources:
       - docs/plans/0.4.0-enhancements.md#1-groundwork-validator-warnings
     customer:
@@ -262,14 +260,14 @@ stories:
     title: Record blocked and cut stories with a reason
     activity: plan
     release: v0-4
-    status: merged
+    status: shipped
     sources:
       - docs/story-map.md#blocked-and-cut-stories
   - id: ESM-403
     title: Record release notes and expected impact
     activity: plan
     release: v0-4
-    status: merged
+    status: shipped
     sources:
       - docs/story-map.md#release-notes-and-impact
     customer:
@@ -287,7 +285,7 @@ stories:
     title: Flag stories that stay in progress too long
     activity: track
     release: v0-4
-    status: merged
+    status: shipped
     sources:
       - docs/story-map.md#flag-stalled-stories
     customer:
@@ -297,7 +295,7 @@ stories:
     title: Show who last updated a story, from Git
     activity: track
     release: v0-4
-    status: merged
+    status: shipped
     notes: Edits authored by bots are credited to whoever merged them.
     sources:
       - docs/plans/0.4.0-enhancements.md#5-last-updated-from-git
@@ -308,7 +306,7 @@ stories:
     title: Separate merged work from shipped work
     activity: track
     release: v0-4
-    status: merged
+    status: shipped
     sources:
       - docs/story-map.md#merged-and-shipped
     customer:
@@ -319,7 +317,7 @@ stories:
     title: Apply filters as soon as they change
     activity: explore
     release: v0-4-1
-    status: merged
+    status: shipped
     summary: The optional board.js script submits the filter form when a select changes or Enter is pressed in search, hides Apply, and returns focus to the filter that was used.
     notes: Progressive enhancement only. Without the script, the form and its Apply button work as before.
     sources:
