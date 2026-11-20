@@ -1,0 +1,139 @@
+import { execFile } from "node:child_process";
+import { relative, resolve, sep } from "node:path";
+import { promisify } from "node:util";
+import type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
+import { parseStoryMap, type StoryMapDocument } from "./schema.js";
+
+const run = promisify(execFile);
+
+export interface BuildHistoryOptions {
+  /** Directory inside the Git repository. Defaults to the current directory. */
+  cwd?: string;
+  /** Path of the map, relative to `cwd`. Defaults to `product/story-map.yaml`. */
+  map?: string;
+  /** Branch or commit whose history to read. Defaults to `HEAD`. */
+  ref?: string;
+  /** Build a partial history from a shallow clone instead of failing. */
+  allowShallow?: boolean;
+  /** Time to record as `generatedAt`. Defaults to now. */
+  now?: Date;
+}
+
+export class StoryMapHistoryError extends Error {}
+
+interface Commit {
+  sha: string;
+  parents: string[];
+  committedAt: string;
+  authorName: string;
+  committerName: string;
+}
+
+async function git(cwd: string, args: string[]) {
+  try {
+    const { stdout } = await run("git", args, { cwd, maxBuffer: 64 * 1024 * 1024 });
+    return stdout;
+  } catch (error) {
+    const stderr = String((error as { stderr?: unknown }).stderr ?? "").trim();
+    throw new StoryMapHistoryError(stderr || `git ${args[0]} failed.`);
+  }
+}
+
+const separator = "\u001f";
+
+function parseCommits(output: string): Commit[] {
+  return output.split("\n").filter(Boolean).map(line => {
+    const [sha, parents, committedAt, authorName, committerName] = line.split(separator);
+    return { sha, parents: parents ? parents.split(" ") : [], committedAt, authorName, committerName };
+  });
+}
+
+/** GitHub records its own name as the committer of squash and rebase merges made on the website. */
+function mergedBy(commit: Commit) {
+  if (commit.parents.length > 1) return commit.authorName;
+  return commit.committerName === "GitHub" ? undefined : commit.committerName;
+}
+
+/**
+ * Reads the map’s Git history and records when each story was added and each
+ * status change, using the first-parent history of `ref` so each change is
+ * dated when it reached that branch.
+ */
+export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): Promise<StoryMapHistory> {
+  const cwd = resolve(options.cwd ?? ".");
+  const ref = options.ref ?? "HEAD";
+  if (ref.startsWith("-")) throw new StoryMapHistoryError(`'${ref}' is not a Git reference.`);
+  const mapPath = `./${relative(cwd, resolve(cwd, options.map ?? "product/story-map.yaml")).split(sep).join("/")}`;
+
+  const shallow = (await git(cwd, ["rev-parse", "--is-shallow-repository"])).trim() === "true";
+  if (shallow && !options.allowShallow) {
+    throw new StoryMapHistoryError(
+      "This is a shallow clone, so the map's earlier changes are missing. Fetch the full history " +
+      "(for example `git fetch --unshallow`, or `fetch-depth: 0` in actions/checkout), or pass --allow-shallow " +
+      "to build a partial history.",
+    );
+  }
+
+  const format = ["%H", "%P", "%cI", "%an", "%cn"].join("%x1f");
+  const commits = parseCommits(await git(cwd, ["log", "--first-parent", "--reverse", `--format=${format}`, ref, "--", mapPath]));
+
+  const events: StoryHistoryEvent[] = [];
+  let previous: StoryMapDocument | null = null;
+  // In a shallow clone, the oldest version is only a starting point: its stories were added before the history begins.
+  let baselineOnly = shallow;
+
+  for (const commit of commits) {
+    let current: StoryMapDocument;
+    try {
+      current = parseStoryMap(await git(cwd, ["show", `${commit.sha}:${mapPath}`]));
+    } catch {
+      // The map was deleted or did not validate in this commit. Compare the next
+      // valid version with the last valid one.
+      continue;
+    }
+    if (baselineOnly) {
+      previous = current;
+      baselineOnly = false;
+      continue;
+    }
+
+    const before = new Map((previous?.stories ?? []).map(story => [story.id, story]));
+    let branchAuthor: string | undefined | null = null;
+    const editor = async (story: StoryMapDocument["stories"][number]) => {
+      const earlier = before.get(story.id);
+      if (story.updatedBy && (!earlier || earlier.updatedBy !== story.updatedBy)) return story.updatedBy;
+      if (commit.parents.length < 2) return commit.authorName;
+      // For a merge, credit the author of the latest commit on the merged branch that edited the map.
+      if (branchAuthor === null) {
+        const log = await git(cwd, ["log", "-1", "--format=%an", `${commit.parents[0]}..${commit.sha}`, "--no-merges", "--", mapPath]);
+        branchAuthor = log.trim() || undefined;
+      }
+      return branchAuthor ?? commit.authorName;
+    };
+
+    for (const story of current.stories) {
+      const earlier = before.get(story.id);
+      if (earlier && earlier.status === story.status) continue;
+      const by = await editor(story);
+      const merger = mergedBy(commit);
+      events.push({
+        storyId: story.id,
+        type: earlier ? "status" : "added",
+        ...(earlier ? { from: earlier.status } : {}),
+        to: story.status,
+        at: commit.committedAt,
+        ...(by ? { by } : {}),
+        ...(merger ? { mergedBy: merger } : {}),
+        commit: commit.sha,
+      });
+    }
+    previous = current;
+  }
+
+  return {
+    version: 1,
+    generatedAt: (options.now ?? new Date()).toISOString(),
+    complete: !shallow,
+    events,
+  };
+}

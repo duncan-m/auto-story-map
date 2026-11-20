@@ -1,7 +1,10 @@
 import { useId, version } from "react";
 import type { CSSProperties } from "react";
 import { storyStatusLabels, storyStatuses, type StoryStatus } from "./status.js";
-import type { InternalStoryCard, StoryMapView } from "./view.js";
+import type { InternalStoryCard, StoryHistoryEntry, StoryMapView } from "./view.js";
+
+/** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
+const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
 
 export interface StoryMapBoardProps {
   map: StoryMapView;
@@ -11,6 +14,71 @@ export interface StoryMapBoardProps {
   theme?: "light" | "dark" | "auto";
   /** Query parameters to keep when the filter form is submitted, such as a host's own page state. */
   preservedParams?: Readonly<Record<string, string>>;
+  /** Locale for dates and relative times. Defaults to `en-GB`. */
+  locale?: string;
+  /** IANA time zone for dates, such as `Europe/London`. Defaults to the runtime’s zone. */
+  timeZone?: string;
+  /** Time to measure “3 days ago” from. Defaults to now. */
+  now?: Date;
+}
+
+interface DateSettings {
+  locale: string;
+  timeZone?: string;
+  now: Date;
+}
+
+function formatDate(at: string, settings: DateSettings, withTime = true) {
+  return new Intl.DateTimeFormat(settings.locale, {
+    dateStyle: "medium",
+    ...(withTime ? { timeStyle: "short" } : {}),
+    timeZone: settings.timeZone,
+  }).format(new Date(at));
+}
+
+/** “5 hours ago”, “yesterday”, “12 days ago”, then the date after 30 days. */
+function formatRelative(at: string, settings: DateSettings) {
+  const minutes = Math.floor((settings.now.getTime() - Date.parse(at)) / 60_000);
+  const relative = new Intl.RelativeTimeFormat(settings.locale, { numeric: "auto" });
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return relative.format(-minutes, "minute");
+  if (minutes < 24 * 60) return relative.format(-Math.floor(minutes / 60), "hour");
+  const days = Math.floor(minutes / (24 * 60));
+  if (days < 30) return relative.format(-days, "day");
+  return formatDate(at, settings, false);
+}
+
+function ChangedAt({ at, settings }: { at: string; settings: DateSettings }) {
+  return (
+    <time className="esm-changed" dateTime={at} title={formatDate(at, settings)}>
+      {formatRelative(at, settings)}
+    </time>
+  );
+}
+
+function HistoryList({ entries, settings, labelledBy }: { entries: StoryHistoryEntry[]; settings: DateSettings; labelledBy: string }) {
+  return (
+    <ol className="esm-history" aria-labelledby={labelledBy}>
+      {entries.map((entry, index) => {
+        const people = [
+          entry.by && `by ${entry.by}`,
+          entry.mergedBy && entry.mergedBy !== entry.by && `merged by ${entry.mergedBy}`,
+        ].filter(Boolean).join(", ");
+        return (
+          <li key={index}>
+            <span className="esm-history-change">
+              {entry.type === "added" ? "Added as " : ""}
+              <Status status={entry.to} />
+            </span>
+            <span className="esm-history-meta">
+              <time dateTime={entry.at}>{formatDate(entry.at, settings)}</time>
+              {people && ` · ${people}`}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 // React 19 knows the popover attributes by their camelCase names. React 18 passes
@@ -81,13 +149,14 @@ function Status({ status }: { status: StoryStatus }) {
   );
 }
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl }: {
+function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings }: {
   story: InternalStoryCard;
   panelId: string;
   activityTitle: string;
   releaseTitle: string;
   internal: boolean;
   sourceBaseUrl?: string;
+  settings: DateSettings;
 }) {
   const titleId = `${panelId}-title`;
   const sources = internal ? resolveSources(story.sources, sourceBaseUrl) : [];
@@ -116,6 +185,12 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
         <dt>Release</dt>
         <dd>{releaseTitle}</dd>
       </dl>
+      {internal && !!story.history?.length && (
+        <section className="esm-detail-section">
+          <h4 id={`${panelId}-history`}>History</h4>
+          <HistoryList entries={story.history} settings={settings} labelledBy={`${panelId}-history`} />
+        </section>
+      )}
       {hasEngineering && (
         <section className="esm-detail-section" aria-labelledby={`${panelId}-engineering`}>
           <h4 id={`${panelId}-engineering`}>Engineering</h4>
@@ -147,12 +222,13 @@ function storyCount(count: number) {
   return `${count} ${count === 1 ? "story" : "stories"}`;
 }
 
-function FilterToolbar({ filter, shown, preservedParams }: {
+function FilterToolbar({ filter, shown, preservedParams, showChanged }: {
   filter: NonNullable<StoryMapView["filter"]>;
   shown: number;
   preservedParams?: Readonly<Record<string, string>>;
+  showChanged: boolean;
 }) {
-  const filtering = !!(filter.query || filter.status);
+  const filtering = !!(filter.query || filter.status || filter.changedWithinDays);
   const clearHref = `?${new URLSearchParams(preservedParams ?? {})}`;
   return (
     <>
@@ -175,6 +251,17 @@ function FilterToolbar({ filter, shown, preservedParams }: {
             <option value="">All statuses</option>
             {storyStatuses.map(status => <option key={status} value={status}>{storyStatusLabels[status]}</option>)}
           </select>
+          {showChanged && (
+            <select
+              className="esm-select"
+              name="changed"
+              aria-label="Filter by when stories were added or changed status"
+              defaultValue={filter.changedWithinDays ? `${filter.changedWithinDays}d` : ""}
+            >
+              <option value="">Changed any time</option>
+              {changedWithinChoices.map(([days, label]) => <option key={days} value={`${days}d`}>{`Changed: ${label.toLowerCase()}`}</option>)}
+            </select>
+          )}
           <button type="submit" className="esm-button">Apply</button>
         </form>
       </div>
@@ -188,11 +275,20 @@ function FilterToolbar({ filter, shown, preservedParams }: {
   );
 }
 
-export function StoryMapBoard({ map, sourceBaseUrl, theme = "light", preservedParams }: StoryMapBoardProps) {
+export function StoryMapBoard({
+  map,
+  sourceBaseUrl,
+  theme = "light",
+  preservedParams,
+  locale = "en-GB",
+  timeZone,
+  now,
+}: StoryMapBoardProps) {
   const baseId = useId();
   const headingId = `${baseId}-heading`;
   const internal = map.audience === "internal";
-  const filtering = !!(map.filter && (map.filter.query || map.filter.status));
+  const filtering = !!(map.filter && (map.filter.query || map.filter.status || map.filter.changedWithinDays));
+  const settings: DateSettings = { locale, timeZone, now: now ?? new Date() };
 
   const activityTitles = new Map(map.activities.map(activity => [activity.id, activity.title]));
   const releaseTitles = new Map(map.releases.map(release => [release.id, release.title]));
@@ -219,7 +315,14 @@ export function StoryMapBoard({ map, sourceBaseUrl, theme = "light", preservedPa
         {map.summary && <p className="esm-goal">{map.summary}</p>}
       </header>
       <div className="esm-frame">
-        {map.filter && <FilterToolbar filter={map.filter} shown={placed.length} preservedParams={preservedParams} />}
+        {map.filter && (
+          <FilterToolbar
+            filter={map.filter}
+            shown={placed.length}
+            preservedParams={preservedParams}
+            showChanged={internal && !!map.history}
+          />
+        )}
         {showGrid ? (
           <div className="esm-scroll" role="region" tabIndex={0} aria-label="Story map by release and activity">
             <div
@@ -264,7 +367,10 @@ export function StoryMapBoard({ map, sourceBaseUrl, theme = "light", preservedPa
                           >
                             {internal && <span className="esm-card-id">{story.id}</span>}
                             <span className="esm-card-title">{story.title}</span>
-                            <Status status={story.status} />
+                            <span className="esm-card-meta">
+                              <Status status={story.status} />
+                              {internal && story.lastChangedAt && <ChangedAt at={story.lastChangedAt} settings={settings} />}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -285,6 +391,7 @@ export function StoryMapBoard({ map, sourceBaseUrl, theme = "light", preservedPa
           releaseTitle={releaseTitles.get(story.release)!}
           internal={internal}
           sourceBaseUrl={sourceBaseUrl}
+          settings={settings}
         />
       ))}
     </section>

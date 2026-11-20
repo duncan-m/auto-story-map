@@ -12,13 +12,16 @@ export { defaultInternalRoles, getStoryMapForViewer } from "./view.js";
 export type {
   InternalStoryCard,
   StoryCard,
+  StoryHistoryEntry,
   StoryMapAccessOptions,
   StoryMapFilterState,
   StoryMapLabel,
   StoryMapView,
   StoryMapViewer,
 } from "./view.js";
-export { filterStoryMapView, readStoryMapFilters } from "./filter.js";
-export type { StoryMapFilters } from "./filter.js";
+export { changedWithinOptions, filterStoryMapView, readStoryMapFilters } from "./filter.js";
+export type { ChangedWithinDays, FilterOptions, StoryMapFilters } from "./filter.js";
+export { parseStoryMapHistory, storyMapHistorySchema } from "./history.js";
+export type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
 export type { CustomerStoryChange, GroupChanges, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";

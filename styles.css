@@ -224,6 +224,9 @@
 .esm-status { display: inline-flex; align-items: center; gap: 4px; color: var(--esm-status-planned); font-size: .8125rem; line-height: 1.2; }
 .esm-status[data-status="in-progress"] { color: var(--esm-status-in-progress); }
 .esm-status[data-status="shipped"] { color: var(--esm-status-shipped); }
+.esm-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.esm-changed { color: var(--esm-faint); font-size: .75rem; }
+.esm-changed::before { content: "·"; margin-right: 8px; }
 
 /* Story detail panel */
 .esm-detail {
@@ -274,6 +277,10 @@
 .esm-overview-link + .esm-notes { margin-top: 10px; }
 .esm-sources { margin: 10px 0 0; padding-left: 1.2em; line-height: 1.5; }
 .esm-sources code { font-size: .8125rem; overflow-wrap: anywhere; }
+.esm-history { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.esm-history li { display: grid; gap: 3px; }
+.esm-history-change { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--esm-muted); }
+.esm-history-meta { color: var(--esm-muted); font-size: .8125rem; overflow-wrap: anywhere; }
 .esm-updater { margin: 18px 0 0; color: var(--esm-muted); font-size: .875rem; }
 
 /* Narrow screens: stack each release lane instead of scrolling sideways. */

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import { relative, resolve, sep } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { diffStoryMaps, formatStoryMapDiff } from "./diff.js";
+import { buildStoryMapHistory, StoryMapHistoryError } from "./history-git.js";
 import { initStoryMap } from "./init.js";
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
 import {
@@ -18,6 +19,7 @@ const usage = `Usage:
   story-map init [--no-ci] [--dir <path>]
   story-map validate [--format text|github] [--check-sources] [--plans <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
+  story-map history [--map <path>] [--ref <ref>] [--out <file>] [--allow-shallow]
 
 init
   Sets up a host repository: a starter product/story-map.yaml, the story map
@@ -42,7 +44,17 @@ diff
   prints a Markdown summary for a pull request. Customer-facing changes come first.
 
   --map <path>       Map to compare. Defaults to product/story-map.yaml.
-  --format json      Print the comparison as JSON instead.`;
+  --format json      Print the comparison as JSON instead.
+
+history
+  Reads the map's Git history and writes when each story was added and each
+  status change, who made it and who merged it, as JSON for the board. Run it
+  when building the product, from a full clone.
+
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --ref <ref>        Branch whose history to read. Defaults to HEAD.
+  --out <file>       Write to a file instead of printing.
+  --allow-shallow    Build a partial history from a shallow clone instead of failing.`;
 
 type Format = "text" | "github";
 
@@ -228,14 +240,54 @@ Next, ask an agent in this repository to populate the map:
   status decisions for review.`);
 }
 
+function parseHistoryArgs(rest: string[]) {
+  const options = { map: "product/story-map.yaml", ref: "HEAD", out: undefined as string | undefined, allowShallow: false };
+  for (let index = 0; index < rest.length; index++) {
+    const arg = rest[index];
+    const name = arg.split("=")[0];
+    if (name === "--map" || name === "--ref" || name === "--out") {
+      const [value, next] = optionValue(rest, index, name);
+      if (!value) return null;
+      index = next;
+      options[name.slice(2) as "map" | "ref" | "out"] = value;
+    } else if (arg === "--allow-shallow") {
+      options.allowShallow = true;
+    } else {
+      return null;
+    }
+  }
+  return options;
+}
+
+async function history(options: NonNullable<ReturnType<typeof parseHistoryArgs>>) {
+  try {
+    const result = await buildStoryMapHistory({ map: options.map, ref: options.ref, allowShallow: options.allowShallow });
+    const json = JSON.stringify(result, null, 2) + "\n";
+    if (!options.out) {
+      process.stdout.write(json);
+      return;
+    }
+    await mkdir(dirname(resolve(options.out)), { recursive: true });
+    await writeFile(options.out, json);
+    const stories = new Set(result.events.map(event => event.storyId)).size;
+    console.error(`${options.out}: ${result.events.length} changes to ${stories} stories${result.complete ? "" : " (partial: shallow clone)"}`);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = error instanceof StoryMapHistoryError ? 2 : 1;
+  }
+}
+
 const [command, ...rest] = process.argv.slice(2);
 const validateOptions = command === "validate" ? parseValidateArgs(rest) : null;
 const initOptions = command === "init" ? parseInitArgs(rest) : null;
 const diffOptions = command === "diff" ? parseDiffArgs(rest) : null;
+const historyOptions = command === "history" ? parseHistoryArgs(rest) : null;
 if (validateOptions) {
   await validate(validateOptions);
 } else if (diffOptions) {
   await diff(diffOptions);
+} else if (historyOptions) {
+  await history(historyOptions);
 } else if (initOptions) {
   await init(initOptions);
 } else if (command === "help" || command === "--help" || command === "-h") {
