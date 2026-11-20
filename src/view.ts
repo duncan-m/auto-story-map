@@ -1,3 +1,4 @@
+import type { StoryHistoryEvent, StoryMapHistory } from "./history.js";
 import type { StoryMapDocument } from "./schema.js";
 import type { StoryStatus } from "./status.js";
 
@@ -12,6 +13,11 @@ export interface StoryMapAccessOptions<Viewer extends StoryMapViewer = StoryMapV
    * Defaults to viewers with the `engineer` or `super-admin` role.
    */
   canViewInternal?: (viewer: Viewer) => boolean;
+  /**
+   * Status history from `story-map history`. Only internal viewers see it; the
+   * customer view never includes dates or names from it.
+   */
+  history?: StoryMapHistory | null;
 }
 
 export const defaultInternalRoles: readonly string[] = ["engineer", "super-admin"];
@@ -32,16 +38,25 @@ export interface StoryCard extends StoryMapLabel {
   status: StoryStatus;
 }
 
+/** A story’s change as shown to internal viewers. */
+export type StoryHistoryEntry = Omit<StoryHistoryEvent, "storyId">;
+
 export interface InternalStoryCard extends StoryCard {
   updatedBy?: string;
   notes?: string;
   sources?: string[];
+  /** When the story was added or last changed status. Present when the host supplied history. */
+  lastChangedAt?: string;
+  /** The story’s additions and status changes, newest first. */
+  history?: StoryHistoryEntry[];
 }
 
 /** Present when the host has applied `filterStoryMapView`. The board shows its search toolbar only then. */
 export interface StoryMapFilterState {
   query?: string;
   status?: StoryStatus;
+  /** Only stories added or changed in this many days. */
+  changedWithinDays?: number;
   /** Number of stories in the view before filtering. */
   total: number;
 }
@@ -52,6 +67,8 @@ interface StoryMapBaseView {
   activities: StoryMapLabel[];
   releases: StoryMapLabel[];
   filter?: StoryMapFilterState;
+  /** Present on internal views when the host supplied history. */
+  history?: { generatedAt: string; complete: boolean };
 }
 
 export type StoryMapView =
@@ -71,21 +88,32 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
 
   const canViewInternal = options.canViewInternal ?? hasDefaultInternalRole;
   if (canViewInternal(viewer) === true) {
+    const history = options.history;
+    const byStory = new Map<string, StoryHistoryEntry[]>();
+    for (const { storyId, ...entry } of history?.events ?? []) {
+      byStory.set(storyId, [entry, ...(byStory.get(storyId) ?? [])]);
+    }
+    for (const entries of byStory.values()) entries.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
     return {
       audience: "internal",
       title: map.title,
       summary: map.summary,
       activities: map.activities.map(projectLabel),
       releases: map.releases.map(projectLabel),
-      stories: map.stories.map(story => ({
-        ...projectLabel(story),
-        activity: story.activity,
-        release: story.release,
-        status: story.status,
-        updatedBy: story.updatedBy,
-        notes: story.notes,
-        sources: story.sources,
-      })),
+      stories: map.stories.map(story => {
+        const entries = byStory.get(story.id);
+        return {
+          ...projectLabel(story),
+          activity: story.activity,
+          release: story.release,
+          status: story.status,
+          updatedBy: story.updatedBy,
+          notes: story.notes,
+          sources: story.sources,
+          ...(entries ? { lastChangedAt: entries[0].at, history: entries } : {}),
+        };
+      }),
+      ...(history ? { history: { generatedAt: history.generatedAt, complete: history.complete } } : {}),
     };
   }
 

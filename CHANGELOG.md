@@ -2,6 +2,13 @@
 
 All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+- New `story-map history` reads the map’s Git history and records when each story was added and each status change, who made it and who merged it. Pass the result to `getStoryMapForViewer` as `history`.
+- Internal cards show the time since the last change, such as “Shipped · 2 days ago”, and the story panel lists the full history. A new **Changed** filter shows stories added or changed in the last 1, 7, 14 or 30 days (`changed=7d`). The customer view never includes history.
+- New `locale`, `timeZone` and `now` props on `StoryMapBoard`, and a `now` option on `filterStoryMapView`.
+- Engineering overview and source links in the story panel open in a new tab, with an icon and screen-reader text that say so.
+
 ## 0.3.0
 
 Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030). The YAML format is unchanged.

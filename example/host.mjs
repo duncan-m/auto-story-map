@@ -6,7 +6,7 @@ import { StoryMapBoard } from "embedded-story-map/react";
 // The enclosing app supplies a viewer from its verified session.
 // `target` is the request URL or path, including any `q` and `status` filter parameters.
 export function makeStoryMapResponse(target, document, viewer, options = {}) {
-  const { navigation = null, sourceBaseUrl, preservedParams, canViewInternal } = options;
+  const { navigation = null, sourceBaseUrl, preservedParams, canViewInternal, history, now } = options;
   const url = new URL(target, "http://localhost");
   const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
   const isApi = url.pathname === "/api/story-map";
@@ -16,8 +16,8 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
   }
 
   // Project first, then filter, so a search only ever sees what this viewer may see.
-  const view = getStoryMapForViewer(document, viewer, { canViewInternal });
-  const map = view && filterStoryMapView(view, readStoryMapFilters(url.searchParams));
+  const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
+  const map = view && filterStoryMapView(view, readStoryMapFilters(url.searchParams), { now });
   const status = map ? 200 : viewer ? 403 : 401;
   const message = viewer ? "This story map is only available to the product team." : "Sign in to view the story map.";
 
@@ -39,7 +39,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
         navigation,
       ),
       h("main", null,
-        map ? h(StoryMapBoard, { map, sourceBaseUrl, preservedParams }) : h("p", null, message),
+        map ? h(StoryMapBoard, { map, sourceBaseUrl, preservedParams, now }) : h("p", null, message),
       ),
     ),
   );

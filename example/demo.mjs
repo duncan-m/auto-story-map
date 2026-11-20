@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createElement as h } from "react";
 import { parseStoryMap } from "embedded-story-map";
+import { buildStoryMapHistory } from "../dist/history-git.js";
 import { makeStoryMapResponse } from "./host.mjs";
 
 // Local-only role switch for checking the example views.
@@ -20,6 +21,14 @@ const sourceBaseUrl = "https://github.com/duncan-m/embedable-story-map/blob/main
 // This product also gives product managers the internal view.
 const internalRoles = new Set(["engineer", "super-admin", "product-manager"]);
 const canViewInternal = viewer => viewer.roles.some(role => internalRoles.has(role));
+
+// A product would run `story-map history --out <file>` in its build. The demo reads its own Git history at startup.
+let history = null;
+try {
+  history = await buildStoryMapHistory({ cwd: new URL("..", import.meta.url).pathname, allowShallow: true });
+} catch (error) {
+  console.warn(`Status history is unavailable: ${error.message}`);
+}
 
 const server = createServer(async (request, response) => {
   try {
@@ -55,6 +64,7 @@ const server = createServer(async (request, response) => {
       navigation,
       sourceBaseUrl,
       canViewInternal,
+      history,
       preservedParams: { as: selected },
     });
     response.writeHead(result.status, Object.fromEntries(result.headers)).end(await result.text());

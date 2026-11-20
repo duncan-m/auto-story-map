@@ -37,7 +37,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
 
-When you add or edit a story, record the editor’s display name in `updatedBy`. This field is optional, so stories with no recorded editor can omit it.
+When you add or edit a story, record the editor’s display name in `updatedBy`. The [status history](#show-status-history) uses it to credit each change. This field is optional, so stories with no recorded editor can omit it.
 
 ## Example
 
@@ -146,6 +146,39 @@ The workflow from `npx story-map init` adds the summary to each PR’s job summa
 ```
 
 In code, `diffStoryMaps(before, after)` returns the same comparison and `formatStoryMapDiff` renders it.
+
+## Show status history
+
+Internal viewers can see when each story was added or changed status, who made the change and who merged it. The board shows the time since the last change on each card, such as “Shipped · 2 days ago”, and the full history in the story panel. A **Changed** filter in the toolbar narrows the board to stories added or changed in the last day, 7, 14 or 30 days. Moving a story to another activity or release does not count as a change. The customer view never includes history.
+
+The history comes from Git, so there is nothing extra to record. When the product is built, run:
+
+```sh
+npx --no-install story-map history --out build/story-map-history.json
+```
+
+The command reads every version of the map on the current branch’s first-parent history, usually `main`:
+
+- **When** is the time the change reached that branch.
+- **By** is the story’s `updatedBy` when that edit set it, otherwise the author of the commit that made the change. Keep setting `updatedBy` on every edit so the right person is credited.
+- **Merged by** is the person who merged the pull request. Git records this for merge commits and direct pushes, but not for GitHub squash or rebase merges, so those entries show only the editor.
+
+Load the file on the server and pass it in. Keep it with the map, outside the static asset directory, because it contains names:
+
+```ts
+const history = parseStoryMapHistory(await readFile("build/story-map-history.json", "utf8"));
+const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
+const map = view && filterStoryMapView(view, readStoryMapFilters(url.searchParams));
+```
+
+Pass `timeZone`, such as `Europe/London`, and optionally `locale` to `StoryMapBoard` so dates match your team. Without a history file, the board works as before with no dates and no **Changed** filter.
+
+The build needs the full Git history. Many CI and hosting systems clone only the latest commits, and Docker builds often have no `.git` folder:
+
+- In GitHub Actions, check out with `fetch-depth: 0`.
+- Elsewhere, run `git fetch --unshallow` before the command, or generate the file in a step that has the full history and pass it into the build.
+
+The command stops with an explanation when the clone is shallow. Pass `--allow-shallow` to accept a partial history instead; changes before the clone’s oldest commit are then missing.
 
 ## Integrate with a product
 

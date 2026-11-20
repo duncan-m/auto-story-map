@@ -15,6 +15,7 @@ import {
   filterStoryMapView,
   formatStoryMapDiff,
   hasStoryMapChanges,
+  parseStoryMapHistory,
   getStoryMapForViewer,
   parseStoryMap,
   readStoryMapFilters,
@@ -166,8 +167,13 @@ test("renders one Markdown overview link and lists the other sources", async () 
   const overviewLinks = [...html.matchAll(/<a class="esm-overview-link" href="([^"]+)"/g)].map(match => match[1]);
   assert.deepEqual(overviewLinks, [sourceBaseUrl + "docs/example-builder-estimate-plan.md#builder-workflow"]);
   const panel = panelFor(html, story.title);
-  assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}source/lib/ap/controls.ts"><code>source/lib/ap/controls.ts</code></a>`));
-  assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}docs/another-overview.md#decisions">`));
+  assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}source/lib/ap/controls.ts" target="_blank" rel="noopener noreferrer"><code>source/lib/ap/controls.ts</code><svg[^>]*esm-external[\\s\\S]*?<span class="esm-visually-hidden"> \\(opens in a new tab\\)</span></a>`));
+  assert.match(html, /<a class="esm-overview-link" href="[^"]+" aria-label="Engineering overview for [^"]+ \(opens in a new tab\)" target="_blank" rel="noopener noreferrer">/);
+  // Every engineering link opens in a new tab without giving the new page access to the board.
+  const engineeringLinks = panel.match(/<a [^>]*>/g);
+  assert.ok(engineeringLinks.length >= 3);
+  for (const link of engineeringLinks) assert.match(link, /target="_blank" rel="noopener noreferrer"/);
+  assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}docs/another-overview.md#decisions" target="_blank" rel="noopener noreferrer">`));
   assert.match(panel, /<li><code>Agreed in the March planning call<\/code><\/li>/);
 });
 
@@ -227,6 +233,7 @@ test("the filter toolbar submits a GET form and keeps host parameters", async ()
   assert.match(html, /name="q"[^>]*value="estimate"/);
   assert.match(html, /<option value="planned" selected="">Planned<\/option>/);
   assert.match(html, /Showing 3 of 5 stories\. <a href="\?as=engineer">Clear filters<\/a>/);
+  assert.doesNotMatch(html.match(/<a href="\?as=engineer">/)[0], /target=/);
   assert.equal(cardsIn(html).length, 3);
   assert.doesNotMatch(html, /Reconciliation discovery/);
 
@@ -530,4 +537,173 @@ test("the CLI diffs the map against a Git reference", async t => {
   assert.equal(run("diff", "--upload-pack=x").status, 2);
   await writeFile(join(root, "product/story-map.yaml"), "version: 2\n");
   assert.equal(run("diff", "HEAD").status, 1);
+});
+
+/** Builds a repository whose map changes over several dated commits by different people. */
+async function historyRepo(t) {
+  const root = await mkdtemp(join(tmpdir(), "story-map-history-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const git = (args, person = {}) => {
+    const author = person.author ?? "Test";
+    const committer = person.committer ?? author;
+    const result = spawnSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: author, GIT_AUTHOR_EMAIL: "a@example.test",
+        GIT_COMMITTER_NAME: committer, GIT_COMMITTER_EMAIL: "c@example.test",
+        ...(person.date ? { GIT_AUTHOR_DATE: person.date, GIT_COMMITTER_DATE: person.date } : {}),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  const writeMap = edit => {
+    const document = structuredClone(map);
+    edit?.(document);
+    return writeFile(join(root, "product/story-map.yaml"), stringify(document));
+  };
+  const story = (document, id) => document.stories.find(story => story.id === id);
+
+  git(["init", "-q", "-b", "main"]);
+  await mkdir(join(root, "product"));
+  await writeMap();
+  git(["add", "-A"]);
+  git(["commit", "-q", "-m", "Add the map"], { author: "Alice", date: "2026-11-01T10:00:00Z" });
+
+  // Bob ships BUILDER-101 and records himself as the editor. Moving FINANCE-201 is not a status change.
+  git(["checkout", "-q", "-b", "ship"]);
+  await writeMap(document => {
+    Object.assign(story(document, "BUILDER-101"), { status: "shipped", updatedBy: "Bob Builder" });
+    story(document, "FINANCE-201").release = "builder-mvp";
+  });
+  git(["commit", "-q", "-am", "Ship drafting"], { author: "Bob", date: "2026-11-10T09:00:00Z" });
+  git(["checkout", "-q", "main"]);
+  git(["merge", "-q", "--no-ff", "-m", "Merge ship", "ship"], { author: "Carol", date: "2026-11-12T15:30:00Z" });
+
+  // Dan starts BUILDER-102 but leaves updatedBy as it was, so Git's author is credited.
+  git(["checkout", "-q", "-b", "start"]);
+  await writeMap(document => {
+    Object.assign(story(document, "BUILDER-101"), { status: "shipped", updatedBy: "Bob Builder" });
+    story(document, "FINANCE-201").release = "builder-mvp";
+    story(document, "BUILDER-102").status = "in-progress";
+  });
+  git(["commit", "-q", "-am", "Start prices"], { author: "Dan", date: "2026-11-15T11:00:00Z" });
+  git(["checkout", "-q", "main"]);
+  git(["merge", "-q", "--no-ff", "-m", "Merge start", "start"], { author: "Carol", date: "2026-11-16T08:00:00Z" });
+
+  // A broken version is skipped, then a GitHub squash merge adds a story.
+  await writeFile(join(root, "product/story-map.yaml"), "version: 1\nbroken: true\n");
+  git(["commit", "-q", "-am", "Break the map"], { author: "Erin", date: "2026-11-17T10:00:00Z" });
+  await writeMap(document => {
+    Object.assign(story(document, "BUILDER-101"), { status: "shipped", updatedBy: "Bob Builder" });
+    story(document, "FINANCE-201").release = "builder-mvp";
+    story(document, "BUILDER-102").status = "in-progress";
+    document.stories.push({ id: "BUILDER-104", title: "Check the estimate total", activity: "prepare", release: "builder-mvp", status: "planned" });
+  });
+  git(["commit", "-q", "-am", "Add totals (#7)"], { author: "Erin", committer: "GitHub", date: "2026-11-18T16:45:00Z" });
+  return { root, git };
+}
+
+test("history records additions and status changes with editor, merger and date", async t => {
+  const { buildStoryMapHistory } = await import("../dist/history-git.js");
+  const { root, git } = await historyRepo(t);
+  const history = await buildStoryMapHistory({ cwd: root, now: new Date("2026-11-20T12:00:00Z") });
+
+  assert.equal(history.complete, true);
+  assert.equal(history.generatedAt, "2026-11-20T12:00:00.000Z");
+  const summary = history.events.map(({ storyId, type, from, to, at, by, mergedBy }) => [storyId, type, from, to, at.slice(0, 16), by, mergedBy]);
+  assert.deepEqual(summary, [
+    ["BUILDER-101", "added", undefined, "in-progress", "2026-11-01T10:00", "Alex Morgan", "Alice"],
+    ["BUILDER-102", "added", undefined, "planned", "2026-11-01T10:00", "Sam Patel", "Alice"],
+    ["BUILDER-103", "added", undefined, "planned", "2026-11-01T10:00", "Alex Morgan", "Alice"],
+    ["FINANCE-201", "added", undefined, "planned", "2026-11-01T10:00", "Taylor Reed", "Alice"],
+    ["FINANCE-202", "added", undefined, "planned", "2026-11-01T10:00", "Taylor Reed", "Alice"],
+    ["BUILDER-101", "status", "in-progress", "shipped", "2026-11-12T15:30", "Bob Builder", "Carol"],
+    ["BUILDER-102", "status", "planned", "in-progress", "2026-11-16T08:00", "Dan", "Carol"],
+    ["BUILDER-104", "added", undefined, "planned", "2026-11-18T16:45", "Erin", undefined],
+  ]);
+  assert.equal(history.events.at(-1).commit, git(["rev-parse", "HEAD"]));
+  assert.deepEqual(parseStoryMapHistory(JSON.stringify(history)), history);
+  assert.throws(() => parseStoryMapHistory({ ...history, events: [{ storyId: "X" }] }), /Invalid story map history/);
+
+  const shallow = join(root, "shallow");
+  git(["clone", "-q", "--depth", "3", `file://${root}`, shallow]);
+  await assert.rejects(buildStoryMapHistory({ cwd: shallow }), /shallow clone/);
+  const partial = await buildStoryMapHistory({ cwd: shallow, allowShallow: true });
+  assert.equal(partial.complete, false);
+  assert.deepEqual(partial.events.map(event => event.storyId), ["BUILDER-104"]);
+
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const out = join(root, "build/history.json");
+  const written = spawnSync(process.execPath, [cli, "history", "--out", out], { cwd: root, encoding: "utf8" });
+  assert.equal(written.status, 0, written.stderr);
+  assert.match(written.stderr, /8 changes to 6 stories/);
+  assert.equal(parseStoryMapHistory(await readFile(out, "utf8")).events.length, 8);
+  assert.equal(spawnSync(process.execPath, [cli, "history"], { cwd: shallow }).status, 2);
+});
+
+test("only internal viewers see history, and it drives the “changed in” filter", async t => {
+  const { buildStoryMapHistory } = await import("../dist/history-git.js");
+  const { root } = await historyRepo(t);
+  const history = await buildStoryMapHistory({ cwd: root });
+  const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
+  const now = new Date("2026-11-20T12:00:00Z");
+
+  const internal = getStoryMapForViewer(current, engineer, { history });
+  assert.deepEqual(internal.history, { generatedAt: history.generatedAt, complete: true });
+  const drafting = internal.stories.find(story => story.id === "BUILDER-101");
+  assert.equal(drafting.lastChangedAt, "2026-11-12T15:30:00.000Z");
+  assert.deepEqual(drafting.history.map(entry => [entry.type, entry.to, entry.by]), [["status", "shipped", "Bob Builder"], ["added", "in-progress", "Alex Morgan"]]);
+  assert.equal(Object.hasOwn(drafting.history[0], "storyId"), false);
+
+  const customer = getStoryMapForViewer(current, regular, { history });
+  assert.equal(Object.hasOwn(customer, "history"), false);
+  assert.ok(customer.stories.every(story => !("history" in story) && !("lastChangedAt" in story)));
+
+  const ids = (view, days) => filterStoryMapView(view, { changedWithinDays: days }, { now }).stories.map(story => story.id);
+  assert.deepEqual(ids(internal, 1), []);
+  assert.deepEqual(ids(internal, 7), ["BUILDER-102", "BUILDER-104"]);
+  assert.deepEqual(ids(internal, 14), ["BUILDER-101", "BUILDER-102", "BUILDER-104"]);
+  assert.equal(ids(internal, 30).length, 6);
+  assert.equal(filterStoryMapView(internal, { status: "shipped", changedWithinDays: 14 }, { now }).stories.length, 1);
+  // Without history, or for customers, the window is ignored rather than hiding every story.
+  assert.equal(ids(getStoryMapForViewer(current, engineer), 7).length, 6);
+  assert.equal(ids(customer, 7).length, customer.stories.length);
+
+  assert.deepEqual(readStoryMapFilters(new URLSearchParams("changed=7d")), { query: undefined, status: undefined, changedWithinDays: 7 });
+  assert.equal(readStoryMapFilters(new URLSearchParams("changed=3d")).changedWithinDays, undefined);
+});
+
+test("the board shows when each story changed and its history to internal viewers only", async t => {
+  const { buildStoryMapHistory } = await import("../dist/history-git.js");
+  const { root } = await historyRepo(t);
+  const history = await buildStoryMapHistory({ cwd: root });
+  const current = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
+  const now = new Date("2026-11-20T12:00:00Z");
+  const props = { now, timeZone: "UTC", preservedParams: { as: "engineer" } };
+
+  const html = await makeStoryMapResponse("/story-map?changed=14d", current, engineer, { history, now, preservedParams: props.preservedParams }).text();
+  assert.match(html, /<option value="14d" selected="">Changed: last 14 days<\/option>/);
+  assert.match(html, /Showing 3 of 6 stories\./);
+
+  const board = renderToStaticMarkup(createElement(StoryMapBoard, { map: filterStoryMapView(getStoryMapForViewer(current, engineer, { history }), {}, { now }), ...props }));
+  const card = cardsIn(board).find(card => card.includes("BUILDER-101"));
+  assert.match(card, /<time class="esm-changed" dateTime="2026-11-12T15:30:00\.000Z" title="12 Nov 2026, 15:30">7 days ago<\/time>/i);
+  assert.match(cardsIn(board).find(card => card.includes("BUILDER-104")), />yesterday<\/time>/);
+  const panel = panelFor(board, "Draft an estimate against a project");
+  assert.match(panel, /<h4 id="[^"]+-history">History<\/h4>/);
+  assert.match(panel, /Shipped<\/span><\/span><span class="esm-history-meta"><time dateTime="2026-11-12T15:30:00\.000Z">12 Nov 2026, 15:30<\/time> · by Bob Builder, merged by Carol<\/span>/i);
+  assert.match(panel, /Added as <span class="esm-status" data-status="in-progress">[\s\S]*?1 Nov 2026, 10:00<\/time> · by Alex Morgan, merged by Alice/);
+  const totals = panelFor(board, "Check the estimate total");
+  assert.match(totals, /18 Nov 2026, 16:45<\/time> · by Erin<\/span>/);
+
+  const customer = await makeStoryMapResponse("/story-map?changed=7d", current, regular, { history, now }).text();
+  assert.doesNotMatch(customer, /esm-changed|History|Bob Builder|Carol|Alice|name="changed"/);
+  const customerJson = await makeStoryMapResponse("/api/story-map", current, regular, { history, now }).json();
+  assert.doesNotMatch(JSON.stringify(customerJson), /lastChangedAt|history|Bob Builder/);
+
+  const noHistory = renderToStaticMarkup(createElement(StoryMapBoard, { map: filterStoryMapView(getStoryMapForViewer(current, engineer)), ...props }));
+  assert.doesNotMatch(noHistory, /name="changed"|esm-changed|>History</);
 });
