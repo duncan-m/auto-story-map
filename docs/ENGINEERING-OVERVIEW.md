@@ -387,7 +387,7 @@ Tests that need Git create temporary repositories and clean them up. They need `
 
 `ci.yml` runs on every PR and push to `main`, on a matrix of Node 20 and 26 with React 18 and 19:
 
-1. `npm ci`
+1. `npm ci --ignore-scripts`, then `npm run build`, so no dependency's install script runs in CI
 2. Validate the product map with `--format github --check-sources --plans docs`
 3. On PRs, once per run, append `story-map diff origin/<base>` to the job summary. The checkout uses `fetch-depth: 0` for this.
 4. `npm test`
