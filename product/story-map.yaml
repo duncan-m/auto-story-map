@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=../story-map.schema.json
 version: 1
 id: auto-story-map
-title: Auto Story Map delivery map
+title: Auto Story Map Demo
 summary: How product teams set up, plan, review and follow their story map, from the first release to what comes next.
 visibility: all-users
 customer:
-  title: Auto Story Map roadmap
+  title: Auto Story Map Demo
   summary: What you can do with Auto Story Map today, and what is coming next.
 activities:
   - id: set-up
@@ -469,6 +469,14 @@ stories:
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
       - docs/plans/0.6.0-review-fixes.md#9-a-board-that-survives-bad-date-settings
+  - id: ESM-609
+    title: See when the map last changed and where
+    activity: track
+    release: planning
+    status: merged
+    summary: The internal board's header says when the map was last updated, by whom, and which releases most recent changes were in, instead of a fixed summary.
+    sources:
+      - docs/story-map.md#show-status-history
   # Export to external tools
   - id: ESM-701
     title: Check that Miro and Lucidchart import a test file

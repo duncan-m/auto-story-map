@@ -11,7 +11,7 @@ export { defaultStalledAfterWeeks, releaseImpactMaxItems, releaseNotesMaxLength 
 export type { ReleaseImpact, StoryMapDocument, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
 export { activeStoryStatuses, customerStatus, customerStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
 export type { CustomerStoryStatus } from "./status.js";
-export { defaultInternalRoles, getStoryMapForViewer, getStoryMapPage, storyMapResponseHeaders } from "./view.js";
+export { defaultInternalRoles, getStoryMapForViewer, getStoryMapPage, recentUpdateDays, storyMapResponseHeaders } from "./view.js";
 export type {
   InternalReleaseLabel,
   InternalStoryCard,
@@ -21,6 +21,7 @@ export type {
   StoryMapFilterState,
   StoryMapLabel,
   StoryMapPageOptions,
+  StoryMapRecentUpdates,
   StoryMapView,
   StoryMapViewer,
 } from "./view.js";
