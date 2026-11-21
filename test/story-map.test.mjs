@@ -2554,3 +2554,37 @@ test("board.js applies the status filter when its menu closes with a change", as
   listeners.keydown({ key: "Escape" });
   assert.equal(menu.open, false, "Escape closes the menu");
 });
+
+// --- Export layout that survives other tools' text handling ---
+
+test("the Visio layout keeps each release's header lines and cards inside its lane", async () => {
+  // Internal modules: the layout is not public, but its geometry is what the imports depend on.
+  const { prepareStoryMapExport } = await import("../dist/export.js");
+  const { layoutStoryMapExport } = await import("../dist/export-layout.js");
+  const current = parseStoryMap(await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8"));
+  const view = getStoryMapForViewer(current, engineer);
+  const layout = layoutStoryMapExport(prepareStoryMapExport(view, { collapsedReleases: [current.releases[0].id], now: exportNow }));
+  const inside = (shape, lane) => shape.x >= lane.x && shape.x + shape.w <= lane.x + lane.w + 1e-9 && shape.y >= lane.y - 1e-9 && shape.y + shape.h <= lane.y + lane.h + 1e-9;
+
+  for (const release of current.releases) {
+    const lane = layout.shapes.find(shape => shape.name === `Release ${release.id}`);
+    const header = layout.shapes.filter(shape => shape.name === `Release header ${release.id}` || shape.name.startsWith(`Release header ${release.id} line `));
+    // One shape per line, each with a single run, so no tool has to place paragraphs inside a shape.
+    assert.ok(header.length >= 2, release.id);
+    for (const line of header) {
+      assert.equal(line.text.length, 1, `${line.name} has one run`);
+      assert.ok(inside(line, lane), `${line.name} is inside its lane`);
+    }
+    for (let i = 1; i < header.length; i++) assert.ok(header[i].y >= header[i - 1].y + header[i - 1].h, `${header[i].name} starts below the line above`);
+    const cards = layout.shapes.filter(shape => shape.data?.Release === release.id && shape.name.startsWith("Story "));
+    for (const card of cards) assert.ok(inside(card, lane), `${card.name} is inside its lane`);
+    // Cards in a lane share a height that fits their titles.
+    assert.equal(new Set(cards.map(card => card.h)).size <= 1, true);
+  }
+  // Every shape uses one text size: Miro applies the first paragraph's size to all of a shape's text.
+  for (const shape of layout.shapes) assert.ok(new Set(shape.text.map(run => run.size)).size <= 1, `${shape.name} uses one text size`);
+  const short = layout.shapes.find(shape => shape.name === "Story ESM-705");
+  const long = layout.shapes.find(shape => shape.name === "Story ESM-602");
+  assert.ok(short.text[1].size >= 11, "card titles are at least 11 points");
+  assert.ok(short.h < 1 && long.h < 1, "cards stay under an inch tall");
+});
