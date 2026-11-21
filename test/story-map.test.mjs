@@ -18,6 +18,7 @@ import {
   formatStoryMapDiff,
   hasStoryMapChanges,
   parseStoryMapHistory,
+  parseStoryMapTests,
   getStoryMapForViewer,
   getStoryMapPage,
   parseStoryMap,
@@ -2587,4 +2588,222 @@ test("the Visio layout keeps each release's header lines and cards inside its la
   const long = layout.shapes.find(shape => shape.name === "Story ESM-602");
   assert.ok(short.text[1].size >= 11, "card titles are at least 11 points");
   assert.ok(short.h < 1 && long.h < 1, "cards stay under an inch tall");
+});
+
+// --- Story tests (ESM-801) ---
+
+const storyTestCalls = await readFile(new URL("./fixtures/story-tests/calls.txt", import.meta.url), "utf8");
+
+/** A repository with the call-forms fixture as a test file, plus files the scan should and should not read. */
+async function storyTestsRepo(t) {
+  const base = await mkdtemp(join(tmpdir(), "story-map-tests-"));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const root = join(base, "repo");
+  const files = {
+    "test/calls.js": storyTestCalls,
+    "src/estimate.spec.ts": 'it("BUILDER-103: a TypeScript spec", (): void => {});\n',
+    "src/estimate.ts": 'test("BUILDER-103: not a test file", () => {});\n',
+    "lib/__tests__/nested.tsx": 'test("BUILDER-103: under __tests__", () => {});\n',
+    "test/notes.md": 'test("BUILDER-103: not a script")\n',
+    "dist/estimate.test.js": 'test("BUILDER-103: built output", () => {});\n',
+    "build/estimate.test.js": 'test("BUILDER-103: built output", () => {});\n',
+    ".cache/estimate.test.js": 'test("BUILDER-103: dot folder", () => {});\n',
+    "node_modules/pkg/estimate.test.js": 'test("BUILDER-103: dependency", () => {});\n',
+    "map.yaml": sample,
+  };
+  for (const [path, text] of Object.entries(files)) {
+    await mkdir(join(root, path, ".."), { recursive: true });
+    await writeFile(join(root, path), text);
+  }
+  await mkdir(join(base, "outside"));
+  await writeFile(join(base, "outside/secret.test.js"), 'test("BUILDER-998: outside", () => {});\n');
+  await symlink(join(base, "outside/secret.test.js"), join(root, "test/linked.test.js"));
+  await symlink("../outside", join(root, "outside"));
+  return root;
+}
+
+test("ESM-801: finds tests tagged with story IDs without running them", async t => {
+  const { findStoryTests, scanTestCalls } = await import("../dist/tests.js");
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const root = await storyTestsRepo(t);
+  const loaded = loadStoryMap(sample);
+  const { tests, issues } = await findStoryTests(loaded, root, { paths: ["."] });
+
+  assert.deepEqual(tests.map(found => [found.file, found.line, found.kind, found.storyIds.join(" "), found.name]), [
+    ["lib/__tests__/nested.tsx", 1, "test", "BUILDER-103", "BUILDER-103: under __tests__"],
+    ["src/estimate.spec.ts", 1, "test", "BUILDER-103", "BUILDER-103: a TypeScript spec"],
+    ["test/calls.js", 7, "test", "BUILDER-101", "BUILDER-101: double quotes"],
+    ["test/calls.js", 8, "test", "BUILDER-101", "BUILDER-101: single quotes"],
+    ["test/calls.js", 9, "test", "BUILDER-101", "BUILDER-101: backticks"],
+    ["test/calls.js", 10, "test", "BUILDER-102", "BUILDER-102: it"],
+    ["test/calls.js", 11, "test", "BUILDER-102", "BUILDER-102: only"],
+    ["test/calls.js", 12, "test", "BUILDER-102", "BUILDER-102: skip"],
+    ["test/calls.js", 13, "test", "BUILDER-102", "BUILDER-102: todo"],
+    ["test/calls.js", 14, "test", "BUILDER-102", "BUILDER-102: concurrent"],
+    ["test/calls.js", 15, "test", "BUILDER-102", "BUILDER-102: each %s"],
+    ["test/calls.js", 16, "test", "BUILDER-102", "BUILDER-102: each table $a"],
+    ["test/calls.js", 20, "group", "BUILDER-103", "BUILDER-103: describe"],
+    ["test/calls.js", 23, "group", "BUILDER-103", "BUILDER-103: suite"],
+    ["test/calls.js", 24, "test", "BUILDER-101", `BUILDER-101: it's "escaped" \u2014 here`],
+    ["test/calls.js", 25, "test", "BUILDER-101", "BUILDER-101: name on the next line"],
+    ["test/calls.js", 29, "test", "BUILDER-101 BUILDER-102", "BUILDER-101 and BUILDER-102 together"],
+    ["test/calls.js", 30, "test", "BUILDER-101", "BUILDER-101: twice, BUILDER-101"],
+    // A template literal keeps its ${…} as written, and IDs are matched on its literal text only.
+    ["test/calls.js", 31, "test", "BUILDER-101", 'BUILDER-101: ${"template"} part'],
+    ["test/calls.js", 33, "test", "BUILDER-999", "Tagged at the end (BUILDER-999)"],
+  ]);
+  // Not read: built output, dot folders, dependencies, non-test files, and links out of the repository.
+  assert.deepEqual(issues.map(issue => [issue.severity, issue.file, issue.message]), [
+    ["error", "outside", "Points outside the repository through a symbolic link, so it was not read."],
+    ["error", "test/linked.test.js", "Points outside the repository through a symbolic link, so it was not read."],
+  ]);
+
+  // Named paths: a file is read whatever its name, and paths outside the root are refused.
+  const named = await findStoryTests(loaded, root, { paths: ["src/estimate.ts", "../outside", "outside", "missing", "test/linked.test.js"] });
+  assert.deepEqual(named.tests.map(found => found.name), ["BUILDER-103: not a test file"]);
+  assert.deepEqual(named.issues.map(issue => [issue.file, issue.message]), [
+    ["../outside", "Points outside the repository."],
+    ["outside", "Points outside the repository through a symbolic link."],
+    ["missing", "No test files found."],
+    ["test/linked.test.js", "Points outside the repository through a symbolic link."],
+  ]);
+
+  // Oversized files are reported and skipped.
+  await writeFile(join(root, "test/big.test.js"), 'test("BUILDER-101: big", () => {});\n' + " ".repeat(5 * 1024 * 1024));
+  const big = await findStoryTests(loaded, root, { paths: ["test/big.test.js"] });
+  assert.deepEqual(big.tests, []);
+  assert.deepEqual(big.issues.map(issue => [issue.severity, issue.file, issue.message]), [["warning", "test/big.test.js", "Larger than 5 MB, so its tests were not read."]]);
+
+  // Without prefixed story IDs in the map, nothing is tagged.
+  const unprefixed = loadStoryMap(sample.replaceAll("BUILDER-", "builder_"));
+  assert.deepEqual((await findStoryTests(unprefixed, root, { paths: ["test/calls.js"] })).tests, []);
+
+  // The scan stays linear on hostile input such as many unclosed openers.
+  const hostile = 'test.each(' .repeat(20_000) + "test(`".repeat(20_000) + '/"'.repeat(20_000);
+  const started = performance.now();
+  scanTestCalls(hostile);
+  assert.ok(performance.now() - started < 2000, "scans hostile text quickly");
+});
+
+test("ESM-801: story-map tests writes an index the board can parse", async t => {
+  const root = await storyTestsRepo(t);
+  await rm(join(root, "test/linked.test.js"));
+  await rm(join(root, "outside"));
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const run = (...args) => spawnSync(process.execPath, [cli, "tests", ...args], { cwd: root, encoding: "utf8" });
+
+  const printed = run("--tests", "test", "map.yaml");
+  assert.equal(printed.status, 0, printed.stderr);
+  assert.equal(printed.stderr, "warning: left out tags for stories that are not in the map: BUILDER-999. Run story-map validate --tests to see where they are.\n");
+  const index = parseStoryMapTests(printed.stdout);
+  assert.equal(index.version, 1);
+  assert.equal(index.omitted, undefined);
+  assert.deepEqual(index.tests[0], { storyIds: ["BUILDER-101"], file: "test/calls.js", line: 7, name: "BUILDER-101: double quotes", kind: "test" });
+  assert.equal(index.tests.length, 17);
+  assert.ok(!printed.stdout.includes("BUILDER-999"));
+  assert.ok(!printed.stdout.includes('"column"'));
+
+  // With no --tests, the whole root is scanned. The map defaults to product/story-map.yaml.
+  await mkdir(join(root, "product"));
+  await writeFile(join(root, "product/story-map.yaml"), sample);
+  const written = run("--out", "out/tests.json");
+  assert.equal(written.status, 0, written.stderr);
+  assert.match(written.stderr, /out\/tests\.json: 19 tests for 3 stories\n$/);
+  assert.equal(parseStoryMapTests(await readFile(join(root, "out/tests.json"), "utf8")).tests.length, 19);
+
+  assert.equal(run("--tests", "../elsewhere", "map.yaml").status, 2);
+  assert.equal(run("--tests", "missing", "map.yaml").status, 2);
+  assert.equal(run("--tests").status, 2);
+  assert.equal(run("one.yaml", "two.yaml").status, 2);
+  await writeFile(join(root, "bad.yaml"), "version: 2\n");
+  assert.equal(run("bad.yaml").status, 1);
+});
+
+test("ESM-801: the tests index has limits that the writer keeps to", async () => {
+  const { buildStoryMapTests } = await import("../dist/tests.js");
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const loaded = loadStoryMap(sample);
+  const found = (count, file, storyIds, name = "BUILDER-101: a test") =>
+    Array.from({ length: count }, (_, index) => ({ storyIds, file, line: index + 1, column: 1, name, kind: "test" }));
+
+  const { index, unknownIds } = buildStoryMapTests(loaded, [
+    ...found(40, "a.test.js", ["BUILDER-101"]),
+    ...found(15, "b.test.js", ["BUILDER-101", "BUILDER-102"]),
+    ...found(1, "c.test.js", ["BUILDER-404", "BUILDER-101", "BUILDER-405", "BUILDER-404"], `BUILDER-101: ${"x".repeat(300)}`),
+  ], new Date("2026-11-21T12:00:00Z"));
+  assert.equal(index.generatedAt, "2026-11-21T12:00:00.000Z");
+  assert.deepEqual(unknownIds, ["BUILDER-404", "BUILDER-405"]);
+  // BUILDER-101 is listed 50 times. Later tests are kept for BUILDER-102 only, and the rest counted per file.
+  assert.equal(index.tests.filter(entry => entry.storyIds.includes("BUILDER-101")).length, 50);
+  assert.equal(index.tests.filter(entry => entry.storyIds.includes("BUILDER-102")).length, 15);
+  assert.deepEqual(index.omitted, [{ storyId: "BUILDER-101", file: "b.test.js", count: 5 }, { storyId: "BUILDER-101", file: "c.test.js", count: 1 }]);
+  assert.equal(index.tests.length, 55);
+  assert.deepEqual(parseStoryMapTests(JSON.stringify(index)), index);
+
+  // Names are cut to 250 code points without splitting emoji.
+  const long = buildStoryMapTests(loaded, found(1, "a.test.js", ["BUILDER-101"], `BUILDER-101: ${"😀".repeat(300)}`)).index.tests[0].name;
+  assert.equal(Array.from(long).length, 250);
+  assert.ok(long.endsWith("😀…"));
+
+  // At most 5,000 tests, the rest counted.
+  const stories = Array.from({ length: 120 }, (_, n) => `BUILDER-${1000 + n}`);
+  const many = loadStoryMap(stringify({ ...map, stories: stories.map(id => ({ ...structuredClone(map.stories[0]), id })) }));
+  const capped = buildStoryMapTests(many, stories.flatMap(id => found(50, `${id}.test.js`, [id]))).index;
+  assert.equal(capped.tests.length, 5000);
+  assert.equal(capped.omitted.reduce((sum, entry) => sum + entry.count, 0), 1000);
+  parseStoryMapTests(capped);
+
+  const valid = { version: 1, generatedAt: "2026-11-21T12:00:00.000Z", tests: [{ storyIds: ["BUILDER-101"], file: "a.test.js", line: 1, name: "BUILDER-101: a", kind: "test" }] };
+  const entry = valid.tests[0];
+  for (const [label, data, message] of [
+    ["too many tests", { ...valid, tests: Array(5001).fill(entry) }, /<=5000 items/],
+    ["too many for one story", { ...valid, tests: Array(51).fill(entry) }, /more than 50 tests for BUILDER-101/],
+    ["a long name", { ...valid, tests: [{ ...entry, name: "x".repeat(251) }] }, /at most 250 characters/],
+    ["no stories", { ...valid, tests: [{ ...entry, storyIds: [] }] }, /storyIds/],
+    ["a bad kind", { ...valid, tests: [{ ...entry, kind: "suite" }] }, /kind/],
+    ["line 0", { ...valid, tests: [{ ...entry, line: 0 }] }, /line/],
+    ["a bad version", { ...valid, version: 2 }, /version/],
+  ]) {
+    assert.throws(() => parseStoryMapTests(data), message, label);
+  }
+});
+
+test("ESM-801: validate --tests reports unknown tags and active stories without tests", async t => {
+  const root = await storyTestsRepo(t);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const run = (...args) => spawnSync(process.execPath, [cli, "validate", ...args], { cwd: root, encoding: "utf8" });
+  // BUILDER-101 is in progress. Tag nothing for it, so the warning shows.
+  await writeFile(join(root, "only-102.test.js"), 'test("BUILDER-102: covered", () => {});\ntest("BUILDER-999: unknown", () => {});\n');
+  const storyLine = sample.split("\n").findIndex(line => line.includes("status: in-progress")) + 1;
+
+  const text = run("--tests", "only-102.test.js", "map.yaml");
+  assert.equal(text.status, 1);
+  assert.equal(text.stderr, [
+    `map.yaml:${storyLine}:13: warning: stories.0.status (BUILDER-101): No tests are tagged BUILDER-101. Put the story ID in the name of each test that covers it.`,
+    "only-102.test.js:2:1: Unknown story ID 'BUILDER-999' in a test name. Add the story to the map or correct the tag.",
+    "",
+  ].join("\n"));
+
+  const github = run("--format", "github", "--tests", "only-102.test.js", "map.yaml");
+  assert.equal(github.status, 1);
+  assert.match(github.stdout, /^::warning file=map\.yaml,line=\d+,col=13,title=Story map::stories\.0\.status \(BUILDER-101\): No tests are tagged BUILDER-101\./m);
+  assert.match(github.stdout, /^::error file=only-102\.test\.js,line=2,col=1,title=Story map::Unknown story ID 'BUILDER-999'/m);
+
+  // The warning alone passes, unless --strict.
+  await writeFile(join(root, "only-102.test.js"), 'test("BUILDER-102: covered", () => {});\n');
+  const warned = run("--tests", "only-102.test.js", "map.yaml");
+  assert.equal(warned.status, 0, warned.stderr);
+  assert.match(warned.stdout, /valid \(.*\), 1 warning; checked test tags\n$/);
+  assert.equal(run("--strict", "--tests", "only-102.test.js", "map.yaml").status, 1);
+
+  // Tagging the in-progress story clears the warning. Planned and cut stories are never warned about.
+  await writeFile(join(root, "only-102.test.js"), 'test("BUILDER-101: covered", () => {});\n');
+  const clean = run("--strict", "--plans", "map.yaml", "--tests", "only-102.test.js", "map.yaml");
+  assert.equal(clean.status, 0, clean.stderr);
+  assert.match(clean.stdout, /; checked plan references and test tags\n$/);
+
+  // Unreadable paths fail, and without --tests nothing changes.
+  assert.equal(run("--tests", "../elsewhere", "map.yaml").status, 1);
+  assert.equal(run("--tests", "test", "map.yaml").status, 1);
+  assert.equal(run("map.yaml").stderr, "");
 });
