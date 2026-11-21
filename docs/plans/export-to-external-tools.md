@@ -1,6 +1,6 @@
 # Plan: export the map to external tools
 
-Status: in progress. Items 1, 2, 3, 5 and 6 are built. Item 4 is next. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
+Status: built. Every item is done. Miro and the CSV imports still need checking by hand before the release. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
 
 Internal viewers can download the board as a Visio file (`.vsdx`) or a CSV file and import it into Miro or Lucidchart. The export is a one-way snapshot: the YAML file stays the source of truth, and nothing edited in Miro or Lucidchart comes back.
 
@@ -191,6 +191,14 @@ The CLI always builds the internal view, because whoever runs it already has the
 2. **`board.js`:** when the viewer collapses or expands a lane, it also updates `collapsed=<IDs>` on the export links, reusing the IDs it already keeps in `localStorage`. Without the script, the links work and export every lane expanded.
 3. **A helper for host routes:** `storyMapExportResponse(view, { format, collapsed })` returns `{ body, headers }`, with the right `Content-Type` (`application/vnd.ms-visio.drawing.main+xml` or `text/csv; charset=utf-8`), `Content-Disposition: attachment; filename="<map id>.vsdx"` and `Cache-Control: no-store`. It throws for customer views, so the host can return 403 or 404.
 4. **Example and docs.** Add the route to `example/host.mjs`, and a host-route example to `docs/story-map.md` that builds the view with `getStoryMapForViewer` and history, without filters.
+
+**Built.** As planned, with these choices made while building it:
+
+- The view has no map ID, so the file is named after a slug of the map title, such as `builder-estimates-delivery-map.vsdx`. Hosts can pass `filename`. Adding the ID to the view would have put it in the customer JSON too.
+- `storyMapExportResponse` takes `format` and `collapsed` straight from the query parameters, and throws a `RangeError` for an unknown format, so the host can answer 400. Its headers are `storyMapResponseHeaders` (`Cache-Control: private, no-store`) plus the file's.
+- The links keep any query string on `exportHref`, so the example host keeps its own parameters, such as the demo's role.
+- `board.js` takes the collapsed IDs from the board's own toggles rather than `localStorage`, so two boards on one page each get their own.
+- The demo server now sends the response as bytes, so the `.vsdx` download is not corrupted.
 
 **Tests.** Rendering with `exportHref` shows the links for internal views and never for customer views. The helper returns the right headers and throws for customers. The `board.js` change keeps `collapsed` in step with the lanes.
 

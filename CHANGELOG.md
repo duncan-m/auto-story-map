@@ -9,6 +9,8 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 - New `storyMapToCsv(view, { collapsedReleases, maxStories, now })` writes the internal map as CSV, with a row per story giving its activity, release, ID and title, in board order. A collapsed release is one row with its story count. It follows the same rules as the Visio export, quotes fields following RFC 4180, prefixes formula-looking fields with `'`, and starts with a UTF-8 byte order mark. New export `csvContentType`. `story-map export` accepts `--format csv`. See [Export as CSV](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-as-csv).
 
+- New `exportHref` prop on `StoryMapBoard`. On internal boards, the header links to it with `format=vsdx` and `format=csv`, and `board.js` adds the lanes the viewer collapsed as `collapsed`. Customers never see the links. New `storyMapExportResponse(view, { format, collapsed, filename, maxStories, now })` returns the file and its download headers for a host route, throwing a `RangeError` for an unknown format. New exports `storyMapExportFormats` and types `StoryMapExportFormat`, `StoryMapExportResponse` and `StoryMapExportResponseOptions`. The example host serves `/story-map/export`. See [Download from the board](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#download-from-the-board).
+
 ## 0.6.1
 
 There is no 0.6.0 release. 0.6.1 follows 0.5.0.

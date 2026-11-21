@@ -80,7 +80,7 @@ const server = createServer(async (request, response) => {
       now,
       preservedParams: { as: selected },
     });
-    response.writeHead(result.status, Object.fromEntries(result.headers)).end(await result.text());
+    response.writeHead(result.status, Object.fromEntries(result.headers)).end(Buffer.from(await result.arrayBuffer()));
   } catch (error) {
     console.error(error);
     response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" })

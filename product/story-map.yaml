@@ -516,7 +516,7 @@ stories:
     title: Download the export from the board
     activity: explore
     release: export
-    status: planned
+    status: merged
     summary: Internal viewers get Export links on the board when the host sets exportHref, and lanes they collapsed stay collapsed in the file.
     sources:
       - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board

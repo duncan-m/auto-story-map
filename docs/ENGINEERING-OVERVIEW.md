@@ -78,6 +78,7 @@ The tests and the demo import the package by its own name (`import … from "aut
 | `src/export-layout.ts` | Lays out the export as a board in inches, and estimates text wrapping to size lanes and shorten card titles |
 | `src/export-vsdx.ts` | `storyMapToVsdx`: writes the layout as Visio XML parts and zips them |
 | `src/export-csv.ts` | `storyMapToCsv`: writes a row per story, quoted following RFC 4180, with formula-looking fields defused |
+| `src/export-response.ts` | `storyMapExportResponse`: reads a host route's `format` and `collapsed` parameters and returns the file with download headers |
 | `src/zip.ts` | A stored (uncompressed) zip writer with CRC-32 and a fixed timestamp, so output is stable |
 | `src/history.ts` | History file types and `parseStoryMapHistory` |
 | `src/history-git.ts` | `buildStoryMapHistory`: walks the map's Git history and records additions and status changes |
@@ -96,7 +97,7 @@ The tests and the demo import the package by its own name (`import … from "aut
 | `docs/releasing.md` | How to publish a version |
 | `product/story-map.yaml` | This library's own story map, with `ESM-` story IDs: one release per version, the 0.4.0 work as `merged` until it is on npm, one cut story and the proposed next items. The demo shows it, and CI validates it with `--check-sources`, so its doc links must stay valid. Keep it up to date like any product's map. |
 | `test/fixtures/builder-estimates.yaml` | The builder estimates sample map, including one cut story (`FINANCE-202`). It is test data with stable IDs that the tests and the guide's examples rely on. Tests that need FINANCE-202 still planned use the `planningMap` copy. |
-| `example/host.mjs` | Reference host integration: one function that returns a web `Response` for the page or the JSON endpoint |
+| `example/host.mjs` | Reference host integration: one function that returns a web `Response` for the page, the JSON endpoint or the export download |
 | `example/demo.mjs` | Local demo server on `127.0.0.1:4173` with a role switcher |
 | `scripts/write-version.mjs` | Writes `src/version.ts` before `tsc` runs |
 | `scripts/build-schema.mjs` | Generates `story-map.schema.json` from the compiled Zod schema |
@@ -261,7 +262,7 @@ Engineering links open in a new tab with `rel="noopener noreferrer"`, an icon an
 
 The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history. Internal views get **Active** (the default) and **All, including blocked and cut** at the top of the status select; customer views get **All statuses** and `customerStoryStatuses` (planned, in progress and shipped). When `filter.hidden` is set, the results line says how many blocked and cut stories are hidden and links to the same filters with `status=all`.
 
-The optional `board.js` script (`src/board.ts`) enhances the form without changing it. It marks the form `data-esm-auto`, which hides the `.esm-apply` button through CSS. It then submits the form with `requestSubmit()` when a select changes or Enter is pressed in the search box, and stores the field's name in `sessionStorage` so focus returns to it after the reload. Changing a select reloads the page, so the board renders an empty, visually hidden hint (`data-esm-filter-hint`) referenced by each select's `aria-describedby`, and the script fills it in to warn screen reader users before they choose. Without the script the hint stays empty, so nothing false is announced. It also remembers collapsed release lanes (`enhanceStoryMapReleases`): it stores the checked toggles' values in `localStorage` under `esm-collapsed:<page path>` and checks them again on load, so lanes stay collapsed when a filter reloads the page and on later visits. Without the script, the toggles still work but reset on reload. Keep it a separate file: an inline script would need `dangerouslySetInnerHTML` and would break hosts with a strict Content Security Policy.
+The optional `board.js` script (`src/board.ts`) enhances the form without changing it. It marks the form `data-esm-auto`, which hides the `.esm-apply` button through CSS. It then submits the form with `requestSubmit()` when a select changes or Enter is pressed in the search box, and stores the field's name in `sessionStorage` so focus returns to it after the reload. Changing a select reloads the page, so the board renders an empty, visually hidden hint (`data-esm-filter-hint`) referenced by each select's `aria-describedby`, and the script fills it in to warn screen reader users before they choose. Without the script the hint stays empty, so nothing false is announced. It also remembers collapsed release lanes (`enhanceStoryMapReleases`): it stores the checked toggles' values in `localStorage` under `esm-collapsed:<page path>` and checks them again on load, so lanes stay collapsed when a filter reloads the page and on later visits. It also rewrites the `href` of each `a[data-esm-export]` link in the board, adding `collapsed=<IDs>` for that board's checked toggles to the original URL in `data-esm-export`. Without the script, the toggles still work but reset on reload. Keep it a separate file: an inline script would need `dangerouslySetInnerHTML` and would break hosts with a strict Content Security Policy.
 
 ### Dates
 
@@ -367,7 +368,8 @@ Templates and the guide are found relative to the compiled `dist/init.js` (`new 
 - **Git arguments are not shell input.** `git` runs through `execFile` with an argument array, and refs starting with `-` are rejected so they cannot be read as options.
 - **Source checks stay inside the repository.** Paths that resolve outside `--root`, directly or through a symbolic link, are reported, not read, for sources and `--plans` alike. Never `stat` or read a link's target before checking it is inside.
 - **Diff summaries notify nobody.** Text from the map has `@` and `#` escaped, so pasting the summary does not mention people or link issues.
-- **Exports are internal only.** `prepareStoryMapExport` refuses customer views, so every export format inherits the rule. Keep that check in the shared model, not in each writer or host route.
+- **Exports are internal only.** `prepareStoryMapExport` refuses customer views, so every export format inherits the rule. Keep that check in the shared model, not in each writer or host route. The board's export links are also internal only, whatever `exportHref` says.
+- **Download file names come from a slug.** `storyMapExportResponse` reduces the file name to letters, digits, dots, hyphens and underscores before it goes in `Content-Disposition`, so a map title or host value cannot add headers.
 - **Bounded input.** Keep the schema's length and count limits and the YAML alias limit.
 - **The demo is not an auth model.** `example/demo.mjs` picks a role from `?as=` and listens only on `127.0.0.1`. Real hosts must take roles from their verified session.
 
