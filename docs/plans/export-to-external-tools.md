@@ -1,6 +1,6 @@
 # Plan: export the map to external tools
 
-Status: in progress. Items 1, 2, 3 and 6 are built, and item 5 is being built. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
+Status: in progress. Items 1, 2, 3, 5 and 6 are built. Item 4 is next. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
 
 Internal viewers can download the board as a Visio file (`.vsdx`) or a CSV file and import it into Miro or Lucidchart. The export is a one-way snapshot: the YAML file stays the source of truth, and nothing edited in Miro or Lucidchart comes back.
 
@@ -95,8 +95,6 @@ LibreOffice applies styling from the wrong position after non-ASCII characters. 
 Lucidchart replaced curly quotes with straight ones and dropped the emoji. Neither affects reading the map, so the export writes text as it is. The docs for ESM-702 should mention that emoji may not survive the import.
 
 **Outcome.** Lucidchart works, so the Visio export goes ahead as planned with the hand-rolled zip and text runs. Miro and the CSV imports were skipped to keep moving. Until someone tries them, the docs say the `.vsdx` is tested with Lucidchart, and that Miro users should try it and fall back to CSV (ESM-705) if the import is poor.
-
-**Outcome.** If Miro's Visio import is poor or unavailable, the board's download menu recommends CSV for Miro, and item 4's docs say so. If no tool opens the stored zip, use `fflate` in item 2 (decision G).
 
 ## 2. Write a Visio file from the internal view
 

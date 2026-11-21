@@ -524,7 +524,7 @@ stories:
     title: Export the map as CSV
     activity: explore
     release: export
-    status: in-progress
+    status: merged
     summary: One row per story with its activity, release, ID and title, safe to open in spreadsheets and importable into Miro and Lucidchart.
     sources:
       - docs/plans/export-to-external-tools.md#5-export-the-map-as-csv
