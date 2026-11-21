@@ -112,6 +112,7 @@ export
   --collapsed <release IDs>
                      Comma-separated releases to export as a header and a
                      story count, without their stories. Repeat to add more.
+                     Ignored by json, which includes every release.
   --max-stories <n>  Most stories to export. Defaults to ${defaultExportMaxStories}, or
                      every story for json.`;
 
@@ -536,6 +537,10 @@ async function exportMap(options: NonNullable<ReturnType<typeof parseExportArgs>
     if (options.format !== "json") console.error(`warning: --tests-index is only used by --format json, so it is ignored`);
   }
   const releaseIds = new Set(document.releases.map(release => release.id));
+  if (options.format === "json" && options.collapsed.length) {
+    console.error("warning: --collapsed is ignored by --format json, which includes every release");
+    options.collapsed = [];
+  }
   for (const id of options.collapsed) {
     if (!releaseIds.has(id)) console.error(`warning: --collapsed ${escapeText(id)} is not a release in ${escapeText(options.map)}, so it is ignored`);
   }

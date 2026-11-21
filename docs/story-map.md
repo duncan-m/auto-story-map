@@ -449,7 +449,7 @@ return new Response(storyMapToCsv(view), {
 
 ### Export as JSON for agents
 
-`storyMapToJson(view, options)` writes the map as JSON for an agent or script to review stories and tests, or to suggest features and other product work. It takes the same view and options as the other writers, and returns a string. Pass `history` and `tests` to `getStoryMapForViewer` for the fullest file:
+`storyMapToJson(view, options)` writes the map as JSON for an agent or script to review stories and tests, or to suggest features and other product work. It takes the same view as the other writers, and `maxStories` and `now`, and returns a string. Pass `history` and `tests` to `getStoryMapForViewer` for the fullest file:
 
 ```ts
 import { getStoryMapForViewer, jsonContentType, storyMapToJson } from "auto-story-map";
@@ -465,10 +465,10 @@ return new Response(storyMapToJson(view), {
 ```
 
 - `format` is `"auto-story-map.export"` and `version` is `1`. The type is `StoryMapJsonExport`.
-- `activities` and `releases` are as on the internal board, with each release's notes, impact and `storyCounts`, and `collapsed`. `stories` are in map order, each with its summary, status, `statusReason`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
+- `activities` and `releases` are as on the internal board, with each release's notes, impact and `storyCounts`. `stories` are in map order, each with its summary, status, `statusReason`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
 - `statuses` says what each status means, such as that `merged` work is on the default branch but not yet available to its users.
-- `provenance` names the library version and commit that wrote the file, and when the history and tests index were generated. `completeness` counts the stories in the map, in the file, in collapsed releases and over the limit, and says whether history and tests were supplied. Both have `notes`: plain sentences for the agent, such as that statuses are recorded in PRs and can lag behind the code, that tests come from a static scan of tagged names without results, or that a shallow history is missing earlier changes. Ask the agent to read them before drawing conclusions.
-- Unlike the other formats, every story is included unless you pass `maxStories`. Collapsed releases are left out as in the other formats, and keep their `storyCounts`.
+- `provenance` names the library version and commit that wrote the file, and when the history and tests index were generated. `completeness` counts the stories in the map, in the file and over the limit, and says whether history and tests were supplied. Both have `notes`: plain sentences for the agent, such as that statuses are recorded in PRs and can lag behind the code, that tests come from a static scan of tagged names without results, or that a shallow history is missing earlier changes. Ask the agent to read them before drawing conclusions.
+- Unlike the other formats, every story is included unless you pass `maxStories`, and collapsed lanes are ignored, so the file always covers every release. The board's JSON link and `storyMapExportResponse` ignore `collapsed` for this format, and `story-map export` warns that `--collapsed` is ignored.
 - Customer-facing copy is not included, and the same rules apply: the whole map and internal views only.
 - From the command line, use `--format json`. Add `--history <file>` and `--tests-index <file>`, the files from `story-map history` and `story-map tests`:
 

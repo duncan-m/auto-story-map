@@ -25,11 +25,8 @@ export interface StoryMapJsonStory extends InternalStoryCard {
   testCount?: number;
 }
 
-/** A release in the JSON export. Its `storyCounts` always count every story in it, even when some are left out. */
-export interface StoryMapJsonRelease extends InternalReleaseLabel {
-  /** True when the release was exported collapsed, so its stories are left out. */
-  collapsed: boolean;
-}
+/** Options for `storyMapToJson`. Collapsed lanes are a board view, so the JSON export always includes every release's stories. */
+export type StoryMapJsonExportOptions = Omit<StoryMapExportOptions, "collapsedReleases">;
 
 /** The document written by `storyMapToJson`. */
 export interface StoryMapJsonExport {
@@ -55,11 +52,8 @@ export interface StoryMapJsonExport {
     storiesInMap: number;
     /** Stories in this file. */
     storiesIncluded: number;
-    /** Stories left out because their release was collapsed. */
-    storiesInCollapsedReleases: number;
     /** Stories left out by `maxStories`, the least recently changed first. */
     storiesOverLimit: number;
-    collapsedReleases: string[];
     historySupplied: boolean;
     testsIndexed: boolean;
     /** Plain-language notes on what is missing and how that affects conclusions drawn from the file. */
@@ -67,7 +61,8 @@ export interface StoryMapJsonExport {
   };
   statuses: { id: StoryStatus; label: string; meaning: string }[];
   activities: StoryMapLabel[];
-  releases: StoryMapJsonRelease[];
+  /** Each release's `storyCounts` count every story in it, even when some are left out by `maxStories`. */
+  releases: InternalReleaseLabel[];
   /** In map order. */
   stories: StoryMapJsonStory[];
   recentUpdates?: StoryMapRecentUpdates;
@@ -78,23 +73,21 @@ const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : 
 
 /**
  * Builds the JSON export as an object. `storyMapToJson` writes it as text.
- * Takes the same view and options as the other writers.
+ * Takes the same view as the other writers.
  */
-export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapExportOptions = {}): StoryMapJsonExport {
+export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJsonExportOptions = {}): StoryMapJsonExport {
   const maxStories = options.maxStories ?? jsonDefaultMaxStories;
-  const model = prepareStoryMapExport(view, { ...options, maxStories });
+  // Collapsed lanes are ignored, even if passed, so an agent always sees every release.
+  const model = prepareStoryMapExport(view, { maxStories, now: options.now });
   // prepareStoryMapExport refuses customer views, so this narrows the type.
   if (view.audience !== "internal") throw new TypeError("Only the internal view can be exported.");
 
   const kept = new Set(model.releases.flatMap(release => [...release.cells.values()].flat().map(story => story.id)));
-  const collapsedReleases = model.releases.filter(release => release.collapsed).map(release => release.id);
-  const collapsedIds = new Set(collapsedReleases);
   const testsIndexed = view.testsIndexed === true;
   const stories: StoryMapJsonStory[] = view.stories.filter(story => kept.has(story.id)).map(story => ({
     ...story,
     ...(testsIndexed ? { testCount: (story.tests?.length ?? 0) + (story.moreTests ?? []).reduce((sum, more) => sum + more.count, 0) } : {}),
   }));
-  const inCollapsed = view.stories.length - model.available;
 
   const exportedAt = (options.now ?? new Date()).toISOString();
   const hasDraftImpact = view.releases.some(release => release.impact?.some(item => item.draft));
@@ -113,9 +106,6 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapExp
 
   const completenessNotes = [
     `Includes ${stories.length} of the map's ${count(view.stories.length, "story", "stories")}.`,
-    ...(inCollapsed
-      ? [`${count(inCollapsed, "story is", "stories are")} left out because ${collapsedReleases.length === 1 ? "this release was" : "these releases were"} exported collapsed: ${collapsedReleases.join(", ")}. Release storyCounts still include them.`]
-      : []),
     ...(model.omitted
       ? [`${count(model.omitted, "less recently changed story is", "less recently changed stories are")} left out by the limit of ${maxStories}. Release storyCounts still include them.`]
       : []),
@@ -143,16 +133,14 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapExp
     completeness: {
       storiesInMap: view.stories.length,
       storiesIncluded: stories.length,
-      storiesInCollapsedReleases: inCollapsed,
       storiesOverLimit: model.omitted,
-      collapsedReleases,
       historySupplied: !!view.history,
       testsIndexed,
       notes: completenessNotes,
     },
     statuses: storyStatuses.map(id => ({ id, label: storyStatusLabels[id], meaning: statusMeanings[id] })),
     activities: view.activities,
-    releases: view.releases.map(release => ({ ...release, collapsed: collapsedIds.has(release.id) })),
+    releases: view.releases,
     stories,
     ...(view.recentUpdates ? { recentUpdates: view.recentUpdates } : {}),
     ...(view.stalledAfterWeeks ? { stalledAfterWeeks: view.stalledAfterWeeks } : {}),
@@ -165,11 +153,11 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapExp
  * status, notes, sources, history and tagged tests. `provenance` and
  * `completeness` say where the data came from and what is left out.
  *
- * Takes the same view and options as `storyMapToCsv`, but includes every story
- * unless `maxStories` is passed. Pass `history` and `tests` to
+ * Takes the same view as `storyMapToCsv`, but includes every story unless
+ * `maxStories` is passed, and every release even if the viewer collapsed it. Pass `history` and `tests` to
  * `getStoryMapForViewer` for the fullest file. Throws a `TypeError` for a
  * customer view or a filtered view.
  */
-export function storyMapToJson(view: StoryMapView, options: StoryMapExportOptions = {}): string {
+export function storyMapToJson(view: StoryMapView, options: StoryMapJsonExportOptions = {}): string {
   return `${JSON.stringify(buildStoryMapJsonExport(view, options), null, 2)}\n`;
 }

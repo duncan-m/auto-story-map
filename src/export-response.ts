@@ -10,7 +10,7 @@ export type StoryMapExportFormat = (typeof storyMapExportFormats)[number];
 export interface StoryMapExportResponseOptions extends Omit<StoryMapExportOptions, "collapsedReleases"> {
   /** `vsdx`, `csv` or `json`, usually the `format` query parameter. Anything else throws a `RangeError`. */
   format: string | null | undefined;
-  /** Collapsed release IDs, as an array or the comma-separated `collapsed` query parameter. */
+  /** Collapsed release IDs, as an array or the comma-separated `collapsed` query parameter. Ignored for `json`, which includes every release. */
   collapsed?: string | readonly string[] | null;
   /** File name without its extension. Defaults to the map title as a slug, such as `builder-estimates`. */
   filename?: string;
@@ -43,7 +43,7 @@ export function storyMapExportResponse(view: StoryMapView, options: StoryMapExpo
   const collapsedReleases = (typeof collapsed === "string" ? collapsed.split(",") : collapsed ?? []).map(id => id.trim()).filter(Boolean);
   const exportOptions = { ...rest, collapsedReleases };
   const body = format === "csv" ? storyMapToCsv(view, exportOptions)
-    : format === "json" ? storyMapToJson(view, exportOptions)
+    : format === "json" ? storyMapToJson(view, rest)
     : storyMapToVsdx(view, exportOptions);
   const name = fileSlug(filename ?? view.title) || "story-map";
   return {

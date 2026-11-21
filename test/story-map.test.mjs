@@ -2484,7 +2484,7 @@ test("ESM-706: exports every internal story with its details as JSON", () => {
   assert.deepEqual(data.provenance.tests, { generatedAt: "2026-11-20T08:30:00.000Z" });
   const asJson = value => JSON.parse(JSON.stringify(value));
   assert.deepEqual(data.activities, asJson(view.activities));
-  assert.deepEqual(data.releases, asJson(view.releases.map(release => ({ ...release, collapsed: false }))));
+  assert.deepEqual(data.releases, asJson(view.releases));
   assert.deepEqual(data.statuses.map(status => status.id), ["planned", "in-progress", "merged", "shipped", "blocked", "cut"]);
   assert.ok(data.statuses.every(status => status.label && status.meaning));
 
@@ -2496,9 +2496,7 @@ test("ESM-706: exports every internal story with its details as JSON", () => {
   assert.deepEqual(data.completeness, {
     storiesInMap: map.stories.length,
     storiesIncluded: map.stories.length,
-    storiesInCollapsedReleases: 0,
     storiesOverLimit: 0,
-    collapsedReleases: [],
     historySupplied: true,
     testsIndexed: true,
     notes: data.completeness.notes,
@@ -2521,19 +2519,14 @@ test("ESM-706: the JSON export notes its provenance and what it leaves out", () 
   assert.match(bareNotes, /Customer-facing copy is not included/);
   assert.doesNotMatch(bareNotes, /left out|shallow/);
 
-  const release = map.releases[0];
-  const inRelease = map.stories.filter(story => story.release === release.id).length;
   const view = exportView(map, { history: jsonHistory(false), tests: jsonTests() });
-  const partial = JSON.parse(storyMapToJson(view, { collapsedReleases: [release.id], maxStories: 1, now: exportNow }));
+  const partial = JSON.parse(storyMapToJson(view, { maxStories: 1, now: exportNow }));
   assert.equal(partial.stories.length, 1);
-  assert.equal(partial.releases[0].collapsed, true);
-  assert.deepEqual(partial.releases[0].storyCounts, view.releases[0].storyCounts, "collapsed releases keep their counts");
+  assert.deepEqual(partial.releases.map(release => release.storyCounts), view.releases.map(release => release.storyCounts), "releases count every story");
   assert.deepEqual(partial.completeness, {
     storiesInMap: map.stories.length,
     storiesIncluded: 1,
-    storiesInCollapsedReleases: inRelease,
-    storiesOverLimit: map.stories.length - inRelease - 1,
-    collapsedReleases: [release.id],
+    storiesOverLimit: map.stories.length - 1,
     historySupplied: true,
     testsIndexed: true,
     notes: partial.completeness.notes,
@@ -2541,7 +2534,6 @@ test("ESM-706: the JSON export notes its provenance and what it leaves out", () 
   const notes = [...partial.provenance.notes, ...partial.completeness.notes].join("\n");
   assert.match(notes, /Git history, generated at 2026-11-20T08:00:00.000Z/);
   assert.match(notes, /static scan of test names .* generated at 2026-11-20T08:30:00.000Z\. No tests were run/);
-  assert.match(notes, new RegExp(`exported collapsed: ${release.id}\\.`));
   assert.match(notes, /left out by the limit of 1\./);
   assert.match(notes, /shallow clone/);
   assert.match(notes, /untagged tests may still cover it/);
@@ -2552,12 +2544,15 @@ test("ESM-706: only the unfiltered internal view can be exported as JSON", () =>
   assert.throws(() => storyMapToJson(filterStoryMapView(exportView(), { query: "estimate" })), /unfiltered/);
 });
 
-test("ESM-706: the JSON export includes every story by default", () => {
+test("ESM-706: the JSON export includes every story by default, even in collapsed lanes", () => {
   const base = parseStoryMap(sample);
   const stories = Array.from({ length: 250 }, (_, i) => ({ ...base.stories[0], id: `BULK-${i + 1}`, customer: undefined }));
   const data = JSON.parse(storyMapToJson(exportView({ ...base, stories })));
   assert.equal(data.stories.length, 250);
   assert.equal(data.completeness.storiesOverLimit, 0);
+  const view = exportView();
+  assert.equal(storyMapToJson(view, { collapsedReleases: view.releases.map(release => release.id), now: exportNow }), storyMapToJson(view, { now: exportNow }), "collapsed lanes are ignored");
+  assert.equal(storyMapExportResponse(view, { format: "json", collapsed: view.releases[0].id, now: exportNow }).body, storyMapToJson(view, { now: exportNow }));
   assert.deepEqual(JSON.parse(storyMapToJson(exportView({ ...base, stories }), { maxStories: 3 })).stories.map(story => story.id), ["BULK-248", "BULK-249", "BULK-250"]);
 });
 
@@ -2579,6 +2574,11 @@ test("ESM-706: story-map export writes JSON with history and tests", async () =>
     const piped = spawnSync(process.execPath, [cli, "export", "--format", "json", "--output", "-", "--max-stories", "2", fixture], { cwd: root, encoding: "utf8" });
     assert.equal(piped.status, 0, piped.stderr);
     assert.equal(JSON.parse(piped.stdout).stories.length, 2);
+
+    const collapsed = spawnSync(process.execPath, [cli, "export", "--format", "json", "--output", "-", "--collapsed", map.releases[0].id, fixture], { cwd: root, encoding: "utf8" });
+    assert.equal(collapsed.status, 0, collapsed.stderr);
+    assert.match(collapsed.stderr, /--collapsed is ignored by --format json/);
+    assert.equal(JSON.parse(collapsed.stdout).stories.length, map.stories.length);
 
     const ignored = spawnSync(process.execPath, [cli, "export", "--format", "csv", "--output", "-", "--tests-index", "tests.json", fixture], { cwd: root, encoding: "utf8" });
     assert.equal(ignored.status, 0, ignored.stderr);

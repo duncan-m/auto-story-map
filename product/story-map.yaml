@@ -561,7 +561,7 @@ stories:
     release: next
     status: in-progress
     summary: storyMapToJson writes every internal story with its notes, sources, history and tagged tests, plus notes on where the data came from and what is left out, so an agent can review stories and tests and suggest product work.
-    notes: Every story by default, unlike Visio and CSV. Collapsed lanes are still left out. Available from the CLI with --tests-index, from storyMapExportResponse and from the board's Export menu.
+    notes: Every story and every release by default, unlike Visio and CSV, and collapsed lanes are ignored. Available from the CLI with --tests-index, from storyMapExportResponse and from the board's Export menu.
     sources:
       - docs/story-map.md#export-as-json-for-agents
   - id: ESM-414
