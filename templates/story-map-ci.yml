@@ -25,7 +25,8 @@ jobs:
           node-version: lts/*
           cache: npm
       - run: npm ci --ignore-scripts
-      # Add --plans <folder> to check story IDs mentioned in delivery plans.
+      # Add --plans <folder> to check story IDs mentioned in delivery plans, and
+      # --tests <folder> to check story IDs in test names.
       - run: npx --no-install story-map validate --format github --check-sources product/story-map.yaml
       - name: Summarise story map changes
         env:

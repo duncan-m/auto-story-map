@@ -1,6 +1,7 @@
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { defaultStalledAfterWeeks, type ReleaseImpact, type StoryMapDocument } from "./schema.js";
+import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 
 export interface StoryMapViewer {
@@ -19,6 +20,12 @@ export interface StoryMapAccessOptions<Viewer extends StoryMapViewer = StoryMapV
    * customer view never includes dates or names from it.
    */
   history?: StoryMapHistory | null;
+  /**
+   * The tests index from `story-map tests`, parsed with `parseStoryMapTests`.
+   * Only internal viewers see it; the customer view never includes test names
+   * or file paths.
+   */
+  tests?: StoryMapTests | null;
   /**
    * Overrides the map’s `settings.stalledAfterWeeks`, such as from the host’s own
    * admin settings. 0 turns the stalled flag off.
@@ -74,7 +81,14 @@ export interface InternalStoryCard extends StoryCard {
   inProgressSince?: string;
   /** True when the story has been in progress for longer than the view’s `stalledAfterWeeks`. */
   stalled?: boolean;
+  /** Tests and groups tagged with the story’s ID, by file, then line. Present when the host supplied a tests index and at least one is tagged. */
+  tests?: StoryTestLink[];
+  /** Tagged tests the index left out because of its limits, counted per file. */
+  moreTests?: { file: string; count: number }[];
 }
+
+/** A test or group tagged with a story, as internal viewers see it. */
+export type StoryTestLink = Omit<StoryTestEntry, "storyIds">;
 
 /** Present when the host has applied `filterStoryMapView`. The board shows its search toolbar only then. */
 export interface StoryMapFilterState {
@@ -125,6 +139,8 @@ export type StoryMapView =
     stalledAfterWeeks?: number;
     /** Present when the history records at least one story change. */
     recentUpdates?: StoryMapRecentUpdates;
+    /** True when the host supplied a tests index, so a story without `tests` has none tagged. */
+    testsIndexed?: true;
   })
   | (StoryMapBaseView & { audience: "all-users"; releases: StoryMapLabel[]; stories: StoryCard[] });
 
@@ -183,6 +199,20 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     for (const entries of byStory.values()) {
       entries.reverse().sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
     }
+    const testsByStory = new Map<string, StoryTestLink[]>();
+    for (const { storyIds, ...test } of options.tests?.tests ?? []) {
+      for (const id of new Set(storyIds)) {
+        const entries = testsByStory.get(id);
+        if (entries) entries.push({ ...test });
+        else testsByStory.set(id, [{ ...test }]);
+      }
+    }
+    const moreTestsByStory = new Map<string, { file: string; count: number }[]>();
+    for (const { storyId, file, count } of options.tests?.omitted ?? []) {
+      const entries = moreTestsByStory.get(storyId);
+      if (entries) entries.push({ file, count });
+      else moreTestsByStory.set(storyId, [{ file, count }]);
+    }
     const lastEdits = new Map((history?.lastEdits ?? []).map(({ storyId, ...edit }) => [storyId, edit]));
     const storyCounts = new Map(map.releases.map(release => [
       release.id,
@@ -226,11 +256,14 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           ...(lastEdits.has(story.id) ? { lastEdit: { ...lastEdits.get(story.id)! } } : {}),
           ...(inProgressSince ? { inProgressSince } : {}),
           ...(stalled ? { stalled } : {}),
+          ...(testsByStory.has(story.id) ? { tests: testsByStory.get(story.id)! } : {}),
+          ...(moreTestsByStory.has(story.id) ? { moreTests: moreTestsByStory.get(story.id)! } : {}),
         };
       }),
       ...(history ? { history: { generatedAt: history.generatedAt, complete: history.complete } } : {}),
       ...(stalledAfterWeeks > 0 ? { stalledAfterWeeks } : {}),
       ...(recentUpdates ? { recentUpdates } : {}),
+      ...(options.tests ? { testsIndexed: true as const } : {}),
     };
   }
 

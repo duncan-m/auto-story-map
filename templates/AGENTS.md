@@ -15,7 +15,9 @@ Keep new stories internal by default. Add customer-facing copy only when the sto
 
 Record each release’s notes and expected impact in its `notes` and `impact`, following [Release notes and impact](docs/story-map.md#release-notes-and-impact). Mark impact items you draft with `draft: true`. Only a person removes `draft`, so never remove it yourself. The board cannot edit these fields, so update them in a PR like any other map change.
 
-Run `npx --no-install story-map validate --check-sources product/story-map.yaml` after every map change. It also checks that each repository-relative source exists and that each `#heading` matches. Add `--plans <folder>` to check story IDs mentioned in delivery plans. In CI, add `--format github` so problems appear on the PR diff.
+When you add or change a test that covers a story, put the story ID at the start of the test's name, followed by a colon, such as `test("BILLING-204: refunds a cancelled order", …)`. See [Link tests to stories](docs/story-map.md#link-tests-to-stories).
+
+Run `npx --no-install story-map validate --check-sources product/story-map.yaml` after every map change. It also checks that each repository-relative source exists and that each `#heading` matches. Add `--plans <folder>` to check story IDs mentioned in delivery plans, and `--tests <folder>` to check the story IDs in test names. In CI, add `--format github` so problems appear on the PR diff.
 
 In the PR description, include the summary from `npx --no-install story-map diff origin/<base branch>`, and call out anything under **Customer-facing changes**.
 <!-- auto-story-map:end -->

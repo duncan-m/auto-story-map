@@ -192,15 +192,16 @@ The checks cover YAML syntax, duplicate keys and IDs, missing and unknown fields
 
 Some problems are warnings rather than errors, such as a blocked or cut story with no `statusReason`, or a release with active stories but no [impact](#release-notes-and-impact). Warnings are printed with `warning:` after the position, but the map is still valid and the command exits successfully. Add `--strict` to treat warnings as errors.
 
-Two optional checks look beyond the map file. Run them from the repository root, or pass `--root`:
+Three optional checks look beyond the map file. Run them from the repository root, or pass `--root`:
 
 - `--check-sources` checks that each repository-relative source exists and that each Markdown `#heading` fragment matches a heading in that file, using GitHub’s anchor rules. Absolute URLs and free text such as “Agreed in planning” are not checked.
 - `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. Repeat the option for several folders.
-- Both checks stay inside the repository. A source or plan that points outside it, directly or through a symbolic link, is reported and never read. Symbolic links that stay inside the repository are followed as usual.
+- `--tests <path>` checks the story IDs in test names, as described in [Link tests to stories](#link-tests-to-stories): an error for an ID that is not in the map, and a warning for an `in-progress` or `merged` story with no tagged tests. Repeat the option for several paths.
+- All three checks stay inside the repository. A source, plan or test file that points outside it, directly or through a symbolic link, is reported and never read. Symbolic links that stay inside the repository are followed as usual.
 - Heading links are checked in Markdown files of up to 5 MB. A `#heading` source in a larger file is reported, so link to a smaller file.
 
 ```sh
-npx --no-install story-map validate --check-sources --plans docs product/story-map.yaml
+npx --no-install story-map validate --check-sources --plans docs --tests test product/story-map.yaml
 ```
 
 Run the validator in CI for story map changes. In GitHub Actions, add `--format github` so each problem appears as an annotation on the PR diff. Errors appear as error annotations and warnings as warning annotations:
@@ -302,6 +303,48 @@ const view = getStoryMapForViewer(document, viewer, { canViewInternal, history, 
 ```
 
 Pass `now` to `getStoryMapForViewer` as well as to `filterStoryMapView` and the board when the host fixes the time, such as in tests.
+
+## Link tests to stories
+
+Internal viewers can see the tests that cover a story in its panel, each linking to its line in the repository. Tests point to stories, not the other way round: a test names its story, and a build step collects them, so the lists keep up as tests are added, renamed or moved, and nobody edits the map to list them.
+
+To tag a test, put the story ID at the start of its name, followed by a colon:
+
+```js
+test("BUILDER-101: totals the materials on an estimate", () => { … });
+describe("BUILDER-102: approval workflow", () => { … });
+```
+
+The ID can appear anywhere in the name as a whole word, and one test can name several stories, but starting with the ID keeps names easy to scan. The panel drops a leading `BUILDER-101: `, because it already shows the ID. These calls count: `test`, `it`, `describe` and `suite`, with `.only`, `.skip`, `.todo`, `.concurrent` or `.each(…)`. A tagged `describe` or `suite` is listed once, as a group: the tests inside it are not listed unless they are tagged too. Only IDs that use a prefix your map already has, such as `BUILDER-`, are read.
+
+The name must be written as a quoted string or a template literal, starting on the same line as the call or the next one. A name built at run time, such as `` test(`${story} works`, …) ``, is matched on its literal text only. IDs in comments are not tags.
+
+When the product is built, write the index:
+
+```sh
+npx --no-install story-map tests --tests test --out build/story-map-tests.json
+```
+
+`--tests` names a file or a folder, and can be repeated. In a folder, the command reads `*.test.*` and `*.spec.*` files and every script under `test/`, `tests/` and `__tests__/` folders, with the extensions `.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.mts`, `.cts` and `.tsx`. It skips `node_modules`, `dist`, `build` and dot folders, and never follows a path or symbolic link out of the repository. Without `--tests`, it reads the whole repository. It only reads the source text, so no test code runs. Tags for stories that are not in the map are left out, with a warning.
+
+The index lists at most 5,000 tests and 50 per story, and cuts names to 250 characters. Tests over the limits are counted, and the panel shows them as “+3 more in this file”.
+
+Load the file on the server and pass it in, like history. Keep it out of the static asset directory, because it describes internal code:
+
+```ts
+const tests = parseStoryMapTests(await readFile("build/story-map-tests.json", "utf8"));
+const map = getStoryMapPage(document, viewer, { canViewInternal, history, tests, searchParams: url.searchParams });
+```
+
+The story panel then has a **Tests** section between **History** and **Engineering**, listing each story's tests under their file. With `sourceBaseUrl`, each test links to its line, as `<file>#L<line>`, which GitHub, GitLab and Bitbucket all accept. Without it, files and lines are plain text. A story with no tagged tests says so and shows how to tag one. Without an index, the section is left out. Customers never see tests.
+
+Check the tags in CI with `validate --tests`:
+
+```sh
+npx --no-install story-map validate --format github --tests test product/story-map.yaml
+```
+
+It reports an error, on the test's line, for a tag naming a story that is not in the map, and a warning, on the story, for an `in-progress` or `merged` story with no tagged tests. Planned, shipped, blocked and cut stories are not warned about. Warnings fail only with `--strict`.
 
 ## Integrate with a product
 

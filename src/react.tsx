@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 import type { ReleaseImpact } from "./schema.js";
 import { storyMapAuthor, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -243,6 +243,90 @@ function NewTabHint() {
   );
 }
 
+/**
+ * Links `<file>#L<line>` under `sourceBaseUrl`, the form GitHub, GitLab and
+ * Bitbucket use for one line. Returns undefined without a base, or when the
+ * link would not be an http(s) URL under it.
+ */
+function testHref(file: string, line: number, sourceBaseUrl?: string) {
+  if (!sourceBaseUrl) return undefined;
+  try {
+    const base = new URL(sourceBaseUrl);
+    const url = new URL(`${file.split("/").map(encodeURIComponent).join("/")}#L${line}`, base);
+    if ((url.protocol !== "https:" && url.protocol !== "http:") || !url.href.startsWith(base.href.replace(/[?#].*$/, ""))) return undefined;
+    return url.href;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Drops a leading tag for the story followed by a separator, such as “ESM-702: ”
+ * or “ESM-702 — ”, since the panel already shows the ID. A name that only starts
+ * with the ID, such as “ESM-702 and ESM-703 …”, is left as written.
+ */
+function testName(name: string, storyId: string) {
+  if (!name.startsWith(storyId)) return name;
+  const separator = /^(?:\s*[:–—]|\s+-(?=\s))\s*/.exec(name.slice(storyId.length));
+  return separator && name.length > storyId.length + separator[0].length ? name.slice(storyId.length + separator[0].length) : name;
+}
+
+function GroupIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
+    </svg>
+  );
+}
+
+function TestsSection({ story, panelId, sourceBaseUrl }: { story: InternalStoryCard; panelId: string; sourceBaseUrl?: string }) {
+  const headingId = `${panelId}-tests`;
+  const files = new Map<string, { tests: StoryTestLink[]; more: number }>();
+  const fileEntry = (file: string) => {
+    let entry = files.get(file);
+    if (!entry) files.set(file, entry = { tests: [], more: 0 });
+    return entry;
+  };
+  for (const test of story.tests ?? []) fileEntry(test.file).tests.push(test);
+  for (const { file, count } of story.moreTests ?? []) fileEntry(file).more += count;
+
+  return (
+    <section className="esm-detail-section esm-tests" aria-labelledby={headingId}>
+      <h4 id={headingId}>Tests</h4>
+      {files.size === 0 ? (
+        <p className="esm-tests-empty">
+          No tests are tagged {story.id} yet. Put the ID at the start of a test’s name, such as <code>{`test("${story.id}: …")`}</code>.
+        </p>
+      ) : [...files].map(([file, { tests, more }]) => (
+        <div className="esm-tests-file" key={file}>
+          <p className="esm-tests-path"><code>{file}</code></p>
+          {tests.length > 0 && (
+            <ul aria-label={`Tests in ${file}`}>
+              {tests.map(test => {
+                const href = testHref(test.file, test.line, sourceBaseUrl);
+                const name = testName(test.name, story.id);
+                const label = <>
+                  {test.kind === "group" && <GroupIcon />}
+                  <span className="esm-test-name">{name}</span>
+                </>;
+                return (
+                  <li className="esm-test" key={`${test.line}:${test.name}`} data-kind={test.kind}>
+                    {href ? <a href={href} {...newTab}>{label}<NewTabHint /></a> : <span>{label}</span>}
+                    <span className="esm-test-line">
+                      {test.kind === "group" ? "All tests in this group · " : ""}line {test.line}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {more > 0 && <p className="esm-tests-more">+{more} more in this file</p>}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function StatusIcon({ status }: { status: StoryStatus }) {
   return (
     <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -267,7 +351,7 @@ function Status({ status }: { status: StoryStatus }) {
   );
 }
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks }: {
+function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks, testsIndexed }: {
   story: InternalStoryCard;
   panelId: string;
   activityTitle: string;
@@ -276,6 +360,8 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
   sourceBaseUrl?: string;
   settings: DateSettings;
   stalledAfterWeeks?: number;
+  /** True when the view has a tests index, so the empty state can show. */
+  testsIndexed?: boolean;
 }) {
   const titleId = `${panelId}-title`;
   const sources = internal ? resolveSources(story.sources, sourceBaseUrl) : [];
@@ -320,6 +406,9 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
           <h4 id={`${panelId}-history`}>History</h4>
           <HistoryList entries={story.history} settings={settings} labelledBy={`${panelId}-history`} />
         </section>
+      )}
+      {internal && (testsIndexed || !!story.tests?.length || !!story.moreTests?.length) && (
+        <TestsSection story={story} panelId={panelId} sourceBaseUrl={sourceBaseUrl} />
       )}
       {hasEngineering && (
         <section className="esm-detail-section" aria-labelledby={`${panelId}-engineering`}>
@@ -689,6 +778,7 @@ export function StoryMapBoard({
   const headingId = `${baseId}-heading`;
   const internal = map.audience === "internal";
   const stalledAfterWeeks = map.audience === "internal" ? map.stalledAfterWeeks : undefined;
+  const testsIndexed = map.audience === "internal" && map.testsIndexed === true;
   const filtering = isFiltering(map.filter);
   const settings = dateFormatters(locale, timeZone, now ?? new Date());
 
@@ -843,6 +933,7 @@ export function StoryMapBoard({
           sourceBaseUrl={sourceBaseUrl}
           settings={settings}
           stalledAfterWeeks={stalledAfterWeeks}
+          testsIndexed={testsIndexed}
         />
       ))}
       {internalReleases && showGrid && releases.map((release, index) => (

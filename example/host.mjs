@@ -6,7 +6,7 @@ import { StoryMapBoard } from "auto-story-map/react";
 // The enclosing app supplies a viewer from its verified session.
 // `target` is the request URL or path, including any `q` and `status` filter parameters.
 export function makeStoryMapResponse(target, document, viewer, options = {}) {
-  const { navigation = null, sourceBaseUrl, preservedParams, canViewInternal, history, stalledAfterWeeks, now } = options;
+  const { navigation = null, sourceBaseUrl, preservedParams, canViewInternal, history, tests, stalledAfterWeeks, now } = options;
   const url = new URL(target, "http://localhost");
   const headers = storyMapResponseHeaders;
   const isApi = url.pathname === "/api/story-map";
@@ -31,7 +31,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
   }
 
   // Projects for this viewer, then filters, so a search only ever sees what this viewer may see.
-  const map = getStoryMapPage(document, viewer, { canViewInternal, history, stalledAfterWeeks, now, searchParams: url.searchParams });
+  const map = getStoryMapPage(document, viewer, { canViewInternal, history, tests, stalledAfterWeeks, now, searchParams: url.searchParams });
   const status = map ? 200 : viewer ? 403 : 401;
   const message = viewer ? "This story map is only available to the product team." : "Sign in to view the story map.";
 

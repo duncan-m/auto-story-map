@@ -431,6 +431,16 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.match(agents, /<!-- auto-story-map:end -->\n$/);
   assert.match(await readFile(join(root, ".github/workflows/story-map.yml"), "utf8"), /story-map validate --format github --check-sources product\/story-map\.yaml/);
 
+  // A host with a test folder also checks the story IDs in its test names.
+  const withTests = await mkdtemp(join(tmpdir(), "story-map-host-"));
+  t.after(() => rm(withTests, { recursive: true, force: true }));
+  await writeFile(join(withTests, "package-lock.json"), "{}");
+  await mkdir(join(withTests, "tests"));
+  await initStoryMap(withTests);
+  const workflow = await readFile(join(withTests, ".github/workflows/story-map.yml"), "utf8");
+  assert.match(workflow, /story-map validate --format github --check-sources --tests tests product\/story-map\.yaml/);
+  assert.match(workflow, /      - tests\/\*\*\n      - package\.json\n/);
+
   await writeFile(join(root, "product/story-map.yaml"), sample);
   const second = await initStoryMap(root);
   assert.ok(second.every(step => step.action === "skipped"));
@@ -2123,8 +2133,6 @@ test("groups story history newest first in linear time, keeping equal timestamps
   assert.equal(view.stories.find(s => s.id === "BUILDER-101").history.length, 100_000);
 });
 
-// --- Visio export (ESM-702) ---
-
 /** Reads a zip of stored entries, checking each CRC. Test-only. */
 function readStoredZip(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -2187,7 +2195,7 @@ const exportView = (source = map, options = {}) => getStoryMapForViewer(source, 
 const page = files => files.get("visio/pages/page1.xml");
 const storyShapes = files => [...page(files).matchAll(/NameU="Story ([^"]+)"/g)].map(match => match[1]);
 
-test("exports the internal map as a valid Visio package", () => {
+test("ESM-702: exports the internal map as a valid Visio package", () => {
   const files = readStoredZip(storyMapToVsdx(exportView(), { now: exportNow }));
   for (const [name, xml] of files) assertWellFormedXml(xml, name);
 
@@ -2212,12 +2220,12 @@ test("exports the internal map as a valid Visio package", () => {
   assert.match(files.get("docProps/core.xml"), /2026-11-20T00:00:00Z/);
 });
 
-test("the Visio export is the same every time for the same input", () => {
+test("ESM-702: the Visio export is the same every time for the same input", () => {
   const view = exportView();
   assert.deepEqual(storyMapToVsdx(view, { now: exportNow }), storyMapToVsdx(view, { now: exportNow }));
 });
 
-test("only the unfiltered internal view can be exported", () => {
+test("ESM-702: only the unfiltered internal view can be exported", () => {
   const customerView = getStoryMapForViewer(map, regular);
   assert.equal(customerView?.audience, "all-users");
   assert.throws(() => storyMapToVsdx(customerView), /Customers cannot export/);
@@ -2225,7 +2233,7 @@ test("only the unfiltered internal view can be exported", () => {
   assert.throws(() => storyMapToVsdx(exportView(), { maxStories: 0 }), RangeError);
 });
 
-test("collapsed releases are exported as a header and a story count", () => {
+test("ESM-702: collapsed releases are exported as a header and a story count", () => {
   const view = exportView();
   const release = view.releases[0];
   const inRelease = view.stories.filter(story => story.release === release.id);
@@ -2237,7 +2245,7 @@ test("collapsed releases are exported as a header and a story count", () => {
   assert.match(page(files), /<Cell N="Value" V="Yes" U="STR"\/><Cell N="Label" V="Collapsed"\/>/);
 });
 
-test("the Visio export keeps the most recently changed stories", () => {
+test("ESM-702: the Visio export keeps the most recently changed stories", () => {
   const base = parseStoryMap(sample);
   const stories = Array.from({ length: 250 }, (_, i) => ({
     ...base.stories[0],
@@ -2270,7 +2278,7 @@ test("the Visio export keeps the most recently changed stories", () => {
   assert.ok(!storyShapes(files).includes("BULK-2"));
 });
 
-test("the Visio export escapes text and shortens long titles", () => {
+test("ESM-702: the Visio export escapes text and shortens long titles", () => {
   const base = parseStoryMap(sample);
   const title = `Escape <tags> & "quotes" 🚀 ${"very long words ".repeat(20)}end`;
   const odd = { ...base, title: "A & B <map>", stories: [{ ...base.stories[0], title, customer: undefined }] };
@@ -2284,9 +2292,7 @@ test("the Visio export escapes text and shortens long titles", () => {
   assert.ok(xml.includes(`V="${title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}"`));
 });
 
-// --- Export from the command line (ESM-703) ---
-
-test("story-map export writes a Visio file from the YAML file", async () => {
+test("ESM-703: story-map export writes a Visio file from the YAML file", async () => {
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   const fixture = fileURLToPath(new URL("./fixtures/builder-estimates.yaml", import.meta.url));
   const root = await mkdtemp(join(tmpdir(), "story-map-export-"));
@@ -2337,8 +2343,6 @@ test("story-map export writes a Visio file from the YAML file", async () => {
   }
 });
 
-// --- CSV export (ESM-705) ---
-
 /** Splits RFC 4180 CSV into rows of fields. Test-only. */
 function parseCsv(text) {
   const rows = [[]];
@@ -2365,7 +2369,7 @@ const csvRows = csv => {
   return parseCsv(csv.slice(1));
 };
 
-test("exports the internal map as CSV in board order", () => {
+test("ESM-705: exports the internal map as CSV in board order", () => {
   const view = exportView();
   const rows = csvRows(storyMapToCsv(view));
   assert.deepEqual(rows[0], ["Activity", "Release", "ID", "Title"]);
@@ -2379,12 +2383,12 @@ test("exports the internal map as CSV in board order", () => {
   assert.equal(csvContentType, "text/csv; charset=utf-8");
 });
 
-test("only the unfiltered internal view can be exported as CSV", () => {
+test("ESM-705: only the unfiltered internal view can be exported as CSV", () => {
   assert.throws(() => storyMapToCsv(getStoryMapForViewer(map, regular)), /Customers cannot export/);
   assert.throws(() => storyMapToCsv(filterStoryMapView(exportView(), { query: "estimate" })), /unfiltered/);
 });
 
-test("collapsed releases are one CSV row with the story count", () => {
+test("ESM-705: collapsed releases are one CSV row with the story count", () => {
   const view = exportView();
   const release = view.releases[0];
   const count = view.stories.filter(story => story.release === release.id).length;
@@ -2393,7 +2397,7 @@ test("collapsed releases are one CSV row with the story count", () => {
   assert.equal(rows.length - 1, map.stories.length - count + 1);
 });
 
-test("the CSV export quotes fields and defuses formulas", () => {
+test("ESM-705: the CSV export quotes fields and defuses formulas", () => {
   const base = parseStoryMap(sample);
   const titles = ['Commas, "quotes" and\nnew lines', "=HYPERLINK(\"http://example.com\")", "+1 for estimates", "-2 days", "@mention", "Plain 🚀 title"];
   const odd = { ...base, stories: titles.map((title, i) => ({ ...base.stories[0], id: `ODD-${i + 1}`, title, customer: undefined })) };
@@ -2404,7 +2408,7 @@ test("the CSV export quotes fields and defuses formulas", () => {
   assert.deepEqual(rows.map(row => row[3]), [titles[0], `'${titles[1]}`, "'+1 for estimates", "'-2 days", "'@mention", "Plain 🚀 title"]);
 });
 
-test("the CSV export keeps the most recently changed stories", () => {
+test("ESM-705: the CSV export keeps the most recently changed stories", () => {
   const base = parseStoryMap(sample);
   const stories = Array.from({ length: 250 }, (_, i) => ({ ...base.stories[0], id: `BULK-${i + 1}`, customer: undefined }));
   const ids = csvRows(storyMapToCsv(exportView({ ...base, stories }))).slice(1).map(row => row[2]);
@@ -2414,7 +2418,7 @@ test("the CSV export keeps the most recently changed stories", () => {
   assert.equal(csvRows(storyMapToCsv(exportView({ ...base, stories }), { maxStories: 3 })).length, 4);
 });
 
-test("story-map export writes CSV from the YAML file", async () => {
+test("ESM-705: story-map export writes CSV from the YAML file", async () => {
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   const fixture = fileURLToPath(new URL("./fixtures/builder-estimates.yaml", import.meta.url));
   const root = await mkdtemp(join(tmpdir(), "story-map-export-csv-"));
@@ -2432,9 +2436,7 @@ test("story-map export writes CSV from the YAML file", async () => {
   }
 });
 
-// --- Download the export from the board (ESM-704) ---
-
-test("the board links to the export for internal viewers only", () => {
+test("ESM-704: the board links to the export for internal viewers only", () => {
   const render = (viewer, props = {}) => renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, viewer), ...props }));
   const internal = render(engineer, { exportHref: "/story-map/export?as=engineer#map" });
   const links = [...internal.matchAll(/<a class="esm-export-link" href="([^"]+)" data-esm-export="([^"]+)" download="">([^<]+)<\/a>/g)];
@@ -2459,7 +2461,7 @@ test("the board links to the export for internal viewers only", () => {
   assert.doesNotMatch(customerPage, /esm-export/, "never in a customer toolbar");
 });
 
-test("storyMapExportResponse builds a download for a host route", () => {
+test("ESM-704: storyMapExportResponse builds a download for a host route", () => {
   const view = exportView();
   const vsdx = storyMapExportResponse(view, { format: "vsdx", collapsed: `${map.releases[0].id}, no-such-release`, now: exportNow });
   assert.deepEqual(vsdx.headers, {
@@ -2481,7 +2483,7 @@ test("storyMapExportResponse builds a download for a host route", () => {
   assert.throws(() => storyMapExportResponse(view, { format: null }), RangeError);
 });
 
-test("the example host serves the export to internal viewers", async () => {
+test("ESM-704: the example host serves the export to internal viewers", async () => {
   const route = (path, viewer) => makeStoryMapResponse(path, map, viewer, { canViewInternal: viewer => viewer?.roles.includes("engineer"), now: exportNow });
   assert.equal(route("/story-map/export?format=csv", null).status, 401);
   assert.equal(route("/story-map/export?format=csv", regular).status, 403);
@@ -2499,9 +2501,7 @@ test("the example host serves the export to internal viewers", async () => {
   assert.match(page, /href="\/story-map\/export\?as=engineer&amp;format=vsdx"/);
 });
 
-// --- Status filter with several choices ---
-
-test("board.js applies the status filter when its menu closes with a change", async t => {
+test("ESM-414: board.js applies the status filter when its menu closes with a change", async t => {
   class FakeNode {}
   class FakeElement extends FakeNode {}
   const storage = new Map();
@@ -2556,9 +2556,7 @@ test("board.js applies the status filter when its menu closes with a change", as
   assert.equal(menu.open, false, "Escape closes the menu");
 });
 
-// --- Export layout that survives other tools' text handling ---
-
-test("the Visio layout keeps each release's header lines and cards inside its lane", async () => {
+test("ESM-702: the Visio layout keeps each release's header lines and cards inside its lane", async () => {
   // Internal modules: the layout is not public, but its geometry is what the imports depend on.
   const { prepareStoryMapExport } = await import("../dist/export.js");
   const { layoutStoryMapExport } = await import("../dist/export-layout.js");
@@ -2589,8 +2587,6 @@ test("the Visio layout keeps each release's header lines and cards inside its la
   assert.ok(short.text[1].size >= 11, "card titles are at least 11 points");
   assert.ok(short.h < 1 && long.h < 1, "cards stay under an inch tall");
 });
-
-// --- Story tests (ESM-801) ---
 
 const storyTestCalls = await readFile(new URL("./fixtures/story-tests/calls.txt", import.meta.url), "utf8");
 
@@ -2806,4 +2802,74 @@ test("ESM-801: validate --tests reports unknown tags and active stories without 
   assert.equal(run("--tests", "../elsewhere", "map.yaml").status, 1);
   assert.equal(run("--tests", "test", "map.yaml").status, 1);
   assert.equal(run("map.yaml").stderr, "");
+});
+
+test("ESM-801: the story panel lists tagged tests by file, linking to each line", () => {
+  const tests = parseStoryMapTests({
+    version: 1,
+    generatedAt: "2026-11-21T12:00:00.000Z",
+    tests: [
+      { storyIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 4, name: "BUILDER-101: drafts an estimate", kind: "test" },
+      { storyIds: ["BUILDER-101", "BUILDER-102"], file: "test/estimate.test.js", line: 9, name: "BUILDER-101 and BUILDER-102 share a total", kind: "test" },
+      { storyIds: ["BUILDER-101"], file: "test/ui/form #2.test.js", line: 12, name: "BUILDER-101: form", kind: "group" },
+    ],
+    omitted: [{ storyId: "BUILDER-101", file: "test/estimate.test.js", count: 3 }],
+  });
+  const view = getStoryMapForViewer(map, engineer, { tests });
+  assert.equal(view.testsIndexed, true);
+  const story = view.stories.find(card => card.id === "BUILDER-101");
+  assert.deepEqual(story.tests.map(test => `${test.file}:${test.line}`), ["test/estimate.test.js:4", "test/estimate.test.js:9", "test/ui/form #2.test.js:12"]);
+  assert.deepEqual(story.moreTests, [{ file: "test/estimate.test.js", count: 3 }]);
+  assert.equal(view.stories.find(card => card.id === "BUILDER-103").tests, undefined);
+
+  // Each story's panel, from its opening tag to the next panel.
+  const panel = (html, id) => html.split('<div class="esm-detail"').find(part => part.includes(`<p class="esm-card-id">${id}</p>`));
+  const linked = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, sourceBaseUrl }));
+  const tagged = panel(linked, "BUILDER-101");
+  // Between History and Engineering, grouped by file, with the leading tag dropped.
+  const withSources = panel(linked, "BUILDER-102");
+  assert.ok(withSources.indexOf(">Tests</h4>") > 0 && withSources.indexOf(">Tests</h4>") < withSources.indexOf(">Engineering</h4>"), "Tests comes before Engineering");
+  const withHistory = panel(renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer, {
+    tests,
+    history: { version: 1, generatedAt: "2026-11-21T12:00:00.000Z", complete: true, events: [{ storyId: "BUILDER-101", type: "added", to: "planned", at: "2026-11-01T12:00:00.000Z", commit: "abcdef1" }] },
+  }) })), "BUILDER-101");
+  assert.ok(withHistory.indexOf(">History</h4>") > 0 && withHistory.indexOf(">History</h4>") < withHistory.indexOf(">Tests</h4>"), "Tests comes after History");
+  assert.ok(tagged.indexOf("test/estimate.test.js</code>") < tagged.indexOf("test/ui/form #2.test.js</code>"));
+  assert.match(tagged, /href="https:\/\/docs\.example\.test\/repository\/test\/estimate\.test\.js#L4"[^>]*><span class="esm-test-name">drafts an estimate<\/span>/);
+  assert.match(tagged, /<span class="esm-test-name">BUILDER-101 and BUILDER-102 share a total<\/span>/);
+  assert.match(tagged, /href="https:\/\/docs\.example\.test\/repository\/test\/ui\/form%20%232\.test\.js#L12"/);
+  assert.match(tagged, /All tests in this group · line 12/);
+  assert.match(tagged, /\+3 more in this file/);
+  // The empty state shows only with an index.
+  assert.match(panel(linked, "BUILDER-103"), /No tests are tagged BUILDER-103 yet\./);
+  const noIndex = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer), sourceBaseUrl }));
+  assert.doesNotMatch(noIndex, /esm-tests|No tests are tagged/);
+
+  // Without sourceBaseUrl, files and lines are plain text.
+  const plain = panel(renderToStaticMarkup(createElement(StoryMapBoard, { map: view })), "BUILDER-101");
+  assert.doesNotMatch(plain, /#L\d/);
+  assert.match(plain, /<span><span class="esm-test-name">drafts an estimate<\/span><\/span><span class="esm-test-line">line 4<\/span>/);
+
+  // Paths that could leave the repository are refused when the index is parsed.
+  for (const file of ["/etc/passwd", "../outside.test.js", "https://evil.test/x.js", "//evil.test/x.js", "test\\x.js"]) {
+    assert.throws(() => parseStoryMapTests({ ...tests, tests: [{ ...tests.tests[0], file }], omitted: undefined }), /relative to the repository root/, file);
+  }
+});
+
+test("ESM-801: customers never see test names or paths", async () => {
+  const tests = parseStoryMapTests({
+    version: 1,
+    generatedAt: "2026-11-21T12:00:00.000Z",
+    tests: map.stories.map((story, index) => ({ storyIds: [story.id], file: "test/secret-path.test.js", line: index + 1, name: `${story.id}: secret test name`, kind: "test" })),
+    omitted: [{ storyId: map.stories[0].id, file: "test/secret-omitted.test.js", count: 2 }],
+  });
+  const customer = getStoryMapForViewer(map, regular, { tests });
+  assert.equal(customer.audience, "all-users");
+  assert.equal(customer.testsIndexed, undefined);
+  for (const path of ["/story-map", "/api/story-map"]) {
+    const body = await makeStoryMapResponse(path, map, regular, { sourceBaseUrl, tests }).text();
+    assert.doesNotMatch(body, /secret|esm-tests|No tests are tagged|testsIndexed/, path);
+  }
+  // The engineer's JSON does include them, so the check above is meaningful.
+  assert.match(await makeStoryMapResponse("/api/story-map", map, engineer, { tests }).text(), /secret test name/);
 });
