@@ -96,7 +96,8 @@ The tests and the demo import the package by its own name (`import … from "aut
 | `scripts/write-version.mjs` | Writes `src/version.ts` before `tsc` runs |
 | `scripts/build-schema.mjs` | Generates `story-map.schema.json` from the compiled Zod schema |
 | `scripts/smoke-package.sh` | Packs the tarball, installs it into an empty project and checks the imports, CLI and board |
-| `test/story-map.test.mjs` | All tests, using `node:test` |
+| `test/story-map.test.mjs` | Example-based tests, using `node:test` |
+| `test/references.property.test.js` | Property tests for the heading anchor scanners, using `fast-check` |
 | `.github/workflows/` | `ci.yml` for PRs and `main`, `release.yml` for version tags |
 
 ## The map file
@@ -387,7 +388,7 @@ npm run demo
 
 ## Tests and CI
 
-All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert/strict`. They cover:
+Tests use `node:test` with `node:assert/strict`. The example-based tests are in `test/story-map.test.mjs`. They cover:
 
 - parsing defaults, duplicate keys and IDs, dangling references, customer-label rules, and error lines and item IDs,
 - audience rules on the HTML page and JSON endpoint through `example/host.mjs`, including that customer output contains no internal content,
@@ -404,6 +405,8 @@ All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert
 - stalled stories: the threshold from the map, the host override and 0, measuring from the latest start, no flag without history or with an out-of-date history, the filter, the board and the customer view.
 
 Tests that need Git create temporary repositories and clean them up. They need `git` on the path.
+
+`test/references.property.test.js` uses `fast-check` to generate Markdown full of the characters the heading scanners treat specially. It checks that `slugify` and `markdownAnchors` give the same anchors as the regexes the scanners replaced (ESM-610), kept in the test as the reference, and that repeated headings get GitHub's `-1`, `-2` suffixes. Each property runs 1,000 cases. When you change `src/references.ts`, run a longer pass with `FC_NUM_RUNS=300000 node --test test/references.property.test.js`. That takes about 7 seconds. A failure prints the seed and path to replay it. The file is `.js`, not `.mjs`, so that OpenSSF Scorecard's fuzzing check finds the `fast-check` import.
 
 `ci.yml` runs on every PR and push to `main`, on a matrix of Node 20 and 26 with React 18 and 19:
 
