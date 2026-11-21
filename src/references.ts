@@ -135,7 +135,7 @@ function looksLikePath(source: string) {
   return !/\s/.test(source) && !/^[a-z][a-z0-9+.-]*:/i.test(source) && !source.startsWith("//");
 }
 
-async function statOrNull(path: string) {
+export async function statOrNull(path: string) {
   try {
     return await stat(path);
   } catch {
@@ -243,12 +243,21 @@ export async function checkSources(loaded: LoadedStoryMap, root: string): Promis
   return issues;
 }
 
+/** Which files a walk lists, and which folders it skips. */
+export interface FileFilter {
+  /** Whether to list a file, given its path relative to the root and its name. */
+  include(path: string, name: string): boolean;
+  /** Whether to skip a folder, given its name. Dot folders and node_modules are always skipped. */
+  skipFolder?(name: string): boolean;
+}
+
 /**
- * Lists Markdown files under a real path inside the root. Symbolic links are
+ * Lists the files under a real path inside the root that `filter` includes. A
+ * path that names a file is listed whatever its name. Symbolic links are
  * followed only while they stay inside the root, and each is reported in
  * `outside` otherwise. Each directory is listed once, so a loop of links ends.
  */
-async function markdownFiles(realRoot: string, path: string, outside: string[], seen = new Set<string>()): Promise<string[]> {
+export async function repositoryFiles(realRoot: string, path: string, filter: FileFilter, outside: string[], seen = new Set<string>()): Promise<string[]> {
   const info = await statOrNull(path);
   if (!info) return [];
   if (info.isFile()) return [path];
@@ -267,43 +276,70 @@ async function markdownFiles(realRoot: string, path: string, outside: string[], 
       const target = await statOrNull(child);
       kind = target?.isDirectory() ? "directory" : target?.isFile() ? "file" : undefined;
     }
-    if (kind === "directory") files.push(...await markdownFiles(realRoot, child, outside, seen));
-    else if (kind === "file" && markdownExtensions.has(extname(entry.name).toLowerCase())) files.push(child);
+    if (kind === "directory") {
+      if (!filter.skipFolder?.(entry.name)) files.push(...await repositoryFiles(realRoot, child, filter, outside, seen));
+    } else if (kind === "file" && filter.include(relative(realRoot, child).split(sep).join("/"), entry.name)) {
+      files.push(child);
+    }
   }
   return [...new Set(files)].sort();
 }
 
+const markdownFilter: FileFilter = { include: (_, name) => markdownExtensions.has(extname(name).toLowerCase()) };
+
+/**
+ * Matches story IDs that use a prefix already in the map, such as BUILDER- in
+ * BUILDER-102, as whole words, so text like UTF-8 or BUILDER-1x is ignored.
+ * Returns undefined when no story ID has a prefix.
+ */
+export function storyIdPattern(loaded: LoadedStoryMap): RegExp | undefined {
+  const prefixes = new Set(loaded.map.stories.flatMap(story => /^([A-Za-z][A-Za-z0-9]*)-\d+$/.exec(story.id)?.[1] ?? []));
+  if (!prefixes.size) return undefined;
+  const escaped = [...prefixes].map(prefix => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`(?<![A-Za-z0-9_-])(?:${escaped.join("|")})-\\d+(?![A-Za-z0-9_-])`, "g");
+}
+
+/** The outcome of checking that a path passed on the command line stays inside the root. */
+export type RootedPath = { kind: "inside"; path: string } | { kind: "missing" } | { kind: "issue"; issue: ReferenceIssue };
+
+/** Resolves a command-line path against the root, reporting one that leaves it directly or through a symbolic link. */
+export async function resolveRootedPath(root: string, realRoot: string, path: string): Promise<RootedPath> {
+  if (!insideRoot(root, resolve(root, path))) {
+    return { kind: "issue", issue: { severity: "error", path: [], file: path, message: "Points outside the repository." } };
+  }
+  const resolved = await resolveInRepository(realRoot, relative(root, resolve(root, path)));
+  if (resolved.kind === "outside") {
+    return { kind: "issue", issue: { severity: "error", path: [], file: path, message: "Points outside the repository through a symbolic link." } };
+  }
+  return resolved;
+}
+
+/** The issue for a file that a walk skipped because a symbolic link leads out of the repository. */
+export const outsideLinkIssue = (file: string): ReferenceIssue =>
+  ({ severity: "error", path: [], file, message: "Points outside the repository through a symbolic link, so it was not read." });
+
 /**
  * Finds story IDs mentioned in delivery plans that are not in the map. Only IDs
- * that use a prefix already in the map, such as BUILDER- in BUILDER-102, are
- * checked, so text like UTF-8 is ignored.
+ * that use a prefix already in the map are checked (see `storyIdPattern`).
  */
 export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, planPaths: string[]): Promise<ReferenceIssue[]> {
   const ids = new Set(loaded.map.stories.map(story => story.id));
-  const prefixes = new Set(loaded.map.stories.flatMap(story => /^([A-Za-z][A-Za-z0-9]*)-\d+$/.exec(story.id)?.[1] ?? []));
+  const pattern = storyIdPattern(loaded);
   const issues: ReferenceIssue[] = [];
-  if (!prefixes.size) return issues;
+  if (!pattern) return issues;
 
-  const escaped = [...prefixes].map(prefix => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   const realRoot = await realpath(root);
   const shown = (file: string) => relative(realRoot, file).split(sep).join("/");
-  const pattern = new RegExp(`(?<![A-Za-z0-9_-])(?:${escaped.join("|")})-\\d+(?![A-Za-z0-9_-])`, "g");
 
   for (const planPath of planPaths) {
-    if (!insideRoot(root, resolve(root, planPath))) {
-      issues.push({ severity: "error", path: [], file: planPath, message: "Points outside the repository." });
-      continue;
-    }
-    const resolved = await resolveInRepository(realRoot, relative(root, resolve(root, planPath)));
-    if (resolved.kind === "outside") {
-      issues.push({ severity: "error", path: [], file: planPath, message: "Points outside the repository through a symbolic link." });
+    const resolved = await resolveRootedPath(root, realRoot, planPath);
+    if (resolved.kind === "issue") {
+      issues.push(resolved.issue);
       continue;
     }
     const outside: string[] = [];
-    const files = resolved.kind === "inside" ? await markdownFiles(realRoot, resolved.path, outside) : [];
-    for (const link of outside) {
-      issues.push({ severity: "error", path: [], file: shown(link), message: "Points outside the repository through a symbolic link, so it was not read." });
-    }
+    const files = resolved.kind === "inside" ? await repositoryFiles(realRoot, resolved.path, markdownFilter, outside) : [];
+    for (const link of outside) issues.push(outsideLinkIssue(shown(link)));
     if (!files.length) {
       issues.push({ severity: "error", path: [], file: planPath, message: "No Markdown files found." });
       continue;

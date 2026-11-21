@@ -1,0 +1,44 @@
+// Fixture for the story test scanner. The test copies it to a .js file in a
+// temporary repository; it is a .txt file here so `node --test` does not run it.
+// BUILDER-102 in a comment is not a tag.
+/* test("BUILDER-102: inside a block comment") */
+import test, { describe, it, suite } from "node:test";
+
+test("BUILDER-101: double quotes", () => {});
+test('BUILDER-101: single quotes', () => {});
+test(`BUILDER-101: backticks`, () => {});
+it("BUILDER-102: it", () => {});
+test.only("BUILDER-102: only", () => {});
+it.skip("BUILDER-102: skip", () => {});
+test.todo("BUILDER-102: todo");
+test.concurrent("BUILDER-102: concurrent", () => {});
+test.each([[1, "a"], [2, ")"]])("BUILDER-102: each %s", () => {});
+test.each`
+  a    | b
+  ${1} | ${2}
+`("BUILDER-102: each table $a", () => {});
+describe("BUILDER-103: describe", () => {
+  it("names no story", () => {});
+});
+suite("BUILDER-103: suite", () => {});
+test("BUILDER-101: it\'s \"escaped\" — here", () => {});
+test(
+  "BUILDER-101: name on the next line",
+  () => {},
+);
+test("BUILDER-101 and BUILDER-102 together", () => {});
+test("BUILDER-101: twice, BUILDER-101", () => {});
+test(`BUILDER-101: ${"template"} part`, () => {});
+test(`${"BUILDER-102"} built at run time`, () => {});
+test("Tagged at the end (BUILDER-999)", () => {});
+const notATag = "test('BUILDER-102: inside a string')";
+const alsoNot = `test("BUILDER-102: inside a template")`;
+const pattern = /"test\("BUILDER-102/;
+expect.test("BUILDER-102: a method, not a test");
+/BUILDER-102/.test("BUILDER-102");
+test("ABUILDER-101 BUILDER-101x BUILDER-101-2 BUILDER-1010a", () => {});
+test("no story here", () => {});
+test(
+
+  "BUILDER-101: two lines below the call",
+);

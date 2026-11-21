@@ -11,6 +11,7 @@ import { storyMapToVsdx } from "./export-vsdx.js";
 import { parseStoryMapHistory, type StoryMapHistory } from "./history.js";
 import { buildStoryMapHistory, StoryMapHistoryError } from "./history-git.js";
 import { initStoryMap } from "./init.js";
+import { buildStoryMapTests, checkStoryTests, findStoryTests } from "./tests.js";
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
 import {
   describeIssueTarget,
@@ -25,9 +26,10 @@ import { getStoryMapForViewer } from "./view.js";
 
 const usage = `Usage:
   story-map init [--no-ci] [--dir <path>]
-  story-map validate [--format text|github] [--strict] [--check-sources] [--plans <path>] <map.yaml> [...]
+  story-map validate [--format text|github] [--strict] [--check-sources] [--plans <path>] [--tests <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
+  story-map tests [--tests <path>] [--root <path>] [--out <file>] [<map.yaml>]
   story-map export --format vsdx|csv [--output <file>] [--history <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
 
 init
@@ -49,8 +51,12 @@ validate
                      Markdown #heading fragments match a heading.
   --plans <path>     Check that story IDs mentioned in Markdown files under
                      <path> exist in the map. Repeat for several paths.
-  --root <path>      Repository root for sources and plans. Defaults to the
-                     current directory.
+  --tests <path>     Check story IDs in the names of tests under <path>: an
+                     error for an ID that is not in the map, and a warning for
+                     an in-progress or merged story with no tagged tests.
+                     Repeat for several paths.
+  --root <path>      Repository root for sources, plans and tests. Defaults to
+                     the current directory.
 
 diff
   Compares the map with its version at <base-ref>, such as origin/main, and
@@ -72,6 +78,18 @@ history
                      are credited to whoever merged them. Authors ending in
                      [bot] are always treated as bots. Repeat to add more.
   --allow-shallow    Build a partial history from a shallow clone instead of failing.
+
+tests
+  Finds tests whose names contain a story ID, such as
+  test("ESM-702: exports a valid Visio package", …), and writes them as JSON
+  for the board. It reads the source text only, so no test code runs. The map
+  is validated first, and defaults to product/story-map.yaml.
+
+  --tests <path>     A test file, or a folder whose *.test.*, *.spec.* files
+                     and test/, tests/ and __tests__/ folders are read.
+                     Repeat for several paths. Defaults to the whole root.
+  --root <path>      Repository root. Defaults to the current directory.
+  --out <file>       Write to a file instead of printing.
 
 export
   Writes the whole internal map as a file to import into Lucidchart, Miro,
@@ -111,11 +129,12 @@ function parseValidateArgs(rest: string[]) {
   let strict = false;
   let root = ".";
   const plans: string[] = [];
+  const tests: string[] = [];
   const paths: string[] = [];
   for (let index = 0; index < rest.length; index++) {
     const arg = rest[index];
     const name = arg.split("=")[0];
-    if (name === "--format" || name === "--plans" || name === "--root") {
+    if (name === "--format" || name === "--plans" || name === "--tests" || name === "--root") {
       const [value, next] = optionValue(rest, index, name);
       index = next;
       if (name === "--format") {
@@ -123,6 +142,8 @@ function parseValidateArgs(rest: string[]) {
         format = value;
       } else if (name === "--plans") {
         plans.push(value);
+      } else if (name === "--tests") {
+        tests.push(value);
       } else {
         root = value;
       }
@@ -136,7 +157,7 @@ function parseValidateArgs(rest: string[]) {
       paths.push(arg);
     }
   }
-  return paths.length > 0 ? { format, paths, checkSourceFiles, strict, plans, root: resolve(root) } : null;
+  return paths.length > 0 ? { format, paths, checkSourceFiles, strict, plans, tests, root: resolve(root) } : null;
 }
 
 function parseDiffArgs(rest: string[]) {
@@ -211,16 +232,23 @@ async function validate(options: NonNullable<ReturnType<typeof parseValidateArgs
       const issues: ReferenceIssue[] = [];
       if (options.checkSourceFiles) issues.push(...await checkSources(loaded, options.root));
       if (options.plans.length) issues.push(...await checkPlanReferences(loaded, options.root, options.plans));
-      const { map, warnings } = loaded;
-      const all = ([...issues, ...warnings] as ReferenceIssue[]).sort((a, b) => (a.file ? 1 : 0) - (b.file ? 1 : 0) || (a.line ?? 0) - (b.line ?? 0));
+      if (options.tests.length) {
+        const found = await findStoryTests(loaded, options.root, { paths: options.tests });
+        issues.push(...found.issues, ...checkStoryTests(loaded, found.tests));
+      }
+      const { map } = loaded;
+      const errors = issues.filter(issue => issue.severity === "error");
+      const warnings = [...loaded.warnings, ...issues.filter(issue => issue.severity === "warning")];
+      const all = ([...issues, ...loaded.warnings] as ReferenceIssue[]).sort((a, b) => (a.file ? 1 : 0) - (b.file ? 1 : 0) || (a.line ?? 0) - (b.line ?? 0));
       for (const issue of all) report(path, issue, options.format);
-      if (issues.length || (options.strict && warnings.length)) {
+      if (errors.length || (options.strict && warnings.length)) {
         process.exitCode = 1;
         continue;
       }
-      const checked = [options.checkSourceFiles && "sources", options.plans.length && "plan references"].filter(Boolean);
+      const checked = [options.checkSourceFiles && "sources", options.plans.length && "plan references", options.tests.length && "test tags"].filter(Boolean);
+      const listed = checked.length > 1 ? `${checked.slice(0, -1).join(", ")} and ${checked[checked.length - 1]}` : checked[0];
       const warned = warnings.length ? `, ${count(warnings.length, "warning", "warnings")}` : "";
-      console.log(`${path}: valid (${count(map.activities.length, "activity", "activities")}, ${count(map.releases.length, "release", "releases")}, ${count(map.stories.length, "story", "stories")})${warned}${checked.length ? `; checked ${checked.join(" and ")}` : ""}`);
+      console.log(`${path}: valid (${count(map.activities.length, "activity", "activities")}, ${count(map.releases.length, "release", "releases")}, ${count(map.stories.length, "story", "stories")})${warned}${listed ? `; checked ${listed}` : ""}`);
     } catch (error) {
       process.exitCode = 1;
       if (error instanceof StoryMapValidationError) {
@@ -363,6 +391,64 @@ function warnSkipped(result: Awaited<ReturnType<typeof buildStoryMapHistory>>) {
   if (result.skippedCount > shown.length) console.error(`  and ${result.skippedCount - shown.length} more, listed in the file's skipped field`);
 }
 
+function parseTestsArgs(rest: string[]) {
+  const options = { map: "product/story-map.yaml", root: ".", out: undefined as string | undefined, tests: [] as string[] };
+  const paths: string[] = [];
+  for (let index = 0; index < rest.length; index++) {
+    const arg = rest[index];
+    const name = arg.split("=")[0];
+    if (name === "--tests" || name === "--root" || name === "--out") {
+      const [value, next] = optionValue(rest, index, name);
+      index = next;
+      if (name === "--tests") options.tests.push(value);
+      else options[name.slice(2) as "root" | "out"] = value;
+    } else if (arg.startsWith("-")) {
+      return null;
+    } else {
+      paths.push(arg);
+    }
+  }
+  if (paths.length > 1) return null;
+  return { ...options, map: paths[0] ?? options.map, root: resolve(options.root), tests: options.tests.length ? options.tests : ["."] };
+}
+
+async function tests(options: NonNullable<ReturnType<typeof parseTestsArgs>>) {
+  let loaded;
+  try {
+    loaded = loadStoryMap(await readFile(options.map, "utf8"));
+  } catch (error) {
+    process.exitCode = 1;
+    if (error instanceof StoryMapValidationError) {
+      for (const issue of error.issues) report(options.map, issue, "text");
+    } else {
+      console.error(`${escapeText(options.map)}: ${escapeText(error instanceof Error ? error.message : String(error))}`);
+    }
+    return;
+  }
+  const found = await findStoryTests(loaded, options.root, { paths: options.tests });
+  for (const issue of found.issues) report(options.map, issue, "text");
+  if (found.issues.some(issue => issue.severity === "error")) {
+    process.exitCode = 2;
+    return;
+  }
+  const { index, unknownIds } = buildStoryMapTests(loaded, found.tests);
+  if (unknownIds.length) {
+    const shown = unknownIds.slice(0, 3).map(id => escapeText(id)).join(", ");
+    const more = unknownIds.length > 3 ? ` and ${unknownIds.length - 3} more` : "";
+    console.error(`warning: left out tags for stories that are not in the map: ${shown}${more}. Run story-map validate --tests to see where they are.`);
+  }
+  const json = JSON.stringify(index, null, 2) + "\n";
+  if (!options.out) {
+    process.stdout.write(json);
+    return;
+  }
+  await mkdir(dirname(resolve(options.out)), { recursive: true });
+  await writeFile(options.out, json);
+  const stories = new Set(index.tests.flatMap(test => test.storyIds)).size;
+  const omitted = (index.omitted ?? []).reduce((sum, entry) => sum + entry.count, 0);
+  console.error(`${escapeText(options.out)}: ${index.tests.length} ${index.tests.length === 1 ? "test" : "tests"} for ${stories} ${stories === 1 ? "story" : "stories"}${omitted ? ` (${omitted} more not listed)` : ""}`);
+}
+
 const exportFormats = storyMapExportFormats;
 
 function parseExportArgs(rest: string[]) {
@@ -467,6 +553,7 @@ const initOptions = parse("init", parseInitArgs);
 const diffOptions = parse("diff", parseDiffArgs);
 const historyOptions = parse("history", parseHistoryArgs);
 const exportOptions = parse("export", parseExportArgs);
+const testsOptions = parse("tests", parseTestsArgs);
 if (validateOptions) {
   await validate(validateOptions);
 } else if (diffOptions) {
@@ -477,6 +564,8 @@ if (validateOptions) {
   await init(initOptions);
 } else if (exportOptions) {
   await exportMap(exportOptions);
+} else if (testsOptions) {
+  await tests(testsOptions);
 } else if (command === "help" || command === "--help" || command === "-h") {
   console.log(usage);
 } else {
