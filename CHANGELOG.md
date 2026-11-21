@@ -23,6 +23,7 @@ One upgrade step: if host code reads `view.filter.status` or the JSON `filter.st
 - `parseStoryMapTests` refuses absolute paths, `..` segments, backslashes and URLs in `file`, so a test link always stays under `sourceBaseUrl`.
 - `story-map init` adds `--tests <folder>` to the CI workflow's validate step when the host has a top-level `test`, `tests` or `__tests__` folder, and runs the workflow when its tests change. Hosts without one get the same workflow as before. Existing workflows are never changed, so add `--tests` yourself to check tags in an existing host.
 - The guide has a new section, [Link tests to stories](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-tests-to-stories), and the `AGENTS.md` section that `init` adds tells agents to start a test's name with the story ID it covers.
+- On internal boards, a story card with tagged tests ends its status line with a flask and the count, such as “7”, read by screen readers as “7 tests”. The count includes tests the index left out over its limits. Cards for stories without tests, and customer cards, do not change. New class `esm-card-tests`.
 
 ## 0.6.1
 
