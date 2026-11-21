@@ -25,6 +25,8 @@ import {
   StoryMapValidationError,
   storyMapResponseHeaders,
   storyMapSchema,
+  storyMapToVsdx,
+  vsdxContentType,
 } from "auto-story-map";
 import { StoryMapBoard } from "auto-story-map/react";
 import { makeStoryMapResponse } from "../example/host.mjs";
@@ -2082,4 +2084,218 @@ test("groups story history newest first in linear time, keeping equal timestamps
   const view = getStoryMapForViewer(map, engineer, { history: { ...history, events: many } });
   assert.ok(performance.now() - started < 2000);
   assert.equal(view.stories.find(s => s.id === "BUILDER-101").history.length, 100_000);
+});
+
+// --- Visio export (ESM-702) ---
+
+/** Reads a zip of stored entries, checking each CRC. Test-only. */
+function readStoredZip(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const end = bytes.byteLength - 22;
+  assert.equal(view.getUint32(end, true), 0x06054B50, "end of central directory");
+  const count = view.getUint16(end + 10, true);
+  let at = view.getUint32(end + 16, true);
+  const decoder = new TextDecoder();
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc32 = data => {
+    let crc = 0xFFFFFFFF;
+    for (const byte of data) crc = crcTable[(crc ^ byte) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  };
+  const files = new Map();
+  for (let i = 0; i < count; i++) {
+    assert.equal(view.getUint32(at, true), 0x02014B50, "central directory header");
+    assert.equal(view.getUint16(at + 10, true), 0, "stored, not compressed");
+    const crc = view.getUint32(at + 16, true);
+    const size = view.getUint32(at + 20, true);
+    const nameLength = view.getUint16(at + 28, true);
+    const local = view.getUint32(at + 42, true);
+    const name = decoder.decode(bytes.subarray(at + 46, at + 46 + nameLength));
+    assert.equal(view.getUint32(local, true), 0x04034B50, `local header for ${name}`);
+    const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+    const data = bytes.subarray(start, start + size);
+    assert.equal(crc32(data), crc, `CRC for ${name}`);
+    files.set(name, decoder.decode(data));
+    at += 46 + nameLength;
+  }
+  return files;
+}
+
+/** A small well-formedness check for the XML the exporter writes. Test-only. */
+function assertWellFormedXml(xml, name) {
+  const body = xml.replace(/^<\?xml[^>]*\?>\s*/, "");
+  assert.doesNotMatch(body, /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;)/, `${name}: unescaped &`);
+  const stack = [];
+  const tag = /<(\/?)([A-Za-z_][\w:.-]*)((?:\s+[\w:.-]+="[^"<]*")*)\s*(\/?)>/g;
+  let last = 0;
+  for (const match of body.matchAll(tag)) {
+    assert.doesNotMatch(body.slice(last, match.index), /[<>]/, `${name}: stray < or > before ${match[0].slice(0, 40)}`);
+    last = match.index + match[0].length;
+    const [, closing, tagName, , selfClosing] = match;
+    if (closing) assert.equal(stack.pop(), tagName, `${name}: </${tagName}> closes the wrong element`);
+    else if (!selfClosing) stack.push(tagName);
+  }
+  assert.doesNotMatch(body.slice(last), /[<>]/, `${name}: trailing markup`);
+  assert.deepEqual(stack, [], `${name}: unclosed elements`);
+}
+
+/** Escapes every character with a meaning in a regular expression. */
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const exportNow = new Date("2026-11-20T09:00:00Z");
+const exportView = (source = map, options = {}) => getStoryMapForViewer(source, engineer, options);
+const page = files => files.get("visio/pages/page1.xml");
+const storyShapes = files => [...page(files).matchAll(/NameU="Story ([^"]+)"/g)].map(match => match[1]);
+
+test("exports the internal map as a valid Visio package", () => {
+  const files = readStoredZip(storyMapToVsdx(exportView(), { now: exportNow }));
+  for (const [name, xml] of files) assertWellFormedXml(xml, name);
+
+  // Every XML part has a content type, and every relationship points at a part.
+  const types = files.get("[Content_Types].xml");
+  for (const name of files.keys()) {
+    if (name.endsWith(".rels") || name === "[Content_Types].xml") continue;
+    assert.match(types, new RegExp(`PartName="/${escapeRegExp(name)}"`), `${name} has a content type`);
+  }
+  for (const [name, xml] of files) {
+    if (!name.endsWith(".rels")) continue;
+    const base = name.replace(/_rels\/[^/]*\.rels$/, "");
+    for (const [, target] of xml.matchAll(/Target="([^"]+)"/g)) assert.ok(files.has(base + target), `${name} → ${target}`);
+  }
+  assert.match(types, new RegExp(`ContentType="${escapeRegExp(vsdxContentType)}"`));
+
+  // Every story is a card with its ID, title and shape data, including blocked and cut ones.
+  assert.deepEqual(storyShapes(files).sort(), map.stories.map(story => story.id).sort());
+  const xml = page(files);
+  assert.match(xml, /<Cell N="Value" V="FINANCE-202" U="STR"\/><Cell N="Label" V="ID"\/>/);
+  assert.match(xml, /<Cell N="Value" V="Cut" U="STR"\/><Cell N="Label" V="Status"\/>/);
+  assert.match(files.get("docProps/core.xml"), /2026-11-20T00:00:00Z/);
+});
+
+test("the Visio export is the same every time for the same input", () => {
+  const view = exportView();
+  assert.deepEqual(storyMapToVsdx(view, { now: exportNow }), storyMapToVsdx(view, { now: exportNow }));
+});
+
+test("only the unfiltered internal view can be exported", () => {
+  const customerView = getStoryMapForViewer(map, regular);
+  assert.equal(customerView?.audience, "all-users");
+  assert.throws(() => storyMapToVsdx(customerView), /Customers cannot export/);
+  assert.throws(() => storyMapToVsdx(filterStoryMapView(exportView(), { query: "estimate" })), /unfiltered/);
+  assert.throws(() => storyMapToVsdx(exportView(), { maxStories: 0 }), RangeError);
+});
+
+test("collapsed releases are exported as a header and a story count", () => {
+  const view = exportView();
+  const release = view.releases[0];
+  const inRelease = view.stories.filter(story => story.release === release.id);
+  const files = readStoredZip(storyMapToVsdx(view, { collapsedReleases: [release.id, "no-such-release"], now: exportNow }));
+  const shapes = storyShapes(files);
+  for (const story of inRelease) assert.ok(!shapes.includes(story.id), `${story.id} is hidden`);
+  assert.equal(shapes.length, view.stories.length - inRelease.length);
+  assert.match(page(files), new RegExp(`Collapsed · ${inRelease.length} stor`));
+  assert.match(page(files), /<Cell N="Value" V="Yes" U="STR"\/><Cell N="Label" V="Collapsed"\/>/);
+});
+
+test("the Visio export keeps the most recently changed stories", () => {
+  const base = parseStoryMap(sample);
+  const stories = Array.from({ length: 250 }, (_, i) => ({
+    ...base.stories[0],
+    id: `BULK-${i + 1}`,
+    customer: undefined,
+  }));
+  const big = { ...base, stories };
+  // Without history, the last stories in the file count as newest.
+  let files = readStoredZip(storyMapToVsdx(exportView(big), { now: exportNow }));
+  assert.equal(storyShapes(files).length, 200);
+  assert.ok(storyShapes(files).includes("BULK-250"));
+  assert.ok(!storyShapes(files).includes("BULK-50"));
+  assert.match(page(files), /Showing the 200 most recently changed of 250 stories/);
+
+  // With history, the newest edits win, wherever they are in the file.
+  const history = {
+    version: 1,
+    generatedAt: "2026-11-20T08:00:00Z",
+    complete: true,
+    events: [],
+    lastEdits: [
+      { storyId: "BULK-1", at: "2026-11-19T10:00:00Z", by: "Sam", commit: "a".repeat(40) },
+      ...stories.slice(1).map((story, i) => ({ storyId: story.id, at: new Date(Date.UTC(2026, 0, 1) + i * 60000).toISOString(), commit: "b".repeat(40) })),
+    ],
+  };
+  files = readStoredZip(storyMapToVsdx(exportView(big, { history }), { now: exportNow, maxStories: 10 }));
+  assert.equal(storyShapes(files).length, 10);
+  assert.ok(storyShapes(files).includes("BULK-1"));
+  assert.ok(storyShapes(files).includes("BULK-250"));
+  assert.ok(!storyShapes(files).includes("BULK-2"));
+});
+
+test("the Visio export escapes text and shortens long titles", () => {
+  const base = parseStoryMap(sample);
+  const title = `Escape <tags> & "quotes" 🚀 ${"very long words ".repeat(20)}end`;
+  const odd = { ...base, title: "A & B <map>", stories: [{ ...base.stories[0], title, customer: undefined }] };
+  const files = readStoredZip(storyMapToVsdx(exportView(odd), { now: exportNow }));
+  for (const [name, xml] of files) assertWellFormedXml(xml, name);
+  const xml = page(files);
+  assert.match(xml, /A &amp; B &lt;map&gt;/);
+  assert.match(xml, /Escape &lt;tags&gt; &amp; &quot;quotes&quot; 🚀/);
+  // The card shows a shortened title, and shape data keeps it whole.
+  assert.match(xml, /<cp IX="1"\/>Escape [^<]*…<\/Text>/);
+  assert.ok(xml.includes(`V="${title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}"`));
+});
+
+// --- Export from the command line (ESM-703) ---
+
+test("story-map export writes a Visio file from the YAML file", async () => {
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const fixture = fileURLToPath(new URL("./fixtures/builder-estimates.yaml", import.meta.url));
+  const root = await mkdtemp(join(tmpdir(), "story-map-export-"));
+  const run = (...args) => spawnSync(process.execPath, [cli, "export", ...args], { cwd: root, encoding: "utf8" });
+  try {
+    const release = map.releases[0].id;
+    const inRelease = map.stories.filter(story => story.release === release);
+    const out = join(root, "nested", "map.vsdx");
+    const written = run("--format", "vsdx", "--output", out, "--collapsed", `${release},no-such-release`, fixture);
+    assert.equal(written.status, 0, written.stderr);
+    assert.match(written.stderr, /--collapsed no-such-release is not a release/);
+    assert.match(written.stderr, new RegExp(`exported ${map.stories.length - inRelease.length} stories \\(${inRelease.length} in collapsed lanes\\)`));
+    const files = readStoredZip(await readFile(out));
+    assert.equal(storyShapes(files).length, map.stories.length - inRelease.length);
+    assert.match(page(files), /Collapsed · /);
+
+    // The default output name, a story limit and history to choose the newest.
+    const history = {
+      version: 1,
+      generatedAt: "2026-11-20T08:00:00Z",
+      complete: true,
+      events: [],
+      lastEdits: [{ storyId: map.stories[0].id, at: "2026-11-19T10:00:00Z", commit: "a".repeat(40) }],
+    };
+    await writeFile(join(root, "history.json"), JSON.stringify(history));
+    const limited = run("--format=vsdx", "--max-stories", "1", "--history", "history.json", fixture);
+    assert.equal(limited.status, 0, limited.stderr);
+    assert.match(limited.stderr, /story-map\.vsdx: exported 1 story \(left out \d+ less recently changed\)/);
+    assert.deepEqual(storyShapes(readStoredZip(await readFile(join(root, "story-map.vsdx")))), [map.stories[0].id]);
+
+    // `--output -` writes the file to stdout.
+    const piped = spawnSync(process.execPath, [cli, "export", "--format", "vsdx", "--output", "-", fixture], { cwd: root });
+    assert.equal(piped.status, 0);
+    assert.equal(storyShapes(readStoredZip(new Uint8Array(piped.stdout))).length, map.stories.length);
+
+    // Problems with the command line exit 2, and problems with the files exit 1.
+    assert.match(run(fixture).stderr, /--format is required/);
+    assert.equal(run(fixture).status, 2);
+    assert.equal(run("--format", "csv", fixture).status, 2);
+    assert.equal(run("--format", "vsdx", "--max-stories", "0", fixture).status, 2);
+    assert.equal(run("--format", "vsdx", "--output", "--max-stories", "3", fixture).status, 2);
+    await writeFile(join(root, "invalid.yaml"), "title: No stories\n");
+    assert.equal(run("--format", "vsdx", "invalid.yaml").status, 1);
+    assert.equal(run("--format", "vsdx", "--history", "missing.json", fixture).status, 1);
+    assert.equal(run("--format", "vsdx").status, 1, "product/story-map.yaml is missing");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

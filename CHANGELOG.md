@@ -2,6 +2,11 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+- New `storyMapToVsdx(view, { collapsedReleases, maxStories, now })` writes the internal map as a Visio file (`.vsdx`) to import into Lucidchart, Miro or Visio. It is one page laid out like the board, with release notes and impact, and a card per story showing its ID and title, plus shape data. Collapsed lanes show only their title and story count, and at most 200 of the most recently changed stories are included. Customer views and filtered views are refused. New exports `vsdxContentType` and type `StoryMapExportOptions`. See [Export the map](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-the-map).
+- New `story-map export --format vsdx [--output <file>] [--history <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]` writes the same Visio file from the YAML file, without a host route. It validates the map first, always exports the internal view, and writes to `story-map.vsdx` by default, or to stdout with `--output -`. See [Export the map](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-the-map).
+
 ## 0.6.1
 
 There is no 0.6.0 release. 0.6.1 follows 0.5.0.

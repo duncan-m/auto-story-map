@@ -72,7 +72,29 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 3. Import it into Lucidchart and Miro, and open it in LibreOffice Draw.
 4. Hand-write a matching CSV and import it into both tools.
 
-**Record here** for each tool: whether it opened, whether positions, sizes, text and wrapping survived, whether shape data survived, and which Miro plan was used.
+**Test files.** `scripts/make-export-test-files.mjs` writes them to `test/fixtures/export-spike/`. To regenerate them, run `node scripts/make-export-test-files.mjs`.
+
+- `story-map-test.vsdx`: one page, 9.4 × 5.7 inches, with 11 shapes. It has no stencils or masters, and the zip is stored without compression.
+- `story-map-test.csv`: the same stories, plus a `TEST-1` row whose title starts with `=` to check that spreadsheets don't run it as a formula.
+- `story-map-test.libreoffice.png`: how LibreOffice draws the `.vsdx`. Use it as the reference when comparing imports.
+
+**What to check in each tool.** Did the file open? Did positions, sizes and colours survive? Did the text and its bold, italic and grey styling survive, and does it wrap? What happens to the ESM-702 title, which is too long for its card? Do `&`, `<`, the curly quotes and the 🚀 show correctly? Did shape data (ID, Status, Activity, Release) survive? Which plan was used?
+
+**Results.**
+
+| Tool | Opened | Layout and colours | Text and styling | Overflow | Shape data | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| LibreOffice Draw 24.2 (`soffice --headless`) | Yes | Correct | Correct, except styling after non-ASCII characters (see below) | Text spills below the card | Not checked | The stored zip and all 10 XML parts read cleanly. |
+| Lucidchart | Yes | Correct, and matches the LibreOffice reference | Correct, including grey and italic after "·" | Text spills below the card | Not checked | Curly quotes became straight quotes, and the 🚀 was dropped. `&`, `<` and `·` came through. |
+| Miro | Skipped | | | | | Not tested. See the outcome below. |
+| Lucidchart, CSV | Skipped | | | | | |
+| Miro, CSV | Skipped | | | | | |
+
+LibreOffice applies styling from the wrong position after non-ASCII characters. After the two "·" in the story counts line, the grey style carries into the first letter of the notes, and the italic in the impact line starts 8 characters late. With ASCII hyphens instead, every style lands correctly, so the XML is right and this is how LibreOffice reads it. Lucidchart places the styling correctly, so this only affects LibreOffice. For ESM-702, keep using text runs, and only switch to a shape per styled line if Miro also shows the shift.
+
+Lucidchart replaced curly quotes with straight ones and dropped the emoji. Neither affects reading the map, so the export writes text as it is. The docs for ESM-702 should mention that emoji may not survive the import.
+
+**Outcome.** Lucidchart works, so the Visio export goes ahead as planned with the hand-rolled zip and text runs. Miro and the CSV imports were skipped to keep moving. Until someone tries them, the docs say the `.vsdx` is tested with Lucidchart, and that Miro users should try it and fall back to CSV (ESM-705) if the import is poor.
 
 **Outcome.** If Miro's Visio import is poor or unavailable, the board's download menu recommends CSV for Miro, and item 4's docs say so. If no tool opens the stored zip, use `fflate` in item 2 (decision G).
 
@@ -120,6 +142,13 @@ It is exported from `auto-story-map`, uses no Node-only APIs, and throws a `Type
 5. **Shape data.** Each card gets a `Property` section with `ID`, `Title`, `Status`, `Activity` and `Release`. Lanes get `Release` and `Collapsed`.
 6. **Docs.** A new "Export the map" section in `docs/story-map.md` covers the API, the audience rule, the 200-story limit and the import steps for each tool. Add the new files to the code map in `docs/ENGINEERING-OVERVIEW.md`, and add the export to [Security boundaries to preserve](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve).
 
+**Built.** As planned, with these choices made while building it:
+
+- `prepareStoryMapExport` also refuses a filtered view (`view.filter` is set), so a host can't export part of the map by mistake.
+- Card shape data uses readable status labels, such as "In progress".
+- Lane heights grow to fit the release header's text. Wrapping is estimated from an average character width, because Visio does not size text itself.
+- Only `storyMapToVsdx`, `vsdxContentType` and `StoryMapExportOptions` are public. `prepareStoryMapExport` stays internal until the CSV export (ESM-705) needs it.
+
 **Tests** (`test/story-map.test.mjs`):
 
 - The zip round-trips with a small test-only reader, and the CRCs match.
@@ -145,6 +174,14 @@ npx --no-install story-map export product/story-map.yaml --format vsdx --output 
 - `--max-stories <n>`. Optional, defaults to 200.
 
 The CLI always builds the internal view, because whoever runs it already has the YAML file. It validates the map first and exits non-zero on errors, as `validate` does.
+
+**Built.** As planned, with these choices made while building it:
+
+- Only `--format vsdx` is accepted until the CSV export (ESM-705) adds `csv`. Any other format exits 2 and names the formats it accepts.
+- The map path is optional and defaults to `product/story-map.yaml`, like `--map` in `diff` and `history`.
+- `--collapsed` can be repeated, and warns about IDs that are not releases in the map rather than ignoring them silently.
+- It reports what it wrote on stderr, such as `story-map.vsdx: exported 180 stories (left out 20 less recently changed)`, so stdout stays clean for `--output -`.
+- Exit codes follow the other commands: 2 for a problem with the command line, and 1 for an invalid map or an unreadable history file.
 
 **Tests.** Run the CLI against `test/fixtures/builder-estimates.yaml`, check the exit codes, check that a missing `--format` fails, and check that the output opens with the test zip reader.
 

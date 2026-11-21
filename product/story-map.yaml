@@ -490,7 +490,7 @@ stories:
     title: Check that Miro and Lucidchart import a test file
     activity: explore
     release: export
-    status: planned
+    status: merged
     summary: Import a hand-made Visio file and CSV into Miro, Lucidchart and LibreOffice before building the export, and record what survives.
     sources:
       - docs/plans/export-to-external-tools.md#1-check-that-miro-and-lucidchart-import-a-test-file
@@ -498,7 +498,7 @@ stories:
     title: Export the internal map as a Visio file
     activity: explore
     release: export
-    status: planned
+    status: merged
     summary: storyMapToVsdx writes the whole internal map as a .vsdx file, with collapsed lanes, release notes and impact, and at most 200 stories.
     notes: Hand-rolled stored zip, no new dependency. Refuses customer views. Includes the LibreOffice check in CI.
     sources:
@@ -508,7 +508,7 @@ stories:
     title: Export the map from the command line
     activity: explore
     release: export
-    status: planned
+    status: merged
     summary: story-map export writes a Visio or CSV file from the YAML file, optionally using history to choose the most recent stories.
     sources:
       - docs/plans/export-to-external-tools.md#3-export-from-the-command-line

@@ -334,3 +334,37 @@ The board renders every story's detail panel into the page, so it works without 
 Up to a few hundred stories this is comfortable, especially with compression turned on. Above that, split the product into several maps, such as one per area of the product, or open the page with a filter by default, such as linking to `?status=in-progress`, so viewers start from a smaller board.
 
 The map is edited through a PR and ships with the product. The example JSON endpoint is read-only. An app that needs in-app authoring can submit a PR against the same YAML file.
+
+## Export the map
+
+Internal viewers can take a snapshot of the map into Lucidchart, Miro or Visio as a Visio file (`.vsdx`). It is one way: the YAML file stays the source of truth, and edits made in those tools do not come back.
+
+```ts
+import { getStoryMapForViewer, storyMapResponseHeaders, storyMapToVsdx, vsdxContentType } from "auto-story-map";
+
+const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
+if (view?.audience !== "internal") return new Response("Forbidden", { status: 403, headers: storyMapResponseHeaders });
+const file = storyMapToVsdx(view, { collapsedReleases: ["v0-1"] });
+return new Response(file, {
+  headers: {
+    ...storyMapResponseHeaders,
+    "Content-Type": vsdxContentType,
+    "Content-Disposition": 'attachment; filename="story-map.vsdx"',
+  },
+});
+```
+
+- The file is one page laid out like the board: activities across the top, then a lane per release with its title, story counts, notes and impact, with drafted items marked **Draft**. Each story is a card showing its ID and title. Each card also carries its ID, title, status, activity and release as shape data.
+- The export is the whole map, including blocked and cut stories. Pass the view from `getStoryMapForViewer`, not a filtered one. A filtered view is refused.
+- `collapsedReleases` takes release IDs. Those lanes show only their title and story count.
+- At most 200 stories are exported, from lanes that are not collapsed. When there are more, the most recently changed are kept, so pass `history` if you have it, and the file says how many were left out. Without history, the last stories in the file are kept. Change the limit with `maxStories`.
+- Only the internal view can be exported. A customer view throws a `TypeError`, so a host cannot hand customers internal details by mistake.
+- Titles too long for their card are cut with “…” on the card. The full title stays in the shape data.
+- To export from the command line, without a host route, use `story-map export`. It validates the map first and always exports the internal view, because whoever runs it already has the YAML file:
+
+  ```bash
+  npx --no-install story-map export product/story-map.yaml --format vsdx --output story-map.vsdx --history story-map-history.json --collapsed v0-1
+  ```
+
+  `--format` is required. `--output` defaults to `story-map.vsdx`, and `-` writes to stdout. `--history` takes the file from `story-map history`, `--collapsed` takes comma-separated release IDs, and `--max-stories` changes the 200-story limit.
+- The file is tested with Lucidchart, which keeps the layout, colours and text styling, but changes curly quotes to straight ones and drops emoji. Miro has not been tested yet. If its import is poor, a CSV export is planned as an alternative.

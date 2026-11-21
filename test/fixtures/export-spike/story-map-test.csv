@@ -1,0 +1,7 @@
+﻿Activity,Release,ID,Title
+Plan the map,Export to external tools,ESM-701,Check that Miro and Lucidchart import a test file
+Plan the map,Export to external tools,ESM-702,"Export the internal map as a Visio file, with collapsed lanes, release notes, expected impact and at most two hundred of the most recently changed stories"
+Explore & share the board,Export to external tools,ESM-703,Escape <tags> & “quotes” in titles 🚀
+Explore & share the board,Export to external tools,ESM-704,Download the export from the board
+,0.5.0: Collapsible releases,,Collapsed · 3 stories
+Plan the map,Export to external tools,TEST-1,'=1+1 should show as text
