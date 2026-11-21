@@ -5,6 +5,7 @@ import { dirname, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { code, diffStoryMaps, formatStoryMapDiff } from "./diff.js";
 import { defaultExportMaxStories, prepareStoryMapExport } from "./export.js";
+import { storyMapToCsv } from "./export-csv.js";
 import { storyMapToVsdx } from "./export-vsdx.js";
 import { parseStoryMapHistory, type StoryMapHistory } from "./history.js";
 import { buildStoryMapHistory, StoryMapHistoryError } from "./history-git.js";
@@ -26,7 +27,7 @@ const usage = `Usage:
   story-map validate [--format text|github] [--strict] [--check-sources] [--plans <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
-  story-map export --format vsdx [--output <file>] [--history <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
+  story-map export --format vsdx|csv [--output <file>] [--history <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
 
 init
   Sets up a host repository: a starter product/story-map.yaml, the story map
@@ -72,11 +73,12 @@ history
   --allow-shallow    Build a partial history from a shallow clone instead of failing.
 
 export
-  Writes the whole internal map as a file to import into Lucidchart, Miro or
-  Visio. The map is validated first, and errors exit 1. The map defaults to
-  product/story-map.yaml.
+  Writes the whole internal map as a file to import into Lucidchart, Miro,
+  Visio or a spreadsheet. The map is validated first, and errors exit 1. The
+  map defaults to product/story-map.yaml.
 
-  --format vsdx      Required. Writes a Visio file.
+  --format vsdx|csv  Required. vsdx writes a Visio file, and csv a row per
+                     story.
   --output <file>    Defaults to story-map.<format>. Use - to write to stdout.
   --history <file>   History from story-map history, used to choose the most
                      recently changed stories when there are too many.
@@ -360,7 +362,7 @@ function warnSkipped(result: Awaited<ReturnType<typeof buildStoryMapHistory>>) {
   if (result.skippedCount > shown.length) console.error(`  and ${result.skippedCount - shown.length} more, listed in the file's skipped field`);
 }
 
-const exportFormats = ["vsdx"] as const;
+const exportFormats = ["vsdx", "csv"] as const;
 
 function parseExportArgs(rest: string[]) {
   let format: (typeof exportFormats)[number] | undefined;
@@ -431,7 +433,7 @@ async function exportMap(options: NonNullable<ReturnType<typeof parseExportArgs>
   // Whoever runs the CLI has the YAML file, so the export is always the internal view.
   const view = getStoryMapForViewer(document, {}, { canViewInternal: () => true, history })!;
   const exportOptions = { collapsedReleases: options.collapsed, maxStories: options.maxStories };
-  const file = storyMapToVsdx(view, exportOptions);
+  const file = options.format === "csv" ? storyMapToCsv(view, exportOptions) : storyMapToVsdx(view, exportOptions);
   if (options.output === "-") {
     process.stdout.write(file);
     return;

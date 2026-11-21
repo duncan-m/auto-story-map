@@ -1,6 +1,6 @@
 # Plan: export the map to external tools
 
-Status: proposed. Nothing here is built yet. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
+Status: in progress. Items 1, 2, 3, 5 and 6 are built. Item 4 is next. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
 
 Internal viewers can download the board as a Visio file (`.vsdx`) or a CSV file and import it into Miro or Lucidchart. The export is a one-way snapshot: the YAML file stays the source of truth, and nothing edited in Miro or Lucidchart comes back.
 
@@ -95,8 +95,6 @@ LibreOffice applies styling from the wrong position after non-ASCII characters. 
 Lucidchart replaced curly quotes with straight ones and dropped the emoji. Neither affects reading the map, so the export writes text as it is. The docs for ESM-702 should mention that emoji may not survive the import.
 
 **Outcome.** Lucidchart works, so the Visio export goes ahead as planned with the hand-rolled zip and text runs. Miro and the CSV imports were skipped to keep moving. Until someone tries them, the docs say the `.vsdx` is tested with Lucidchart, and that Miro users should try it and fall back to CSV (ESM-705) if the import is poor.
-
-**Outcome.** If Miro's Visio import is poor or unavailable, the board's download menu recommends CSV for Miro, and item 4's docs say so. If no tool opens the stored zip, use `fflate` in item 2 (decision G).
 
 ## 2. Write a Visio file from the internal view
 
@@ -201,6 +199,14 @@ The CLI always builds the internal view, because whoever runs it already has the
 **Change.** `storyMapToCsv(view, options)` in `src/export-csv.ts` uses the same `prepareStoryMapExport`. It writes one row per story with columns `Activity`, `Release`, `ID` and `Title`, in board order (release, then activity, then map order). A collapsed release gets one row with `Release` set and `Title` set to "Collapsed · N stories". Release notes and impact are left out, because they do not fit one row per story. The Visio file carries them.
 
 Fields follow RFC 4180: they are quoted when needed, with doubled quotes and CRLF line endings. A field that starts with `=`, `+`, `-` or `@` is prefixed with `'`, so spreadsheet tools do not run it as a formula. The file starts with a UTF-8 BOM so Excel reads non-ASCII titles correctly.
+
+**Built.** As planned, with these choices made while building it:
+
+- `storyMapToCsv` returns a string, and `csvContentType` is `text/csv; charset=utf-8`.
+- `Activity` and `Release` hold titles rather than IDs, because they are what people read in Miro or a spreadsheet. A collapsed release's row leaves `Activity` and `ID` empty.
+- A field starting with a tab or a carriage return is also prefixed with `'`, following OWASP's advice on CSV injection.
+- `prepareStoryMapExport` stays internal. Both writers use it, but no host needs it yet.
+- `story-map export --format csv` writes the file, reporting left-out stories on stderr as for Visio, because the CSV has no room to say so.
 
 **Tests.** Quoting and commas, formula-looking titles, collapsed rows, the 200-story limit, and the customer view being refused.
 
