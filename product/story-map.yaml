@@ -409,7 +409,7 @@ stories:
     title: Show a story's tests in its panel
     activity: explore
     release: v0-7-0
-    status: merged
+    status: shipped
     summary: Tests that name a story ID are indexed at build time, and internal viewers see them in the story panel, each linking to its line.
     notes: Tests point to stories, so the map is never edited to list them. A static scan, with no test code run. validate --tests flags tags for unknown stories. Pass and fail results are a possible follow-up.
     sources:
@@ -422,7 +422,7 @@ stories:
     title: Show how many tests a story has on its card
     activity: explore
     release: v0-7-0
-    status: merged
+    status: shipped
     summary: Internal cards show a flask and the number of tagged tests between the status and the last change, read as “7 tests”, so a column shows at a glance which stories are covered.
     notes: Counts listed tests and those the index left out. Nothing for stories without tests, or for customers. Chosen from four mocked-up options; a “No tests” flag on in-progress and merged stories was the runner-up.
     sources:
@@ -525,7 +525,7 @@ stories:
     title: Export the internal map as a Visio file
     activity: explore
     release: v0-7-0
-    status: merged
+    status: shipped
     summary: storyMapToVsdx writes the whole internal map as a .vsdx file, with collapsed lanes, release notes and impact, and at most 200 stories.
     notes: Hand-rolled stored zip, no new dependency. Refuses customer views. Includes the LibreOffice check in CI.
     sources:
@@ -535,7 +535,7 @@ stories:
     title: Export the map from the command line
     activity: explore
     release: v0-7-0
-    status: merged
+    status: shipped
     summary: story-map export writes a Visio or CSV file from the YAML file, optionally using history to choose the most recent stories.
     sources:
       - docs/plans/export-to-external-tools.md#3-export-from-the-command-line
@@ -543,7 +543,7 @@ stories:
     title: Download the export from the board
     activity: explore
     release: v0-7-0
-    status: merged
+    status: shipped
     summary: Internal viewers get Export links on the board when the host sets exportHref, and lanes they collapsed stay collapsed in the file.
     sources:
       - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
@@ -551,7 +551,7 @@ stories:
     title: Export the map as CSV
     activity: explore
     release: v0-7-0
-    status: merged
+    status: shipped
     summary: One row per story with its activity, release, ID and title, safe to open in spreadsheets and importable into Miro and Lucidchart.
     sources:
       - docs/plans/export-to-external-tools.md#5-export-the-map-as-csv
@@ -559,7 +559,7 @@ stories:
     title: Choose several statuses in the filter
     activity: explore
     release: v0-7-0
-    status: merged
+    status: shipped
     summary: The status filter is a list of checkboxes with the active statuses ticked by default, so viewers can show any mix of statuses, including stalled stories, without an All option.
     notes: The URL repeats status once per choice, and status=all and single-status links still work. view.filter.status becomes an array, which is a breaking change for hosts that read it.
     sources:
