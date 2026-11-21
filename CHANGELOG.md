@@ -2,7 +2,9 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
-## Unreleased
+## 0.7.1
+
+Adds a JSON export of the internal map for agents and scripts. Nothing breaks: existing maps, history files and host code need no change.
 
 - New `storyMapToJson(view, { maxStories, now })` writes the internal map as JSON for an agent or script to review: activities, releases with notes and impact, and each story's summary, status, notes, sources, history and tagged tests, with `testCount` when a tests index was supplied. `provenance` and `completeness` sections say where the data came from, when the history and tests were generated, how many stories are left out and why, with plain-language notes for the agent. Every story is included unless `maxStories` is passed, and collapsed lanes are ignored, so the file always covers every release. New exports `jsonContentType` and types `StoryMapJsonExport`, `StoryMapJsonExportOptions` and `StoryMapJsonStory`. See [Export as JSON for agents](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-as-json-for-agents).
 - `story-map export` accepts `--format json` and a new `--tests-index <file>` option for the index from `story-map tests`. `storyMapExportResponse` accepts `format=json`, ignoring `collapsed` for it, and the board's Export menu has a *JSON, for agents and scripts* link. The example host passes the tests index to its export route.

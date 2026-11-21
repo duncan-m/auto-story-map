@@ -52,7 +52,7 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Run `npm install auto-story-map@0.7.0` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.7.0 lets the status filter take several choices, so host code that reads `filter.status` needs to treat it as an array. It also adds Visio and CSV export and tests linked to stories. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.3.0 or earlier, follow the [0.4.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040) first, and from 0.2.0 or earlier the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030) before those.
+Run `npm install auto-story-map@0.7.1` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.7.0 lets the status filter take several choices, so host code that reads `filter.status` needs to treat it as an array. It also adds Visio and CSV export and tests linked to stories, and 0.7.1 adds a JSON export for agents with no further upgrade steps. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.3.0 or earlier, follow the [0.4.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040) first, and from 0.2.0 or earlier the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030) before those.
 
 ## Populate the first map
 
@@ -92,7 +92,7 @@ Unlike the other formats, the JSON file includes every story and every release, 
 
 > Read `story-map.json`, starting with its `provenance` and `completeness` notes. Review the stories and their tests: flag merged or shipped stories with no tagged tests, statuses that look out of step with the code, and impact that is still a draft. Then suggest up to five features or improvements that fit the user journey, citing the story IDs each one builds on. Check anything you rely on against the repository before you recommend it.
 
-The file includes internal notes and the names of people who edited the map, so keep it within the team. Internal viewers can also download it from the board's **Export** menu, as **JSON, for agents and scripts**, when the host sets `exportHref`, and a host can build it with `storyMapToJson`. The JSON export is new since 0.7.0 and will ship in the next release. To use it now, install a tarball from a source checkout, as in [Embed it in a product](#embed-it-in-a-product). See [Export as JSON for agents][json-export] for the full format.
+The file includes internal notes and the names of people who edited the map, so keep it within the team. Internal viewers can also download it from the board's **Export** menu, as **JSON, for agents and scripts**, when the host sets `exportHref`, and a host can build it with `storyMapToJson`. The JSON export is new in 0.7.1. See [Export as JSON for agents][json-export] for the full format.
 
 ### Open it in other tools
 
