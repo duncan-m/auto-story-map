@@ -134,6 +134,14 @@ releases:
         expected: Seen on the board from each card's test count and the tests in its panel
         solves: Asking engineers which tests cover a story before calling it done
         draft: true
+  - id: v0-7-1
+    title: "0.7.1: JSON export for agents"
+    summary: Internal viewers and scripts export the whole map as JSON, with notes, sources, history and tagged tests, for an agent to review.
+    impact:
+      - metric: Time for an agent to review the map against the code
+        expected: One JSON file with every story, its history and its tests, instead of reading the YAML, history and test files separately
+        solves: Agents missing context when they suggest product work
+        draft: true
   - id: next
     title: Next
     summary: Proposed for 0.7.x or 0.8.0.
@@ -555,11 +563,12 @@ stories:
     summary: One row per story with its activity, release, ID and title, safe to open in spreadsheets and importable into Miro and Lucidchart.
     sources:
       - docs/plans/export-to-external-tools.md#5-export-the-map-as-csv
+  # 0.7.1
   - id: ESM-706
     title: Export the map as JSON for agents
     activity: explore
-    release: next
-    status: in-progress
+    release: v0-7-1
+    status: merged
     summary: storyMapToJson writes every internal story with its notes, sources, history and tagged tests, plus notes on where the data came from and what is left out, so an agent can review stories and tests and suggest product work.
     notes: Every story and every release by default, unlike Visio and CSV, and collapsed lanes are ignored. Available from the CLI with --tests-index, from storyMapExportResponse and from the board's Export menu.
     sources:

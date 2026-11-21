@@ -1,6 +1,6 @@
 {
   "name": "auto-story-map",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Git-backed user story maps embedded in product applications",
   "license": "Apache-2.0",
   "author": {
