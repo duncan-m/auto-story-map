@@ -1,0 +1,44 @@
+version: 2
+
+updates:
+  # npm dependencies in package.json and package-lock.json.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # Wait a week before proposing a new release, so a compromised or broken
+    # version is usually caught and pulled before it reaches a PR here.
+    # Security updates ignore this and arrive straight away.
+    cooldown:
+      default-days: 7
+    # This is a library: only raise a range's minimum when the new version
+    # falls outside it, so consumers are not forced onto newer versions.
+    versioning-strategy: increase-if-necessary
+    groups:
+      # One PR a week for all minor and patch updates.
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # @types/node tracks the oldest Node release we support (engines: >=20),
+      # so its major version moves only when we drop a Node version.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+
+  # Actions and reusable workflows in .github/workflows. Dependabot updates
+  # both the commit SHA and the trailing "# vX.Y.Z" comment on pinned actions.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
