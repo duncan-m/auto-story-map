@@ -58,8 +58,12 @@ const laneHeaderWidth = 3.2;
 const columnWidth = 2.6;
 const cardWidth = 2.3;
 const cardGap = 0.2;
-/** Story card text, in points. Titles wrap to at most `cardTitleLines` lines. */
-const cardIdSize = 8;
+/**
+ * Story card text, in points. The ID and title share one size, because Miro uses
+ * one size for all the text in a shape: with an 8-point ID, it drew titles at 8
+ * points too. The ID stays grey. Titles wrap to at most `cardTitleLines` lines.
+ */
+const cardIdSize = 11;
 const cardTitleSize = 11;
 const cardTitleLines = 3;
 /** Space between the lines of a release header, each its own shape. */
@@ -144,9 +148,13 @@ export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
     { text: fitText(model.title, boardWidth - textMargin.x * 2, 16, 2, true), size: 16, bold: true, color: exportColors.text },
     { text: subtitle.join(" · "), size: 9, color: exportColors.muted },
   ];
-  const titleHeight = textHeight(titleRuns, boardWidth);
-  shapes.push({ name: "Map title", x: margin, y, w: boardWidth, h: titleHeight, text: titleRuns });
-  y += titleHeight + gap;
+  // One shape per size, as for release headers, so Miro keeps each size.
+  titleRuns.forEach((run, index) => {
+    const h = textHeight([run], boardWidth);
+    shapes.push({ name: index === 0 ? "Map title" : "Map subtitle", x: margin, y, w: boardWidth, h, text: [run] });
+    y += h;
+  });
+  y += gap;
 
   const cardTextWidth = cardWidth - textMargin.x * 2;
   const headerTextWidth = columnWidth - gap - textMargin.x * 2;

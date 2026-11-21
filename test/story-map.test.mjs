@@ -2581,6 +2581,8 @@ test("the Visio layout keeps each release's header lines and cards inside its la
     // Cards in a lane share a height that fits their titles.
     assert.equal(new Set(cards.map(card => card.h)).size <= 1, true);
   }
+  // Every shape uses one text size: Miro applies the first paragraph's size to all of a shape's text.
+  for (const shape of layout.shapes) assert.ok(new Set(shape.text.map(run => run.size)).size <= 1, `${shape.name} uses one text size`);
   const short = layout.shapes.find(shape => shape.name === "Story ESM-705");
   const long = layout.shapes.find(shape => shape.name === "Story ESM-602");
   assert.ok(short.text[1].size >= 11, "card titles are at least 11 points");
