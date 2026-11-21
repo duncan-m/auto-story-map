@@ -977,6 +977,16 @@ test("the board shows when each story changed and its history to internal viewer
   const card = cardsIn(board).find(card => card.includes("BUILDER-101"));
   assert.match(card, /<time class="esm-changed" dateTime="2026-11-12T15:30:00\.000Z" title="12 Nov 2026, 15:30">7 days ago<\/time>/i);
   assert.match(cardsIn(board).find(card => card.includes("BUILDER-104")), />yesterday<\/time>/);
+  // Cards shorten hours and minutes; the header and panel keep the full wording.
+  const cardTimeAt = at => {
+    const later = new Date(at);
+    const rendered = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(current, engineer, { history }), ...props, now: later }));
+    return cardsIn(rendered).find(card => card.includes("BUILDER-101")).match(/<time class="esm-changed"[^>]*>([^<]+)<\/time>/)[1];
+  };
+  assert.equal(cardTimeAt("2026-11-12T20:45:00Z"), "5 h ago");
+  assert.equal(cardTimeAt("2026-11-12T15:42:00Z"), "12 mins ago");
+  assert.equal(cardTimeAt("2026-11-12T15:31:00Z"), "1 min ago");
+  assert.equal(cardTimeAt("2026-11-12T15:30:20Z"), "just now");
   const panel = panelFor(board, "Draft an estimate against a project");
   assert.match(panel, /<h4 id="[^"]+-history">History<\/h4>/);
   assert.match(panel, /Shipped<\/span><\/span><span class="esm-history-meta"><time dateTime="2026-11-12T15:30:00\.000Z">12 Nov 2026, 15:30<\/time> · by Bob Builder, merged by Carol<\/span>/i);
