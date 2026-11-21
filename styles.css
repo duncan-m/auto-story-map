@@ -341,6 +341,7 @@
 .esm-status-reason { margin: 8px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
 .esm-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
 .esm-card-tests { display: inline-flex; align-items: center; gap: 4px; color: var(--esm-muted); font-size: .75rem; }
+.esm-card-tests::before { content: "·"; margin-right: 4px; color: var(--esm-faint); }
 .esm-card-tests .esm-icon { color: var(--esm-faint); }
 .esm-changed { color: var(--esm-faint); font-size: .75rem; }
 .esm-changed::before { content: "·"; margin-right: 8px; }
