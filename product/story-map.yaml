@@ -405,10 +405,12 @@ stories:
     title: Show a story's tests in its panel
     activity: explore
     release: next
-    status: in-progress
+    status: merged
     summary: Tests that name a story ID are indexed at build time, and internal viewers see them in the story panel, each linking to its line.
     notes: Tests point to stories, so the map is never edited to list them. A static scan, with no test code run. validate --tests flags tags for unknown stories. Pass and fail results are a possible follow-up.
     sources:
+      - docs/ENGINEERING-OVERVIEW.md#story-tests
+      - docs/story-map.md#link-tests-to-stories
       - docs/plans/story-tests.md#1-find-tagged-tests
       - src/tests.ts
       - src/tests-index.ts

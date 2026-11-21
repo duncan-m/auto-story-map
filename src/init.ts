@@ -70,6 +70,27 @@ async function destination(realRoot: string, path: string) {
   return current;
 }
 
+/** The host's first top-level test folder, as a real folder rather than a link, or undefined. */
+async function testFolder(realRoot: string) {
+  for (const name of ["test", "tests", "__tests__"]) {
+    const info = await lstat(join(realRoot, name)).catch(() => null);
+    if (info?.isDirectory()) return name;
+  }
+  return undefined;
+}
+
+/**
+ * Adds `--tests <folder>` to the workflow's validate step, and runs it when
+ * tests change, so tags for unknown stories fail the PR. Only for hosts with a
+ * test folder, so a host without tests gets no errors.
+ */
+export function workflowWithTests(workflow: string, folder: string | undefined) {
+  if (!folder) return workflow;
+  return workflow
+    .replace("      - package.json\n", `      - ${folder}/**\n      - package.json\n`)
+    .replace("story-map validate --format github --check-sources product/story-map.yaml", `story-map validate --format github --check-sources --tests ${folder} product/story-map.yaml`);
+}
+
 async function writeNew(realRoot: string, path: string, contents: string) {
   const target = await destination(realRoot, path);
   await mkdir(dirname(target), { recursive: true });
@@ -186,7 +207,7 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
         reason: "no package-lock.json; add `story-map validate --format github product/story-map.yaml` to your CI",
       });
     } else {
-      await writeNew(realRoot, workflowPath, await template("story-map-ci.yml"));
+      await writeNew(realRoot, workflowPath, workflowWithTests(await template("story-map-ci.yml"), await testFolder(realRoot)));
       steps.push({ path: workflowPath, action: "created" });
     }
   }
