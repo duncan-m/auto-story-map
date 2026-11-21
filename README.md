@@ -1,10 +1,11 @@
 # Auto Story Map
+A live, Git-backed user story map that lives inside your app and stays up to date as you ship. Built in TypeScript, it maps your core user journey and stacks release slices from top to bottom—no separate whiteboard or manual grooming required.
 
-A TypeScript library for displaying an automatically generated Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. 
+Because it sits directly inside your product, there are no extra accounts to manage. Access hooks straight into your existing sign-in, exposing the full internal map to engineer and super-admin roles out of the box with customizable permission rules.
 
-The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
+## Code checks
 
-[![Dependency Scan](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml)
+[![Dependency Scan](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml) - [![CodeQL](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml) - [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/duncan-m/auto-story-map/badge)](https://scorecard.dev/viewer/?uri=github.com/duncan-m/auto-story-map)
 
 ## Screenshot
 
