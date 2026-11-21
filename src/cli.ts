@@ -4,6 +4,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { diffStoryMaps, formatStoryMapDiff } from "./diff.js";
+import { defaultExportMaxStories, prepareStoryMapExport } from "./export.js";
+import { storyMapToVsdx } from "./export-vsdx.js";
+import { parseStoryMapHistory, type StoryMapHistory } from "./history.js";
 import { buildStoryMapHistory, StoryMapHistoryError } from "./history-git.js";
 import { initStoryMap } from "./init.js";
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
@@ -16,12 +19,14 @@ import {
   type HistoricalStoryMap,
   type StoryMapDocument,
 } from "./schema.js";
+import { getStoryMapForViewer } from "./view.js";
 
 const usage = `Usage:
   story-map init [--no-ci] [--dir <path>]
   story-map validate [--format text|github] [--strict] [--check-sources] [--plans <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
+  story-map export --format vsdx [--output <file>] [--history <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
 
 init
   Sets up a host repository: a starter product/story-map.yaml, the story map
@@ -64,7 +69,21 @@ history
                      Comma-separated commit authors that are bots. Their edits
                      are credited to whoever merged them. Authors ending in
                      [bot] are always treated as bots. Repeat to add more.
-  --allow-shallow    Build a partial history from a shallow clone instead of failing.`;
+  --allow-shallow    Build a partial history from a shallow clone instead of failing.
+
+export
+  Writes the whole internal map as a file to import into Lucidchart, Miro or
+  Visio. The map is validated first, and errors exit 1. The map defaults to
+  product/story-map.yaml.
+
+  --format vsdx      Required. Writes a Visio file.
+  --output <file>    Defaults to story-map.<format>. Use - to write to stdout.
+  --history <file>   History from story-map history, used to choose the most
+                     recently changed stories when there are too many.
+  --collapsed <release IDs>
+                     Comma-separated releases to export as a header and a
+                     story count, without their stories. Repeat to add more.
+  --max-stories <n>  Most stories to export. Defaults to ${defaultExportMaxStories}.`;
 
 type Format = "text" | "github";
 
@@ -328,6 +347,94 @@ function warnSkipped(result: Awaited<ReturnType<typeof buildStoryMapHistory>>) {
   if (result.skippedCount > shown.length) console.error(`  and ${result.skippedCount - shown.length} more, listed in the file's skipped field`);
 }
 
+const exportFormats = ["vsdx"] as const;
+
+function parseExportArgs(rest: string[]) {
+  let format: (typeof exportFormats)[number] | undefined;
+  let output: string | undefined;
+  let historyPath: string | undefined;
+  let maxStories = defaultExportMaxStories;
+  const collapsed: string[] = [];
+  const paths: string[] = [];
+  for (let index = 0; index < rest.length; index++) {
+    const arg = rest[index];
+    const name = arg.split("=")[0];
+    if (name === "--format" || name === "--output" || name === "--history" || name === "--collapsed" || name === "--max-stories") {
+      // `--output -` means stdout, so `-` on its own is a value here.
+      const [value, next] = name === "--output" && arg === name && rest[index + 1] === "-" ? ["-", index + 1] : optionValue(rest, index, name);
+      index = next;
+      if (name === "--format") {
+        if (!exportFormats.includes(value as never)) throw new ArgumentError(`--format must be ${exportFormats.join(" or ")}, not ${value}`);
+        format = value as (typeof exportFormats)[number];
+      } else if (name === "--output") {
+        output = value;
+      } else if (name === "--history") {
+        historyPath = value;
+      } else if (name === "--collapsed") {
+        collapsed.push(...value.split(",").map(id => id.trim()).filter(Boolean));
+      } else {
+        maxStories = Number(value);
+        if (!/^\d+$/.test(value) || maxStories < 1) throw new ArgumentError(`--max-stories must be a whole number of at least 1, not ${value}`);
+      }
+    } else if (arg.startsWith("-")) {
+      return null;
+    } else {
+      paths.push(arg);
+    }
+  }
+  if (!format) throw new ArgumentError("--format is required");
+  if (paths.length > 1) return null;
+  return { format, map: paths[0] ?? "product/story-map.yaml", output: output ?? `story-map.${format}`, history: historyPath, collapsed, maxStories };
+}
+
+async function exportMap(options: NonNullable<ReturnType<typeof parseExportArgs>>) {
+  let document: StoryMapDocument;
+  let history: StoryMapHistory | undefined;
+  try {
+    document = loadStoryMap(await readFile(options.map, "utf8")).map;
+  } catch (error) {
+    process.exitCode = 1;
+    if (error instanceof StoryMapValidationError) {
+      for (const issue of error.issues) report(options.map, issue, "text");
+    } else {
+      console.error(`${options.map}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return;
+  }
+  if (options.history) {
+    try {
+      history = parseStoryMapHistory(await readFile(options.history, "utf8"));
+    } catch (error) {
+      console.error(`${options.history}: ${error instanceof Error ? error.message : String(error)}`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  const releaseIds = new Set(document.releases.map(release => release.id));
+  for (const id of options.collapsed) {
+    if (!releaseIds.has(id)) console.error(`warning: --collapsed ${id} is not a release in ${options.map}, so it is ignored`);
+  }
+
+  // Whoever runs the CLI has the YAML file, so the export is always the internal view.
+  const view = getStoryMapForViewer(document, {}, { canViewInternal: () => true, history })!;
+  const exportOptions = { collapsedReleases: options.collapsed, maxStories: options.maxStories };
+  const file = storyMapToVsdx(view, exportOptions);
+  if (options.output === "-") {
+    process.stdout.write(file);
+    return;
+  }
+  await mkdir(dirname(resolve(options.output)), { recursive: true });
+  await writeFile(options.output, file);
+  const { available, omitted } = prepareStoryMapExport(view, exportOptions);
+  const collapsedCount = document.stories.length - available;
+  const details = [
+    omitted && `left out ${omitted} less recently changed`,
+    collapsedCount && `${collapsedCount} in collapsed lanes`,
+  ].filter(Boolean);
+  const exported = available - omitted;
+  console.error(`${options.output}: exported ${exported} ${exported === 1 ? "story" : "stories"}${details.length ? ` (${details.join(", ")})` : ""}`);
+}
+
 const [command, ...rest] = process.argv.slice(2);
 function parse<T>(name: string, parser: (rest: string[]) => T | null): T | null {
   if (command !== name) return null;
@@ -343,6 +450,7 @@ const validateOptions = parse("validate", parseValidateArgs);
 const initOptions = parse("init", parseInitArgs);
 const diffOptions = parse("diff", parseDiffArgs);
 const historyOptions = parse("history", parseHistoryArgs);
+const exportOptions = parse("export", parseExportArgs);
 if (validateOptions) {
   await validate(validateOptions);
 } else if (diffOptions) {
@@ -351,6 +459,8 @@ if (validateOptions) {
   await history(historyOptions);
 } else if (initOptions) {
   await init(initOptions);
+} else if (exportOptions) {
+  await exportMap(exportOptions);
 } else if (command === "help" || command === "--help" || command === "-h") {
   console.log(usage);
 } else {

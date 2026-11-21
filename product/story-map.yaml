@@ -492,7 +492,7 @@ stories:
     title: Export the map from the command line
     activity: explore
     release: export
-    status: planned
+    status: merged
     summary: story-map export writes a Visio or CSV file from the YAML file, optionally using history to choose the most recent stories.
     sources:
       - docs/plans/export-to-external-tools.md#3-export-from-the-command-line

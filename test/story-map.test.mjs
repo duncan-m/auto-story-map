@@ -2032,3 +2032,56 @@ test("the Visio export escapes text and shortens long titles", () => {
   assert.match(xml, /<cp IX="1"\/>Escape [^<]*…<\/Text>/);
   assert.ok(xml.includes(`V="${title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}"`));
 });
+
+// --- Export from the command line (ESM-703) ---
+
+test("story-map export writes a Visio file from the YAML file", async () => {
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const fixture = fileURLToPath(new URL("./fixtures/builder-estimates.yaml", import.meta.url));
+  const root = await mkdtemp(join(tmpdir(), "story-map-export-"));
+  const run = (...args) => spawnSync(process.execPath, [cli, "export", ...args], { cwd: root, encoding: "utf8" });
+  try {
+    const release = map.releases[0].id;
+    const inRelease = map.stories.filter(story => story.release === release);
+    const out = join(root, "nested", "map.vsdx");
+    const written = run("--format", "vsdx", "--output", out, "--collapsed", `${release},no-such-release`, fixture);
+    assert.equal(written.status, 0, written.stderr);
+    assert.match(written.stderr, /--collapsed no-such-release is not a release/);
+    assert.match(written.stderr, new RegExp(`exported ${map.stories.length - inRelease.length} stories \\(${inRelease.length} in collapsed lanes\\)`));
+    const files = readStoredZip(await readFile(out));
+    assert.equal(storyShapes(files).length, map.stories.length - inRelease.length);
+    assert.match(page(files), /Collapsed · /);
+
+    // The default output name, a story limit and history to choose the newest.
+    const history = {
+      version: 1,
+      generatedAt: "2026-11-20T08:00:00Z",
+      complete: true,
+      events: [],
+      lastEdits: [{ storyId: map.stories[0].id, at: "2026-11-19T10:00:00Z", commit: "a".repeat(40) }],
+    };
+    await writeFile(join(root, "history.json"), JSON.stringify(history));
+    const limited = run("--format=vsdx", "--max-stories", "1", "--history", "history.json", fixture);
+    assert.equal(limited.status, 0, limited.stderr);
+    assert.match(limited.stderr, /story-map\.vsdx: exported 1 story \(left out \d+ less recently changed\)/);
+    assert.deepEqual(storyShapes(readStoredZip(await readFile(join(root, "story-map.vsdx")))), [map.stories[0].id]);
+
+    // `--output -` writes the file to stdout.
+    const piped = spawnSync(process.execPath, [cli, "export", "--format", "vsdx", "--output", "-", fixture], { cwd: root });
+    assert.equal(piped.status, 0);
+    assert.equal(storyShapes(readStoredZip(new Uint8Array(piped.stdout))).length, map.stories.length);
+
+    // Problems with the command line exit 2, and problems with the files exit 1.
+    assert.match(run(fixture).stderr, /--format is required/);
+    assert.equal(run(fixture).status, 2);
+    assert.equal(run("--format", "csv", fixture).status, 2);
+    assert.equal(run("--format", "vsdx", "--max-stories", "0", fixture).status, 2);
+    assert.equal(run("--format", "vsdx", "--output", "--max-stories", "3", fixture).status, 2);
+    await writeFile(join(root, "invalid.yaml"), "title: No stories\n");
+    assert.equal(run("--format", "vsdx", "invalid.yaml").status, 1);
+    assert.equal(run("--format", "vsdx", "--history", "missing.json", fixture).status, 1);
+    assert.equal(run("--format", "vsdx").status, 1, "product/story-map.yaml is missing");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

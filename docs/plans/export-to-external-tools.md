@@ -175,6 +175,14 @@ npx --no-install story-map export product/story-map.yaml --format vsdx --output 
 
 The CLI always builds the internal view, because whoever runs it already has the YAML file. It validates the map first and exits non-zero on errors, as `validate` does.
 
+**Built.** As planned, with these choices made while building it:
+
+- Only `--format vsdx` is accepted until the CSV export (ESM-705) adds `csv`. Any other format exits 2 and names the formats it accepts.
+- The map path is optional and defaults to `product/story-map.yaml`, like `--map` in `diff` and `history`.
+- `--collapsed` can be repeated, and warns about IDs that are not releases in the map rather than ignoring them silently.
+- It reports what it wrote on stderr, such as `story-map.vsdx: exported 180 stories (left out 20 less recently changed)`, so stdout stays clean for `--output -`.
+- Exit codes follow the other commands: 2 for a problem with the command line, and 1 for an invalid map or an unreadable history file.
+
 **Tests.** Run the CLI against `test/fixtures/builder-estimates.yaml`, check the exit codes, check that a missing `--format` fails, and check that the output opens with the test zip reader.
 
 ## 4. Download the export from the board
