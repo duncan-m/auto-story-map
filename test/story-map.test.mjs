@@ -2143,6 +2143,8 @@ function assertWellFormedXml(xml, name) {
   assert.deepEqual(stack, [], `${name}: unclosed elements`);
 }
 
+/** Escapes every character with a meaning in a regular expression. */
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const exportNow = new Date("2026-11-20T09:00:00Z");
 const exportView = (source = map, options = {}) => getStoryMapForViewer(source, engineer, options);
 const page = files => files.get("visio/pages/page1.xml");
@@ -2156,14 +2158,14 @@ test("exports the internal map as a valid Visio package", () => {
   const types = files.get("[Content_Types].xml");
   for (const name of files.keys()) {
     if (name.endsWith(".rels") || name === "[Content_Types].xml") continue;
-    assert.match(types, new RegExp(`PartName="/${name.replace(/[.[\]]/g, "\\$&")}"`), `${name} has a content type`);
+    assert.match(types, new RegExp(`PartName="/${escapeRegExp(name)}"`), `${name} has a content type`);
   }
   for (const [name, xml] of files) {
     if (!name.endsWith(".rels")) continue;
     const base = name.replace(/_rels\/[^/]*\.rels$/, "");
     for (const [, target] of xml.matchAll(/Target="([^"]+)"/g)) assert.ok(files.has(base + target), `${name} → ${target}`);
   }
-  assert.match(types, new RegExp(`ContentType="${vsdxContentType.replace(/[.+]/g, "\\$&")}"`));
+  assert.match(types, new RegExp(`ContentType="${escapeRegExp(vsdxContentType)}"`));
 
   // Every story is a card with its ID, title and shape data, including blocked and cut ones.
   assert.deepEqual(storyShapes(files).sort(), map.stories.map(story => story.id).sort());
