@@ -367,7 +367,7 @@ return new Response(file, {
   ```
 
   `--format` is required, and is `vsdx` or `csv`. `--output` defaults to `story-map.vsdx` or `story-map.csv`, and `-` writes to stdout. `--history` takes the file from `story-map history`, `--collapsed` takes comma-separated release IDs, and `--max-stories` changes the 200-story limit.
-- The file is tested with Lucidchart, which keeps the layout, colours and text styling, but changes curly quotes to straight ones and drops emoji. Miro opens it too. Release headers are laid out a line per shape so that Miro keeps them inside their lanes, but check the result, and use the CSV export if Miro's import is poor.
+- The file is tested with Lucidchart and Miro, which both keep the layout, colours and text sizes. Lucidchart changes curly quotes to straight ones and drops emoji. Each shape uses a single text size, and each line of a release header is its own shape, because Miro applies one text size to all of a shape's text and placed multi-paragraph shapes badly.
 
 ### Export as CSV
 

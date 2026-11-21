@@ -1,6 +1,6 @@
 # Plan: export the map to external tools
 
-Status: built. Every item is done. Miro and the CSV imports still need checking by hand before the release. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
+Status: built. Every item is done, and the Visio file imports well into Lucidchart and Miro. The CSV imports are still unchecked. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
 
 Internal viewers can download the board as a Visio file (`.vsdx`) or a CSV file and import it into Miro or Lucidchart. The export is a one-way snapshot: the YAML file stays the source of truth, and nothing edited in Miro or Lucidchart comes back.
 
@@ -88,6 +88,8 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 | Lucidchart | Yes | Correct, and matches the LibreOffice reference | Correct, including grey and italic after "·" | Text spills below the card | Not checked | Curly quotes became straight quotes, and the 🚀 was dropped. `&`, `<` and `·` came through. |
 | Lucidchart, built export (ESM-702) | Yes | Correct | Correct | None seen | Not checked | Tested with this repository's map. Card text looked small for the card size. |
 | Miro, built export (ESM-702) | Yes | Activity headers and cards in place | Release headers spilled out of their lanes, over the lane above and the next one. Card text was small | Release header text | Not checked | Miro appears to centre the paragraphs of a tall shape and space them further apart. See the follow-up below. |
+| Lucidchart, final layout | Yes | Correct | Correct | None seen | Not checked | Works. |
+| Miro, final layout | Yes | Correct | Correct, including card text size | None seen | Not checked | Works. |
 | Lucidchart, CSV | Skipped | | | | | |
 | Miro, CSV | Skipped | | | | | |
 
@@ -95,7 +97,7 @@ LibreOffice applies styling from the wrong position after non-ASCII characters. 
 
 Lucidchart replaced curly quotes with straight ones and dropped the emoji. Neither affects reading the map, so the export writes text as it is. The docs for ESM-702 should mention that emoji may not survive the import.
 
-**Follow-up after testing the built export.** Each release header was one tall shape holding the title, counts, notes and impact as paragraphs, which Miro placed badly. As planned above, each header line is now its own shape, sized to its estimated text, so no tool has to place paragraphs within a shape. This also removes the LibreOffice styling shift, because each shape has one style. Card titles went from 10 to 11 points, and cards are now only as tall as the longest title in their lane needs, so they are no longer mostly empty. On the second import, Lucidchart looked good, and Miro kept every header inside its lane, but its card titles were as small as the 8-point IDs above them. Miro seems to use one text size for all the text in a shape, taken from its first paragraph. So every shape now uses a single size: card IDs and titles are both 11 points, with the ID in grey, and the map title and export date are separate shapes. A test checks that no shape mixes sizes. Miro needs one more check with this layout.
+**Follow-up after testing the built export.** Each release header was one tall shape holding the title, counts, notes and impact as paragraphs, which Miro placed badly. As planned above, each header line is now its own shape, sized to its estimated text, so no tool has to place paragraphs within a shape. This also removes the LibreOffice styling shift, because each shape has one style. Card titles went from 10 to 11 points, and cards are now only as tall as the longest title in their lane needs, so they are no longer mostly empty. On the second import, Lucidchart looked good, and Miro kept every header inside its lane, but its card titles were as small as the 8-point IDs above them. Miro seems to use one text size for all the text in a shape, taken from its first paragraph. So every shape now uses a single size: card IDs and titles are both 11 points, with the ID in grey, and the map title and export date are separate shapes. A test checks that no shape mixes sizes. A third import, with one size per shape, worked in both Lucidchart and Miro.
 
 **Outcome.** Lucidchart works, so the Visio export goes ahead as planned with the hand-rolled zip and text runs. Miro and the CSV imports were skipped to keep moving. Until someone tries them, the docs say the `.vsdx` is tested with Lucidchart, and that Miro users should try it and fall back to CSV (ESM-705) if the import is poor.
 
