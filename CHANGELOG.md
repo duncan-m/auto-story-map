@@ -2,11 +2,11 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
-## Unreleased
+## 0.7.0
 
-One upgrade step: if host code reads `view.filter.status` or the JSON `filter.status`, treat it as an array. Links with `?status=all` or one status need no change.
+One breaking change, to the status filter. Follow the [0.7.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-070): if host code reads `view.filter.status` or the JSON `filter.status`, treat it as an array. Links with `?status=all` or one status need no change. Existing maps and history files stay valid. Also new: Visio and CSV export, tests linked to stories, and the build's commit in the footer.
 
-- The board footer shows the short hash of the commit the library was built from, right of the version number, such as “Auto Story Map 0.6.1 50058dd”. Internal boards link it to the commit on GitHub. Builds made outside a git checkout show the version alone. New export `storyMapCommit`.
+- The board footer shows the short hash of the commit the library was built from, right of the version number, such as “Auto Story Map 0.7.0 50058dd”. Internal boards link it to the commit on GitHub. Builds made outside a git checkout show the version alone. New export `storyMapCommit`.
 
 - Internal cards shorten the time since a story last changed to “5h ago” and “12 mins ago”. The board header and story panel keep “5 hours ago” and “12 minutes ago”.
 

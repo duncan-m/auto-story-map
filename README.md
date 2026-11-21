@@ -50,7 +50,7 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Run `npm install auto-story-map@0.4.1` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.4.0 adds the `merged`, `blocked` and `cut` statuses, so host code that handles every status needs updating. It also adds release notes and impact, stalled stories and “last updated” from Git. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.2.0 or earlier, follow the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030) first.
+Run `npm install auto-story-map@0.7.0` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.7.0 lets the status filter take several choices, so host code that reads `filter.status` needs to treat it as an array. It also adds Visio and CSV export and tests linked to stories. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.3.0 or earlier, follow the [0.4.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040) first, and from 0.2.0 or earlier the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030) before those.
 
 ## Populate the first map
 
@@ -93,7 +93,7 @@ The [Apache License 2.0][license], in particular its sections 7 (Disclaimer of W
 [example-map]: https://github.com/duncan-m/auto-story-map/blob/main/product/story-map.yaml
 [guide]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md
 [first-run]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#populate-the-first-map
-[upgrade]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040
+[upgrade]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-070
 [engineering-overview]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-an-engineering-overview
 [delivery-plan]: https://github.com/duncan-m/auto-story-map/blob/main/docs/example-builder-estimate-plan.md
 [host]: https://github.com/duncan-m/auto-story-map/blob/main/example/host.mjs

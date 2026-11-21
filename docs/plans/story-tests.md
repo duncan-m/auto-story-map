@@ -1,6 +1,6 @@
 # Plan: show a story's tests in its panel
 
-Status: proposed. The work is one story, ESM-801, in the **Next** release of the map. It adds features without breaking anything, so it can ship in a minor version.
+Status: done, released in 0.7.0. The work is ESM-801, with the card count added as ESM-802, both in the **0.7.0** release of the map.
 
 Internal viewers open a story and see the tests that cover it, each linking to its line in the repository. Tests point to stories, not the other way round: a test names its story ID, and a build step collects them. The links then keep up as tests are added, renamed or moved, without anyone editing the map.
 
