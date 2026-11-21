@@ -337,7 +337,7 @@ The map is edited through a PR and ships with the product. The example JSON endp
 
 ## Export the map
 
-Internal viewers can take a snapshot of the map into Lucidchart, Miro or Visio as a Visio file (`.vsdx`). It is one way: the YAML file stays the source of truth, and edits made in those tools do not come back.
+Internal viewers can take a snapshot of the map into Lucidchart, Miro or Visio as a Visio file (`.vsdx`), or into those tools or a spreadsheet as CSV. It is one way: the YAML file stays the source of truth, and edits made in those tools do not come back.
 
 ```ts
 import { getStoryMapForViewer, storyMapResponseHeaders, storyMapToVsdx, vsdxContentType } from "auto-story-map";
@@ -366,5 +366,29 @@ return new Response(file, {
   npx --no-install story-map export product/story-map.yaml --format vsdx --output story-map.vsdx --history story-map-history.json --collapsed v0-1
   ```
 
-  `--format` is required. `--output` defaults to `story-map.vsdx`, and `-` writes to stdout. `--history` takes the file from `story-map history`, `--collapsed` takes comma-separated release IDs, and `--max-stories` changes the 200-story limit.
-- The file is tested with Lucidchart, which keeps the layout, colours and text styling, but changes curly quotes to straight ones and drops emoji. Miro has not been tested yet. If its import is poor, a CSV export is planned as an alternative.
+  `--format` is required, and is `vsdx` or `csv`. `--output` defaults to `story-map.vsdx` or `story-map.csv`, and `-` writes to stdout. `--history` takes the file from `story-map history`, `--collapsed` takes comma-separated release IDs, and `--max-stories` changes the 200-story limit.
+- The file is tested with Lucidchart, which keeps the layout, colours and text styling, but changes curly quotes to straight ones and drops emoji. Miro has not been tested yet. If its import is poor, use the CSV export instead.
+
+### Export as CSV
+
+`storyMapToCsv(view, options)` takes the same view and options as `storyMapToVsdx`, and returns the CSV as a string. Use it for Miro, or for a spreadsheet:
+
+```ts
+import { csvContentType, storyMapToCsv } from "auto-story-map";
+
+return new Response(storyMapToCsv(view), {
+  headers: {
+    ...storyMapResponseHeaders,
+    "Content-Type": csvContentType,
+    "Content-Disposition": 'attachment; filename="story-map.csv"',
+  },
+});
+```
+
+- Each story is a row with the columns `Activity`, `Release`, `ID` and `Title`, using activity and release titles, in board order: by release, then activity, then map order.
+- A collapsed release is one row, with its title in `Release` and “Collapsed · N stories” in `Title`.
+- Release notes and impact are left out, because they do not fit a row per story. The Visio file has them.
+- The same rules apply as for Visio: the whole map, internal views only, and at most 200 of the most recently changed stories. The CSV cannot say how many were left out, so `story-map export` reports it.
+- Fields are quoted following RFC 4180, with CRLF line endings. A field starting with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front, so spreadsheets do not run it as a formula. The file starts with a UTF-8 byte order mark so Excel reads non-ASCII titles.
+- From the command line, use `--format csv`. `--output -` writes it to stdout.
+- The CSV has not been tested with Miro or Lucidchart imports yet.

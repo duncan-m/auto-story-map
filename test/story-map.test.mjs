@@ -25,6 +25,8 @@ import {
   StoryMapValidationError,
   storyMapResponseHeaders,
   storyMapSchema,
+  csvContentType,
+  storyMapToCsv,
   storyMapToVsdx,
   vsdxContentType,
 } from "auto-story-map";
@@ -2288,13 +2290,108 @@ test("story-map export writes a Visio file from the YAML file", async () => {
     // Problems with the command line exit 2, and problems with the files exit 1.
     assert.match(run(fixture).stderr, /--format is required/);
     assert.equal(run(fixture).status, 2);
-    assert.equal(run("--format", "csv", fixture).status, 2);
+    assert.equal(run("--format", "pdf", fixture).status, 2);
     assert.equal(run("--format", "vsdx", "--max-stories", "0", fixture).status, 2);
     assert.equal(run("--format", "vsdx", "--output", "--max-stories", "3", fixture).status, 2);
     await writeFile(join(root, "invalid.yaml"), "title: No stories\n");
     assert.equal(run("--format", "vsdx", "invalid.yaml").status, 1);
     assert.equal(run("--format", "vsdx", "--history", "missing.json", fixture).status, 1);
     assert.equal(run("--format", "vsdx").status, 1, "product/story-map.yaml is missing");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+// --- CSV export (ESM-705) ---
+
+/** Splits RFC 4180 CSV into rows of fields. Test-only. */
+function parseCsv(text) {
+  const rows = [[]];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') field += text[i++];
+      else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ",") rows.at(-1).push(field), (field = "");
+    else if (char === "\r" && text[i + 1] === "\n") rows.at(-1).push(field), (field = ""), rows.push([]), i++;
+    else field += char;
+  }
+  assert.equal(field, "", "the file ends with CRLF");
+  assert.deepEqual(rows.pop(), [], "the file ends with CRLF");
+  return rows;
+}
+
+const csvRows = csv => {
+  assert.ok(csv.startsWith("\uFEFF"), "starts with a byte order mark");
+  return parseCsv(csv.slice(1));
+};
+
+test("exports the internal map as CSV in board order", () => {
+  const view = exportView();
+  const rows = csvRows(storyMapToCsv(view));
+  assert.deepEqual(rows[0], ["Activity", "Release", "ID", "Title"]);
+  const expected = view.releases.flatMap(release =>
+    view.activities.flatMap(activity =>
+      view.stories.filter(story => story.release === release.id && story.activity === activity.id).map(story => [activity.title, release.title, story.id, story.title]),
+    ),
+  );
+  assert.deepEqual(rows.slice(1), expected);
+  assert.equal(rows.length - 1, map.stories.length);
+  assert.equal(csvContentType, "text/csv; charset=utf-8");
+});
+
+test("only the unfiltered internal view can be exported as CSV", () => {
+  assert.throws(() => storyMapToCsv(getStoryMapForViewer(map, regular)), /Customers cannot export/);
+  assert.throws(() => storyMapToCsv(filterStoryMapView(exportView(), { query: "estimate" })), /unfiltered/);
+});
+
+test("collapsed releases are one CSV row with the story count", () => {
+  const view = exportView();
+  const release = view.releases[0];
+  const count = view.stories.filter(story => story.release === release.id).length;
+  const rows = csvRows(storyMapToCsv(view, { collapsedReleases: [release.id, "no-such-release"] }));
+  assert.deepEqual(rows.filter(row => row[1] === release.title), [["", release.title, "", `Collapsed · ${count} ${count === 1 ? "story" : "stories"}`]]);
+  assert.equal(rows.length - 1, map.stories.length - count + 1);
+});
+
+test("the CSV export quotes fields and defuses formulas", () => {
+  const base = parseStoryMap(sample);
+  const titles = ['Commas, "quotes" and\nnew lines', "=HYPERLINK(\"http://example.com\")", "+1 for estimates", "-2 days", "@mention", "Plain 🚀 title"];
+  const odd = { ...base, stories: titles.map((title, i) => ({ ...base.stories[0], id: `ODD-${i + 1}`, title, customer: undefined })) };
+  const csv = storyMapToCsv(exportView(odd));
+  assert.ok(csv.includes('"Commas, ""quotes"" and\nnew lines"'));
+  assert.ok(csv.includes(`"'=HYPERLINK(""http://example.com"")"`));
+  const rows = csvRows(csv).slice(1);
+  assert.deepEqual(rows.map(row => row[3]), [titles[0], `'${titles[1]}`, "'+1 for estimates", "'-2 days", "'@mention", "Plain 🚀 title"]);
+});
+
+test("the CSV export keeps the most recently changed stories", () => {
+  const base = parseStoryMap(sample);
+  const stories = Array.from({ length: 250 }, (_, i) => ({ ...base.stories[0], id: `BULK-${i + 1}`, customer: undefined }));
+  const ids = csvRows(storyMapToCsv(exportView({ ...base, stories }))).slice(1).map(row => row[2]);
+  assert.equal(ids.length, 200);
+  assert.equal(ids[0], "BULK-51");
+  assert.equal(ids.at(-1), "BULK-250");
+  assert.equal(csvRows(storyMapToCsv(exportView({ ...base, stories }), { maxStories: 3 })).length, 4);
+});
+
+test("story-map export writes CSV from the YAML file", async () => {
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const fixture = fileURLToPath(new URL("./fixtures/builder-estimates.yaml", import.meta.url));
+  const root = await mkdtemp(join(tmpdir(), "story-map-export-csv-"));
+  try {
+    const written = spawnSync(process.execPath, [cli, "export", "--format", "csv", fixture], { cwd: root, encoding: "utf8" });
+    assert.equal(written.status, 0, written.stderr);
+    assert.match(written.stderr, new RegExp(`story-map\\.csv: exported ${map.stories.length} stories`));
+    assert.equal(await readFile(join(root, "story-map.csv"), "utf8"), storyMapToCsv(exportView()));
+
+    const piped = spawnSync(process.execPath, [cli, "export", "--format", "csv", "--output", "-", "--max-stories", "2", fixture], { cwd: root, encoding: "utf8" });
+    assert.equal(piped.status, 0, piped.stderr);
+    assert.equal(csvRows(piped.stdout).length, 3);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
