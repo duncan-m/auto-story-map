@@ -132,11 +132,11 @@ function RecentUpdates({ updates, settings }: { updates: StoryMapRecentUpdates; 
   );
 }
 
-/** Cards are tight on space, so “5 h ago” and “12 mins ago”; longer spans read as `formatRelative`. */
+/** Cards are tight on space, so “5h ago” and “12 mins ago”; longer spans read as `formatRelative`. */
 function formatCardRelative(at: string, settings: DateSettings) {
   const minutes = Math.floor((settings.now.getTime() - Date.parse(at)) / 60_000);
   if (minutes >= 1 && minutes < 60) return `${minutes} ${minutes === 1 ? "min" : "mins"} ago`;
-  if (minutes >= 60 && minutes < 24 * 60) return `${Math.floor(minutes / 60)} h ago`;
+  if (minutes >= 60 && minutes < 24 * 60) return `${Math.floor(minutes / 60)}h ago`;
   return formatRelative(at, settings);
 }
 

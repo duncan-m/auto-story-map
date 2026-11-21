@@ -984,7 +984,8 @@ test("the board shows when each story changed and its history to internal viewer
     const rendered = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(current, engineer, { history }), ...props, now: later }));
     return cardsIn(rendered).find(card => card.includes("BUILDER-101")).match(/<time class="esm-changed"[^>]*>([^<]+)<\/time>/)[1];
   };
-  assert.equal(cardTimeAt("2026-11-12T20:45:00Z"), "5 h ago");
+  assert.equal(cardTimeAt("2026-11-12T20:45:00Z"), "5h ago");
+  assert.equal(cardTimeAt("2026-11-12T16:30:00Z"), "1h ago");
   assert.equal(cardTimeAt("2026-11-12T15:42:00Z"), "12 mins ago");
   assert.equal(cardTimeAt("2026-11-12T15:31:00Z"), "1 min ago");
   assert.equal(cardTimeAt("2026-11-12T15:30:20Z"), "just now");
