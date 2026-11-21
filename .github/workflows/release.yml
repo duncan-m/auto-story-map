@@ -30,7 +30,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run build
-      - run: node dist/cli.js validate --format github --check-sources --plans docs product/story-map.yaml
+      - run: node dist/cli.js validate --format github --check-sources --plans docs --tests test product/story-map.yaml
       - run: npm test
       - name: Check the committed JSON Schema is up to date
         run: git diff --exit-code -- story-map.schema.json

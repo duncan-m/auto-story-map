@@ -28,7 +28,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run build
-      - run: node dist/cli.js validate --format github --check-sources --plans docs product/story-map.yaml
+      - run: node dist/cli.js validate --format github --check-sources --plans docs --tests test product/story-map.yaml
       - name: Summarise story map changes
         if: github.event_name == 'pull_request' && matrix.node == '26' && matrix.react == '19'
         env:
