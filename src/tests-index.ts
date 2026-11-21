@@ -43,7 +43,11 @@ export const testsOmittedMaxItems = 100_000;
 
 const codePoints = (text: string) => Array.from(text).length;
 const storyId = z.string().min(1).max(64);
-const file = z.string().min(1).max(1024);
+/** A repository-relative path with `/` separators. Absolute paths, `..` segments and URLs are refused, so a link built from it stays under `sourceBaseUrl`. */
+const file = z.string().min(1).max(1024).refine(
+  path => !/^[/\\]/.test(path) && !/[\\\0]/.test(path) && !path.split("/").includes("..") && !/^[a-z][a-z0-9+.-]*:/i.test(path),
+  "Use a path relative to the repository root.",
+);
 
 export const storyMapTestsSchema = z.object({
   version: z.literal(1),

@@ -401,6 +401,17 @@
 .esm-history-change { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--esm-muted); }
 .esm-history-meta { color: var(--esm-muted); font-size: .8125rem; overflow-wrap: anywhere; }
 .esm-history-reason { font-size: .875rem; line-height: 1.4; overflow-wrap: anywhere; }
+.esm-tests-file + .esm-tests-file { margin-top: 12px; }
+.esm-tests-path { margin: 0; color: var(--esm-muted); }
+.esm-tests-path code { font-size: .8125rem; overflow-wrap: anywhere; }
+.esm-tests-file ul { display: grid; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.esm-test { display: grid; gap: 2px; padding-left: 10px; border-left: 2px solid var(--esm-line); }
+.esm-test > a, .esm-test > span:first-child { display: inline-flex; align-items: baseline; gap: 6px; line-height: 1.4; overflow-wrap: anywhere; }
+.esm-test .esm-icon { align-self: center; color: var(--esm-muted); }
+.esm-test-line { color: var(--esm-faint); font-size: .8125rem; }
+.esm-tests-more { margin: 6px 0 0; padding-left: 12px; color: var(--esm-muted); font-size: .8125rem; }
+.esm-tests-empty { margin: 0; color: var(--esm-muted); line-height: 1.5; }
+.esm-tests-empty code { font-size: .8125rem; overflow-wrap: anywhere; }
 .esm-impact { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
 .esm-impact-metric { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin: 0; font-weight: 650; overflow-wrap: anywhere; }
 .esm-impact .esm-detail-context { margin-top: 6px; }

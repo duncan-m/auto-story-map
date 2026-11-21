@@ -3,6 +3,8 @@ import { createServer } from "node:http";
 import { createElement as h } from "react";
 import { parseStoryMap } from "auto-story-map";
 import { buildStoryMapHistory } from "../dist/history-git.js";
+import { loadStoryMap } from "../dist/schema.js";
+import { buildStoryMapTests, findStoryTests } from "../dist/tests.js";
 import { makeStoryMapResponse } from "./host.mjs";
 
 // Local-only role switch for checking the example views.
@@ -32,6 +34,18 @@ try {
   history = await buildStoryMapHistory({ cwd: new URL("..", import.meta.url).pathname, allowShallow: true, botNames: ["Claude"] });
 } catch (error) {
   console.warn(`Status history is unavailable: ${error.message}`);
+}
+
+// A product would run `story-map tests --tests test --out <file>` in its build and parse it with
+// parseStoryMapTests. The demo scans this repository's own tests at startup.
+let tests = null;
+try {
+  const root = new URL("..", import.meta.url).pathname;
+  const loaded = loadStoryMap(await readFile(mapFile, "utf8"));
+  const found = await findStoryTests(loaded, root, { paths: ["test"] });
+  tests = buildStoryMapTests(loaded, found.tests).index;
+} catch (error) {
+  console.warn(`Tests are unavailable: ${error.message}`);
 }
 
 // Set STORY_MAP_DEMO_NOW to a later date, such as 2027-01-15, to see in-progress stories flagged as stalled.
@@ -77,6 +91,7 @@ const server = createServer(async (request, response) => {
       sourceBaseUrl,
       canViewInternal,
       history,
+      tests,
       now,
       preservedParams: { as: selected },
     });

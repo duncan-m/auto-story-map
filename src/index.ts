@@ -22,6 +22,7 @@ export type {
   StoryMapLabel,
   StoryMapPageOptions,
   StoryMapRecentUpdates,
+  StoryTestLink,
   StoryMapView,
   StoryMapViewer,
 } from "./view.js";

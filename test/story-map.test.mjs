@@ -2807,3 +2807,73 @@ test("ESM-801: validate --tests reports unknown tags and active stories without 
   assert.equal(run("--tests", "test", "map.yaml").status, 1);
   assert.equal(run("map.yaml").stderr, "");
 });
+
+test("ESM-801: the story panel lists tagged tests by file, linking to each line", () => {
+  const tests = parseStoryMapTests({
+    version: 1,
+    generatedAt: "2026-11-21T12:00:00.000Z",
+    tests: [
+      { storyIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 4, name: "BUILDER-101: drafts an estimate", kind: "test" },
+      { storyIds: ["BUILDER-101", "BUILDER-102"], file: "test/estimate.test.js", line: 9, name: "BUILDER-101 and BUILDER-102 share a total", kind: "test" },
+      { storyIds: ["BUILDER-101"], file: "test/ui/form #2.test.js", line: 12, name: "BUILDER-101: form", kind: "group" },
+    ],
+    omitted: [{ storyId: "BUILDER-101", file: "test/estimate.test.js", count: 3 }],
+  });
+  const view = getStoryMapForViewer(map, engineer, { tests });
+  assert.equal(view.testsIndexed, true);
+  const story = view.stories.find(card => card.id === "BUILDER-101");
+  assert.deepEqual(story.tests.map(test => `${test.file}:${test.line}`), ["test/estimate.test.js:4", "test/estimate.test.js:9", "test/ui/form #2.test.js:12"]);
+  assert.deepEqual(story.moreTests, [{ file: "test/estimate.test.js", count: 3 }]);
+  assert.equal(view.stories.find(card => card.id === "BUILDER-103").tests, undefined);
+
+  // Each story's panel, from its opening tag to the next panel.
+  const panel = (html, id) => html.split('<div class="esm-detail"').find(part => part.includes(`<p class="esm-card-id">${id}</p>`));
+  const linked = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, sourceBaseUrl }));
+  const tagged = panel(linked, "BUILDER-101");
+  // Between History and Engineering, grouped by file, with the leading tag dropped.
+  const withSources = panel(linked, "BUILDER-102");
+  assert.ok(withSources.indexOf(">Tests</h4>") > 0 && withSources.indexOf(">Tests</h4>") < withSources.indexOf(">Engineering</h4>"), "Tests comes before Engineering");
+  const withHistory = panel(renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer, {
+    tests,
+    history: { version: 1, generatedAt: "2026-11-21T12:00:00.000Z", complete: true, events: [{ storyId: "BUILDER-101", type: "added", to: "planned", at: "2026-11-01T12:00:00.000Z", commit: "abcdef1" }] },
+  }) })), "BUILDER-101");
+  assert.ok(withHistory.indexOf(">History</h4>") > 0 && withHistory.indexOf(">History</h4>") < withHistory.indexOf(">Tests</h4>"), "Tests comes after History");
+  assert.ok(tagged.indexOf("test/estimate.test.js</code>") < tagged.indexOf("test/ui/form #2.test.js</code>"));
+  assert.match(tagged, /href="https:\/\/docs\.example\.test\/repository\/test\/estimate\.test\.js#L4"[^>]*><span class="esm-test-name">drafts an estimate<\/span>/);
+  assert.match(tagged, /<span class="esm-test-name">BUILDER-101 and BUILDER-102 share a total<\/span>/);
+  assert.match(tagged, /href="https:\/\/docs\.example\.test\/repository\/test\/ui\/form%20%232\.test\.js#L12"/);
+  assert.match(tagged, /All tests in this group · line 12/);
+  assert.match(tagged, /\+3 more in this file/);
+  // The empty state shows only with an index.
+  assert.match(panel(linked, "BUILDER-103"), /No tests are tagged BUILDER-103 yet\./);
+  const noIndex = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer), sourceBaseUrl }));
+  assert.doesNotMatch(noIndex, /esm-tests|No tests are tagged/);
+
+  // Without sourceBaseUrl, files and lines are plain text.
+  const plain = panel(renderToStaticMarkup(createElement(StoryMapBoard, { map: view })), "BUILDER-101");
+  assert.doesNotMatch(plain, /#L\d/);
+  assert.match(plain, /<span><span class="esm-test-name">drafts an estimate<\/span><\/span><span class="esm-test-line">line 4<\/span>/);
+
+  // Paths that could leave the repository are refused when the index is parsed.
+  for (const file of ["/etc/passwd", "../outside.test.js", "https://evil.test/x.js", "//evil.test/x.js", "test\\x.js"]) {
+    assert.throws(() => parseStoryMapTests({ ...tests, tests: [{ ...tests.tests[0], file }], omitted: undefined }), /relative to the repository root/, file);
+  }
+});
+
+test("ESM-801: customers never see test names or paths", async () => {
+  const tests = parseStoryMapTests({
+    version: 1,
+    generatedAt: "2026-11-21T12:00:00.000Z",
+    tests: map.stories.map((story, index) => ({ storyIds: [story.id], file: "test/secret-path.test.js", line: index + 1, name: `${story.id}: secret test name`, kind: "test" })),
+    omitted: [{ storyId: map.stories[0].id, file: "test/secret-omitted.test.js", count: 2 }],
+  });
+  const customer = getStoryMapForViewer(map, regular, { tests });
+  assert.equal(customer.audience, "all-users");
+  assert.equal(customer.testsIndexed, undefined);
+  for (const path of ["/story-map", "/api/story-map"]) {
+    const body = await makeStoryMapResponse(path, map, regular, { sourceBaseUrl, tests }).text();
+    assert.doesNotMatch(body, /secret|esm-tests|No tests are tagged|testsIndexed/, path);
+  }
+  // The engineer's JSON does include them, so the check above is meaningful.
+  assert.match(await makeStoryMapResponse("/api/story-map", map, engineer, { tests }).text(), /secret test name/);
+});
