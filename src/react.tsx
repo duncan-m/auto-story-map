@@ -27,6 +27,12 @@ export interface StoryMapBoardProps {
    * repository on internal boards. On by default.
    */
   showVersion?: boolean;
+  /**
+   * The host's export route, such as `/story-map/export`. On internal boards the
+   * header then links to it with `format=vsdx` and `format=csv`, and board.js adds
+   * the lanes the viewer collapsed as `collapsed`. Never shown to customers.
+   */
+  exportHref?: string;
 }
 
 interface DateSettings {
@@ -487,6 +493,27 @@ function ReleaseCollapse({ releaseId, title }: { releaseId: string; title: strin
   );
 }
 
+/** Adds a query parameter to a URL that may be relative, keeping any fragment. */
+function withParam(href: string, name: string, value: string) {
+  const hash = href.indexOf("#");
+  const [path, fragment] = hash === -1 ? [href, ""] : [href.slice(0, hash), href.slice(hash)];
+  return `${path}${path.includes("?") ? "&" : "?"}${name}=${encodeURIComponent(value)}${fragment}`;
+}
+
+/** Links to the host's export route. board.js keeps `collapsed` in step with the lanes. */
+function ExportLinks({ href }: { href: string }) {
+  const formats = [["vsdx", "Visio (.vsdx), for Lucidchart or Miro"], ["csv", "CSV"]] as const;
+  return (
+    <p className="esm-export">
+      <span className="esm-export-label">Export</span>
+      {formats.map(([format, label]) => {
+        const target = withParam(href, "format", format);
+        return <a key={format} className="esm-export-link" href={target} data-esm-export={target} download>{label}</a>;
+      })}
+    </p>
+  );
+}
+
 /** GitHub’s anchor for a changelog heading such as `## 0.4.1`. */
 function changelogAnchor(version: string) {
   return version.toLowerCase().replace(/[^a-z0-9 _-]/g, "").replace(/ /g, "-");
@@ -606,6 +633,7 @@ export function StoryMapBoard({
   timeZone,
   now,
   showVersion = true,
+  exportHref,
 }: StoryMapBoardProps) {
   const baseId = useId();
   const headingId = `${baseId}-heading`;
@@ -654,6 +682,7 @@ export function StoryMapBoard({
         {map.audience === "internal" && map.recentUpdates
           ? <RecentUpdates updates={map.recentUpdates} settings={settings} />
           : map.summary && <p className="esm-goal">{map.summary}</p>}
+        {internal && exportHref && <ExportLinks href={exportHref} />}
       </header>
       <div className="esm-frame">
         {map.filter && (

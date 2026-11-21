@@ -26,6 +26,7 @@ import {
   storyMapResponseHeaders,
   storyMapSchema,
   csvContentType,
+  storyMapExportResponse,
   storyMapToCsv,
   storyMapToVsdx,
   vsdxContentType,
@@ -2007,10 +2008,15 @@ test("board.js remembers collapsed release lanes", async t => {
     const inputs = ids.map(id => new FakeInput(id));
     let listeners = 0;
     let listener;
+    const links = ["/story-map/export?format=vsdx", "/story-map/export?as=engineer&format=csv#top"].map(href => {
+      const link = { dataset: { esmExport: href }, href: undefined, setAttribute: (name, value) => { link[name] = value; } };
+      return link;
+    });
     return {
       inputs,
+      links,
       get listeners() { return listeners; },
-      querySelectorAll: () => inputs,
+      querySelectorAll: selector => selector.includes("data-esm-export") ? links : inputs,
       addEventListener: (type, handler) => { listeners++; listener = handler; },
       toggle(index) { inputs[index].checked = !inputs[index].checked; listener({ target: inputs[index] }); },
     };
@@ -2026,6 +2032,7 @@ test("board.js remembers collapsed release lanes", async t => {
   board.toggle(0);
   board.toggle(2);
   assert.deepEqual(JSON.parse(storage.get("esm-collapsed:/story-map")), ["r1", "r3"]);
+  assert.deepEqual(board.links.map(link => link.href), ["/story-map/export?format=vsdx&collapsed=r1,r3", "/story-map/export?as=engineer&format=csv&collapsed=r1,r3#top"], "export links follow the collapsed lanes");
   board.toggle(0);
   assert.deepEqual(JSON.parse(storage.get("esm-collapsed:/story-map")), ["r3"]);
 
@@ -2033,9 +2040,11 @@ test("board.js remembers collapsed release lanes", async t => {
   const reloaded = fakeBoard(["r1", "r2", "r3"]);
   enhanceStoryMapReleases({ querySelectorAll: () => [reloaded] });
   assert.deepEqual(reloaded.inputs.map(input => input.checked), [false, false, true]);
+  assert.equal(reloaded.links[0].href, "/story-map/export?format=vsdx&collapsed=r3", "export links start with the remembered lanes");
 
   reloaded.toggle(2);
   assert.equal(storage.has("esm-collapsed:/story-map"), false, "expanding every lane clears the stored value");
+  assert.equal(reloaded.links[0].href, "/story-map/export?format=vsdx");
 });
 
 test("the board shows the running version, with links for internal viewers", async () => {
@@ -2395,4 +2404,60 @@ test("story-map export writes CSV from the YAML file", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+// --- Download the export from the board (ESM-704) ---
+
+test("the board links to the export for internal viewers only", () => {
+  const render = (viewer, props = {}) => renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, viewer), ...props }));
+  const internal = render(engineer, { exportHref: "/story-map/export?as=engineer#map" });
+  const links = [...internal.matchAll(/<a class="esm-export-link" href="([^"]+)" data-esm-export="([^"]+)" download="">([^<]+)<\/a>/g)];
+  assert.deepEqual(links.map(match => [match[1], match[3]]), [
+    ["/story-map/export?as=engineer&amp;format=vsdx#map", "Visio (.vsdx), for Lucidchart or Miro"],
+    ["/story-map/export?as=engineer&amp;format=csv#map", "CSV"],
+  ]);
+  assert.ok(links.every(match => match[1] === match[2]));
+  assert.match(render(engineer, { exportHref: "/export" }), /href="\/export\?format=vsdx"/);
+  assert.doesNotMatch(render(engineer), /esm-export/, "no links without exportHref");
+  assert.doesNotMatch(render(regular, { exportHref: "/story-map/export" }), /esm-export|story-map\/export/, "never for customers");
+});
+
+test("storyMapExportResponse builds a download for a host route", () => {
+  const view = exportView();
+  const vsdx = storyMapExportResponse(view, { format: "vsdx", collapsed: `${map.releases[0].id}, no-such-release`, now: exportNow });
+  assert.deepEqual(vsdx.headers, {
+    "Cache-Control": "private, no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Type": vsdxContentType,
+    "Content-Disposition": 'attachment; filename="builder-estimates-delivery-map.vsdx"',
+  });
+  assert.deepEqual(vsdx.body, storyMapToVsdx(view, { collapsedReleases: [map.releases[0].id, "no-such-release"], now: exportNow }));
+
+  const csv = storyMapExportResponse(view, { format: "csv", collapsed: [map.releases[0].id], filename: 'Q4 "plan"\r\nX-Evil: 1' });
+  assert.equal(csv.headers["Content-Type"], csvContentType);
+  assert.equal(csv.headers["Content-Disposition"], 'attachment; filename="q4-plan-x-evil-1.csv"');
+  assert.equal(csv.body, storyMapToCsv(view, { collapsedReleases: [map.releases[0].id] }));
+  assert.equal(storyMapExportResponse({ ...view, title: "🚀" }, { format: "csv" }).headers["Content-Disposition"], 'attachment; filename="story-map.csv"');
+
+  assert.throws(() => storyMapExportResponse(getStoryMapForViewer(map, regular), { format: "csv" }), TypeError);
+  assert.throws(() => storyMapExportResponse(view, { format: "pdf" }), RangeError);
+  assert.throws(() => storyMapExportResponse(view, { format: null }), RangeError);
+});
+
+test("the example host serves the export to internal viewers", async () => {
+  const route = (path, viewer) => makeStoryMapResponse(path, map, viewer, { canViewInternal: viewer => viewer?.roles.includes("engineer"), now: exportNow });
+  assert.equal(route("/story-map/export?format=csv", null).status, 401);
+  assert.equal(route("/story-map/export?format=csv", regular).status, 403);
+  assert.equal(route("/story-map/export?format=pdf", engineer).status, 400);
+  const csv = route(`/story-map/export?format=csv&collapsed=${map.releases[0].id}&q=estimate`, engineer);
+  assert.equal(csv.status, 200);
+  assert.equal(csv.headers.get("Content-Type"), csvContentType);
+  // Response.text() drops the byte order mark, so compare the bytes.
+  assert.equal(Buffer.from(await csv.arrayBuffer()).toString("utf8"), storyMapToCsv(exportView(), { collapsedReleases: [map.releases[0].id] }), "filters on the URL are ignored");
+  const vsdx = route("/story-map/export?format=vsdx", engineer);
+  assert.equal(vsdx.headers.get("Content-Disposition"), 'attachment; filename="builder-estimates-delivery-map.vsdx"');
+  assert.ok(readStoredZip(new Uint8Array(await vsdx.arrayBuffer())).has("visio/pages/page1.xml"));
+
+  const page = await makeStoryMapResponse("/story-map", map, engineer, { canViewInternal: () => true, preservedParams: { as: "engineer" } }).text();
+  assert.match(page, /href="\/story-map\/export\?as=engineer&amp;format=vsdx"/);
 });

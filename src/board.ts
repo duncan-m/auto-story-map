@@ -6,7 +6,8 @@
  * **Apply** button. With it, changing a filter applies it straight away and the
  * Apply button is hidden. After the page reloads, focus returns to the filter
  * that was changed, so keyboard and screen reader users keep their place.
- * It also remembers which release lanes the viewer collapsed.
+ * It also remembers which release lanes the viewer collapsed, and adds them to
+ * the board's export links so the downloaded file matches.
  */
 
 const focusKey = "esm-filter-focus";
@@ -87,9 +88,24 @@ function writeCollapsed(ids: string[]) {
   }
 }
 
+/** Sets `collapsed` on the board's export links to the lanes collapsed on that board. */
+function updateExportLinks(board: Element) {
+  const ids = [...board.querySelectorAll<HTMLInputElement>("input.esm-collapse-input")].filter(input => input.checked).map(input => input.value);
+  for (const link of board.querySelectorAll<HTMLAnchorElement>("a[data-esm-export]")) {
+    const href = link.dataset.esmExport ?? "";
+    if (!ids.length) {
+      link.setAttribute("href", href);
+      continue;
+    }
+    const hash = href.indexOf("#");
+    const [path, fragment] = hash === -1 ? [href, ""] : [href.slice(0, hash), href.slice(hash)];
+    link.setAttribute("href", `${path}${path.includes("?") ? "&" : "?"}collapsed=${ids.map(encodeURIComponent).join(",")}${fragment}`);
+  }
+}
+
 /**
  * Remembers which release lanes the viewer collapsed, per page, so they stay collapsed
- * when a filter reloads the page. Safe to call more than once.
+ * when a filter reloads the page, and keeps the export links in step. Safe to call more than once.
  */
 export function enhanceStoryMapReleases(root: ParentNode = document) {
   for (const board of root.querySelectorAll(".esm-board")) {
@@ -99,6 +115,7 @@ export function enhanceStoryMapReleases(root: ParentNode = document) {
     for (const input of board.querySelectorAll<HTMLInputElement>("input.esm-collapse-input")) {
       if (collapsed.has(input.value)) input.checked = true;
     }
+    updateExportLinks(board);
     board.addEventListener("change", event => {
       const target = event.target;
       if (!(target instanceof HTMLInputElement) || !target.classList.contains("esm-collapse-input")) return;
@@ -107,6 +124,7 @@ export function enhanceStoryMapReleases(root: ParentNode = document) {
       if (target.checked) ids.add(target.value);
       else ids.delete(target.value);
       writeCollapsed([...ids]);
+      updateExportLinks(board);
     });
   }
 }
