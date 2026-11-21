@@ -3,6 +3,8 @@ A live, Git-backed user story map that lives inside your app and stays up to dat
 
 Because it sits directly inside your product, there are no extra accounts to manage. Access hooks straight into your existing sign-in, exposing the full internal map to engineer and super-admin roles out of the box with customizable permission rules.
 
+Export the map as JSON and an agent can review your stories and tests and suggest what to build next, with notes in the file on where the data came from and what it leaves out. You can also export it to Lucidchart, Miro, Visio or a spreadsheet. See [Export the map](#export-the-map).
+
 ## Code checks
 
 [![Dependency Scan](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml) - [![CodeQL](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml) - [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/duncan-m/auto-story-map/badge)](https://scorecard.dev/viewer/?uri=github.com/duncan-m/auto-story-map)
@@ -39,7 +41,7 @@ The core can run in a TypeScript or JavaScript backend. A React host can also us
 
 | Import | Use |
 | --- | --- |
-| `auto-story-map` | Parse the YAML, select the viewer’s view and apply search filters on the server. |
+| `auto-story-map` | Parse the YAML, select the viewer’s view and apply search filters on the server, and export it as JSON, Visio or CSV. |
 | `auto-story-map/react` | Render a view with `<StoryMapBoard map={view} />`. |
 | `auto-story-map/styles.css` | Style the board using namespaced CSS. |
 | `auto-story-map/schema.json` | Give editors autocomplete and inline checks for the YAML. |
@@ -66,6 +68,38 @@ It never overwrites an existing file, so it is safe to run again. [This library�
 Start an agent in the host repo and give it this task.
 
 > Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, open a few story cards if the host renders the board, and flag any uncertain release or status decisions for review.
+
+## Export the map
+
+Exports are a one-way snapshot of the internal map. The YAML file stays the source of truth, and edits made elsewhere do not come back. Customers can never export the map.
+
+### Review it with an agent
+
+The JSON export is made for agents. It holds every activity and release, with their notes and expected impact, and every story with its summary, status, engineering notes, sources, status history and tagged tests. Two sections tell the agent how far to trust it:
+
+- `provenance` says which version of the library wrote the file, when the history and tests were gathered, and that statuses are recorded in PRs and can lag behind the code.
+- `completeness` counts the stories included and left out, and says what the agent cannot see, such as tests that do not name a story or a history built from a shallow clone.
+
+Build the history and tests index, then export:
+
+```sh
+npx story-map history --out story-map-history.json
+npx story-map tests --tests test --out story-map-tests.json
+npx story-map export --format json --history story-map-history.json --tests-index story-map-tests.json --output story-map.json
+```
+
+Unlike the other formats, the JSON file includes every story and every release, even ones collapsed on the board. Give it to an agent with a task such as:
+
+> Read `story-map.json`, starting with its `provenance` and `completeness` notes. Review the stories and their tests: flag merged or shipped stories with no tagged tests, statuses that look out of step with the code, and impact that is still a draft. Then suggest up to five features or improvements that fit the user journey, citing the story IDs each one builds on. Check anything you rely on against the repository before you recommend it.
+
+The file includes internal notes and the names of people who edited the map, so keep it within the team. Internal viewers can also download it from the board's **Export** menu, as **JSON, for agents and scripts**, when the host sets `exportHref`, and a host can build it with `storyMapToJson`. The JSON export is new since 0.7.0 and will ship in the next release. To use it now, install a tarball from a source checkout, as in [Embed it in a product](#embed-it-in-a-product). See [Export as JSON for agents][json-export] for the full format.
+
+### Open it in other tools
+
+- **Visio (`.vsdx`)**, for Lucidchart, Miro or Visio: one page laid out like the board, with each release's notes and impact and a card per story.
+- **CSV**, for Miro or a spreadsheet: a row per story with its activity, release, ID and title.
+
+Use `npx story-map export --format vsdx` or `--format csv`, or the board's **Export** menu. These formats include at most the 200 most recently changed stories, and keep the lanes collapsed on the board collapsed. See [Export the map][export] for host routes and options.
 
 ## Limitations
 
@@ -101,3 +135,5 @@ The [Apache License 2.0][license], in particular its sections 7 (Disclaimer of W
 [releasing]: https://github.com/duncan-m/auto-story-map/blob/main/docs/releasing.md
 [overview]: https://github.com/duncan-m/auto-story-map/blob/main/docs/ENGINEERING-OVERVIEW.md
 [license]: https://github.com/duncan-m/auto-story-map/blob/main/LICENSE
+[export]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-the-map
+[json-export]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-as-json-for-agents
