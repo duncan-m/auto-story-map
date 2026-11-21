@@ -6,6 +6,8 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 One upgrade step: if host code reads `view.filter.status` or the JSON `filter.status`, treat it as an array. Links with `?status=all` or one status need no change.
 
+- The board footer shows the short hash of the commit the library was built from, right of the version number, such as “Auto Story Map 0.6.1 50058dd”. Internal boards link it to the commit on GitHub. Builds made outside a git checkout show the version alone. New export `storyMapCommit`.
+
 - Internal cards shorten the time since a story last changed to “5 h ago” and “12 mins ago”. The board header and story panel keep “5 hours ago” and “12 minutes ago”.
 
 - New `storyMapToVsdx(view, { collapsedReleases, maxStories, now })` writes the internal map as a Visio file (`.vsdx`) to import into Lucidchart, Miro or Visio. It is one page laid out like the board, with release notes and impact, and a card per story showing its ID and title, plus shape data. Collapsed lanes show only their title and story count, and at most 200 of the most recently changed stories are included. Customer views and filtered views are refused. New exports `vsdxContentType` and type `StoryMapExportOptions`. See [Export the map](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-the-map).

@@ -2,7 +2,7 @@ import { Fragment, useId, version } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 import type { ReleaseImpact } from "./schema.js";
-import { storyMapAuthor, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
+import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
@@ -655,12 +655,20 @@ function changelogAnchor(version: string) {
   return version.toLowerCase().replace(/[^a-z0-9 _-]/g, "").replace(/ /g, "-");
 }
 
-/** The running version, licence and author. Internal viewers also get links. */
+/** The running version and its commit, licence and author. Internal viewers also get links. */
 function VersionFooter({ internal }: { internal: boolean }) {
   const licenseUrl = `${storyMapRepositoryUrl}/blob/main/LICENSE`;
   return (
     <footer className="esm-footer">
-      <span className="esm-version">Auto Story Map {storyMapVersion}</span>
+      <span className="esm-version">
+        Auto Story Map {storyMapVersion}
+        {storyMapCommit && <>
+          {" "}
+          {internal
+            ? <a className="esm-commit" href={`${storyMapRepositoryUrl}/commit/${storyMapCommit}`} title="The commit this build came from" {...newTab}>{storyMapCommit}<NewTabHint /></a>
+            : <span className="esm-commit" title="The commit this build came from">{storyMapCommit}</span>}
+        </>}
+      </span>
       <span className="esm-author">
         {"By "}
         {internal && storyMapAuthor.url
