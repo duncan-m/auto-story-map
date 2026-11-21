@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { code, diffStoryMaps, formatStoryMapDiff } from "./diff.js";
 import { defaultExportMaxStories, prepareStoryMapExport } from "./export.js";
 import { storyMapToCsv } from "./export-csv.js";
+import { storyMapExportFormats } from "./export-response.js";
 import { storyMapToVsdx } from "./export-vsdx.js";
 import { parseStoryMapHistory, type StoryMapHistory } from "./history.js";
 import { buildStoryMapHistory, StoryMapHistoryError } from "./history-git.js";
@@ -362,7 +363,7 @@ function warnSkipped(result: Awaited<ReturnType<typeof buildStoryMapHistory>>) {
   if (result.skippedCount > shown.length) console.error(`  and ${result.skippedCount - shown.length} more, listed in the file's skipped field`);
 }
 
-const exportFormats = ["vsdx", "csv"] as const;
+const exportFormats = storyMapExportFormats;
 
 function parseExportArgs(rest: string[]) {
   let format: (typeof exportFormats)[number] | undefined;

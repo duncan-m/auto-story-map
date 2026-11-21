@@ -34,4 +34,6 @@ export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js
 export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";
+export { storyMapExportFormats, storyMapExportResponse } from "./export-response.js";
+export type { StoryMapExportFormat, StoryMapExportResponse, StoryMapExportResponseOptions } from "./export-response.js";
 export type { StoryMapExportOptions } from "./export.js";

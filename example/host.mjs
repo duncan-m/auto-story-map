@@ -1,6 +1,6 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { getStoryMapPage, storyMapResponseHeaders } from "auto-story-map";
+import { getStoryMapForViewer, getStoryMapPage, storyMapExportResponse, storyMapResponseHeaders } from "auto-story-map";
 import { StoryMapBoard } from "auto-story-map/react";
 
 // The enclosing app supplies a viewer from its verified session.
@@ -10,6 +10,21 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
   const url = new URL(target, "http://localhost");
   const headers = storyMapResponseHeaders;
   const isApi = url.pathname === "/api/story-map";
+
+  if (url.pathname === "/story-map/export") {
+    // An export is the whole map, so build the view without filters.
+    const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
+    if (view?.audience !== "internal") {
+      return new Response("Only the product team can export the story map.", { status: viewer ? 403 : 401, headers });
+    }
+    try {
+      const file = storyMapExportResponse(view, { format: url.searchParams.get("format"), collapsed: url.searchParams.get("collapsed"), now });
+      return new Response(file.body, { headers: file.headers });
+    } catch (error) {
+      if (error instanceof RangeError) return new Response("Choose format=vsdx or format=csv.", { status: 400, headers });
+      throw error;
+    }
+  }
 
   if (!isApi && url.pathname !== "/story-map") {
     return new Response("Page not found.", { status: 404, headers });
@@ -24,6 +39,8 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
     return Response.json(map ?? { error: message }, { status, headers });
   }
 
+  // Keep the host's own parameters, such as the demo's role, on the export links.
+  const exportHref = `/story-map/export${preservedParams ? `?${new URLSearchParams(preservedParams)}` : ""}`;
   const page = h("html", { lang: "en-GB" },
     h("head", null,
       h("meta", { charSet: "UTF-8" }),
@@ -31,7 +48,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
       h("title", null, map?.title ?? "Story map"),
       h("link", { rel: "stylesheet", href: "/story-map.css" }),
       h("link", { rel: "stylesheet", href: "/example-host.css" }),
-      // Optional: applies the filters as soon as they change. The board works without it.
+      // Optional: applies the filters as soon as they change, and keeps collapsed lanes in the export links. The board works without it.
       h("script", { type: "module", src: "/story-map-board.js" }),
     ),
     h("body", null,
@@ -40,7 +57,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
         navigation,
       ),
       h("main", null,
-        map ? h(StoryMapBoard, { map, sourceBaseUrl, preservedParams, now }) : h("p", null, message),
+        map ? h(StoryMapBoard, { map, sourceBaseUrl, preservedParams, now, exportHref }) : h("p", null, message),
       ),
     ),
   );
