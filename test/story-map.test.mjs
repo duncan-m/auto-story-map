@@ -957,7 +957,9 @@ test("the board shows when each story changed and its history to internal viewer
   const props = { now, timeZone: "UTC", preservedParams: { as: "engineer" } };
 
   const html = await makeStoryMapResponse("/story-map?changed=14d", current, engineer, { history, now, preservedParams: props.preservedParams }).text();
-  assert.match(html, /<option value="14d" selected="">Changed: last 14 days<\/option>/);
+  const unfiltered = await makeStoryMapResponse("/story-map", current, engineer, { history, now }).text();
+  assert.match(unfiltered, /<option value="" selected="">All time<\/option>/, "All time is the default");
+  assert.match(html, /<option value="">All time<\/option><option value="1d">Last day<\/option><option value="7d">Last 7 days<\/option><option value="14d" selected="">Last 14 days<\/option><option value="30d">Last 30 days<\/option>/);
   assert.match(html, /Showing 3 of 6 stories\./);
 
   const board = renderToStaticMarkup(createElement(StoryMapBoard, { map: filterStoryMapView(getStoryMapForViewer(current, engineer, { history }), {}, { now }), ...props }));

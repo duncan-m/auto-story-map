@@ -650,8 +650,8 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
               aria-describedby={hintId}
               defaultValue={filter.changedWithinDays ? `${filter.changedWithinDays}d` : ""}
             >
-              <option value="">Changed any time</option>
-              {changedWithinChoices.map(([days, label]) => <option key={days} value={`${days}d`}>{`Changed: ${label.toLowerCase()}`}</option>)}
+              <option value="">All time</option>
+              {changedWithinChoices.map(([days, label]) => <option key={days} value={`${days}d`}>{label}</option>)}
             </select>
           )}
           <button type="submit" className="esm-button esm-apply">Apply</button>
