@@ -1,6 +1,10 @@
 # Auto Story Map
 
-A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
+A TypeScript library for displaying an automatically generated Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. 
+
+The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
+
+[![Dependency Scan](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml)
 
 ## Screenshot
 
