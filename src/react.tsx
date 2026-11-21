@@ -29,7 +29,7 @@ export interface StoryMapBoardProps {
   showVersion?: boolean;
   /**
    * The host's export route, such as `/story-map/export`. On internal boards the
-   * header then links to it with `format=vsdx` and `format=csv`, and board.js adds
+   * header then links to it with `format=vsdx`, `format=csv` and `format=json`, and board.js adds
    * the lanes the viewer collapsed as `collapsed`. Never shown to customers.
    */
   exportHref?: string;
@@ -631,7 +631,7 @@ function withParam(href: string, name: string, value: string) {
  * `collapsed` in step with the lanes, and closes the menu on Escape or a click elsewhere.
  */
 function ExportMenu({ href }: { href: string }) {
-  const formats = [["vsdx", "Visio (.vsdx), for Lucidchart or Miro"], ["csv", "CSV"]] as const;
+  const formats = [["vsdx", "Visio (.vsdx), for Lucidchart or Miro"], ["csv", "CSV"], ["json", "JSON, for agents and scripts"]] as const;
   return (
     <details className="esm-menu esm-export">
       <summary className="esm-button esm-menu-button">

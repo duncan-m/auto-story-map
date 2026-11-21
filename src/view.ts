@@ -141,6 +141,8 @@ export type StoryMapView =
     recentUpdates?: StoryMapRecentUpdates;
     /** True when the host supplied a tests index, so a story without `tests` has none tagged. */
     testsIndexed?: true;
+    /** When the tests index was generated. Present with `testsIndexed`. */
+    testsGeneratedAt?: string;
   })
   | (StoryMapBaseView & { audience: "all-users"; releases: StoryMapLabel[]; stories: StoryCard[] });
 
@@ -263,7 +265,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       ...(history ? { history: { generatedAt: history.generatedAt, complete: history.complete } } : {}),
       ...(stalledAfterWeeks > 0 ? { stalledAfterWeeks } : {}),
       ...(recentUpdates ? { recentUpdates } : {}),
-      ...(options.tests ? { testsIndexed: true as const } : {}),
+      ...(options.tests ? { testsIndexed: true as const, testsGeneratedAt: options.tests.generatedAt } : {}),
     };
   }
 

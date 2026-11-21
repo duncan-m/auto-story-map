@@ -13,7 +13,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
 
   if (url.pathname === "/story-map/export") {
     // An export is the whole map, so build the view without filters.
-    const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
+    const view = getStoryMapForViewer(document, viewer, { canViewInternal, history, tests });
     if (view?.audience !== "internal") {
       return new Response("Only the product team can export the story map.", { status: viewer ? 403 : 401, headers });
     }
@@ -21,7 +21,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
       const file = storyMapExportResponse(view, { format: url.searchParams.get("format"), collapsed: url.searchParams.get("collapsed"), now });
       return new Response(file.body, { headers: file.headers });
     } catch (error) {
-      if (error instanceof RangeError) return new Response("Choose format=vsdx or format=csv.", { status: 400, headers });
+      if (error instanceof RangeError) return new Response("Choose format=vsdx, format=csv or format=json.", { status: 400, headers });
       throw error;
     }
   }

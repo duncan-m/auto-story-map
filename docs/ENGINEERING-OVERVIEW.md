@@ -12,7 +12,7 @@ The package has four parts:
 
 - **A core library** that parses and validates the YAML, projects it for a viewer, and filters the projection.
 - **A React board** that renders a projection as server-side HTML, with a detail panel for each story. The panels work without client-side JavaScript.
-- **A CLI**, `story-map`, with `init`, `validate`, `diff`, `history` and `export` commands for setup, CI, PR summaries, Git-derived status history and Visio or CSV export.
+- **A CLI**, `story-map`, with `init`, `validate`, `diff`, `history` and `export` commands for setup, CI, PR summaries, Git-derived status history and Visio, CSV or JSON export.
 - **Agent and editor support**: a guide and `AGENTS.md` section that `init` copies into the host, plus a JSON Schema for editor autocomplete.
 
 Two audiences see the map. Internal viewers (by default the `engineer` and `super-admin` roles) see everything. Other signed-in users see a reduced customer-facing view, but only when the map has `visibility: all-users` and the story has approved customer copy. Guests see nothing.
@@ -78,6 +78,7 @@ The tests and the demo import the package by its own name (`import … from "aut
 | `src/export-layout.ts` | Lays out the export as a board in inches, and estimates text wrapping to size lanes and shorten card titles |
 | `src/export-vsdx.ts` | `storyMapToVsdx`: writes the layout as Visio XML parts and zips them |
 | `src/export-csv.ts` | `storyMapToCsv`: writes a row per story, quoted following RFC 4180, with formula-looking fields defused |
+| `src/export-json.ts` | `storyMapToJson`: writes every internal story's details for agents, with provenance and completeness notes |
 | `src/export-response.ts` | `storyMapExportResponse`: reads a host route's `format` and `collapsed` parameters and returns the file with download headers |
 | `src/zip.ts` | A stored (uncompressed) zip writer with CRC-32 and a fixed timestamp, so output is stable |
 | `src/history.ts` | History file types and `parseStoryMapHistory` |

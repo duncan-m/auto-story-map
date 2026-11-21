@@ -2,6 +2,12 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+- New `storyMapToJson(view, { collapsedReleases, maxStories, now })` writes the internal map as JSON for an agent or script to review: activities, releases with notes and impact, and each story's summary, status, notes, sources, history and tagged tests, with `testCount` when a tests index was supplied. `provenance` and `completeness` sections say where the data came from, when the history and tests were generated, how many stories are left out and why, with plain-language notes for the agent. Every story is included unless `maxStories` is passed. New exports `jsonContentType` and types `StoryMapJsonExport`, `StoryMapJsonRelease` and `StoryMapJsonStory`. See [Export as JSON for agents](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-as-json-for-agents).
+- `story-map export` accepts `--format json` and a new `--tests-index <file>` option for the index from `story-map tests`. `storyMapExportResponse` accepts `format=json`, and the board's Export menu has a *JSON, for agents and scripts* link. The example host passes the tests index to its export route.
+- Internal views gain `testsGeneratedAt`, when the tests index was generated, alongside `testsIndexed`.
+
 ## 0.7.0
 
 One breaking change, to the status filter. Follow the [0.7.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-070): if host code reads `view.filter.status` or the JSON `filter.status`, treat it as an array. Links with `?status=all` or one status need no change. Existing maps and history files stay valid. Also new: Visio and CSV export, tests linked to stories, and the build's commit in the footer.

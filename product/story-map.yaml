@@ -555,6 +555,15 @@ stories:
     summary: One row per story with its activity, release, ID and title, safe to open in spreadsheets and importable into Miro and Lucidchart.
     sources:
       - docs/plans/export-to-external-tools.md#5-export-the-map-as-csv
+  - id: ESM-706
+    title: Export the map as JSON for agents
+    activity: explore
+    release: next
+    status: in-progress
+    summary: storyMapToJson writes every internal story with its notes, sources, history and tagged tests, plus notes on where the data came from and what is left out, so an agent can review stories and tests and suggest product work.
+    notes: Every story by default, unlike Visio and CSV. Collapsed lanes are still left out. Available from the CLI with --tests-index, from storyMapExportResponse and from the board's Export menu.
+    sources:
+      - docs/story-map.md#export-as-json-for-agents
   - id: ESM-414
     title: Choose several statuses in the filter
     activity: explore
