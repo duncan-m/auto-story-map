@@ -1,10 +1,10 @@
-# Embedded Story Map: engineering overview
+# Auto Story Map: engineering overview
 
 Prepared 20 November 2026 for version 0.3.0, and updated for version 0.4.0: validator warnings, the merged, blocked and cut statuses, release notes and impact, stalled stories, and “last updated” from Git. Start here before changing the library. The [README](../README.md) and [the story map guide](story-map.md) describe how host products use it. This document explains how it works inside and which behaviour to preserve.
 
 ## What this library does
 
-Embedded Story Map lets a product show its own user story map at `/story-map`, behind the product's existing sign-in. Activities (the steps of the user journey) run left to right. Releases (delivery slices) run top to bottom. Each story sits in one activity and one release and has a status of `planned`, `in-progress`, `merged`, `shipped`, `blocked` or `cut`. The first four are the active statuses. Merged means the work is on the default branch but not yet available to its users, and customers see it as in progress. Blocked and cut stories are hidden by default and never shown to customers.
+Auto Story Map lets a product show its own user story map at `/story-map`, behind the product's existing sign-in. Activities (the steps of the user journey) run left to right. Releases (delivery slices) run top to bottom. Each story sits in one activity and one release and has a status of `planned`, `in-progress`, `merged`, `shipped`, `blocked` or `cut`. The first four are the active statuses. Merged means the work is on the default branch but not yet available to its users, and customers see it as in progress. Blocked and cut stories are hidden by default and never shown to customers.
 
 The map is a YAML file, `product/story-map.yaml`, committed in the host product's repository. It is edited through pull requests, like code, and ships with each deployment. Nothing is stored in a database, and the board is read-only.
 
@@ -27,7 +27,7 @@ Two audiences see the map. Internal viewers (by default the `engineer` and `supe
 | UI | React 18 or 19, an optional peer dependency. The board is a plain function component with no state or effects. |
 | Styling | One namespaced stylesheet, `styles.css`, using `.esm-*` classes and `--esm-*` custom properties. |
 | Git | The `diff` and `history` commands shell out to `git` with `execFile`, never through a shell. |
-| Distribution | npm package `embedded-story-map`, published from version tags with npm trusted publishing. |
+| Distribution | npm package `auto-story-map`, published from version tags with npm trusted publishing. |
 
 The library never handles authentication, HTTP or storage itself. The host reads the YAML, resolves the viewer from its own verified session, and passes both in. Data flows one way:
 
@@ -55,16 +55,16 @@ flowchart LR
 
 | Import | File | Contents |
 | --- | --- | --- |
-| `embedded-story-map` | `dist/index.js` | Parsing, validation errors, projection, filters, history parsing, diff |
-| `embedded-story-map/react` | `dist/react.js` | `StoryMapBoard` |
-| `embedded-story-map/styles.css` | `styles.css` | Board stylesheet |
-| `embedded-story-map/board.js` | `dist/board.js` | Optional browser script that applies filters as they change and remembers collapsed release lanes. Exported under `default`, so `require.resolve` finds it for hosts that copy it into their static files. |
-| `embedded-story-map/schema.json` | `story-map.schema.json` | JSON Schema for editors |
+| `auto-story-map` | `dist/index.js` | Parsing, validation errors, projection, filters, history parsing, diff |
+| `auto-story-map/react` | `dist/react.js` | `StoryMapBoard` |
+| `auto-story-map/styles.css` | `styles.css` | Board stylesheet |
+| `auto-story-map/board.js` | `dist/board.js` | Optional browser script that applies filters as they change and remembers collapsed release lanes. Exported under `default`, so `require.resolve` finds it for hosts that copy it into their static files. |
+| `auto-story-map/schema.json` | `story-map.schema.json` | JSON Schema for editors |
 | `story-map` (bin) | `dist/cli.js` | CLI |
 
 `buildStoryMapHistory` (`src/history-git.ts`), `loadStoryMap`, `checkSources`, `checkPlanReferences` and `initStoryMap` are not exported from the root entry point. Hosts reach them through the CLI. The demo imports `dist/history-git.js` directly, which is fine inside this repository but not a supported API.
 
-The tests and the demo import the package by its own name (`import … from "embedded-story-map"`). Node resolves this through the package's `exports`, so they exercise the built `dist/` output exactly as a host would. Run `npm run build` before running them; `npm test` and `npm run demo` do this for you.
+The tests and the demo import the package by its own name (`import … from "auto-story-map"`). Node resolves this through the package's `exports`, so they exercise the built `dist/` output exactly as a host would. Run `npm run build` before running them; `npm test` and `npm run demo` do this for you.
 
 ## Code map
 
@@ -102,7 +102,8 @@ The tests and the demo import the package by its own name (`import … from "emb
 | `scripts/export-sample-vsdx.mjs` | Exports the sample map as a `.vsdx` for the LibreOffice check in `export-check.yml` |
 | `scripts/make-export-test-files.mjs` | The ESM-701 spike: writes the hand-made test files in `test/fixtures/export-spike/` |
 | `scripts/smoke-package.sh` | Packs the tarball, installs it into an empty project and checks the imports, CLI and board |
-| `test/story-map.test.mjs` | All tests, using `node:test` |
+| `test/story-map.test.mjs` | Example-based tests, using `node:test` |
+| `test/references.property.test.js` | Property tests for the heading anchor scanners, using `fast-check` |
 | `.github/workflows/` | `ci.yml` for PRs and `main`, `release.yml` for version tags, and `export-check.yml`, which checks LibreOffice opens the `.vsdx` on PRs that change export code |
 
 ## The map file
@@ -227,7 +228,8 @@ The “changed in” filter only applies to internal views that have history. It
 - Release lanes cycle through three colour schemes using `data-lane` (index modulo 3).
 - Each release header has a collapse toggle, top right of an open lane and between the title and story count of a collapsed one, (`ReleaseCollapse`): a `<label class="esm-collapse">` holding a visually hidden checkbox, `.esm-collapse-input`, whose `value` is the release ID and whose accessible name is “Collapse <release title>”. CSS `:has()` hides a checked lane's cells, summary and impact line, and stretches its header across the row, leaving the title, story count and chevron. The toggle is only shown inside `@supports selector(:has(*))`, so browsers without `:has()` never offer a toggle that would do nothing. Customer boards get the toggle too, with their renumbered release IDs as values. Collapsing hides cards but not their panels, so the release panel still opens stories in a collapsed lane.
 - The eyebrow reads “User story map” for internal viewers and “Roadmap” for customers.
-- A footer (`.esm-footer`) under the frame shows “Embedded Story Map <version>”, the author and the licence, so anyone can tell which version is running. Internal boards link the author to their profile and the licence to `LICENSE`, and add **Changelog** (the version's heading in `CHANGELOG.md` on `main`) and **Source code** links, all opening in a new tab. Customer boards show the same text without links. `showVersion={false}` removes the footer. The version, licence and author come from `src/version.ts`, which the build generates from `package.json` (`version`, `license`, and the `author` name and URL, never the email), so it cannot drift from the published version.
+- The header (`.esm-header`) shows the map title and, under it, either the map's `summary` or, on internal views with history, a recent updates line (`RecentUpdates`, `.esm-recent`). `getStoryMapForViewer` builds `recentUpdates` before filtering, so it does not change with the filters: the latest edit to any story (its `lastEdit`, or its newest status event in older history files), who to credit, and the releases with stories changed in the `recentUpdateDays` (14) up to that edit, most changed first. The board names the top three and counts the rest.
+- A footer (`.esm-footer`) under the frame shows “Auto Story Map <version>”, the author and the licence, so anyone can tell which version is running. Internal boards link the author to their profile and the licence to `LICENSE`, and add **Changelog** (the version's heading in `CHANGELOG.md` on `main`) and **Source code** links, all opening in a new tab. Customer boards show the same text without links. `showVersion={false}` removes the footer. The version, licence and author come from `src/version.ts`, which the build generates from `package.json` (`version`, `license`, and the `author` name and URL, never the email), so it cannot drift from the published version.
 
 ### Detail panels without JavaScript
 
@@ -345,7 +347,7 @@ Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with 
 
 - `product/story-map.yaml` from `templates/story-map.yaml`, with `__ID__` and `__TITLE__` filled from the host's `package.json` name (without its scope) or folder name.
 - `docs/story-map.md`, copied from this package's `docs/story-map.md`. If the host already has a different copy, it is left alone and the output says to compare it.
-- `AGENTS.md`: created, or the section from `templates/AGENTS.md` appended. The `<!-- embedded-story-map:start -->` marker prevents appending twice.
+- `AGENTS.md`: created, or the section from `templates/AGENTS.md` appended. The `<!-- auto-story-map:start -->` marker prevents appending twice.
 - `.github/workflows/story-map.yml`, only when the host has a `package-lock.json`, because the workflow uses `npm ci`. Skipped with `--no-ci`.
 
 Templates and the guide are found relative to the compiled `dist/init.js` (`new URL("../", import.meta.url)`). They must stay in the package `files` list.
@@ -393,7 +395,7 @@ npm run demo
 
 ## Tests and CI
 
-All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert/strict`. They cover:
+Tests use `node:test` with `node:assert/strict`. The example-based tests are in `test/story-map.test.mjs`. They cover:
 
 - parsing defaults, duplicate keys and IDs, dangling references, customer-label rules, and error lines and item IDs,
 - audience rules on the HTML page and JSON endpoint through `example/host.mjs`, including that customer output contains no internal content,
@@ -410,6 +412,8 @@ All tests are in `test/story-map.test.mjs` and use `node:test` with `node:assert
 - stalled stories: the threshold from the map, the host override and 0, measuring from the latest start, no flag without history or with an out-of-date history, the filter, the board and the customer view.
 
 Tests that need Git create temporary repositories and clean them up. They need `git` on the path.
+
+`test/references.property.test.js` uses `fast-check` to generate Markdown full of the characters the heading scanners treat specially. It checks that `slugify` and `markdownAnchors` give the same anchors as the regexes the scanners replaced (ESM-610), kept in the test as the reference, and that repeated headings get GitHub's `-1`, `-2` suffixes. Each property runs 1,000 cases. When you change `src/references.ts`, run a longer pass with `FC_NUM_RUNS=300000 node --test test/references.property.test.js`. That takes about 7 seconds. A failure prints the seed and path to replay it. The file is `.js`, not `.mjs`, so that OpenSSF Scorecard's fuzzing check finds the `fast-check` import.
 
 `ci.yml` runs on every PR and push to `main`, on a matrix of Node 20 and 26 with React 18 and 19:
 
@@ -433,6 +437,12 @@ Actions are pinned to commit SHAs with the version in a comment. `templates/stor
 The `publish` job installs nothing. It can mint an npm publishing token, so a dependency's install script running there could publish a malicious version with valid provenance. Keep build and test steps in `check` or `pack`, which install with `npm ci --ignore-scripts` and build explicitly.
 
 Before 1.0.0, a minor version may contain breaking changes. Each one needs a changelog entry marked **Breaking**, an upgrade section in `docs/story-map.md`, and updated upgrade links in `README.md` and `AGENTS.md`.
+
+## Branches and pull requests
+
+Give every branch a meaningful name, so anyone can tell from the name alone what it holds: a type such as `fix/`, `feat/`, `docs/`, `chore/` or `release/`, then a few words describing the work, with the story IDs when it has them. For example, `fix/esm-601-history-name-length`, `fix/esm-606-607-cli-and-diff-escaping`, `docs/review-fixes-plan` or `release/0.6.0`. Never use random or generated names, such as `claude/zealous-fermat-srf6a2`.
+
+Branches follow the work, not the map, so there is no rule of one branch or pull request per story. Small, related stories that change the same area can share a branch and a pull request, as ESM-606 and ESM-607 did. A large story can be split across several. Keep each pull request to one change that can be reviewed and reverted on its own, update the map for every story it touches, and name those stories in its description.
 
 ## Making common changes
 

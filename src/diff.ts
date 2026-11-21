@@ -275,6 +275,21 @@ function text(value: string) {
     .replace(/\s+/g, " ");
 }
 
+/**
+ * Renders a value as inline code that GitHub shows literally, even a story ID
+ * that failed validation. The fence is one backtick longer than any run of
+ * backticks in the value, and line breaks become spaces, so the value cannot
+ * end the span, and URLs or mentions inside it stay plain text.
+ */
+export function code(value: string) {
+  const flat = value.replace(/\s+/g, " ");
+  if (!flat.trim()) return text(value);
+  const longestRun = (flat.match(/`+/g) ?? []).reduce((longest, run) => Math.max(longest, run.length), 0);
+  const fence = "`".repeat(longestRun + 1);
+  const pad = /^[ `]|[ `]$/.test(flat) ? " " : "";
+  return `${fence}${pad}${flat}${pad}${fence}`;
+}
+
 function story(ref: StoryDiffRef) {
   return `\`${ref.id}\` ${text(ref.title)}`;
 }

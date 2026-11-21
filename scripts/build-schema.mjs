@@ -6,6 +6,6 @@ import { storyMapSchema } from "../dist/schema.js";
 
 const schema = {
   ...z.toJSONSchema(storyMapSchema, { io: "input" }),
-  $id: "https://raw.githubusercontent.com/duncan-m/embedable-story-map/main/story-map.schema.json",
+  $id: "https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map.schema.json",
 };
 await writeFile(new URL("../story-map.schema.json", import.meta.url), JSON.stringify(schema, null, 2) + "\n");

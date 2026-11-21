@@ -1,10 +1,15 @@
-# Embedded Story Map
+# Auto Story Map
+A live, Git-backed user story map that lives inside your app and stays up to date as you ship. Built in TypeScript, it maps your core user journey and stacks release slices from top to bottom—no separate whiteboard or manual grooming required.
 
-A TypeScript library for displaying a Git-backed user story map inside a product. Activities run left to right. Releases run top to bottom. The host product decides who can see the map using its existing sign-in. By default, viewers with the `engineer` or `super-admin` role see the full internal map, and the host can change that rule.
+Because it sits directly inside your product, there are no extra accounts to manage. Access hooks straight into your existing sign-in, exposing the full internal map to engineer and super-admin roles out of the box with customizable permission rules.
+
+## Code checks
+
+[![Dependency Scan](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml) - [![CodeQL](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml) - [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/duncan-m/auto-story-map/badge)](https://scorecard.dev/viewer/?uri=github.com/duncan-m/auto-story-map)
 
 ## Screenshot
 
-![This library's own story map in the demo, as a super admin sees it: activities from setting up to tracking delivery across the top, a lane for each release with its expected impact, and story cards showing each story's ID, title, status and when it last changed. The Active filter hides one cut story and offers a link to show it.](https://raw.githubusercontent.com/duncan-m/embedable-story-map/main/story-map-screenshot.png)
+![This library's own story map in the demo, as a super admin sees it. Under the title, a line says when the map was last updated, by whom, and which releases recent changes focused on. Activities from setting up to tracking delivery run across the top, with a lane for each release and its expected impact, and story cards showing each story's ID, title, status and when it last changed. The Active filter hides three cut stories and offers a link to show them.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
 
 ## Try the demo
 
@@ -26,7 +31,7 @@ Cards show the story ID, title and status. Selecting a card opens a panel with i
 Install the package in your host product, then set it up:
 
 ```sh
-npm install embedded-story-map
+npm install auto-story-map
 npx story-map init
 ```
 
@@ -34,10 +39,10 @@ The core can run in a TypeScript or JavaScript backend. A React host can also us
 
 | Import | Use |
 | --- | --- |
-| `embedded-story-map` | Parse the YAML, select the viewer’s view and apply search filters on the server. |
-| `embedded-story-map/react` | Render a view with `<StoryMapBoard map={view} />`. |
-| `embedded-story-map/styles.css` | Style the board using namespaced CSS. |
-| `embedded-story-map/schema.json` | Give editors autocomplete and inline checks for the YAML. |
+| `auto-story-map` | Parse the YAML, select the viewer’s view and apply search filters on the server. |
+| `auto-story-map/react` | Render a view with `<StoryMapBoard map={view} />`. |
+| `auto-story-map/styles.css` | Style the board using namespaced CSS. |
+| `auto-story-map/schema.json` | Give editors autocomplete and inline checks for the YAML. |
 
 [The host integration][host] shows how a product can serve the board and JSON with the same audience rules. [The example delivery plan][delivery-plan] shows how plans reference stories by ID, using the builder estimates sample map in `test/fixtures/builder-estimates.yaml`.
 
@@ -45,7 +50,7 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Run `npm install embedded-story-map@0.4.1` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.4.0 adds the `merged`, `blocked` and `cut` statuses, so host code that handles every status needs updating. It also adds release notes and impact, stalled stories and “last updated” from Git. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.2.0 or earlier, follow the [0.3.0 upgrade steps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030) first.
+Run `npm install auto-story-map@0.4.1` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.4.0 adds the `merged`, `blocked` and `cut` statuses, so host code that handles every status needs updating. It also adds release notes and impact, stalled stories and “last updated” from Git. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.2.0 or earlier, follow the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030) first.
 
 ## Populate the first map
 
@@ -74,7 +79,7 @@ See [the changelog][changelog] for what changed in each version and [the release
 
 ## Disclaimer
 
-Embedded Story Map is pre-1.0 software. Until 1.0.0, any minor version, such as 0.4.0 to 0.5.0, can include breaking changes to the map format, the API, the CLI, or the board’s markup and class names. Each breaking change is marked **Breaking** in [the changelog][changelog] with its upgrade steps. Pin the version you install, read the changelog before you upgrade, and check the board and your CI after each upgrade.
+Auto Story Map is pre-1.0 software. Until 1.0.0, any minor version, such as 0.4.0 to 0.5.0, can include breaking changes to the map format, the API, the CLI, or the board’s markup and class names. Each breaking change is marked **Breaking** in [the changelog][changelog] with its upgrade steps. Pin the version you install, read the changelog before you upgrade, and check the board and your CI after each upgrade.
 
 This software and its documentation are provided “as is”, without warranties or conditions of any kind, either express or implied, including any warranties or conditions of title, non-infringement, merchantability or fitness for a particular purpose. No guarantee is made that the software will work as described, be free of errors or security vulnerabilities, or stay compatible with your product, its dependencies or future versions.
 
@@ -84,15 +89,15 @@ You use the software at your own risk and are responsible for reviewing, testing
 
 The [Apache License 2.0][license], in particular its sections 7 (Disclaimer of Warranty) and 8 (Limitation of Liability), governs your use of this software. Where this summary and the licence differ, the licence applies.
 
-[source]: https://github.com/duncan-m/embedable-story-map
-[example-map]: https://github.com/duncan-m/embedable-story-map/blob/main/product/story-map.yaml
-[guide]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md
-[first-run]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#populate-the-first-map
-[upgrade]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-040
-[engineering-overview]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#link-an-engineering-overview
-[delivery-plan]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/example-builder-estimate-plan.md
-[host]: https://github.com/duncan-m/embedable-story-map/blob/main/example/host.mjs
-[changelog]: https://github.com/duncan-m/embedable-story-map/blob/main/CHANGELOG.md
-[releasing]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/releasing.md
-[overview]: https://github.com/duncan-m/embedable-story-map/blob/main/docs/ENGINEERING-OVERVIEW.md
-[license]: https://github.com/duncan-m/embedable-story-map/blob/main/LICENSE
+[source]: https://github.com/duncan-m/auto-story-map
+[example-map]: https://github.com/duncan-m/auto-story-map/blob/main/product/story-map.yaml
+[guide]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md
+[first-run]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#populate-the-first-map
+[upgrade]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040
+[engineering-overview]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-an-engineering-overview
+[delivery-plan]: https://github.com/duncan-m/auto-story-map/blob/main/docs/example-builder-estimate-plan.md
+[host]: https://github.com/duncan-m/auto-story-map/blob/main/example/host.mjs
+[changelog]: https://github.com/duncan-m/auto-story-map/blob/main/CHANGELOG.md
+[releasing]: https://github.com/duncan-m/auto-story-map/blob/main/docs/releasing.md
+[overview]: https://github.com/duncan-m/auto-story-map/blob/main/docs/ENGINEERING-OVERVIEW.md
+[license]: https://github.com/duncan-m/auto-story-map/blob/main/LICENSE

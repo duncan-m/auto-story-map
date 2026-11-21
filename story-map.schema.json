@@ -334,7 +334,7 @@
     "stories"
   ],
   "additionalProperties": false,
-  "title": "Embedded Story Map",
+  "title": "Auto Story Map",
   "description": "A Git-backed user story map. Validate cross-references with `story-map validate`.",
-  "$id": "https://raw.githubusercontent.com/duncan-m/embedable-story-map/main/story-map.schema.json"
+  "$id": "https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map.schema.json"
 }

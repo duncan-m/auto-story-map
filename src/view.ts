@@ -98,6 +98,21 @@ interface StoryMapBaseView {
   history?: { generatedAt: string; complete: boolean };
 }
 
+/** How far back from the latest update `recentUpdates` looks for the releases that changed. */
+export const recentUpdateDays = 14;
+
+/** When the map last changed, and which releases most changes were in. Internal views with history only. */
+export interface StoryMapRecentUpdates {
+  /** The latest edit to any story. */
+  at: string;
+  /** Who to credit for that edit, when the history records it. */
+  by?: string;
+  /** The window, ending at `at`, that `releases` covers. */
+  days: number;
+  /** Releases with stories changed in the window, most changed first. */
+  releases: { id: string; title: string; stories: number }[];
+}
+
 export type StoryMapView =
   | (StoryMapBaseView & {
     audience: "internal";
@@ -105,6 +120,8 @@ export type StoryMapView =
     stories: InternalStoryCard[];
     /** Present when the view has history and the stalled flag is on: the threshold it used. */
     stalledAfterWeeks?: number;
+    /** Present when the history records at least one story change. */
+    recentUpdates?: StoryMapRecentUpdates;
   })
   | (StoryMapBaseView & { audience: "all-users"; releases: StoryMapLabel[]; stories: StoryCard[] });
 
@@ -119,6 +136,30 @@ function projectLabel(item: StoryMapLabel): StoryMapLabel {
   return { id: item.id, title: item.title, summary: item.summary };
 }
 
+function summariseRecentUpdates(
+  map: StoryMapDocument,
+  byStory: Map<string, StoryHistoryEntry[]>,
+  lastEdits: Map<string, Omit<StoryLastEdit, "storyId">>,
+): StoryMapRecentUpdates | undefined {
+  // A story's last edit covers every field, so prefer it; older history files only have status events.
+  const latest = map.stories.flatMap(story => {
+    const edit = lastEdits.get(story.id) ?? byStory.get(story.id)?.[0];
+    return edit ? [{ release: story.release, at: edit.at, time: Date.parse(edit.at), by: edit.by }] : [];
+  });
+  if (latest.length === 0) return undefined;
+  const newest = latest.reduce((a, b) => (b.time > a.time ? b : a));
+  const since = newest.time - recentUpdateDays * 24 * 60 * 60 * 1000;
+  const counts = new Map<string, number>();
+  for (const { release, time } of latest) {
+    if (time >= since) counts.set(release, (counts.get(release) ?? 0) + 1);
+  }
+  const releases = map.releases
+    .filter(release => counts.has(release.id))
+    .map(release => ({ id: release.id, title: release.title, stories: counts.get(release.id)! }))
+    .sort((a, b) => b.stories - a.stories);
+  return { at: newest.at, ...(newest.by ? { by: newest.by } : {}), days: recentUpdateDays, releases };
+}
+
 export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
   map: StoryMapDocument,
   viewer: Viewer | null,
@@ -131,9 +172,14 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     const history = options.history;
     const byStory = new Map<string, StoryHistoryEntry[]>();
     for (const { storyId, ...entry } of history?.events ?? []) {
-      byStory.set(storyId, [entry, ...(byStory.get(storyId) ?? [])]);
+      const entries = byStory.get(storyId);
+      if (entries) entries.push(entry);
+      else byStory.set(storyId, [entry]);
     }
-    for (const entries of byStory.values()) entries.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    // Reverse before the stable sort so entries with equal timestamps stay latest-supplied first.
+    for (const entries of byStory.values()) {
+      entries.reverse().sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    }
     const lastEdits = new Map((history?.lastEdits ?? []).map(({ storyId, ...edit }) => [storyId, edit]));
     const storyCounts = new Map(map.releases.map(release => [
       release.id,
@@ -146,6 +192,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     // Stalled needs to know when the story became in progress, so it only works with history.
     const stalledAfterWeeks = history ? stalledThreshold(map, options.stalledAfterWeeks) : 0;
     const stalledBefore = (options.now ?? new Date()).getTime() - stalledAfterWeeks * weekMs;
+    const recentUpdates = summariseRecentUpdates(map, byStory, lastEdits);
     return {
       audience: "internal",
       title: map.title,
@@ -180,6 +227,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       }),
       ...(history ? { history: { generatedAt: history.generatedAt, complete: history.complete } } : {}),
       ...(stalledAfterWeeks > 0 ? { stalledAfterWeeks } : {}),
+      ...(recentUpdates ? { recentUpdates } : {}),
     };
   }
 

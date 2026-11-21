@@ -1,4 +1,4 @@
-<!-- embedded-story-map:start -->
+<!-- auto-story-map:start -->
 ## Story map
 
 Treat [product/story-map.yaml](product/story-map.yaml) as the source of truth for story placement, release grouping and delivery status. Follow [the story map guide](docs/story-map.md) for audience rules, examples and validation.
@@ -18,4 +18,4 @@ Record each release’s notes and expected impact in its `notes` and `impact`, f
 Run `npx --no-install story-map validate --check-sources product/story-map.yaml` after every map change. It also checks that each repository-relative source exists and that each `#heading` matches. Add `--plans <folder>` to check story IDs mentioned in delivery plans. In CI, add `--format github` so problems appear on the PR diff.
 
 In the PR description, include the summary from `npx --no-install story-map diff origin/<base branch>`, and call out anything under **Customer-facing changes**.
-<!-- embedded-story-map:end -->
+<!-- auto-story-map:end -->

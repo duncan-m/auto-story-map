@@ -1,7 +1,7 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { getStoryMapPage, storyMapResponseHeaders } from "embedded-story-map";
-import { StoryMapBoard } from "embedded-story-map/react";
+import { getStoryMapPage, storyMapResponseHeaders } from "auto-story-map";
+import { StoryMapBoard } from "auto-story-map/react";
 
 // The enclosing app supplies a viewer from its verified session.
 // `target` is the request URL or path, including any `q` and `status` filter parameters.
@@ -28,7 +28,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
     h("head", null,
       h("meta", { charSet: "UTF-8" }),
       h("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
-      h("title", null, "Story map"),
+      h("title", null, map?.title ?? "Story map"),
       h("link", { rel: "stylesheet", href: "/story-map.css" }),
       h("link", { rel: "stylesheet", href: "/example-host.css" }),
       // Optional: applies the filters as soon as they change. The board works without it.
@@ -36,7 +36,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
     ),
     h("body", null,
       h("header", { className: "product-header" },
-        h("h1", null, "Embedded Story Map"),
+        h("h1", null, "Auto Story Map"),
         navigation,
       ),
       h("main", null,

@@ -107,11 +107,28 @@ jobs:
             echo "::error::Tag $TAG does not match package.json version $version."
             exit 1
           fi
-          packed="$(tar -xOzf "$TARBALL" package/package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
-          if [ "$packed" != "$version" ]; then
-            echo "::error::The packed tarball has version $packed, not $version."
-            exit 1
-          fi
+          # The tarball was built by a job that ran dependency code, so its
+          # package.json is untrusted. npm publish reads publishConfig from it,
+          # which can redirect the registry, proxy or TLS settings and leak the
+          # OIDC token. npm pack copies package.json unchanged, so require the
+          # packed manifest to equal the one committed at this tag.
+          tar -xOzf "$TARBALL" package/package.json > "$RUNNER_TEMP/packed-package.json"
+          node -e '
+            const fs = require("fs");
+            const { isDeepStrictEqual } = require("util");
+            const committed = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const packed = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (!isDeepStrictEqual(packed, committed)) {
+              console.log("::error::The packed package.json differs from the committed package.json.");
+              process.exit(1);
+            }
+            const allowed = ["access"];
+            const extra = Object.keys(committed.publishConfig ?? {}).filter((key) => !allowed.includes(key));
+            if (extra.length > 0) {
+              console.log(`::error::publishConfig may only set ${allowed.join(", ")}, not ${extra.join(", ")}.`);
+              process.exit(1);
+            }
+          ' "$RUNNER_TEMP/packed-package.json"
           if ! grep -qx "## $version" CHANGELOG.md; then
             echo "::error::CHANGELOG.md has no '## $version' section."
             exit 1
@@ -120,19 +137,25 @@ jobs:
         id: npm
         run: |
           version="$(node -p "require('./package.json').version")"
-          if npm view "embedded-story-map@$version" version > /dev/null 2>&1; then
+          if npm view "auto-story-map@$version" version > /dev/null 2>&1; then
             echo "published=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::embedded-story-map@$version is already on npm, so only the GitHub release will be created."
+            echo "::notice::auto-story-map@$version is already on npm, so only the GitHub release will be created."
           else
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Publish
         # Authenticates with npm trusted publishing, so no npm token is stored in the repository.
         # Publishing a tarball runs no lifecycle scripts; --ignore-scripts keeps it that way.
+        # Command-line flags take precedence over publishConfig, so the registry,
+        # proxy and TLS settings here cannot be overridden by the tarball.
         if: steps.npm.outputs.published != 'true'
         env:
           TARBALL: ${{ runner.temp }}/package/${{ needs.pack.outputs.tarball }}
-        run: npm publish "$TARBALL" --provenance --access public --ignore-scripts
+        run: |
+          echo "Publishing with npm $(npm --version)"
+          npm publish "$TARBALL" --provenance --access public --ignore-scripts \
+            --registry=https://registry.npmjs.org/ --strict-ssl=true \
+            --proxy=null --https-proxy=null --noproxy=
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

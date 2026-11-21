@@ -1,42 +1,59 @@
 # Changelog
 
-All notable changes to `embedded-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
+All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
 ## Unreleased
 
-- New `storyMapToVsdx(view, { collapsedReleases, maxStories, now })` writes the internal map as a Visio file (`.vsdx`) to import into Lucidchart, Miro or Visio. It is one page laid out like the board, with release notes and impact, and a card per story showing its ID and title, plus shape data. Collapsed lanes show only their title and story count, and at most 200 of the most recently changed stories are included. Customer views and filtered views are refused. New exports `vsdxContentType` and type `StoryMapExportOptions`. See [Export the map](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#export-the-map).
-- New `story-map export --format vsdx [--output <file>] [--history <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]` writes the same Visio file from the YAML file, without a host route. It validates the map first, always exports the internal view, and writes to `story-map.vsdx` by default, or to stdout with `--output -`. See [Export the map](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#export-the-map).
+- New `storyMapToVsdx(view, { collapsedReleases, maxStories, now })` writes the internal map as a Visio file (`.vsdx`) to import into Lucidchart, Miro or Visio. It is one page laid out like the board, with release notes and impact, and a card per story showing its ID and title, plus shape data. Collapsed lanes show only their title and story count, and at most 200 of the most recently changed stories are included. Customer views and filtered views are refused. New exports `vsdxContentType` and type `StoryMapExportOptions`. See [Export the map](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-the-map).
+- New `story-map export --format vsdx [--output <file>] [--history <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]` writes the same Visio file from the YAML file, without a host route. It validates the map first, always exports the internal view, and writes to `story-map.vsdx` by default, or to stdout with `--output -`. See [Export the map](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-the-map).
+
+## 0.6.1
+
+There is no 0.6.0 release. 0.6.1 follows 0.5.0.
+
+No upgrade steps. Existing maps and history files stay valid. Mainly fixes from a code review of 0.5.0, several of them security fixes, plus new exports and a new board header.
+
+- `getStoryMapForViewer` and `getStoryMapPage` group history events in linear time. They used to copy each story's growing list for every event, so a history with many events for one story took quadratic time: 100,000 events took over a minute and now take well under a second. Entry order is unchanged, including for events with the same timestamp.
+- With history, the internal board's header says when the map was last updated and by whom, and which releases recent changes focused on, such as “Last updated 4 hours ago by Sam Patel. Recent changes focused on 0.6.1 (12 stories) and 0.5.0 (3 stories).” It replaces the map's `summary` there. Without history, and for customers, the header still shows the summary. Internal views carry the data in a new `recentUpdates` field. New export `recentUpdateDays` and type `StoryMapRecentUpdates`.
+- `story-map init` titles the starter map “[App Name] Story Map”, such as “Field Ops Story Map”, instead of “Field ops story map”.
+- Activity titles on the board are larger: `.esm-activity-title` is now `1.1rem`.
 - `story-map history` and `story-map diff` read past versions of the map leniently, so a future format change that removes or renames a field or status no longer breaks them. Fields the format no longer has are ignored, and a story that no longer validates is left out of that version only. History used to skip every such version silently, losing its events and dates, and diff failed until the change merged.
 - History now records each version it cannot read, because the map was missing or not valid YAML, in new optional `skipped` and `skippedCount` fields, and `story-map history` warns about them and still exits 0. `parseStoryMapHistory` accepts files with and without these fields. New type `SkippedStoryMapVersion`.
 - When the diff's base drops anything, the summary starts with a note saying what, and `--format json` adds `baseDropped`.
 - `story-map history` fits names to the history format, so `parseStoryMapHistory` always accepts the file it writes. Git author and committer names have no length limit, and a name over 120 characters used to produce a history file that failed to load. Names are trimmed and cut to 120 characters ending in “…”, and blocked or cut reasons to 500, counting characters rather than UTF-16 code units so emoji are never split. `parseStoryMapHistory` counts the same way, so it now accepts names of up to 120 emoji.
 - New `getStoryMapPage(document, viewer, { canViewInternal, history, stalledAfterWeeks, now, searchParams })` projects the map for the viewer and then applies the filters from `searchParams`, so the safe order is the easy one. It returns the same as `filterStoryMapView(getStoryMapForViewer(...), readStoryMapFilters(searchParams), { now })`, which remain available. New type `StoryMapPageOptions`.
 - New `storyMapResponseHeaders`: `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`, for every story map response.
-- The example host and the integration guide use both. The guide has a new [Large maps](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#large-maps) section with measured page sizes.
+- The example host and the integration guide use both. The guide has a new [Large maps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#large-maps) section with measured page sizes.
 - CLI options no longer take the next option as their value. `story-map validate --plans --strict map.yaml` and `story-map history --map --allow-shallow` used to read `--strict` and `--allow-shallow` as paths. They now print `story-map: --plans needs a value` and the usage, and exit 2. Pass a value that starts with a hyphen as `--name=-value`. The same applies to `init --dir`.
 - `--check-sources` and `--plans` no longer follow symbolic links out of the repository. A source or plan file that links outside is reported as pointing outside the repository through a symbolic link, and is not read. Links inside the repository still work.
+- `--check-sources` reads heading anchors in linear time, so a Markdown heading full of unclosed `<`, `[` or trailing spaces can no longer stall validation. A 200 KB heading used to take about 14 seconds. Heading anchors are not checked in Markdown files over 5 MB, and the source is reported instead.
 - `story-map diff` escapes `@` and `#` in text from the map, so pasting the summary into a PR does not mention people or teams, or link issues.
 - `StoryMapBoard` no longer fails to render when given a `locale` or `timeZone` the runtime does not recognise, such as `timeZone="Nowhere/Nope"`. It uses `en-GB` or the server's time zone instead, and logs a warning once. The board also builds its date formatters once per render instead of once per date. Rendered markup is otherwise unchanged.
+- `story-map init` no longer follows symbolic links out of the host repository. A link at `AGENTS.md`, the map, the guide or the workflow that points outside the chosen directory, or is broken, is refused with a message instead of being written through. It skips a read-only `AGENTS.md` that already has the story map section, and accepts in-repository names that start with two dots, such as `..docs`.
+- Text output from `story-map validate` escapes line breaks and control characters in messages and paths, so map text cannot add lines that look like other diagnostics or send terminal escape codes.
+- Validation locates problems in linear time. A map with many unknown or duplicate fields used to make validation quadratic.
+- The diff's note about stories dropped from an older-format base shows each rejected ID as inline code, so an ID with backticks, links, mentions or line breaks cannot change the summary.
+- The release workflow checks that the packed `package.json` matches the committed one and pins the npm registry, so a tampered tarball cannot redirect the publish.
 
 ## 0.5.0
 
 No upgrade steps. Hosts with custom CSS for `.esm-release` should check the new toggle fits.
 
 - Release lanes can be collapsed. Each release header has a chevron toggle (`.esm-collapse`, a labelled checkbox `.esm-collapse-input` whose value is the release ID) that hides the lane’s stories, summary and impact, leaving its title, the chevron to expand it and its story count on one line. It works without JavaScript through CSS `:has()`, and browsers without `:has()` do not show the toggle.
-- The board shows the running version, author and licence in a footer, such as “Embedded Story Map 0.5.0 · By Duncan Malcolm · Apache-2.0 licence”. Internal boards also link to the changelog, source code, licence and author. Pass `showVersion={false}` to `StoryMapBoard` to remove it. New exports `storyMapVersion` and `storyMapRepositoryUrl`.
+- The board shows the running version, author and licence in a footer, such as “Auto Story Map 0.5.0 · By Duncan Malcolm · Apache-2.0 licence”. Internal boards also link to the changelog, source code, licence and author. Pass `showVersion={false}` to `StoryMapBoard` to remove it. New exports `storyMapVersion` and `storyMapRepositoryUrl`.
 - `board.js` remembers collapsed lanes per page in `localStorage`, so they stay collapsed when a filter reloads the page. New export `enhanceStoryMapReleases(root)` for pages that add a board after loading.
 
 ## 0.4.1
 
 No upgrade steps. Nothing changes for hosts that do not load the new script.
 
-- New optional browser script, `embedded-story-map/board.js`. Load it with `<script type="module">` on the page that renders the board, and the filters apply as soon as they change: a select applies on change, search applies on Enter, the **Apply** button is hidden, and focus returns to the filter that was used. Without it, the filter form works as before. It also exports `enhanceStoryMapFilters(root)` for pages that add a board after loading.
+- New optional browser script, `auto-story-map/board.js`. Load it with `<script type="module">` on the page that renders the board, and the filters apply as soon as they change: a select applies on change, search applies on Enter, the **Apply** button is hidden, and focus returns to the filter that was used. Without it, the filter form works as before. It also exports `enhanceStoryMapFilters(root)` for pages that add a board after loading.
 - The **Apply** button has a new `esm-apply` class, and the filter form has an empty, visually hidden hint that the script fills in for screen reader users.
 - The demo shows this library’s own story map instead of the builder estimates sample, loads `board.js`, and starts as **Super admin**. The sample moved to `test/fixtures/builder-estimates.yaml`.
 
 ## 0.4.0
 
-Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-040). Existing maps stay valid, but expect new validation warnings, mainly releases with no impact.
+Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040). Existing maps stay valid, but expect new validation warnings, mainly releases with no impact.
 
 ### Statuses
 
@@ -78,7 +95,7 @@ Upgrade steps: [Upgrade to 0.4.0](https://github.com/duncan-m/embedable-story-ma
 
 ## 0.3.0
 
-Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/embedable-story-map/blob/main/docs/story-map.md#upgrade-to-030). The YAML format is unchanged.
+Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030). The YAML format is unchanged.
 
 ### Board
 
@@ -95,7 +112,7 @@ Upgrade steps: [Upgrade to 0.3.0](https://github.com/duncan-m/embedable-story-ma
 - `parseStoryMap` throws `StoryMapValidationError`. Its `issues` give the path, message, line, column and containing item ID. Every problem is reported in one run, including reference checks when another field is invalid.
 - `story-map validate` prints `file:line:column` and supports `--format github` for PR annotations.
 - New `--check-sources` validator option checks that repository-relative sources exist and that Markdown `#heading` links match a heading. New `--plans <folder>` checks that story IDs mentioned in delivery plans exist in the map.
-- The package ships `story-map.schema.json` (also exported as `embedded-story-map/schema.json`) for editor autocomplete and inline checks.
+- The package ships `story-map.schema.json` (also exported as `auto-story-map/schema.json`) for editor autocomplete and inline checks.
 - **Breaking:** `storyMapSchema` is now a Zod 4 schema.
 
 ### Reviewing changes

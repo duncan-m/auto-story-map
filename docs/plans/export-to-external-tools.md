@@ -1,6 +1,6 @@
 # Plan: export the map to external tools
 
-Status: proposed. Nothing here is built yet. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.0.
+Status: proposed. Nothing here is built yet. The stories are in the **Export to external tools** release of the map. The version number is decided when the release is cut. It adds features without breaking anything, so it would be a minor version after 0.6.1.
 
 Internal viewers can download the board as a Visio file (`.vsdx`) or a CSV file and import it into Miro or Lucidchart. The export is a one-way snapshot: the YAML file stays the source of truth, and nothing edited in Miro or Lucidchart comes back.
 
@@ -113,7 +113,7 @@ export interface StoryMapExportOptions {
 export function storyMapToVsdx(view: StoryMapView, options?: StoryMapExportOptions): Uint8Array;
 ```
 
-It is exported from `embedded-story-map`, uses no Node-only APIs, and throws a `TypeError` when `view.audience` is not `"internal"` (decision B).
+It is exported from `auto-story-map`, uses no Node-only APIs, and throws a `TypeError` when `view.audience` is not `"internal"` (decision B).
 
 **Change.**
 

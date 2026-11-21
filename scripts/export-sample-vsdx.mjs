@@ -5,7 +5,7 @@
 //   node scripts/export-sample-vsdx.mjs out.vsdx
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { getStoryMapForViewer, parseStoryMap, storyMapToVsdx } from "embedded-story-map";
+import { getStoryMapForViewer, parseStoryMap, storyMapToVsdx } from "auto-story-map";
 
 const out = process.argv[2] ?? "story-map-sample.vsdx";
 const map = parseStoryMap(readFileSync(new URL("../test/fixtures/builder-estimates.yaml", import.meta.url), "utf8"));

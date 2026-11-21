@@ -1,6 +1,6 @@
 {
-  "name": "embedded-story-map",
-  "version": "0.5.0",
+  "name": "auto-story-map",
+  "version": "0.6.1",
   "description": "Git-backed user story maps embedded in product applications",
   "license": "Apache-2.0",
   "author": {
@@ -15,11 +15,11 @@
     "react",
     "yaml"
   ],
-  "homepage": "https://github.com/duncan-m/embedable-story-map#readme",
-  "bugs": "https://github.com/duncan-m/embedable-story-map/issues",
+  "homepage": "https://github.com/duncan-m/auto-story-map#readme",
+  "bugs": "https://github.com/duncan-m/auto-story-map/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/duncan-m/embedable-story-map.git"
+    "url": "git+https://github.com/duncan-m/auto-story-map.git"
   },
   "type": "module",
   "publishConfig": {
@@ -77,8 +77,9 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
+    "fast-check": "^4.10.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "typescript": "~5.9.0"
+    "typescript": "~7.0.2"
   }
 }

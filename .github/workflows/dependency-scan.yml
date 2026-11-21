@@ -1,0 +1,18 @@
+name: OSV-Scanner Scheduled Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 12 * * 1"
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  scan-scheduled:
+    permissions:
+      actions: read
+      contents: read
+      security-events: write # upload OSV-Scanner results
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1

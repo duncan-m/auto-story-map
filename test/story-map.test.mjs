@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -27,8 +27,8 @@ import {
   storyMapSchema,
   storyMapToVsdx,
   vsdxContentType,
-} from "embedded-story-map";
-import { StoryMapBoard } from "embedded-story-map/react";
+} from "auto-story-map";
+import { StoryMapBoard } from "auto-story-map/react";
 import { makeStoryMapResponse } from "../example/host.mjs";
 
 // The builder estimates sample map: test data with stable IDs, separate from this product’s own map.
@@ -312,6 +312,45 @@ test("validation errors name the item and source line", () => {
 
   assert.throws(() => parseStoryMap("version: 1\nid: a\nid: b\n"), error =>
     error instanceof StoryMapValidationError && error.issues[0].line === 3 && /unique/i.test(error.issues[0].message));
+  assert.throws(() => parseStoryMap("version: 1\nstories:\n  - id: a\n    id: b\n"), error =>
+    error instanceof StoryMapValidationError && error.issues.length === 1 && error.issues[0].line === 4 && error.issues[0].column === 5);
+});
+
+test("many unknown fields are located in linear time", () => {
+  const count = 20000;
+  const source = `${"version: 1\n"}${Array.from({ length: count }, (_, index) => `extra${index}: x\n`).join("")}`;
+  const started = performance.now();
+  let error;
+  try {
+    parseStoryMap(source);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const unknown = error.issues.filter(issue => issue.message === "Unknown field.");
+  assert.equal(unknown.length, count);
+  assert.equal(unknown.at(-1).line, count + 1);
+  assert.ok(performance.now() - started < 3000);
+});
+
+test("unknown fields below many unknown top-level fields are located in linear time", () => {
+  const count = 20000;
+  const root = Array.from({ length: count }, (_, index) => `extra${index}: x\n`).join("");
+  const story = Array.from({ length: count }, (_, index) => `    field${index}: x\n`).join("");
+  const source = `version: 1\n${root}stories:\n  - id: A-1\n${story}`;
+  const started = performance.now();
+  let error;
+  try {
+    parseStoryMap(source);
+  } catch (caught) {
+    error = caught;
+  }
+  assert.ok(error instanceof StoryMapValidationError);
+  const nested = error.issues.filter(issue => issue.message === "Unknown field." && issue.path[0] === "stories");
+  assert.equal(nested.length, count);
+  assert.deepEqual(nested.at(-1).path, ["stories", 0, `field${count - 1}`]);
+  assert.equal(nested.at(-1).line, 2 * count + 3);
+  assert.ok(performance.now() - started < 3000);
 });
 
 test("the CLI prints file positions and GitHub annotations", async t => {
@@ -335,7 +374,7 @@ test("the CLI prints file positions and GitHub annotations", async t => {
 
 test("the published JSON Schema matches the validator", async () => {
   const require = createRequire(import.meta.url);
-  const schema = JSON.parse(await readFile(require.resolve("embedded-story-map/schema.json"), "utf8"));
+  const schema = JSON.parse(await readFile(require.resolve("auto-story-map/schema.json"), "utf8"));
   assert.deepEqual(schema, { ...z.toJSONSchema(storyMapSchema, { io: "input" }), $id: schema.$id });
   assert.deepEqual(schema.required, ["version", "id", "title", "activities", "releases", "stories"]);
   const storyProperties = Object.keys(schema.properties.stories.items.properties);
@@ -368,13 +407,13 @@ test("init sets up a host repository without overwriting anything", async t => {
 
   const starter = parseStoryMap(await readFile(join(root, "product/story-map.yaml"), "utf8"));
   assert.equal(starter.id, "field-ops");
-  assert.equal(starter.title, "Field ops story map");
+  assert.equal(starter.title, "Field Ops Story Map");
   assert.equal(starter.visibility, "internal");
   assert.match(starter.summary, /^Starter map/);
   assert.equal(await readFile(join(root, "docs/story-map.md"), "utf8"), await readFile(new URL("../docs/story-map.md", import.meta.url), "utf8"));
   const agents = await readFile(join(root, "AGENTS.md"), "utf8");
-  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- embedded-story-map:start -->\n## Story map\n/);
-  assert.match(agents, /<!-- embedded-story-map:end -->\n$/);
+  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- auto-story-map:start -->\n## Story map\n/);
+  assert.match(agents, /<!-- auto-story-map:end -->\n$/);
   assert.match(await readFile(join(root, ".github/workflows/story-map.yml"), "utf8"), /story-map validate --format github --check-sources product\/story-map\.yaml/);
 
   await writeFile(join(root, "product/story-map.yaml"), sample);
@@ -383,8 +422,61 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.equal(await readFile(join(root, "product/story-map.yaml"), "utf8"), sample);
   assert.equal(await readFile(join(root, "AGENTS.md"), "utf8"), agents);
 
-  assert.deepEqual(describeProduct("!!!"), { id: "product", title: "Product story map" });
+  assert.deepEqual(describeProduct("!!!"), { id: "product", title: "Product Story Map" });
   assert.equal(describeProduct("x".repeat(100)).id.length, 64);
+});
+
+test("init refuses links that lead outside the repository", async t => {
+  const { initStoryMap } = await import("../dist/init.js");
+  const base = await mkdtemp(join(tmpdir(), "story-map-links-"));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const outside = join(base, "outside");
+  await mkdir(outside);
+  await writeFile(join(outside, "AGENTS.md"), "outside\n");
+  const host = async name => {
+    const root = join(base, name);
+    await mkdir(root);
+    return root;
+  };
+
+  const agentsLink = await host("agents-link");
+  await symlink(join(outside, "AGENTS.md"), join(agentsLink, "AGENTS.md"));
+  await assert.rejects(initStoryMap(agentsLink), /AGENTS\.md is a symbolic link that points outside the repository/);
+  assert.equal(await readFile(join(outside, "AGENTS.md"), "utf8"), "outside\n");
+
+  const dirLink = await host("dir-link");
+  await symlink(outside, join(dirLink, "product"));
+  await assert.rejects(initStoryMap(dirLink), /product\/story-map\.yaml: product is a symbolic link that points outside/);
+
+  const dangling = await host("dangling");
+  await symlink(join(outside, "missing"), join(dangling, "docs"));
+  await assert.rejects(initStoryMap(dangling), /docs is a broken symbolic link/);
+  await assert.rejects(readFile(join(outside, "missing", "story-map.md")));
+
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const run = spawnSync(process.execPath, [cli, "init", "--dir", agentsLink], { encoding: "utf8" });
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /points outside the repository/);
+
+  const inside = await host("inside");
+  await mkdir(join(inside, "documentation"));
+  await symlink("documentation", join(inside, "docs"));
+  await writeFile(join(inside, "RULES.md"), "# Rules\n");
+  await symlink("RULES.md", join(inside, "AGENTS.md"));
+  const steps = await initStoryMap(inside);
+  assert.deepEqual(steps.slice(1, 3).map(step => [step.path, step.action]), [["docs/story-map.md", "created"], ["AGENTS.md", "updated"]]);
+  assert.match(await readFile(join(inside, "documentation/story-map.md"), "utf8"), /./);
+  assert.match(await readFile(join(inside, "RULES.md"), "utf8"), /^# Rules\n\n<!-- auto-story-map:start -->/);
+
+  const dotted = await host("dotted");
+  await mkdir(join(dotted, "..documentation"));
+  await symlink("..documentation", join(dotted, "docs"));
+  await initStoryMap(dotted);
+  assert.match(await readFile(join(dotted, "..documentation/story-map.md"), "utf8"), /./);
+
+  await chmod(join(inside, "RULES.md"), 0o444);
+  const again = await initStoryMap(inside);
+  assert.deepEqual(again.find(step => step.path === "AGENTS.md"), { path: "AGENTS.md", action: "skipped", reason: "already has the story map section" });
 });
 
 test("init skips the workflow without npm or when asked", async t => {
@@ -396,12 +488,30 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.equal(run.status, 0);
   assert.match(run.stdout, /skipped  \.github\/workflows\/story-map\.yml \(no package-lock\.json/);
   assert.match(run.stdout, /Next, ask an agent/);
-  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- embedded-story-map:start -->/);
+  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- auto-story-map:start -->/);
 
   await writeFile(join(root, "package-lock.json"), "{}");
   const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
   assert.doesNotMatch(noCi.stdout, /workflows/);
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
+});
+
+test("text diagnostics escape line breaks and control characters from the map", async t => {
+  const source = stringify(editedSample(document => {
+    document.stories.find(story => story.id === "BUILDER-101").status = "shipped";
+    document.releases[0].impact[1].metric = "Turnaround\nmap.yaml:1:1: error: forged\r\u001b[2Kdone";
+  }));
+  const directory = await mkdtemp(join(tmpdir(), "story-map-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const file = join(directory, "map.yaml");
+  await writeFile(file, source);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
+  assert.equal(text.status, 0);
+  const lines = text.stderr.trimEnd().split("\n");
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0].includes("“Turnaround\\nmap.yaml:1:1: error: forged\\r\\u001b[2Kdone”"), lines[0]);
+  assert.doesNotMatch(text.stderr, /[\r\u001b]/);
 });
 
 function editedSample(edit, base = map) {
@@ -491,6 +601,29 @@ test("Markdown anchors follow GitHub’s heading rules", async () => {
     "```md", "## Not a heading", "```", "<a id=\"Custom-Anchor\"></a>", "- list item", "---",
   ].join("\n"));
   assert.deepEqual([...anchors].sort(), ["custom-anchor", "overview", "overview-1", "setext-heading"]);
+});
+
+test("Markdown anchors stay linear for headings with unclosed markup", async () => {
+  const { markdownAnchors, slugify } = await import("../dist/references.js");
+  assert.equal(slugify("a <b>bold</b> ![img](x.png) `<code>` <> < [x]y"), "a-bold-img----xy");
+  assert.deepEqual([...markdownAnchors("## Title ## \n# Keep # hash#\n<a name='One' id=\"two\">")].sort(), ["keep--hash", "one", "title", "two"]);
+  assert.deepEqual([...markdownAnchors("<a title=\"1 < 2\" id=\"real\"></a>")], ["real"]);
+  const size = 200_000;
+  const started = performance.now();
+  for (const text of ["<", "[", "[a](", "![a]", "`"]) markdownAnchors(`# ${text.repeat(size / text.length)}`);
+  markdownAnchors(`# a${" ".repeat(size)}x\n${"<a ".repeat(size / 3)}`);
+  assert.ok(performance.now() - started < 1000, "anchor extraction took too long");
+});
+
+test("source checks skip heading anchors in oversized Markdown files", async t => {
+  const { checkSources, maxMarkdownBytes } = await import("../dist/references.js");
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const root = await mkdtemp(join(tmpdir(), "story-map-large-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(join(root, "big.md"), `# Big\n${"x".repeat(maxMarkdownBytes)}`);
+  const loaded = loadStoryMap(sample.replace("docs/example-builder-estimate-plan.md#builder-workflow", "big.md#big"));
+  const issues = await checkSources(loaded, root);
+  assert.ok(issues.some(issue => issue.message === "'big.md' is larger than 5 MB, so '#big' was not checked."));
 });
 
 test("source and plan checks report missing files, headings and story IDs", async t => {
@@ -1309,6 +1442,44 @@ test("history records each story's last edit to any field and credits mergers fo
   assert.equal(spawnSync(process.execPath, [cli, "history", "--bot-names"], { cwd: root }).status, 2);
 });
 
+test("the header says when the map last changed and which releases the changes were in", () => {
+  const now = new Date("2026-11-20T12:00:00Z");
+  const edit = (storyId, at, by) => ({ storyId, at, by, commit: "abcdef1" });
+  const history = {
+    version: 1, generatedAt: now.toISOString(), complete: true,
+    events: [{ storyId: "FINANCE-202", type: "added", to: "planned", at: "2026-11-10T09:00:00.000Z", by: "Alex Morgan", commit: "abcdef0" }],
+    lastEdits: [
+      edit("BUILDER-101", "2026-11-18T10:00:00.000Z", "Sam Patel"),
+      edit("BUILDER-102", "2026-11-20T08:00:00.000Z", "Sam Patel"),
+      // More than 14 days before the latest update, so not recent.
+      edit("FINANCE-201", "2026-10-01T10:00:00.000Z", "Grace"),
+    ],
+  };
+  const view = getStoryMapForViewer(map, engineer, { history, now });
+  assert.deepEqual(view.recentUpdates, {
+    at: "2026-11-20T08:00:00.000Z",
+    by: "Sam Patel",
+    days: 14,
+    releases: [
+      { id: "builder-mvp", title: "Builder workflow", stories: 2 },
+      // Falls back to the status history for a story with no last edit.
+      { id: "reconciliation-internal", title: "Reconciliation discovery", stories: 1 },
+    ],
+  });
+  // Filtering the board does not change the summary.
+  assert.deepEqual(filterStoryMapView(view, { query: "nothing matches this" }, { now }).recentUpdates, view.recentUpdates);
+
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, now, timeZone: "UTC" }));
+  assert.match(html, /<p class="esm-goal esm-recent">Last updated <time dateTime="2026-11-20T08:00:00\.000Z" title="[^"]+">4 hours ago<\/time> by Sam Patel\. Recent changes focused on <strong>Builder workflow<\/strong> \(2 stories\) and <strong>Reconciliation discovery<\/strong> \(1 story\)\.<\/p>/);
+  assert.doesNotMatch(html, /Sample plan for the builder-to-finance/);
+
+  // Without history, and for customers, the map's summary stays.
+  const noHistory = getStoryMapForViewer(map, engineer);
+  assert.equal(noHistory.recentUpdates, undefined);
+  assert.match(renderToStaticMarkup(createElement(StoryMapBoard, { map: noHistory })), /<p class="esm-goal">Sample plan for the builder-to-finance/);
+  assert.equal(getStoryMapForViewer(map, { roles: ["customer"] }, { history, now }).recentUpdates, undefined);
+});
+
 test("the board survives a locale or time zone that Intl rejects", t => {
   const now = new Date("2026-11-20T12:00:00Z");
   const history = {
@@ -1339,8 +1510,8 @@ test("the board survives a locale or time zone that Intl rejects", t => {
   render({ timeZone: "Nowhere/Nope" });
   render({ locale: "not a locale" });
   assert.deepEqual(warnings, [
-    'embedded-story-map: Unknown time zone "Nowhere/Nope", so dates use the server\'s time zone.',
-    'embedded-story-map: Unknown locale "not a locale", so dates use en-GB.',
+    'auto-story-map: Unknown time zone "Nowhere/Nope", so dates use the server\'s time zone.',
+    'auto-story-map: Unknown locale "not a locale", so dates use en-GB.',
   ]);
   // A valid locale and zone are used as given.
   assert.match(render({ locale: "de-DE", timeZone: "Asia/Tokyo" }), /19\.11\.2026, 19:00/);
@@ -1575,6 +1746,25 @@ test("history files load with and without the skipped fields", () => {
   assert.throws(() => parseStoryMapHistory({ ...base, skippedCount: -1 }), /Invalid story map history/);
 });
 
+test("story-map diff escapes rejected story IDs from an older base", async t => {
+  const { root } = await formatRepo(t, [
+    document => { storyIn(document, "BUILDER-103").id = "x` [link](https://example.test)\n@team #1"; },
+  ]);
+  await writeFile(join(root, "product/story-map.yaml"), stringify(editedSample(document => { storyIn(document, "BUILDER-102").status = "in-progress"; })));
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const result = spawnSync(process.execPath, [cli, "diff", "HEAD"], { cwd: root, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  const note = result.stdout.split("\n").find(line => line.startsWith("> The map at"));
+  // The whole rejected ID stays in one code span, so its link and mentions render as plain text.
+  assert.equal(note, "> The map at `HEAD` uses an older format, so this comparison leaves out 1 story that no longer validates (``x` [link](https://example.test) @team #1``) from it.");
+});
+
+test("code spans hold any number of backtick runs", async () => {
+  const { code } = await import("../dist/diff.js");
+  assert.equal(code("a``b`c"), "```a``b`c```");
+  assert.equal(code("`a".repeat(300000)).length, 600006);
+});
+
 test("story-map diff compares with a base that uses an older format", async t => {
   const { root } = await formatRepo(t, [
     document => { document.owner = "Platform team"; storyIn(document, "BUILDER-103").status = "on-hold"; },
@@ -1736,7 +1926,7 @@ test("board.js applies filters as they change and restores focus", async t => {
     };
     return form;
   }
-  const { enhanceStoryMapFilters } = await import("embedded-story-map/board.js");
+  const { enhanceStoryMapFilters } = await import("auto-story-map/board.js");
 
   const form = fakeForm();
   const root = { querySelectorAll: () => [form] };
@@ -1823,7 +2013,7 @@ test("board.js remembers collapsed release lanes", async t => {
       toggle(index) { inputs[index].checked = !inputs[index].checked; listener({ target: inputs[index] }); },
     };
   }
-  const { enhanceStoryMapReleases } = await import("embedded-story-map/board.js");
+  const { enhanceStoryMapReleases } = await import("auto-story-map/board.js");
 
   const board = fakeBoard(["r1", "r2", "r3"]);
   const root = { querySelectorAll: () => [board] };
@@ -1849,29 +2039,51 @@ test("board.js remembers collapsed release lanes", async t => {
 test("the board shows the running version, with links for internal viewers", async () => {
   const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
   assert.equal(storyMapVersion, pkg.version);
-  assert.equal(storyMapRepositoryUrl, "https://github.com/duncan-m/embedable-story-map");
+  assert.equal(storyMapRepositoryUrl, "https://github.com/duncan-m/auto-story-map");
 
   const internal = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) }));
   const footer = /<footer class="esm-footer">.*?<\/footer>/.exec(internal)?.[0];
   assert.ok(footer);
-  assert.match(footer, new RegExp(`Embedded Story Map ${pkg.version.replaceAll(".", "\\.")}`));
+  assert.match(footer, new RegExp(`Auto Story Map ${pkg.version.replaceAll(".", "\\.")}`));
   const anchor = pkg.version.replaceAll(".", "");
-  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/embedable-story-map/blob/main/CHANGELOG\\.md#${anchor}" target="_blank" rel="noopener noreferrer">Changelog`));
-  assert.match(footer, /href="https:\/\/github\.com\/duncan-m\/embedable-story-map" target="_blank" rel="noopener noreferrer">Source code/);
+  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/auto-story-map/blob/main/CHANGELOG\\.md#${anchor}" target="_blank" rel="noopener noreferrer">Changelog`));
+  assert.match(footer, /href="https:\/\/github\.com\/duncan-m\/auto-story-map" target="_blank" rel="noopener noreferrer">Source code/);
   assert.match(footer, /By <a href="https:\/\/github\.com\/duncan-m" target="_blank" rel="noopener noreferrer">Duncan Malcolm/);
-  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/embedable-story-map/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">${pkg.license.replaceAll(".", "\\.")} licence`));
+  assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/auto-story-map/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">${pkg.license.replaceAll(".", "\\.")} licence`));
   const changelog = await readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8");
   assert.match(changelog, new RegExp(`^## ${pkg.version.replaceAll(".", "\\.")}$`, "m"), "the changelog link has a heading to land on");
 
   const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, regular) }));
   const customerFooter = /<footer class="esm-footer">.*?<\/footer>/.exec(customer)?.[0];
-  assert.ok(customerFooter?.includes(`Embedded Story Map ${pkg.version}`));
+  assert.ok(customerFooter?.includes(`Auto Story Map ${pkg.version}`));
   assert.match(customerFooter, />By Duncan Malcolm</);
   assert.match(customerFooter, />Apache-2\.0 licence</);
   assert.doesNotMatch(customerFooter, /<a /, "customers see the version, author and licence without links");
 
   const hidden = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer), showVersion: false }));
   assert.doesNotMatch(hidden, /esm-footer/);
+});
+
+test("groups story history newest first in linear time, keeping equal timestamps latest-supplied first", () => {
+  const event = (to, at, commit) => ({ storyId: "BUILDER-101", type: "status", from: "planned", to, at, by: "Alex Morgan", commit });
+  const history = {
+    version: 1, generatedAt: "2026-11-20T12:00:00.000Z", complete: true,
+    events: [
+      event("planned", "2026-11-01T10:00:00.000Z", "a000001"),
+      event("in-progress", "2026-11-03T10:00:00.000Z", "a000002"),
+      event("blocked", "2026-11-03T10:00:00.000Z", "a000003"),
+      event("merged", "2026-11-02T10:00:00.000Z", "a000004"),
+    ],
+  };
+  const story = getStoryMapForViewer(map, engineer, { history }).stories.find(s => s.id === "BUILDER-101");
+  assert.deepEqual(story.history.map(entry => entry.commit), ["a000003", "a000002", "a000004", "a000001"]);
+
+  // Many events for one story stay fast.
+  const many = Array.from({ length: 100_000 }, (_, i) => event("planned", new Date(Date.UTC(2026, 0, 1) + i * 1000).toISOString(), "b000000"));
+  const started = performance.now();
+  const view = getStoryMapForViewer(map, engineer, { history: { ...history, events: many } });
+  assert.ok(performance.now() - started < 2000);
+  assert.equal(view.stories.find(s => s.id === "BUILDER-101").history.length, 100_000);
 });
 
 // --- Visio export (ESM-702) ---
