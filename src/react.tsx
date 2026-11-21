@@ -279,6 +279,34 @@ function GroupIcon() {
   );
 }
 
+function FlaskIcon() {
+  return (
+    <svg className="esm-icon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 2.5h4M6.6 2.5v4.2L3.2 12.4a1 1 0 0 0 .9 1.6h7.8a1 1 0 0 0 .9-1.6L9.4 6.7V2.5" />
+      <path d="M4.8 10.2h6.4" />
+    </svg>
+  );
+}
+
+/** Tagged tests for a story, including any the index counted but did not list. */
+function testCount(story: InternalStoryCard) {
+  return (story.tests?.length ?? 0) + (story.moreTests ?? []).reduce((sum, entry) => sum + entry.count, 0);
+}
+
+/** A flask and “7” at the end of a card’s status line, read as “7 tests”. Nothing when the story has none. */
+function CardTests({ story }: { story: InternalStoryCard }) {
+  const count = testCount(story);
+  if (!count) return null;
+  const label = `${count} ${count === 1 ? "test" : "tests"}`;
+  return (
+    <span className="esm-card-tests" title={label}>
+      <FlaskIcon />
+      <span aria-hidden="true">{count}</span>
+      <span className="esm-visually-hidden">{label}</span>
+    </span>
+  );
+}
+
 function TestsSection({ story, panelId, sourceBaseUrl }: { story: InternalStoryCard; panelId: string; sourceBaseUrl?: string }) {
   const headingId = `${panelId}-tests`;
   const files = new Map<string, { tests: StoryTestLink[]; more: number }>();
@@ -909,6 +937,7 @@ export function StoryMapBoard({
                               {internal && (story.stalled && story.inProgressSince
                                 ? <StalledLabel since={story.inProgressSince} settings={settings} />
                                 : story.lastChangedAt && <ChangedAt at={story.lastChangedAt} settings={settings} />)}
+                              {internal && <CardTests story={story} />}
                             </span>
                           </button>
                         ))}

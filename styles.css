@@ -340,6 +340,8 @@
 .esm-status[data-status="cut"] { color: var(--esm-status-cut); }
 .esm-status-reason { margin: 8px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
 .esm-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.esm-card-tests { display: inline-flex; align-items: center; gap: 4px; color: var(--esm-muted); font-size: .75rem; }
+.esm-card-tests .esm-icon { color: var(--esm-faint); }
 .esm-changed { color: var(--esm-faint); font-size: .75rem; }
 .esm-changed::before { content: "·"; margin-right: 8px; }
 .esm-stalled { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 4px; background: var(--esm-stalled-bg); color: var(--esm-stalled); font-size: .75rem; font-weight: 650; }

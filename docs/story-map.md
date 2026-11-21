@@ -336,7 +336,7 @@ const tests = parseStoryMapTests(await readFile("build/story-map-tests.json", "u
 const map = getStoryMapPage(document, viewer, { canViewInternal, history, tests, searchParams: url.searchParams });
 ```
 
-The story panel then has a **Tests** section between **History** and **Engineering**, listing each story's tests under their file. With `sourceBaseUrl`, each test links to its line, as `<file>#L<line>`, which GitHub, GitLab and Bitbucket all accept. Without it, files and lines are plain text. A story with no tagged tests says so and shows how to tag one. Without an index, the section is left out. Customers never see tests.
+Each card with tagged tests ends its status line with a flask and the number of tests. The story panel then has a **Tests** section between **History** and **Engineering**, listing each story's tests under their file. With `sourceBaseUrl`, each test links to its line, as `<file>#L<line>`, which GitHub, GitLab and Bitbucket all accept. Without it, files and lines are plain text. A story with no tagged tests says so and shows how to tag one. Without an index, the section is left out. Customers never see tests.
 
 Check the tags in CI with `validate --tests`:
 

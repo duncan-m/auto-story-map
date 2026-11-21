@@ -2873,3 +2873,28 @@ test("ESM-801: customers never see test names or paths", async () => {
   // The engineer's JSON does include them, so the check above is meaningful.
   assert.match(await makeStoryMapResponse("/api/story-map", map, engineer, { tests }).text(), /secret test name/);
 });
+
+test("ESM-802: internal cards show how many tests a story has", async () => {
+  const tests = parseStoryMapTests({
+    version: 1,
+    generatedAt: "2026-11-21T12:00:00.000Z",
+    tests: [
+      { storyIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 4, name: "BUILDER-101: drafts", kind: "test" },
+      { storyIds: ["BUILDER-101", "BUILDER-102"], file: "test/estimate.test.js", line: 9, name: "BUILDER-101: totals", kind: "test" },
+    ],
+    // Tests the index counted but did not list still count on the card.
+    omitted: [{ storyId: "BUILDER-101", file: "test/estimate.test.js", count: 5 }],
+  });
+  const cards = cardsIn(await makeStoryMapResponse("/story-map", map, engineer, { tests }).text());
+  const card = id => cards.find(html => html.includes(`>${id}<`));
+
+  assert.match(card("BUILDER-101"), /<span class="esm-card-tests" title="7 tests"><svg[^>]*>.*?<\/svg><span aria-hidden="true">7<\/span><span class="esm-visually-hidden">7 tests<\/span><\/span>/);
+  assert.match(card("BUILDER-102"), /title="1 test"/);
+  // Last on the status line, so a wrap starts the next line with the flask.
+  assert.match(card("BUILDER-101"), /<\/span><span class="esm-card-tests"[^]*<\/span><\/span><\/button>$/);
+  assert.doesNotMatch(card("BUILDER-103"), /esm-card-tests/);
+  assert.doesNotMatch((await makeStoryMapResponse("/story-map", map, engineer).text()), /esm-card-tests/);
+
+  const customer = await makeStoryMapResponse("/story-map", map, regular, { tests }).text();
+  assert.doesNotMatch(customer, /esm-card-tests|\d tests?</);
+});
