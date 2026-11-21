@@ -38,7 +38,7 @@ export {
   testsPerStoryMaxItems,
 } from "./tests-index.js";
 export type { OmittedStoryTests, StoryMapTests, StoryTestEntry } from "./tests-index.js";
-export { storyMapRepositoryUrl, storyMapVersion } from "./version.js";
+export { storyMapCommit, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
 export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";

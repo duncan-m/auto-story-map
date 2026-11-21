@@ -11,6 +11,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { stringify } from "yaml";
 import { z } from "zod";
 import {
+  storyMapCommit,
   storyMapRepositoryUrl,
   storyMapVersion,
   diffStoryMaps,
@@ -2093,15 +2094,20 @@ test("board.js remembers collapsed release lanes", async t => {
   assert.equal(reloaded.links[0].href, "/story-map/export?format=vsdx");
 });
 
-test("the board shows the running version, with links for internal viewers", async () => {
+test("the board shows the running version and commit, with links for internal viewers", async () => {
   const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
   assert.equal(storyMapVersion, pkg.version);
+  const head = spawnSync("git", ["rev-parse", "--short=7", "HEAD"], { encoding: "utf8" });
+  if (head.status === 0) assert.equal(storyMapCommit, head.stdout.trim(), "the build records the commit it came from");
   assert.equal(storyMapRepositoryUrl, "https://github.com/duncan-m/auto-story-map");
 
   const internal = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) }));
   const footer = /<footer class="esm-footer">.*?<\/footer>/.exec(internal)?.[0];
   assert.ok(footer);
   assert.match(footer, new RegExp(`Auto Story Map ${pkg.version.replaceAll(".", "\\.")}`));
+  if (storyMapCommit) {
+    assert.match(footer, new RegExp(`Auto Story Map ${pkg.version.replaceAll(".", "\\.")} <a class="esm-commit" href="https://github\\.com/duncan-m/auto-story-map/commit/${storyMapCommit}" title="The commit this build came from" target="_blank" rel="noopener noreferrer">${storyMapCommit}<`), "the commit sits right of the version");
+  }
   const anchor = pkg.version.replaceAll(".", "");
   assert.match(footer, new RegExp(`href="https://github\\.com/duncan-m/auto-story-map/blob/main/CHANGELOG\\.md#${anchor}" target="_blank" rel="noopener noreferrer">Changelog`));
   assert.match(footer, /href="https:\/\/github\.com\/duncan-m\/auto-story-map" target="_blank" rel="noopener noreferrer">Source code/);
@@ -2113,6 +2119,7 @@ test("the board shows the running version, with links for internal viewers", asy
   const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, regular) }));
   const customerFooter = /<footer class="esm-footer">.*?<\/footer>/.exec(customer)?.[0];
   assert.ok(customerFooter?.includes(`Auto Story Map ${pkg.version}`));
+  if (storyMapCommit) assert.ok(customerFooter.includes(`<span class="esm-commit" title="The commit this build came from">${storyMapCommit}</span>`));
   assert.match(customerFooter, />By Duncan Malcolm</);
   assert.match(customerFooter, />Apache-2\.0 licence</);
   assert.doesNotMatch(customerFooter, /<a /, "customers see the version, author and licence without links");

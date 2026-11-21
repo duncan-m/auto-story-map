@@ -309,6 +309,7 @@
 .esm-footer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 14px; padding: 0 4px; color: var(--esm-faint); font-size: .8125rem; }
 .esm-footer a { color: var(--esm-muted); }
 .esm-footer > * + *::before { content: "·"; margin-right: 16px; color: var(--esm-faint); }
+.esm-commit { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; }
 .esm-footer a:hover { color: var(--esm-accent-ink); }
 
 /* Story cards */
