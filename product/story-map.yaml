@@ -419,7 +419,7 @@ stories:
     activity: explore
     release: next
     status: merged
-    summary: Internal cards end their status line with a flask and the number of tagged tests, read as “7 tests”, so a column shows at a glance which stories are covered.
+    summary: Internal cards show a flask and the number of tagged tests between the status and the last change, read as “7 tests”, so a column shows at a glance which stories are covered.
     notes: Counts listed tests and those the index left out. Nothing for stories without tests, or for customers. Chosen from four mocked-up options; a “No tests” flag on in-progress and merged stories was the runner-up.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#story-tests

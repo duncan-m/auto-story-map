@@ -2890,8 +2890,15 @@ test("ESM-802: internal cards show how many tests a story has", async () => {
 
   assert.match(card("BUILDER-101"), /<span class="esm-card-tests" title="7 tests"><svg[^>]*>.*?<\/svg><span aria-hidden="true">7<\/span><span class="esm-visually-hidden">7 tests<\/span><\/span>/);
   assert.match(card("BUILDER-102"), /title="1 test"/);
-  // Last on the status line, so a wrap starts the next line with the flask.
-  assert.match(card("BUILDER-101"), /<\/span><span class="esm-card-tests"[^]*<\/span><\/span><\/button>$/);
+  // Between the status and the last change.
+  const tagged = card("BUILDER-101");
+  assert.ok(tagged.indexOf("esm-status") < tagged.indexOf("esm-card-tests"), "after the status");
+  const withHistory = cardsIn(await makeStoryMapResponse("/story-map", map, engineer, {
+    tests,
+    history: { version: 1, generatedAt: "2026-11-21T12:00:00.000Z", complete: true, events: [{ storyId: "BUILDER-101", type: "added", to: "in-progress", at: "2026-11-20T12:00:00.000Z", commit: "abcdef1" }] },
+    now: new Date("2026-11-21T12:00:00Z"),
+  }).text()).find(html => html.includes(">BUILDER-101<"));
+  assert.ok(withHistory.indexOf("esm-card-tests") < withHistory.indexOf("esm-changed"), "before the last change");
   assert.doesNotMatch(card("BUILDER-103"), /esm-card-tests/);
   assert.doesNotMatch((await makeStoryMapResponse("/story-map", map, engineer).text()), /esm-card-tests/);
 

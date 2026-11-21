@@ -293,7 +293,7 @@ function testCount(story: InternalStoryCard) {
   return (story.tests?.length ?? 0) + (story.moreTests ?? []).reduce((sum, entry) => sum + entry.count, 0);
 }
 
-/** A flask and “7” at the end of a card’s status line, read as “7 tests”. Nothing when the story has none. */
+/** “· 7” with a flask between a card’s status and its last change, read as “7 tests”. Nothing when the story has none. */
 function CardTests({ story }: { story: InternalStoryCard }) {
   const count = testCount(story);
   if (!count) return null;
@@ -934,10 +934,10 @@ export function StoryMapBoard({
                             <span className="esm-card-title">{story.title}</span>
                             <span className="esm-card-meta">
                               <Status status={story.status} />
+                              {internal && <CardTests story={story} />}
                               {internal && (story.stalled && story.inProgressSince
                                 ? <StalledLabel since={story.inProgressSince} settings={settings} />
                                 : story.lastChangedAt && <ChangedAt at={story.lastChangedAt} settings={settings} />)}
-                              {internal && <CardTests story={story} />}
                             </span>
                           </button>
                         ))}
