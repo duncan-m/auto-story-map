@@ -18,7 +18,7 @@ These steps work from 0.4.0 or later. Existing maps and history files stay valid
 1. From your host repo, run `npm install auto-story-map@0.7.0` and commit the dependency and lockfile changes together. React hosts should load the updated `auto-story-map/styles.css`. If the host serves `board.js`, serve the new copy: it applies the status choices when the menu closes and closes the menus on Escape.
 2. The status filter takes several choices. `filter.status` in the view, and in JSON responses, is now an array such as `["planned", "stalled"]` instead of a single value, and is absent for the default. If host code reads it, treat it as an array. `StoryMapFilters.status` accepts an array or a single value, so code that passes one status still works. Links with `?status=all` or one status need no change.
 3. The board's status filter is a menu of checkboxes (`details.esm-status-menu`) in place of the `<select name="status">`, and the **All, including blocked and cut** choice is gone. Update host CSS or end-to-end tests that target the old dropdown.
-4. Optional: to let internal viewers download the map as a Visio or CSV file, add an export route and pass it to the board as `exportHref`. See [Download from the board](#download-from-the-board).
+4. Optional: to let internal viewers download the map as a Visio, CSV or JSON file, add an export route and pass it to the board as `exportHref`. See [Download from the board](#download-from-the-board).
 5. Optional: to show the tests that cover each story, put story IDs in test names and pass the index from `story-map tests` to the view. Add `--tests <folder>` to the CI validate step. See [Link tests to stories](#link-tests-to-stories).
 6. Run `npx --no-install story-map validate product/story-map.yaml`, open the board as an internal viewer, and try the status filter with two choices.
 
@@ -391,7 +391,7 @@ The map is edited through a PR and ships with the product. The example JSON endp
 
 ## Export the map
 
-Internal viewers can take a snapshot of the map into Lucidchart, Miro or Visio as a Visio file (`.vsdx`), or into those tools or a spreadsheet as CSV. It is one way: the YAML file stays the source of truth, and edits made in those tools do not come back.
+Internal viewers can take a snapshot of the map into Lucidchart, Miro or Visio as a Visio file (`.vsdx`), into those tools or a spreadsheet as CSV, or to an agent or script as [JSON](#export-as-json-for-agents). It is one way: the YAML file stays the source of truth, and edits made in those tools do not come back.
 
 ```ts
 import { getStoryMapForViewer, storyMapResponseHeaders, storyMapToVsdx, vsdxContentType } from "auto-story-map";
@@ -420,7 +420,7 @@ return new Response(file, {
   npx --no-install story-map export product/story-map.yaml --format vsdx --output story-map.vsdx --history story-map-history.json --collapsed v0-1
   ```
 
-  `--format` is required, and is `vsdx` or `csv`. `--output` defaults to `story-map.vsdx` or `story-map.csv`, and `-` writes to stdout. `--history` takes the file from `story-map history`, `--collapsed` takes comma-separated release IDs, and `--max-stories` changes the 200-story limit.
+  `--format` is required, and is `vsdx`, `csv` or `json`. `--output` defaults to `story-map.<format>`, and `-` writes to stdout. `--history` takes the file from `story-map history`, `--collapsed` takes comma-separated release IDs, and `--max-stories` changes the 200-story limit.
 - The file is tested with Lucidchart and Miro, which both keep the layout, colours and text sizes. Lucidchart changes curly quotes to straight ones and drops emoji. Each shape uses a single text size, and each line of a release header is its own shape, because Miro applies one text size to all of a shape's text and placed multi-paragraph shapes badly.
 
 ### Export as CSV
@@ -447,15 +447,44 @@ return new Response(storyMapToCsv(view), {
 - From the command line, use `--format csv`. `--output -` writes it to stdout.
 - The CSV has not been tested with Miro or Lucidchart imports yet.
 
+### Export as JSON for agents
+
+`storyMapToJson(view, options)` writes the map as JSON for an agent or script to review stories and tests, or to suggest features and other product work. It takes the same view as the other writers, and `maxStories` and `now`, and returns a string. Pass `history` and `tests` to `getStoryMapForViewer` for the fullest file:
+
+```ts
+import { getStoryMapForViewer, jsonContentType, storyMapToJson } from "auto-story-map";
+
+const view = getStoryMapForViewer(document, viewer, { canViewInternal, history, tests });
+return new Response(storyMapToJson(view), {
+  headers: {
+    ...storyMapResponseHeaders,
+    "Content-Type": jsonContentType,
+    "Content-Disposition": 'attachment; filename="story-map.json"',
+  },
+});
+```
+
+- `format` is `"auto-story-map.export"` and `version` is `1`. The type is `StoryMapJsonExport`.
+- `activities` and `releases` are as on the internal board, with each release's notes, impact and `storyCounts`. `stories` are in map order, each with its summary, status, `statusReason`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
+- `statuses` says what each status means, such as that `merged` work is on the default branch but not yet available to its users.
+- `provenance` names the library version and commit that wrote the file, and when the history and tests index were generated. `completeness` counts the stories in the map, in the file and over the limit, and says whether history and tests were supplied. Both have `notes`: plain sentences for the agent, such as that statuses are recorded in PRs and can lag behind the code, that tests come from a static scan of tagged names without results, or that a shallow history is missing earlier changes. Ask the agent to read them before drawing conclusions.
+- Unlike the other formats, every story is included unless you pass `maxStories`, and collapsed lanes are ignored, so the file always covers every release. The board's JSON link and `storyMapExportResponse` ignore `collapsed` for this format, and `story-map export` warns that `--collapsed` is ignored.
+- Customer-facing copy is not included, and the same rules apply: the whole map and internal views only.
+- From the command line, use `--format json`. Add `--history <file>` and `--tests-index <file>`, the files from `story-map history` and `story-map tests`:
+
+  ```bash
+  npx --no-install story-map export --format json --history story-map-history.json --tests-index story-map-tests.json --output story-map.json
+  ```
+
 ### Download from the board
 
-Give the board an export route, and internal viewers get an **Export** button to the right of the filters. It opens a menu with *Visio (.vsdx), for Lucidchart or Miro* and *CSV*. Without the filter toolbar, the button goes under the board's title instead. Customers never see it, even when the prop is set. The menu is a `<details>` element, so it opens without JavaScript. With `board.js`, it also closes on Escape, on a click elsewhere, and after a choice.
+Give the board an export route, and internal viewers get an **Export** button to the right of the filters. It opens a menu with *Visio (.vsdx), for Lucidchart or Miro*, *CSV* and *JSON, for agents and scripts*. Without the filter toolbar, the button goes under the board's title instead. Customers never see it, even when the prop is set. The menu is a `<details>` element, so it opens without JavaScript. With `board.js`, it also closes on Escape, on a click elsewhere, and after a choice.
 
 ```tsx
 <StoryMapBoard map={view} exportHref="/story-map/export" />
 ```
 
-The board adds `format=vsdx` or `format=csv` to `exportHref`, keeping any query string the host put on it. With the optional `board.js` script loaded, it also adds `collapsed=<release IDs>` for the lanes the viewer collapsed, so the file matches the board. Without the script, every lane is exported open.
+The board adds `format=vsdx`, `format=csv` or `format=json` to `exportHref`, keeping any query string the host put on it. With the optional `board.js` script loaded, it also adds `collapsed=<release IDs>` for the lanes the viewer collapsed, so the file matches the board. Without the script, every lane is exported open.
 
 Serve the route with `storyMapExportResponse`, which builds the file and its headers from the query parameters:
 
@@ -463,18 +492,18 @@ Serve the route with `storyMapExportResponse`, which builds the file and its hea
 import { getStoryMapForViewer, storyMapExportResponse, storyMapResponseHeaders } from "auto-story-map";
 
 // An export is the whole map: build the view without filters, even if the URL has some.
-const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
+const view = getStoryMapForViewer(document, viewer, { canViewInternal, history, tests });
 if (view?.audience !== "internal") return new Response("Forbidden", { status: 403, headers: storyMapResponseHeaders });
 try {
   const file = storyMapExportResponse(view, { format: url.searchParams.get("format"), collapsed: url.searchParams.get("collapsed") });
   return new Response(file.body, { headers: file.headers });
 } catch (error) {
-  if (error instanceof RangeError) return new Response("Choose format=vsdx or format=csv.", { status: 400, headers: storyMapResponseHeaders });
+  if (error instanceof RangeError) return new Response("Choose format=vsdx, format=csv or format=json.", { status: 400, headers: storyMapResponseHeaders });
   throw error;
 }
 ```
 
-- `format` is `vsdx` or `csv`. Anything else, including a missing value, throws a `RangeError`.
+- `format` is `vsdx`, `csv` or `json`. Anything else, including a missing value, throws a `RangeError`. Pass `tests` to `getStoryMapForViewer` so the JSON file includes them.
 - `collapsed` takes the comma-separated query parameter or an array of release IDs.
 - The headers are `storyMapResponseHeaders` plus `Content-Type` and `Content-Disposition: attachment`. The file is named after the map title, such as `builder-estimates-delivery-map.vsdx`. Pass `filename` to choose another name; it is reduced to letters, digits, dots, hyphens and underscores so it is safe in the header.
 - Like the writers, it throws a `TypeError` for a customer view or a filtered view, and passes `maxStories` and `now` through.

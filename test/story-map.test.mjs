@@ -28,8 +28,10 @@ import {
   storyMapResponseHeaders,
   storyMapSchema,
   csvContentType,
+  jsonContentType,
   storyMapExportResponse,
   storyMapToCsv,
+  storyMapToJson,
   storyMapToVsdx,
   vsdxContentType,
 } from "auto-story-map";
@@ -2454,6 +2456,143 @@ test("ESM-705: story-map export writes CSV from the YAML file", async () => {
   }
 });
 
+const jsonHistory = complete => ({
+  version: 1,
+  generatedAt: "2026-11-20T08:00:00.000Z",
+  complete,
+  events: [{ storyId: map.stories[0].id, type: "added", to: map.stories[0].status, at: "2026-11-01T10:00:00.000Z", by: "Sam Patel", commit: "a".repeat(40) }],
+  lastEdits: [{ storyId: map.stories[0].id, at: "2026-11-19T10:00:00.000Z", by: "Sam Patel", commit: "b".repeat(40) }],
+});
+const jsonTests = () => parseStoryMapTests({
+  version: 1,
+  generatedAt: "2026-11-20T08:30:00.000Z",
+  tests: [{ storyIds: [map.stories[0].id], file: "test/estimate.test.js", line: 4, name: `${map.stories[0].id}: drafts an estimate`, kind: "test" }],
+  omitted: [{ storyId: map.stories[0].id, file: "test/estimate.test.js", count: 2 }],
+});
+
+test("ESM-706: exports every internal story with its details as JSON", () => {
+  const view = exportView(map, { history: jsonHistory(true), tests: jsonTests() });
+  const text = storyMapToJson(view, { now: exportNow });
+  assert.ok(text.endsWith("}\n"));
+  const data = JSON.parse(text);
+  assert.equal(data.format, "auto-story-map.export");
+  assert.equal(data.version, 1);
+  assert.equal(data.title, view.title);
+  assert.equal(data.exportedAt, exportNow.toISOString());
+  assert.equal(data.provenance.generator.version, storyMapVersion);
+  assert.deepEqual(data.provenance.history, { generatedAt: "2026-11-20T08:00:00.000Z", complete: true });
+  assert.deepEqual(data.provenance.tests, { generatedAt: "2026-11-20T08:30:00.000Z" });
+  const asJson = value => JSON.parse(JSON.stringify(value));
+  assert.deepEqual(data.activities, asJson(view.activities));
+  assert.deepEqual(data.releases, asJson(view.releases));
+  assert.deepEqual(data.statuses.map(status => status.id), ["planned", "in-progress", "merged", "shipped", "blocked", "cut"]);
+  assert.ok(data.statuses.every(status => status.label && status.meaning));
+
+  assert.deepEqual(data.stories.map(story => story.id), map.stories.map(story => story.id), "every story, in map order");
+  const [first, ...rest] = data.stories;
+  assert.deepEqual(first, asJson({ ...view.stories[0], testCount: 3 }), "the internal card, with tests over the limit counted");
+  assert.equal(first.lastEdit.by, "Sam Patel");
+  assert.ok(rest.every(story => story.testCount === 0), "0 means none are tagged when an index was supplied");
+  assert.deepEqual(data.completeness, {
+    storiesInMap: map.stories.length,
+    storiesIncluded: map.stories.length,
+    storiesOverLimit: 0,
+    historySupplied: true,
+    testsIndexed: true,
+    notes: data.completeness.notes,
+  });
+  assert.equal(storyMapToJson(view, { now: exportNow }), text, "the same every time for the same input");
+  assert.equal(jsonContentType, "application/json; charset=utf-8");
+});
+
+test("ESM-706: the JSON export notes its provenance and what it leaves out", () => {
+  const bare = JSON.parse(storyMapToJson(exportView(), { now: exportNow }));
+  assert.equal(bare.provenance.history, undefined);
+  assert.equal(bare.provenance.tests, undefined);
+  assert.ok(bare.stories.every(story => !("testCount" in story)), "no test count without an index, because coverage is unknown");
+  const bareNotes = [...bare.provenance.notes, ...bare.completeness.notes].join("\n");
+  assert.match(bareNotes, /source of truth/);
+  assert.match(bareNotes, /can lag behind the code/);
+  assert.match(bareNotes, /No status history was supplied/);
+  assert.match(bareNotes, /No tests index was supplied/);
+  assert.match(bareNotes, new RegExp(`Includes ${map.stories.length} of the map's ${map.stories.length} stories`));
+  assert.match(bareNotes, /Customer-facing copy is not included/);
+  assert.doesNotMatch(bareNotes, /left out|shallow/);
+
+  const view = exportView(map, { history: jsonHistory(false), tests: jsonTests() });
+  const partial = JSON.parse(storyMapToJson(view, { maxStories: 1, now: exportNow }));
+  assert.equal(partial.stories.length, 1);
+  assert.deepEqual(partial.releases.map(release => release.storyCounts), view.releases.map(release => release.storyCounts), "releases count every story");
+  assert.deepEqual(partial.completeness, {
+    storiesInMap: map.stories.length,
+    storiesIncluded: 1,
+    storiesOverLimit: map.stories.length - 1,
+    historySupplied: true,
+    testsIndexed: true,
+    notes: partial.completeness.notes,
+  });
+  const notes = [...partial.provenance.notes, ...partial.completeness.notes].join("\n");
+  assert.match(notes, /Git history, generated at 2026-11-20T08:00:00.000Z/);
+  assert.match(notes, /static scan of test names .* generated at 2026-11-20T08:30:00.000Z\. No tests were run/);
+  assert.match(notes, /left out by the limit of 1\./);
+  assert.match(notes, /shallow clone/);
+  assert.match(notes, /untagged tests may still cover it/);
+});
+
+test("ESM-706: only the unfiltered internal view can be exported as JSON", () => {
+  assert.throws(() => storyMapToJson(getStoryMapForViewer(map, regular)), /Customers cannot export/);
+  assert.throws(() => storyMapToJson(filterStoryMapView(exportView(), { query: "estimate" })), /unfiltered/);
+});
+
+test("ESM-706: the JSON export includes every story by default, even in collapsed lanes", () => {
+  const base = parseStoryMap(sample);
+  const stories = Array.from({ length: 250 }, (_, i) => ({ ...base.stories[0], id: `BULK-${i + 1}`, customer: undefined }));
+  const data = JSON.parse(storyMapToJson(exportView({ ...base, stories })));
+  assert.equal(data.stories.length, 250);
+  assert.equal(data.completeness.storiesOverLimit, 0);
+  const view = exportView();
+  assert.equal(storyMapToJson(view, { collapsedReleases: view.releases.map(release => release.id), now: exportNow }), storyMapToJson(view, { now: exportNow }), "collapsed lanes are ignored");
+  assert.equal(storyMapExportResponse(view, { format: "json", collapsed: view.releases[0].id, now: exportNow }).body, storyMapToJson(view, { now: exportNow }));
+  assert.deepEqual(JSON.parse(storyMapToJson(exportView({ ...base, stories }), { maxStories: 3 })).stories.map(story => story.id), ["BULK-248", "BULK-249", "BULK-250"]);
+});
+
+test("ESM-706: story-map export writes JSON with history and tests", async () => {
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  const fixture = fileURLToPath(new URL("./fixtures/builder-estimates.yaml", import.meta.url));
+  const root = await mkdtemp(join(tmpdir(), "story-map-export-json-"));
+  try {
+    await writeFile(join(root, "history.json"), JSON.stringify(jsonHistory(true)));
+    await writeFile(join(root, "tests.json"), JSON.stringify(jsonTests()));
+    const written = spawnSync(process.execPath, [cli, "export", "--format", "json", "--history", "history.json", "--tests-index", "tests.json", fixture], { cwd: root, encoding: "utf8" });
+    assert.equal(written.status, 0, written.stderr);
+    assert.match(written.stderr, new RegExp(`story-map\\.json: exported ${map.stories.length} stories`));
+    const data = JSON.parse(await readFile(join(root, "story-map.json"), "utf8"));
+    assert.equal(data.completeness.historySupplied, true);
+    assert.equal(data.completeness.testsIndexed, true);
+    assert.equal(data.stories[0].testCount, 3);
+
+    const piped = spawnSync(process.execPath, [cli, "export", "--format", "json", "--output", "-", "--max-stories", "2", fixture], { cwd: root, encoding: "utf8" });
+    assert.equal(piped.status, 0, piped.stderr);
+    assert.equal(JSON.parse(piped.stdout).stories.length, 2);
+
+    const collapsed = spawnSync(process.execPath, [cli, "export", "--format", "json", "--output", "-", "--collapsed", map.releases[0].id, fixture], { cwd: root, encoding: "utf8" });
+    assert.equal(collapsed.status, 0, collapsed.stderr);
+    assert.match(collapsed.stderr, /--collapsed is ignored by --format json/);
+    assert.equal(JSON.parse(collapsed.stdout).stories.length, map.stories.length);
+
+    const ignored = spawnSync(process.execPath, [cli, "export", "--format", "csv", "--output", "-", "--tests-index", "tests.json", fixture], { cwd: root, encoding: "utf8" });
+    assert.equal(ignored.status, 0, ignored.stderr);
+    assert.match(ignored.stderr, /--tests-index is only used by --format json/);
+
+    await writeFile(join(root, "bad.json"), "{}");
+    const bad = spawnSync(process.execPath, [cli, "export", "--format", "json", "--tests-index", "bad.json", fixture], { cwd: root, encoding: "utf8" });
+    assert.equal(bad.status, 1);
+    assert.match(bad.stderr, /bad\.json: Invalid story map tests/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("ESM-704: the board links to the export for internal viewers only", () => {
   const render = (viewer, props = {}) => renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, viewer), ...props }));
   const internal = render(engineer, { exportHref: "/story-map/export?as=engineer#map" });
@@ -2461,6 +2600,7 @@ test("ESM-704: the board links to the export for internal viewers only", () => {
   assert.deepEqual(links.map(match => [match[1], match[3]]), [
     ["/story-map/export?as=engineer&amp;format=vsdx#map", "Visio (.vsdx), for Lucidchart or Miro"],
     ["/story-map/export?as=engineer&amp;format=csv#map", "CSV"],
+    ["/story-map/export?as=engineer&amp;format=json#map", "JSON, for agents and scripts"],
   ]);
   assert.ok(links.every(match => match[1] === match[2]));
   assert.match(render(engineer, { exportHref: "/export" }), /href="\/export\?format=vsdx"/);
@@ -2497,6 +2637,10 @@ test("ESM-704: storyMapExportResponse builds a download for a host route", () =>
   assert.equal(storyMapExportResponse({ ...view, title: "🚀" }, { format: "csv" }).headers["Content-Disposition"], 'attachment; filename="story-map.csv"');
 
   assert.throws(() => storyMapExportResponse(getStoryMapForViewer(map, regular), { format: "csv" }), TypeError);
+  const json = storyMapExportResponse(view, { format: "json", now: exportNow });
+  assert.equal(json.headers["Content-Type"], jsonContentType);
+  assert.equal(json.headers["Content-Disposition"], 'attachment; filename="builder-estimates-delivery-map.json"');
+  assert.equal(json.body, storyMapToJson(view, { now: exportNow }));
   assert.throws(() => storyMapExportResponse(view, { format: "pdf" }), RangeError);
   assert.throws(() => storyMapExportResponse(view, { format: null }), RangeError);
 });

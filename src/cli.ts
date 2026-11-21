@@ -6,12 +6,14 @@ import { promisify } from "node:util";
 import { code, diffStoryMaps, formatStoryMapDiff } from "./diff.js";
 import { defaultExportMaxStories, prepareStoryMapExport } from "./export.js";
 import { storyMapToCsv } from "./export-csv.js";
+import { jsonDefaultMaxStories, storyMapToJson } from "./export-json.js";
 import { storyMapExportFormats } from "./export-response.js";
 import { storyMapToVsdx } from "./export-vsdx.js";
 import { parseStoryMapHistory, type StoryMapHistory } from "./history.js";
 import { buildStoryMapHistory, StoryMapHistoryError } from "./history-git.js";
 import { initStoryMap } from "./init.js";
 import { buildStoryMapTests, checkStoryTests, findStoryTests } from "./tests.js";
+import { parseStoryMapTests, type StoryMapTests } from "./tests-index.js";
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
 import {
   describeIssueTarget,
@@ -30,7 +32,7 @@ const usage = `Usage:
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
   story-map tests [--tests <path>] [--root <path>] [--out <file>] [<map.yaml>]
-  story-map export --format vsdx|csv [--output <file>] [--history <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
+  story-map export --format vsdx|csv|json [--output <file>] [--history <file>] [--tests-index <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
 
 init
   Sets up a host repository: a starter product/story-map.yaml, the story map
@@ -93,18 +95,26 @@ tests
 
 export
   Writes the whole internal map as a file to import into Lucidchart, Miro,
-  Visio or a spreadsheet. The map is validated first, and errors exit 1. The
-  map defaults to product/story-map.yaml.
+  Visio or a spreadsheet, or as JSON for an agent to review. The map is
+  validated first, and errors exit 1. The map defaults to
+  product/story-map.yaml.
 
-  --format vsdx|csv  Required. vsdx writes a Visio file, and csv a row per
-                     story.
+  --format vsdx|csv|json
+                     Required. vsdx writes a Visio file, csv a row per story,
+                     and json every story's details with notes on where the
+                     data came from and what is left out.
   --output <file>    Defaults to story-map.<format>. Use - to write to stdout.
   --history <file>   History from story-map history, used to choose the most
-                     recently changed stories when there are too many.
+                     recently changed stories when there are too many, and
+                     included in json.
+  --tests-index <file>
+                     Tests index from story-map tests, included in json.
   --collapsed <release IDs>
                      Comma-separated releases to export as a header and a
                      story count, without their stories. Repeat to add more.
-  --max-stories <n>  Most stories to export. Defaults to ${defaultExportMaxStories}.`;
+                     Ignored by json, which includes every release.
+  --max-stories <n>  Most stories to export. Defaults to ${defaultExportMaxStories}, or
+                     every story for json.`;
 
 type Format = "text" | "github";
 
@@ -455,23 +465,26 @@ function parseExportArgs(rest: string[]) {
   let format: (typeof exportFormats)[number] | undefined;
   let output: string | undefined;
   let historyPath: string | undefined;
-  let maxStories = defaultExportMaxStories;
+  let testsPath: string | undefined;
+  let maxStories: number | undefined;
   const collapsed: string[] = [];
   const paths: string[] = [];
   for (let index = 0; index < rest.length; index++) {
     const arg = rest[index];
     const name = arg.split("=")[0];
-    if (name === "--format" || name === "--output" || name === "--history" || name === "--collapsed" || name === "--max-stories") {
+    if (name === "--format" || name === "--output" || name === "--history" || name === "--tests-index" || name === "--collapsed" || name === "--max-stories") {
       // `--output -` means stdout, so `-` on its own is a value here.
       const [value, next] = name === "--output" && arg === name && rest[index + 1] === "-" ? ["-", index + 1] : optionValue(rest, index, name);
       index = next;
       if (name === "--format") {
-        if (!exportFormats.includes(value as never)) throw new ArgumentError(`--format must be ${exportFormats.join(" or ")}, not ${value}`);
+        if (!exportFormats.includes(value as never)) throw new ArgumentError(`--format must be ${exportFormats.join(", ")}, not ${value}`);
         format = value as (typeof exportFormats)[number];
       } else if (name === "--output") {
         output = value;
       } else if (name === "--history") {
         historyPath = value;
+      } else if (name === "--tests-index") {
+        testsPath = value;
       } else if (name === "--collapsed") {
         collapsed.push(...value.split(",").map(id => id.trim()).filter(Boolean));
       } else {
@@ -486,12 +499,13 @@ function parseExportArgs(rest: string[]) {
   }
   if (!format) throw new ArgumentError("--format is required");
   if (paths.length > 1) return null;
-  return { format, map: paths[0] ?? "product/story-map.yaml", output: output ?? `story-map.${format}`, history: historyPath, collapsed, maxStories };
+  return { format, map: paths[0] ?? "product/story-map.yaml", output: output ?? `story-map.${format}`, history: historyPath, tests: testsPath, collapsed, maxStories };
 }
 
 async function exportMap(options: NonNullable<ReturnType<typeof parseExportArgs>>) {
   let document: StoryMapDocument;
   let history: StoryMapHistory | undefined;
+  let tests: StoryMapTests | undefined;
   try {
     document = loadStoryMap(await readFile(options.map, "utf8")).map;
   } catch (error) {
@@ -512,15 +526,31 @@ async function exportMap(options: NonNullable<ReturnType<typeof parseExportArgs>
       return;
     }
   }
+  if (options.tests) {
+    try {
+      tests = parseStoryMapTests(await readFile(options.tests, "utf8"));
+    } catch (error) {
+      console.error(`${escapeText(options.tests)}: ${escapeText(error instanceof Error ? error.message : String(error))}`);
+      process.exitCode = 1;
+      return;
+    }
+    if (options.format !== "json") console.error(`warning: --tests-index is only used by --format json, so it is ignored`);
+  }
   const releaseIds = new Set(document.releases.map(release => release.id));
+  if (options.format === "json" && options.collapsed.length) {
+    console.error("warning: --collapsed is ignored by --format json, which includes every release");
+    options.collapsed = [];
+  }
   for (const id of options.collapsed) {
     if (!releaseIds.has(id)) console.error(`warning: --collapsed ${escapeText(id)} is not a release in ${escapeText(options.map)}, so it is ignored`);
   }
 
   // Whoever runs the CLI has the YAML file, so the export is always the internal view.
-  const view = getStoryMapForViewer(document, {}, { canViewInternal: () => true, history })!;
-  const exportOptions = { collapsedReleases: options.collapsed, maxStories: options.maxStories };
-  const file = options.format === "csv" ? storyMapToCsv(view, exportOptions) : storyMapToVsdx(view, exportOptions);
+  const view = getStoryMapForViewer(document, {}, { canViewInternal: () => true, history, tests })!;
+  const exportOptions = { collapsedReleases: options.collapsed, maxStories: options.maxStories ?? (options.format === "json" ? jsonDefaultMaxStories : defaultExportMaxStories) };
+  const file = options.format === "csv" ? storyMapToCsv(view, exportOptions)
+    : options.format === "json" ? storyMapToJson(view, exportOptions)
+    : storyMapToVsdx(view, exportOptions);
   if (options.output === "-") {
     process.stdout.write(file);
     return;
