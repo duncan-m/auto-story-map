@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
 import { createElement as h } from "react";
 import { parseStoryMap } from "auto-story-map";
 import { buildStoryMapHistory } from "../dist/history-git.js";
@@ -22,6 +23,8 @@ const scripts = new Map([
   ["/story-map-board.js", await readFile(new URL("../dist/board.js", import.meta.url), "utf8")],
 ]);
 const mapFile = new URL("../product/story-map.yaml", import.meta.url);
+// A file path, not URL.pathname, which keeps %20 for spaces and gives /C:/… on Windows.
+const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const sourceBaseUrl = "https://github.com/duncan-m/auto-story-map/blob/main/";
 // This product also gives product managers the internal view.
 const internalRoles = new Set(["engineer", "super-admin", "product-manager"]);
@@ -31,7 +34,7 @@ const canViewInternal = viewer => viewer.roles.some(role => internalRoles.has(ro
 let history = null;
 try {
   // This repository's map edits were authored by a coding agent as "Claude", so credit whoever merged them.
-  history = await buildStoryMapHistory({ cwd: new URL("..", import.meta.url).pathname, allowShallow: true, botNames: ["Claude"] });
+  history = await buildStoryMapHistory({ cwd: repositoryRoot, allowShallow: true, botNames: ["Claude"] });
 } catch (error) {
   console.warn(`Status history is unavailable: ${error.message}`);
 }
@@ -40,9 +43,8 @@ try {
 // parseStoryMapTests. The demo scans this repository's own tests at startup.
 let tests = null;
 try {
-  const root = new URL("..", import.meta.url).pathname;
   const loaded = loadStoryMap(await readFile(mapFile, "utf8"));
-  const found = await findStoryTests(loaded, root, { paths: ["test"] });
+  const found = await findStoryTests(loaded, repositoryRoot, { paths: ["test"] });
   tests = buildStoryMapTests(loaded, found.tests).index;
 } catch (error) {
   console.warn(`Tests are unavailable: ${error.message}`);
