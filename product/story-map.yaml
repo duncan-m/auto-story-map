@@ -401,6 +401,15 @@ stories:
     customer:
       title: Keep the map in step with the code
       summary: A scheduled check compares the map with your code and proposes corrections for you to review.
+  - id: ESM-801
+    title: Show a story's tests in its panel
+    activity: explore
+    release: next
+    status: planned
+    summary: Tests that name a story ID are indexed at build time, and internal viewers see them in the story panel, each linking to its line.
+    notes: Tests point to stories, so the map is never edited to list them. A static scan, with no test code run. validate --tests flags tags for unknown stories. Pass and fail results are a possible follow-up.
+    sources:
+      - docs/plans/story-tests.md#1-find-tagged-tests
   # 0.6.1: fixes from the November 2026 code review
   - id: ESM-601
     title: Keep long Git names from breaking the history file
