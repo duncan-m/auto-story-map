@@ -57,8 +57,13 @@ const gap = 0.1;
 const laneHeaderWidth = 3.2;
 const columnWidth = 2.6;
 const cardWidth = 2.3;
-const cardHeight = 0.9;
 const cardGap = 0.2;
+/** Story card text, in points. Titles wrap to at most `cardTitleLines` lines. */
+const cardIdSize = 8;
+const cardTitleSize = 11;
+const cardTitleLines = 3;
+/** Space between the lines of a release header, each its own shape. */
+const headerLineGap = 0.03;
 const lanePadding = 0.2;
 const activityHeight = 0.6;
 const minLaneHeight = 1.3;
@@ -120,6 +125,12 @@ function textHeight(runs: ExportTextRun[], width: number) {
   return points / 72 + textMargin.y * 2;
 }
 
+/** A card tall enough for its ID and a title of `lines` lines, with a little room below. */
+function cardHeightFor(lines: number) {
+  return textHeight([{ text: "", size: cardIdSize }, { text: "", size: cardTitleSize }], cardWidth)
+    + ((lines - 1) * cardTitleSize * lineHeight) / 72 + 0.08;
+}
+
 export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
   const shapes: ExportShape[] = [];
   const boardWidth = laneHeaderWidth + columnWidth * model.activities.length;
@@ -167,8 +178,24 @@ export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
         header.push({ text: `${item.draft ? "Draft · " : ""}${item.metric}: ${item.expected}${actual}`, size: 9, italic: true, color: exportColors.text });
       }
     }
+    // Each line of the header is its own shape, sized to its text. Tools differ in how
+    // they align and space paragraphs inside one tall shape: Miro centred them and
+    // spread them out, so they spilled out of the lane.
     const headerWidth = laneHeaderWidth - gap * 2;
-    const headerHeight = textHeight(header, headerWidth);
+    const headerLines = header.map(run => ({ run, h: textHeight([run], headerWidth) }));
+    const headerHeight = headerLines.reduce((sum, line) => sum + line.h, 0) + headerLineGap * (headerLines.length - 1);
+
+    // Cards in a lane share one height, just tall enough for the longest title in it.
+    const titles = new Map<string, string>();
+    let titleLines = 1;
+    for (const cell of release.cells.values()) {
+      for (const story of cell) {
+        const title = fitText(story.title, cardTextWidth, cardTitleSize, cardTitleLines);
+        titles.set(story.id, title);
+        titleLines = Math.max(titleLines, wrapText(title, cardTextWidth, cardTitleSize).length);
+      }
+    }
+    const cardHeight = cardHeightFor(titleLines);
 
     const tallestCell = Math.max(0, ...[...release.cells.values()].map(cell => cell.length));
     const cardsHeight = tallestCell ? tallestCell * cardHeight + (tallestCell - 1) * cardGap + lanePadding * 2 : 0;
@@ -188,14 +215,18 @@ export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
       line: exportColors.laneLine,
       data: { Release: release.id, Collapsed: release.collapsed ? "Yes" : "No" },
     });
-    shapes.push({
-      name: `Release header ${release.id}`,
-      x: margin + gap,
-      y: y + gap / 2,
-      w: headerWidth,
-      h: laneHeight - gap,
-      text: header,
-      valign: release.collapsed ? "middle" : "top",
+    // A collapsed lane centres its header. Others start it at the top.
+    let lineY = release.collapsed ? y + (laneHeight - headerHeight) / 2 : y + gap / 2;
+    headerLines.forEach(({ run, h }, index) => {
+      shapes.push({
+        name: index === 0 ? `Release header ${release.id}` : `Release header ${release.id} line ${index + 1}`,
+        x: margin + gap,
+        y: lineY,
+        w: headerWidth,
+        h,
+        text: [run],
+      });
+      lineY += h + headerLineGap;
     });
 
     model.activities.forEach((activity, i) => {
@@ -207,8 +238,8 @@ export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
           w: cardWidth,
           h: cardHeight,
           text: [
-            { text: story.id, size: 8, color: exportColors.muted },
-            { text: fitText(story.title, cardTextWidth, 10, 3), size: 10, color: exportColors.text },
+            { text: story.id, size: cardIdSize, color: exportColors.muted },
+            { text: titles.get(story.id)!, size: cardTitleSize, color: exportColors.text },
           ],
           fill: exportColors.card,
           line: exportColors.cardLine,

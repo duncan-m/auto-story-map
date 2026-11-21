@@ -86,13 +86,16 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 | --- | --- | --- | --- | --- | --- | --- |
 | LibreOffice Draw 24.2 (`soffice --headless`) | Yes | Correct | Correct, except styling after non-ASCII characters (see below) | Text spills below the card | Not checked | The stored zip and all 10 XML parts read cleanly. |
 | Lucidchart | Yes | Correct, and matches the LibreOffice reference | Correct, including grey and italic after "·" | Text spills below the card | Not checked | Curly quotes became straight quotes, and the 🚀 was dropped. `&`, `<` and `·` came through. |
-| Miro | Skipped | | | | | Not tested. See the outcome below. |
+| Lucidchart, built export (ESM-702) | Yes | Correct | Correct | None seen | Not checked | Tested with this repository's map. Card text looked small for the card size. |
+| Miro, built export (ESM-702) | Yes | Activity headers and cards in place | Release headers spilled out of their lanes, over the lane above and the next one. Card text was small | Release header text | Not checked | Miro appears to centre the paragraphs of a tall shape and space them further apart. See the follow-up below. |
 | Lucidchart, CSV | Skipped | | | | | |
 | Miro, CSV | Skipped | | | | | |
 
 LibreOffice applies styling from the wrong position after non-ASCII characters. After the two "·" in the story counts line, the grey style carries into the first letter of the notes, and the italic in the impact line starts 8 characters late. With ASCII hyphens instead, every style lands correctly, so the XML is right and this is how LibreOffice reads it. Lucidchart places the styling correctly, so this only affects LibreOffice. For ESM-702, keep using text runs, and only switch to a shape per styled line if Miro also shows the shift.
 
 Lucidchart replaced curly quotes with straight ones and dropped the emoji. Neither affects reading the map, so the export writes text as it is. The docs for ESM-702 should mention that emoji may not survive the import.
+
+**Follow-up after testing the built export.** Each release header was one tall shape holding the title, counts, notes and impact as paragraphs, which Miro placed badly. As planned above, each header line is now its own shape, sized to its estimated text, so no tool has to place paragraphs within a shape. This also removes the LibreOffice styling shift, because each shape has one style. Card titles went from 10 to 11 points, and cards are now only as tall as the longest title in their lane needs, so they are no longer mostly empty. Miro needs checking again with this layout.
 
 **Outcome.** Lucidchart works, so the Visio export goes ahead as planned with the hand-rolled zip and text runs. Miro and the CSV imports were skipped to keep moving. Until someone tries them, the docs say the `.vsdx` is tested with Lucidchart, and that Miro users should try it and fall back to CSV (ESM-705) if the import is poor.
 
