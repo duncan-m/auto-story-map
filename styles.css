@@ -520,6 +520,90 @@ a.esm-persona-chip:hover, button.esm-persona-chip:hover { background: var(--esm-
 .esm-bar [data-status="in-progress"] { background: var(--esm-status-in-progress); }
 .esm-bar [data-status="planned"] { background: var(--esm-status-planned); }
 
+/* Persona popover, when the Personas tab holds the full persona */
+.esm-popover-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 0; color: var(--esm-muted); font-size: .875rem; }
+.esm-detail a.esm-open-persona { display: inline-flex; align-items: center; padding: 7px 12px; border-radius: 8px; background: var(--esm-accent); color: var(--esm-paper); font-weight: 650; text-decoration: none; }
+.esm-detail a.esm-open-persona:hover { background: var(--esm-accent-ink); }
+
+/* Story map and Personas tabs */
+.esm-tabs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 22px; padding: 0 17px; border-bottom: 1px solid var(--esm-line); }
+.esm-tab { display: inline-flex; align-items: center; gap: 7px; padding: 14px 2px 11px; border-bottom: 2px solid transparent; color: var(--esm-muted); font-size: .96rem; font-weight: 650; text-decoration: none; }
+.esm-tab:hover { color: var(--esm-ink); }
+.esm-tab[aria-current="page"] { border-bottom-color: var(--esm-accent); color: var(--esm-ink); }
+.esm-tab-count { padding: 1px 6px; border-radius: 5px; background: var(--esm-hover); color: var(--esm-muted); font-size: .75rem; font-weight: 700; }
+.esm-tabs-end { margin-left: auto; padding-bottom: 12px; color: var(--esm-muted); font-size: .8125rem; }
+
+/* Personas tab: the persona list beside the chosen persona */
+.esm-persona-page { display: grid; grid-template-columns: 15.5rem minmax(0, 1fr); }
+.esm-persona-list { padding: 14px 10px; border-right: 1px solid var(--esm-line); }
+.esm-persona-list ul, .esm-persona-picker ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.esm-persona-list-label { margin: 0; padding: 2px 8px 8px; color: var(--esm-muted); font-size: .75rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.esm-persona-link { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: center; padding: 9px 10px; border-radius: 9px; color: var(--esm-ink); text-decoration: none; }
+.esm-persona-link:hover { background: var(--esm-hover); }
+.esm-persona-link[aria-current="page"] { background: var(--esm-activity-bg); box-shadow: inset 0 0 0 1px var(--esm-accent); }
+.esm-persona-link .esm-avatar { grid-row: span 2; width: 30px; height: 30px; box-shadow: none; font-size: .6875rem; }
+.esm-persona-link-title { font-size: .875rem; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+.esm-persona-link-meta { color: var(--esm-muted); font-size: .75rem; }
+.esm-persona-picker { display: none; }
+.esm-persona-picker .esm-avatar { box-shadow: none; }
+.esm-persona-main { display: grid; align-content: start; gap: 22px; min-width: 0; padding: 22px 24px 24px; }
+.esm-persona-title { display: flex; align-items: flex-start; gap: 14px; }
+.esm-persona-title .esm-avatar-lg { width: 48px; height: 48px; font-size: 1rem; }
+.esm-persona-title-text { min-width: 0; }
+.esm-persona-title h3 { margin: 2px 0 4px; font-size: 1.45rem; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.esm-persona-title-text p { margin: 0; max-width: 70ch; color: var(--esm-muted); line-height: 1.45; }
+.esm-persona-title-end { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin: 0 0 0 auto; font-size: .875rem; white-space: nowrap; }
+.esm-persona-title-end a { color: var(--esm-accent-ink); font-weight: 650; }
+.esm-persona-title-end span { color: var(--esm-muted); font-size: .8125rem; }
+.esm-context-band { display: grid; grid-template-columns: 1fr 1fr 1.35fr; gap: 32px; }
+.esm-context-card { display: grid; align-content: start; gap: 8px; font-size: .875rem; line-height: 1.45; }
+.esm-context-card h4 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--esm-muted); font-size: .75rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.esm-context-card h4 .esm-draft { letter-spacing: 0; text-transform: none; }
+.esm-context-card p, .esm-context-card ul { margin: 0; }
+.esm-context-card ul { padding-left: 1.1em; }
+.esm-context-card .esm-uses { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; list-style: none; }
+.esm-uses li { padding: 1px 8px; border: 1px solid var(--esm-line); border-radius: 6px; background: var(--esm-canvas); font-size: .8125rem; }
+
+/* Jobs as lanes, each with its steps in order. Kept quiet: lanes split by a rule, the core job on a light tint. */
+.esm-section-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 4px; font-size: 1rem; font-weight: 700; }
+.esm-section-title span { color: var(--esm-muted); font-size: .8125rem; font-weight: 500; }
+.esm-job-lanes { margin: 0; padding: 0; list-style: none; }
+.esm-job-lane { display: grid; gap: 12px; padding: 18px 0 20px; border-bottom: 1px solid var(--esm-line); }
+.esm-job-lane[data-core] { margin: 8px -16px 0; padding: 16px; border-bottom: 0; border-radius: 10px; background: color-mix(in srgb, var(--esm-activity-bg) 65%, var(--esm-paper)); }
+.esm-job-cell { position: relative; display: grid; align-content: start; gap: 8px; min-width: 0; padding-right: 36px; }
+.esm-job-labels { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.esm-job-labels .esm-core-label { margin: 0; }
+.esm-job-lines { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; max-width: 78ch; margin: 0; font-size: .9rem; line-height: 1.5; }
+.esm-job-step-count { display: none; }
+.esm-job-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.esm-step-card { display: grid; align-content: start; gap: 4px; min-width: 0; padding: 10px 12px; border: 1px solid var(--esm-line); border-radius: 8px; background: var(--esm-paper); font-size: .8125rem; line-height: 1.4; overflow-wrap: anywhere; }
+.esm-step-card[data-gap] { border-style: dashed; border-color: var(--esm-faint); background: transparent; }
+.esm-step-title { display: flex; align-items: baseline; gap: 6px; font-size: .875rem; font-weight: 650; }
+.esm-step-num { color: var(--esm-faint); font-size: .75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.esm-step-text { color: var(--esm-muted); }
+.esm-step-cov { margin-top: 4px; color: var(--esm-muted); }
+.esm-step-cov a { color: var(--esm-accent-ink); text-underline-offset: 2px; }
+/* Collapsible job lanes, like release lanes: the toggle only appears where :has() works. */
+.esm-job-collapse { display: none; }
+@supports selector(:has(*)) {
+  .esm-job-collapse { position: absolute; top: -4px; right: 0; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--esm-faint); }
+  .esm-job-collapse:hover { background: var(--esm-hover); }
+  .esm-job-collapse:has(:focus-visible) { outline: 2px solid var(--esm-accent); outline-offset: 2px; }
+  .esm-job-collapse-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+  .esm-job-collapse .esm-icon { transition: transform .15s ease; }
+  .esm-job-lane:has(.esm-job-collapse-input:checked) { padding-top: 14px; padding-bottom: 14px; }
+  .esm-job-lane:has(.esm-job-collapse-input:checked) .esm-job-collapse { top: 50%; margin-top: -14px; }
+  .esm-job-lane:has(.esm-job-collapse-input:checked) .esm-job-collapse .esm-icon { transform: rotate(-90deg); }
+  .esm-job-lane:has(.esm-job-collapse-input:checked) .esm-job-steps { display: none; }
+  .esm-job-lane:has(.esm-job-collapse-input:checked) .esm-job-cell { display: flex; align-items: center; gap: 12px; font-size: .875rem; }
+  .esm-job-lane:has(.esm-job-collapse-input:checked) :is(.esm-job-labels, .esm-job-meta) { flex: none; }
+  .esm-job-lane:has(.esm-job-collapse-input:checked) .esm-job-lines { display: block; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .esm-job-lane:has(.esm-job-collapse-input:checked) .esm-job-step-count { display: inline; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .esm-job-collapse .esm-icon { transition: none; }
+}
+
 @media (max-width: 650px) {
   .esm-header { margin-bottom: 1.1rem; }
   .esm-toolbar { flex-direction: column; align-items: stretch; padding: 12px; }
@@ -550,4 +634,18 @@ a.esm-persona-chip:hover, button.esm-persona-chip:hover { background: var(--esm-
   .esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-cell[data-inactive-only] { display: none; }
   .esm-inactive-toggle { padding: 12px; }
   .esm-cell-label { display: block; margin-top: 6px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; }
+  .esm-tabs { padding: 0 12px; }
+  .esm-tabs-end { display: none; }
+  .esm-persona-page { display: block; }
+  .esm-persona-list { display: none; }
+  .esm-persona-picker { display: block; padding: 12px 12px 0; }
+  .esm-persona-picker > .esm-select { display: flex; align-items: center; gap: 8px; width: 100%; }
+  .esm-persona-picker .esm-menu-panel { right: 12px; left: 12px; min-width: 0; }
+  .esm-persona-main { padding: 16px 12px 20px; }
+  .esm-persona-title { flex-wrap: wrap; }
+  .esm-persona-title-text { flex: 1 1 0; }
+  .esm-persona-title-end { flex-basis: 100%; align-items: flex-start; margin-left: 0; white-space: normal; }
+  .esm-context-band { grid-template-columns: 1fr; gap: 16px; }
+  .esm-job-lane[data-core] { margin: 8px -8px 0; padding: 12px 8px; }
+  .esm-job-steps { grid-template-columns: 1fr; }
 }

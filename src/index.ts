@@ -31,7 +31,7 @@ export type {
   StoryMapViewer,
 } from "./view.js";
 export { changedWithinOptions, filterStoryMapView, readStoryMapFilters } from "./filter.js";
-export type { ChangedWithinDays, FilterOptions, StoryMapFilters } from "./filter.js";
+export type { ChangedWithinDays, FilterOptions, StoryMapFilters, StoryMapPage } from "./filter.js";
 export { parseStoryMapHistory, storyMapHistorySchema } from "./history.js";
 export type { SkippedStoryMapVersion, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 export {

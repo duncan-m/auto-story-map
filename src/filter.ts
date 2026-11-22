@@ -21,7 +21,17 @@ export interface StoryMapFilters {
   persona?: string | readonly string[];
   /** Job IDs. Keeps stories that serve any of them. Internal views only; IDs the view does not have are ignored. */
   job?: string | readonly string[];
+  /** Activity IDs. Keeps stories under any of them. IDs the view does not have are ignored. */
+  activity?: string | readonly string[];
+  /**
+   * `personas` shows the Personas tab instead of the story map, with the first chosen `persona`
+   * as its page. Internal views of maps with personas only; otherwise it is ignored.
+   */
+  view?: StoryMapPage;
 }
+
+/** The pages of an internal board with personas: the story map, or the Personas tab. */
+export type StoryMapPage = "map" | "personas";
 
 export interface FilterOptions {
   /** Time to measure “changed in” windows from. Defaults to now. */
@@ -51,9 +61,10 @@ function readStatuses(value: unknown): StoryStatusFilter[] {
 
 /**
  * Reads the board’s `q`, `status`, `changed` (`1d`, `7d`, `14d` or `30d`),
- * `persona` and `job` parameters. `status` can repeat, once for each chosen
- * status or `stalled`, and `status=all` chooses every status. `persona` and
- * `job` repeat, once for each ID. Unknown values are ignored.
+ * `persona`, `job`, `activity` and `view` parameters. `status` can repeat, once for each chosen
+ * status or `stalled`, and `status=all` chooses every status. `persona`, `job`
+ * and `activity` repeat, once for each ID. `view=personas` opens the Personas
+ * tab. Unknown values are ignored.
  */
 export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const query = params.get("q")?.trim().slice(0, maxQueryLength) || undefined;
@@ -63,12 +74,16 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const changedWithinDays = changedWithinOptions.find(days => String(days) === changed);
   const persona = readIds(params.getAll("persona"));
   const job = readIds(params.getAll("job"));
+  const activity = readIds(params.getAll("activity"));
+  const view = params.get("view") === "personas" ? "personas" as const : undefined;
   return {
     query,
     status,
     ...(changedWithinDays ? { changedWithinDays } : {}),
     ...(persona.length ? { persona } : {}),
     ...(job.length ? { job } : {}),
+    ...(activity.length ? { activity } : {}),
+    ...(view ? { view } : {}),
   };
 }
 
@@ -110,6 +125,11 @@ export function filterStoryMapView<View extends StoryMapView>(
   const job = internalPersonas.flatMap(item => item.jobs).filter(item => wantedJobs.has(item.id)).map(item => item.id);
   const personaSet = new Set(persona);
   const jobSet = new Set(job);
+  const wantedActivities = listed(filters.activity);
+  const activity = view.activities.filter(item => wantedActivities.has(item.id)).map(item => item.id);
+  const activitySet = new Set(activity);
+  // Only internal viewers of a map with personas get the Personas tab. Customers never do, because jobs never reach them.
+  const personasPage = filters.view === "personas" && internalPersonas.length > 0;
   // Search also matches the titles of a story's personas and the statements of its jobs, for internal viewers.
   const personaTitles = new Map(internalPersonas.map(item => [item.id, item.title]));
   const statements = new Map(internalPersonas.flatMap(item => item.jobs.map(entry => [entry.id, jobStatement(entry)] as const)));
@@ -120,6 +140,7 @@ export function filterStoryMapView<View extends StoryMapView>(
     if (since !== undefined && !(story.lastChangedAt && Date.parse(story.lastChangedAt) >= since)) return false;
     if (personaSet.size && !story.personas?.some(id => personaSet.has(id))) return false;
     if (jobSet.size && !story.jobs?.some(id => jobSet.has(id))) return false;
+    if (activitySet.size && !activitySet.has(story.activity)) return false;
     if (needle) {
       const fields = internal
         ? [
@@ -146,6 +167,8 @@ export function filterStoryMapView<View extends StoryMapView>(
       ...(changedWithinDays ? { changedWithinDays } : {}),
       ...(persona.length ? { persona } : {}),
       ...(job.length ? { job } : {}),
+      ...(activity.length ? { activity } : {}),
+      ...(personasPage ? { view: "personas" as const } : {}),
       total: view.stories.length,
       ...(hidden.blocked || hidden.cut ? { hidden } : {}),
     },
