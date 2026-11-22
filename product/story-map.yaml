@@ -436,6 +436,23 @@ stories:
     sources:
       - docs/ENGINEERING-OVERVIEW.md#story-tests
       - docs/story-map.md#link-tests-to-stories
+  - id: ESM-803
+    title: Link history lines to their pull request and commit
+    activity: track
+    release: next
+    status: planned
+    summary: Each line in a story's History, and its last update, links to the pull request and commit that made the change, when the host passes its repository URL.
+    sources:
+      - docs/plans/story-changes.md#1-record-pull-requests-in-the-history
+  - id: ESM-804
+    title: Show the pull requests and commits that name a story
+    activity: track
+    release: next
+    status: planned
+    summary: story-map history finds merged pull requests and commits whose title, message or branch names a story ID, and internal viewers see them in a Changes section of the story panel.
+    notes: Changes point to stories, so the map is never edited to list them. Merged work only; open pull requests from the GitHub API are a possible follow-up.
+    sources:
+      - docs/plans/story-changes.md#3-find-the-changes-that-name-a-story
   # 0.6.1: fixes from the November 2026 code review
   - id: ESM-601
     title: Keep long Git names from breaking the history file
