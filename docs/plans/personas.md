@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: merged. ESM-901 to ESM-906 are merged, ready for the 0.7.3 release. The stories are ESM-901 to ESM-906, in the **0.7.3: Personas** release of the map. The release's notes and expected impact are in the map.
+Status: ESM-901 to ESM-906 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-907 to ESM-909 are planned for the same release, and ESM-910 and ESM-911 for **0.7.6: PM improvements**. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**, or **which need it meets**. Personas and their jobs to be done add that: the map file names the people the product serves and the jobs each of them is trying to get done, each story says which jobs it serves, and the board lets viewers read the map one persona at a time and see which jobs have no stories.
 
@@ -12,6 +12,15 @@ Items are numbered in the order they should be built, and each section uses the 
 4. [Open a persona to see jobs and coverage](#4-open-a-persona-to-see-jobs-and-coverage) · ESM-904
 5. [Share approved personas with customers](#5-share-approved-personas-with-customers) · ESM-905
 6. [Include personas in exports](#6-include-personas-in-exports) · ESM-906
+7. [Describe a persona's context](#7-describe-a-personas-context) · ESM-907
+8. [Mark a persona's core job](#8-mark-a-personas-core-job) · ESM-908
+9. [Write job statements with a trigger and a stake](#9-write-job-statements-with-a-trigger-and-a-stake) · ESM-909
+10. [Break a job into steps](#10-break-a-job-into-steps) · ESM-910
+11. [Open a persona page next to the map](#11-open-a-persona-page-next-to-the-map) · ESM-911
+
+Items 7 to 10 came from comparing the format with a fuller persona template: a role with what success means to the persona, what they use today, their constraints, one core job story, and the workflow steps of that job. Items 7 to 9 are small and fit 0.7.3, which has not shipped. Item 10 changes the persona panel and its coverage, so it waits for 0.7.6, next to activity steps (ESM-501).
+
+With context, a core job and steps, a persona no longer fits a popover. Item 11 gives each persona a page on a **Personas** tab next to the story map, and the popover goes back to a quick look with a link to it. Items 7 and 8 add their fields to the format, validation, diff and exports in 0.7.3, with small popover changes. Their full display arrives on the tab with item 11.
 
 All stories are internal. Item 5 changes what customers can see, but only for personas whose customer copy has been approved, as for stories today. Jobs are internal only.
 
@@ -32,6 +41,20 @@ What it shows:
 7. **Jobs row** in the story panel: the job statements the story serves, each with its persona.
 
 When a persona is chosen, releases with no matching stories are hidden, as the other filters do now. A rejected alternative was to dim non-matching cards instead of hiding them. It keeps the shape of the map, but on large maps the persona's stories are hard to find among the dimmed ones. It could come back as a “Highlight” option later.
+
+## Persona context mockup
+
+![Mockup of the persona panel before and after items 7 to 10, for a Revenue Operations Manager persona](persona-context-mockup.png)
+
+The mockup is [persona-context-mockup.html](persona-context-mockup.html), built on the real `styles.css` like the one above. It shows the persona panel for a Revenue Operations Manager in a host product, as it is today and with items 7 to 10 all in the panel: context, a core job, a fuller job statement and steps on each job. Story counts are illustrative. ESM-907 to ESM-910 link to this section from their `sources`.
+
+The panel grew too large for a popover, so item 11 moves the full persona to a tab. The [Personas tab mockup](#personas-tab-mockup) shows where each part ends up. This mockup still shows the content and wording.
+
+## Personas tab mockup
+
+![Mockup of the Personas tab, with the persona list, context band and jobs laid out as lanes under the map's activities, and the slimmer persona popover](persona-page-mockup.png)
+
+The mockup is [persona-page-mockup.html](persona-page-mockup.html), built on the real `styles.css`. It shows item 11: the **Personas** tab with a list of personas, the chosen persona's context across the top, and each job as a lane under the map's own activities, core job first, with its steps in the columns of their activities. Steps with no stories are dashed. The third job is collapsed. Below it is the slimmer popover that links to the tab. ESM-907 to ESM-911 link to this section from their `sources`.
 
 ## The format
 
@@ -84,7 +107,9 @@ The board reads each job as a job statement: “**When** a release is being plan
 | B. Can a story have several personas | Yes, up to 4, first is primary | One persona per story. Simpler, but forces a choice for shared stories such as search |
 | C. Untagged stories | Allowed. The filter has no “Untagged” option at first, and validate warns only when the map has personas and more than half of the active stories are untagged | Make `personas` required once the map defines any. Too strict for existing maps |
 | D. What a persona filter keeps | Stories tagged with any chosen persona. Several personas can be chosen, like statuses | Primary persona only |
-| E. Persona fields | `id`, `title`, `summary`, `jobs`, `customer` | Add `pains`, `quote` or an image. Keep it small until teams ask; images also raise hosting and privacy questions |
+| E. Persona fields | `id`, `title`, `summary`, `jobs`, `customer`, and from item 7 an internal `context` with what success means, what they use today and their constraints | Add `pains`, `quote` or an image. Still deferred; images also raise hosting and privacy questions. Item 7 reopens this decision for context only, because constraints change what a story can assume |
+| K. Where the whole persona is shown | A **Personas** tab next to the story map, with the popover kept as a quick look (item 11) | Keep everything in the popover. It no longer fits once jobs have steps, and two personas cannot be compared |
+| J. Which job is the core job | The first job in the persona's list (item 8) | A `core: true` field. Explicit, but two ways to say the same thing, and validation would need to allow only one |
 | F. Customer view | Show approved personas as a “For” line in the story panel only | No personas for customers at all. Also fine; item 5 can be dropped without affecting the rest |
 | G. Release | Decided: a new **0.7.3: Personas** release, after the export work and the CLI to read and edit the map | — |
 | H. Jobs to be done | Decided: structured jobs on each persona, with IDs that stories reference, in place of free-text goals | Job statements as free text, which cannot be checked. Jobs as their own list, shared between personas: more to maintain and show, for a case that is rare until teams ask |
@@ -109,6 +134,11 @@ The board reads each job as a job statement: “**When** a release is being plan
 | 4 | Open a persona to see jobs and coverage | M | 2 |
 | 6 | Include personas in exports | S | 1 |
 | 5 | Share approved personas with customers | S | 2 |
+| 7 | Describe a persona's context | S | 4 |
+| 8 | Mark a persona's core job | S | 4 |
+| 9 | Write job statements with a trigger and a stake | S | 1 |
+| 10 | Break a job into steps | M | 4, and ESM-501 if steps should point to activity steps |
+| 11 | Open a persona page next to the map | M | 7, 8 and 10 |
 
 Items 1 and 2 can share a PR if the first is small. Every PR follows the repository's rules: update `product/story-map.yaml` in the same PR, run `npm run validate` and `npm test`, add a `## Unreleased` entry to `CHANGELOG.md`, and include the `story-map diff origin/main` summary in the PR description. Tag new tests with the story ID, such as `test("ESM-901: rejects an unknown persona", …)`.
 
@@ -191,6 +221,139 @@ The customer view never includes jobs, even for customer-facing personas. A stor
 - Visio: `Personas` and `Jobs` fields in each card's shape data, so Lucidchart can filter by them. No avatars on the exported cards for now.
 
 **Tests.** Each export with and without personas and jobs; CSV escaping of persona titles.
+
+## 7. Describe a persona's context
+
+The summary says who a persona is, but not what they are judged on, what they work with or what holds them back. Those constraints shape what a story can assume, such as “no engineering support for integrations”, so the team and agents should see them when they plan.
+
+```yaml
+personas:
+  - id: pm
+    title: Product manager
+    summary: Owns the roadmap and decides what goes in each release.
+    context:
+      success: Releases land with the scope agreed at planning
+      usesToday: [GitHub, Linear, Slack, a planning spreadsheet]
+      constraints:
+        - Cannot change code, so relies on engineers or agents to edit the map
+        - Shares plans with customers only through approved copy
+      draft: true
+```
+
+The names work for consumer products as well as business ones. A consumer has no manager judging them, but still has their own measure of success, and what they use today includes workarounds and competitors as well as software:
+
+```yaml
+  - id: household-planner
+    title: Household budget planner
+    context:
+      success: Every bill paid on time without checking the account each week
+      usesToday: [Banking app, Shared spreadsheet, Calendar reminders, Asking their partner]
+      constraints:
+        - Checks money on a phone, often on the commute
+        - Will not link a bank account to an app they do not trust
+      draft: true
+```
+
+`success` says what a good result looks like to them, such as “weekly forecast accuracy, judged by the VP of Sales” for a business user. `usesToday` lists the products, tools and workarounds they rely on now, because those are what a story competes with.
+
+**Change.**
+
+- `src/schema.ts`: an optional `context` on a persona, with `success` (up to 200 characters), `usesToday` (up to 8 entries of up to 60 characters), `constraints` (up to 6, of up to 200 characters) and `draft`. All parts are optional, but `context` needs at least one of the first three. `draft: true` works as for jobs: agents set it, and only a person removes it.
+- `src/view.ts`: the internal persona label carries `context`. The customer projection drops it, even for a customer-facing persona.
+- `src/react.tsx`: nothing in the popover. The Personas tab (item 11) shows **Success means**, **Uses today** and **Constraints** side by side above the jobs, with a **Draft** label on drafted context.
+- `src/diff.ts`: report added, removed and changed context under **Personas and jobs**, and a confirmed draft.
+- JSON export: each persona's `context`. `story-map stories --query` and board search do not match it, so results stay about stories.
+- Validate warns about drafted context on a persona that a shipped story is for, as for drafted jobs.
+- Dogfood: draft context for this repository's four personas, marked `draft: true`.
+
+**Docs.** The fields in [Personas and jobs to be done](../story-map.md#personas-and-jobs-to-be-done), and a sentence in the first-run workflow: draft context from the product's docs and research, mark it `draft: true`, and leave out what you cannot support with a source.
+
+**Tests.** Valid and invalid context, the customer view never including it, and the diff lines. Rendering is tested with item 11.
+
+## 8. Mark a persona's core job
+
+A persona usually has one job that matters most, and the rest support it. Today the order of jobs means nothing, so the board cannot show which job to cover first.
+
+**Change.**
+
+- The first job in a persona's `jobs` is their core job. No new field (decision J).
+- `src/react.tsx`: the persona popover labels the core job **Core job** and sets it apart from the others, which follow under an **Other jobs** heading, so they are not mistaken for stories. The story panel's **Jobs** row marks it too. Item 11 then trims the popover to the core job alone. On the Personas tab, the core job is the first lane, with “When”, “I want” and “so that” each starting a new line and the lead words in a column of their own.
+- Validate: a core job with no active stories gets its own warning, such as “Core job plan-release (Product manager) has no stories”, in place of the usual one.
+- `src/diff.ts`: report a change of core job when jobs are reordered, such as “Product manager's core job: plan-release → track-progress”.
+- JSON export: `core: true` on the first job of each persona, so agents need not know the rule.
+- Dogfood: put each persona's core job first in this repository's map.
+
+**Docs.** The rule in the field table and the job-writing advice, and that reordering jobs changes the core job.
+
+**Tests.** The label, the warning, the diff line on reorder, and that a persona with one job treats it as core.
+
+## 9. Write job statements with a trigger and a stake
+
+The format already reads as “When …, I want …, so …”, but drafts such as “When I start a task” say little. A good statement names the moment and what makes it hard, and the outcome names what is at stake: “When I'm preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools, I want to quickly trace and reconcile the discrepancies, so I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.”
+
+**Change.**
+
+- [Personas and jobs to be done](../story-map.md#personas-and-jobs-to-be-done): `situation` names the trigger and the complication, not only the moment. `outcome` names what gets better and what it costs today. One full example, and a weak and a strong version side by side.
+- `src/schema.ts`: the field descriptions say the same, so editors and agents see it.
+- The board, `jobStatement()`, the CLI and the exports read the third part as “so that …” instead of “so …”, which reads more naturally before an outcome such as “I can present numbers I can defend”. The `outcome` field is unchanged, so existing maps need no edit.
+- First-run workflow: agents write jobs this way and cite the research or issue each one comes from in the PR.
+- Dogfood: rewrite this repository's drafted jobs to this standard, keeping their IDs and `draft: true`, so stories keep their tags and a person still confirms each one.
+
+No validation changes. A rule on length or wording would flag good short statements, so this is guidance only.
+
+**Tests.** None beyond validation of the rewritten map.
+
+## 10. Break a job into steps
+
+A job is done in steps, such as gather, audit, verify and brief. Steps show which part of a job the stories help with, and where the gaps are. They are also what a story map's activities describe, so each step can point to the activity where its stories live.
+
+```yaml
+jobs:
+  - id: plan-release
+    situation: …
+    steps:
+      - title: Gather
+        summary: Collect the candidate stories and the evidence for each
+        activity: plan
+      - title: Agree scope
+        summary: Settle what is in and out in the PR that changes the map
+        activity: review
+```
+
+**Change.**
+
+- `src/schema.ts`: optional `steps` on a job, up to 6, in order. Each has a `title` (up to 60 characters), an optional `summary` and an optional `activity` ID. An unknown activity is an error, as for stories.
+- Coverage: the stories for a step are those that serve the job and sit in the step's activity. A step without an activity has no coverage of its own.
+- `src/react.tsx`: on the Personas tab (item 11), each job is a lane under the map's activities. Its statement runs across the lane, and its steps sit below in the columns of their activities, in order, each with its count of active stories. A step with an activity but no stories is dashed and says **No stories yet**. A step with no activity is listed under the statement. A **Show** link per step sets `job` and `activity`. Every job can have steps, not only the core job.
+- Each job lane collapses to one line like a release lane, with its story count and number of steps, and board.js remembers it in the same way. Without JavaScript, every lane stays open.
+- The popover shows how many of the core job's steps have no stories, and nothing else about steps.
+- Validate warns about a step whose activity has no active stories for its job.
+- `src/diff.ts` and the JSON export: steps and their coverage.
+- Once activity steps land (ESM-501), a step can point to an activity step instead. Settle the shape with ESM-501 before building either.
+
+**Docs.** Steps in the persona section, and how they relate to activities.
+
+**Tests.** Valid and invalid steps, coverage per step, the warning, and job lanes with and without steps.
+
+## 11. Open a persona page next to the map
+
+A persona with context, a core job and steps on each job needs a page, not a popover. This item adds a **Personas** tab beside the story map, and trims the popover back to a quick look. See the [Personas tab mockup](#personas-tab-mockup).
+
+**Change.**
+
+- `src/filter.ts` and `getStoryMapPage`: read `view=personas`, with `persona=<ID>` for the chosen persona, defaulting to the first. Other filter parameters are kept, so going back to the map keeps the viewer's filters. Customers never get the tab: for them, `view` is ignored, because jobs and internal personas never reach them.
+- `src/react.tsx`:
+  - **Story map** and **Personas** tabs at the top of the frame, as links, so they work without JavaScript. The tabs show only when the map has personas and the viewer is internal.
+  - A persona list down the side: each persona's avatar, title, active stories and gaps, the steps with an activity but no stories. Each is a link to that persona.
+  - The chosen persona's title, summary and a **Show their stories on the map** link, which opens the map filtered to them.
+  - Their context (item 7) side by side, then their jobs as lanes under the map's activities (items 8 and 10).
+  - The persona popover (ESM-904) keeps the summary and the core job with its story count and gaps, says how many other jobs there are, and gains an **Open persona** link to the tab.
+- Narrow screens: the persona list becomes a menu above the page, the context cards stack, and each lane stacks its statement, then its steps in order, as the map does.
+- No change to the exports: the JSON export already carries everything on the page.
+
+**Docs.** A **Personas tab** section under [Personas and jobs to be done](../story-map.md#personas-and-jobs-to-be-done), and the `view` parameter in [Integrate with a product](../story-map.md#integrate-with-a-product).
+
+**Tests.** The tab only for internal viewers of maps with personas, `view` ignored for customers, the persona list counts and gaps, filters kept across tabs, the slimmer popover, and that the page works without JavaScript.
 
 ## Later
 
