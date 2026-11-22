@@ -649,12 +649,12 @@ stories:
   - id: ESM-910
     title: Break a job into steps
     activity: explore
-    release: v0-7-6
+    release: v0-7-3
     status: planned
     jobs:
       - plan-release
     summary: Any job can list its workflow steps in order, each pointing to the activity where its stories live. On the Personas tab (ESM-911), each job is a lane with its steps under their activities, gaps are marked, and lanes collapse like release lanes.
-    notes: Settle the shape with activity steps (ESM-501) before building either.
+    notes: Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format.
     sources:
       - docs/plans/personas.md#10-break-a-job-into-steps
       - docs/story-map.md#personas-and-jobs-to-be-done
@@ -663,7 +663,7 @@ stories:
   - id: ESM-911
     title: Open a persona page next to the map
     activity: explore
-    release: v0-7-6
+    release: v0-7-3
     status: planned
     jobs:
       - plan-release

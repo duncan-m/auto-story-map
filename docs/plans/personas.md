@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: ESM-901 to ESM-907 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-908 and ESM-909 are planned for the same release, and ESM-910 and ESM-911 for **0.7.6: PM improvements**. The release's notes and expected impact are in the map.
+Status: ESM-901 to ESM-907 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-908 to ESM-911 are planned for the same release. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**, or **which need it meets**. Personas and their jobs to be done add that: the map file names the people the product serves and the jobs each of them is trying to get done, each story says which jobs it serves, and the board lets viewers read the map one persona at a time and see which jobs have no stories.
 
@@ -18,9 +18,9 @@ Items are numbered in the order they should be built, and each section uses the 
 10. [Break a job into steps](#10-break-a-job-into-steps) · ESM-910
 11. [Open a persona page next to the map](#11-open-a-persona-page-next-to-the-map) · ESM-911
 
-Items 7 to 10 came from comparing the format with a fuller persona template: a role with what success means to the persona, what they use today, their constraints, one core job story, and the workflow steps of that job. Items 7 to 9 are small and fit 0.7.3, which has not shipped. Item 10 changes the persona panel and its coverage, so it waits for 0.7.6, next to activity steps (ESM-501).
+Items 7 to 10 came from comparing the format with a fuller persona template: a role with what success means to the persona, what they use today, their constraints, one core job story, and the workflow steps of that job. All of them are planned for 0.7.3, which has not shipped, so the release delivers personas in full rather than in two parts.
 
-With context, a core job and steps, a persona no longer fits a popover. Item 11 gives each persona a page on a **Personas** tab next to the story map, and the popover goes back to a quick look with a link to it. Items 7 and 8 add their fields to the format, validation, diff and exports in 0.7.3, with small popover changes. Their full display arrives on the tab with item 11.
+With context, a core job and steps, a persona no longer fits a popover. Item 11 gives each persona a page on a **Personas** tab next to the story map, and the popover goes back to a quick look with a link to it. Items 7 and 8 add their fields to the format, validation, diff and exports, with small popover changes, and item 11 shows them in full on the tab.
 
 All stories are internal. Item 5 changes what customers can see, but only for personas whose customer copy has been approved, as for stories today. Jobs are internal only.
 
@@ -137,7 +137,7 @@ The board reads each job as a job statement: “**When** a release is being plan
 | 7 | Describe a persona's context | S | 4 |
 | 8 | Mark a persona's core job | S | 4 |
 | 9 | Write job statements with a trigger and a stake | S | 1 |
-| 10 | Break a job into steps | M | 4, and ESM-501 if steps should point to activity steps |
+| 10 | Break a job into steps | M | 4 |
 | 11 | Open a persona page next to the map | M | 7, 8 and 10 |
 
 Items 1 and 2 can share a PR if the first is small. Every PR follows the repository's rules: update `product/story-map.yaml` in the same PR, run `npm run validate` and `npm test`, add a `## Unreleased` entry to `CHANGELOG.md`, and include the `story-map diff origin/main` summary in the PR description. Tag new tests with the story ID, such as `test("ESM-901: rejects an unknown persona", …)`.
@@ -329,7 +329,7 @@ jobs:
 - The popover shows how many of the core job's steps have no stories, and nothing else about steps.
 - Validate warns about a step whose activity has no active stories for its job.
 - `src/diff.ts` and the JSON export: steps and their coverage.
-- Once activity steps land (ESM-501), a step can point to an activity step instead. Settle the shape with ESM-501 before building either.
+- Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6. When they land, a job step can also point to an activity step, as an optional addition that leaves this format unchanged.
 
 **Docs.** Steps in the persona section, and how they relate to activities.
 
