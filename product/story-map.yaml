@@ -459,7 +459,9 @@ stories:
     release: v0-7-5
     status: planned
     summary: Each story can carry an effort estimate in story points, and each release lane shows its total and how much is left to ship.
-    notes: Internal only, so customers never see estimates. Cut stories leave the total, and shipped stories leave the remaining count. Points use 1, 2, 3, 5, 8 or 13. Not yet planned in detail.
+    notes: Internal only, so customers never see estimates. Cut stories leave the total, and shipped stories leave the remaining count. Points use 1, 2, 3, 5, 8 or 13.
+    sources:
+      - docs/plans/effort-estimates.md
   # 0.7.4: native CLI for agents
   - id: ESM-741
     title: Read the map from the command line
