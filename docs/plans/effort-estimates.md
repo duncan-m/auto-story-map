@@ -18,11 +18,11 @@ Estimates are internal only. The customer view and customer-facing copy do not c
 
 ![Mockup of the internal board with estimates on cards and release lanes, and the story and release panels](effort-estimates-mockup.png)
 
-The mockup is [effort-estimates-mockup.html](effort-estimates-mockup.html), built on the real `styles.css` and the board's real markup, rendered from this product's map with illustrative estimates. The estimate markup and its styles at the top of the file are proposed for item 3. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-503 links to this section from its `sources`.
+The mockup is [effort-estimates-mockup.html](effort-estimates-mockup.html), built on the real `styles.css` and the board's real markup, rendered from this product's map, status history and tests index, with illustrative estimates. Cards show the test count and when the story last changed, as on a host that supplies both. The estimate markup and its styles at the top of the file are proposed for item 3. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-503 links to this section from its `sources`.
 
 What it shows:
 
-1. **Card estimate** after the status, such as “5 pts”, or “1 pt” for one point. Cards with no estimate show nothing.
+1. **Card estimate** after the status and before the test count and last change, such as “5 pts”, or “1 pt” for one point. Cards with no estimate show nothing.
 2. **Lane total** under the story count: “24 pts · 24 left · 1 unestimated”.
 3. **Collapsed lane**: the total stays on the lane's single line, after the story count.
 4. **No estimates, no total**: 0.7.3 has no estimated stories, so its lane shows only the story count.
