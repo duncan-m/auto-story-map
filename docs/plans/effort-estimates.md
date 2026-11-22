@@ -22,7 +22,7 @@ The mockup is [effort-estimates-mockup.html](effort-estimates-mockup.html), buil
 
 What it shows:
 
-1. **Card estimate** after the status and before the test count and last change, such as “5 pts”, or “1 pt” for one point. Cards with no estimate show nothing.
+1. **Card estimate** at the top right, on the same line as the story ID, such as “5 pts”, or “1 pt” for one point. The bottom line keeps the status, test count and last change, so it does not wrap. Cards with no estimate show nothing.
 2. **Lane total** under the story count: “24 pts · 24 left · 1 unestimated”.
 3. **Collapsed lane**: the total stays on the lane's single line, after the story count.
 4. **No estimates, no total**: 0.7.3 has no estimated stories, so its lane shows only the story count.
@@ -92,7 +92,7 @@ The field is additive and optional, so existing maps stay valid and `migrateStor
 
 **Change.** In `src/react.tsx`:
 
-- **Card.** The estimate sits after the status on internal cards, such as “5 pts”, with an accessible label “Estimate: 5 points”. Cards with no estimate show nothing.
+- **Card.** The estimate sits at the top right of internal cards, on the ID line, such as “5 pts”, with an accessible label “Estimate: 5 points”. It is sized so the ID line keeps its height. Cards with no estimate show nothing.
 - **Release lane.** The lane header shows the total next to the title, such as “21 pts · 8 left”, with “· 2 unestimated” when some stories lack one. It stays visible when the lane is collapsed, so finished and future releases can be compared without opening them.
 - **Release panel.** The **Stories** section adds a line under release progress: “21 points, 8 left to ship. 2 stories have no estimate.”
 - **Story panel.** The estimate is listed with the activity and release.
