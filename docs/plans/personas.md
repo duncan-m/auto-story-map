@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: proposed. The stories are ESM-901 to ESM-906, in the **0.7.2: Personas** release of the map. The release's notes and expected impact are in the map.
+Status: proposed. The stories are ESM-901 to ESM-906, in the **0.7.3: Personas** release of the map. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**, or **which need it meets**. Personas and their jobs to be done add that: the map file names the people the product serves and the jobs each of them is trying to get done, each story says which jobs it serves, and the board lets viewers read the map one persona at a time and see which jobs have no stories.
 
@@ -19,7 +19,7 @@ All stories are internal. Item 5 changes what customers can see, but only for pe
 
 ![Mockup of the board filtered to the Product manager persona, with the story and persona panels](personas-mockup.png)
 
-The mockup is [personas-mockup.html](personas-mockup.html), built on the real `styles.css`. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. The cards are real stories with illustrative persona tags. Each persona story links to this section from its `sources`, and the 0.7.2 release notes name it.
+The mockup is [personas-mockup.html](personas-mockup.html), built on the real `styles.css`. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. The cards are real stories with illustrative persona tags. Each persona story links to this section from its `sources`, and the 0.7.3 release notes name it.
 
 What it shows:
 
@@ -86,7 +86,7 @@ The board reads each job as a job statement: “**When** a release is being plan
 | D. What a persona filter keeps | Stories tagged with any chosen persona. Several personas can be chosen, like statuses | Primary persona only |
 | E. Persona fields | `id`, `title`, `summary`, `jobs`, `customer` | Add `pains`, `quote` or an image. Keep it small until teams ask; images also raise hosting and privacy questions |
 | F. Customer view | Show approved personas as a “For” line in the story panel only | No personas for customers at all. Also fine; item 5 can be dropped without affecting the rest |
-| G. Release | Decided: a new **0.7.2: Personas** release, after the export work | — |
+| G. Release | Decided: a new **0.7.3: Personas** release, after the export work and the CLI to read and edit the map | — |
 | H. Jobs to be done | Decided: structured jobs on each persona, with IDs that stories reference, in place of free-text goals | Job statements as free text, which cannot be checked. Jobs as their own list, shared between personas: more to maintain and show, for a case that is rare until teams ask |
 | I. Who writes jobs | Agents may draft jobs from the product's docs, issues and research, marked `draft: true`. A person confirms each by removing `draft` | Only people write jobs. Safer, but slows the first map down |
 
@@ -167,7 +167,7 @@ Items 1 and 2 can share a PR if the first is small. Every PR follows the reposit
 **Change.** A `PersonaDetail` popover, opened from a chip, an avatar or the story panel's **For** row, using the same popover pattern as `ReleaseDetail`. It shows:
 
 - the summary;
-- **Jobs to be done**: each job statement, a **Draft** label on drafted jobs, a bar and count of the stories that serve it by status, and a **Show stories** link that applies the job filter. A job with no active stories says **No stories yet**, which is the gap the 0.7.2 impact asks teams to close;
+- **Jobs to be done**: each job statement, a **Draft** label on drafted jobs, a bar and count of the stories that serve it by status, and a **Show stories** link that applies the job filter. A job with no active stories says **No stories yet**, which is the gap the 0.7.3 impact asks teams to close;
 - a link that applies the persona filter.
 
 Coverage uses the unfiltered view so it does not change with filters.
