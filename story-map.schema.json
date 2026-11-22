@@ -271,6 +271,18 @@
             "minLength": 1,
             "maxLength": 500
           },
+          "estimate": {
+            "description": "Optional effort estimate in story points: 1, 2, 3, 5, 8, 13. Internal only. A story above 13 should be split.",
+            "type": "number",
+            "enum": [
+              1,
+              2,
+              3,
+              5,
+              8,
+              13
+            ]
+          },
           "updatedBy": {
             "description": "Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise.",
             "type": "string",

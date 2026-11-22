@@ -1,6 +1,6 @@
 # Plan: effort estimates on stories
 
-Status: proposed. The work is ESM-503 in the **0.7.6: PM improvements** release of the map.
+Status: in progress. Items 1 and 2 are built. The work is ESM-503 in the **0.7.6: PM improvements** release of the map.
 
 Each story can carry an effort estimate in story points. Each release lane shows the total for the release and how much of it is left to ship, so a product manager can see at a glance whether a release is too big and how far through it the team is.
 
@@ -13,6 +13,23 @@ Items are numbered in the order they should be built, and each section uses the 
 5. [Document it](#5-document-it)
 
 Estimates are internal only. The customer view and customer-facing copy do not change.
+
+## UI mockup
+
+![Mockup of the internal board with estimates on cards and release lanes, and the story and release panels](effort-estimates-mockup.png)
+
+The mockup is [effort-estimates-mockup.html](effort-estimates-mockup.html), built on the real `styles.css` and the board's real markup, rendered from this product's map with illustrative estimates. The estimate markup and its styles at the top of the file are proposed for item 3. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-503 links to this section from its `sources`.
+
+What it shows:
+
+1. **Card estimate** after the status, such as “5 pts”, or “1 pt” for one point. Cards with no estimate show nothing.
+2. **Lane total** under the story count: “24 pts · 24 left · 1 unestimated”.
+3. **Collapsed lane**: the total stays on the lane's single line, after the story count.
+4. **No estimates, no total**: 0.7.3 has no estimated stories, so its lane shows only the story count.
+5. **Story panel**: an **Estimate** row after **Release**.
+6. **Release panel**: a line under release progress, “24 points, 24 left to ship. 1 story has no estimate.”
+
+The lane total uses the lane's own ink colour, and the card estimate the muted text and line colours, so the light, dark and system palettes need no new properties.
 
 ## Why points
 

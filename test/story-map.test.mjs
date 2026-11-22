@@ -1710,14 +1710,14 @@ test("past versions of the map are read leniently", async () => {
   const { loadHistoricalStoryMap, migrateStoryMap } = await import("../dist/schema.js");
   const older = rawSample(document => {
     document.owner = "Platform team";
-    storyIn(document, "BUILDER-101").estimate = 3;
+    storyIn(document, "BUILDER-101").effort = "M";
     document.releases[0].customer.icon = "rocket";
     storyIn(document, "BUILDER-103").status = "on-hold";
   });
   const loaded = loadHistoricalStoryMap(stringify(older));
   assert.deepEqual(loaded.dropped, { stories: 1, storyIds: ["BUILDER-103"], fields: 3 });
   assert.equal(Object.hasOwn(loaded.map, "owner"), false);
-  assert.equal(Object.hasOwn(storyIn(loaded.map, "BUILDER-101"), "estimate"), false);
+  assert.equal(Object.hasOwn(storyIn(loaded.map, "BUILDER-101"), "effort"), false);
   assert.equal(storyIn(loaded.map, "BUILDER-103"), undefined);
   assert.equal(loaded.map.stories.length, map.stories.length - 1);
   // A current map reads the same both ways.
@@ -1735,10 +1735,10 @@ test("past versions of the map are read leniently", async () => {
 test("history keeps events from versions that use an older format", async t => {
   const { commits, build } = await formatRepo(t, [
     // An older format: a map-level field and a story field that no longer exist.
-    document => { document.owner = "Platform team"; storyIn(document, "BUILDER-101").estimate = 3; },
+    document => { document.owner = "Platform team"; storyIn(document, "BUILDER-101").effort = "M"; },
     // A status that no longer exists drops only that story from this version.
     document => {
-      storyIn(document, "BUILDER-101").estimate = 3;
+      storyIn(document, "BUILDER-101").effort = "M";
       storyIn(document, "BUILDER-102").status = "in-progress";
       storyIn(document, "BUILDER-103").status = "on-hold";
     },
@@ -3066,4 +3066,96 @@ test("ESM-802: internal cards show how many tests a story has", async () => {
 
   const customer = await makeStoryMapResponse("/story-map", map, regular, { tests }).text();
   assert.doesNotMatch(customer, /esm-card-tests|\d tests?</);
+});
+
+// The demo map with estimates on most of the MVP's stories, a shipped and a merged one,
+// and the cut story moved into the MVP so the totals have to leave it out.
+function withEstimates() {
+  return editedSample(document => {
+    const story = id => document.stories.find(story => story.id === id);
+    Object.assign(story("BUILDER-101"), { status: "shipped", estimate: 5 });
+    Object.assign(story("BUILDER-102"), { status: "merged", estimate: 3 });
+    Object.assign(story("FINANCE-202"), { release: "builder-mvp", estimate: 8 });
+  });
+}
+
+test("ESM-503: estimates accept only the story point scale", async () => {
+  const { estimatePoints } = await import("auto-story-map");
+  assert.deepEqual(estimatePoints, [1, 2, 3, 5, 8, 13]);
+  for (const points of estimatePoints) {
+    const parsed = editedSample(document => { document.stories[0].estimate = points; });
+    assert.equal(parsed.stories[0].estimate, points);
+  }
+  for (const points of [0, 4, 21, 2.5, "3", -1]) {
+    assert.throws(() => editedSample(document => { document.stories[0].estimate = points; }), error =>
+      error.issues.length === 1
+      && error.issues[0].path.join(".") === "stories.0.estimate"
+      && error.issues[0].message === "Use one of 1, 2, 3, 5, 8, 13 story points.", `estimate: ${JSON.stringify(points)}`);
+  }
+});
+
+test("ESM-503: unestimated planned and in-progress stories are flagged only in releases that use estimates", async t => {
+  const { loadStoryMap } = await import("../dist/schema.js");
+  // Maps that do not use estimates get no new warnings.
+  assert.deepEqual(loadStoryMap(sample).warnings, []);
+
+  const estimated = structuredClone(map);
+  estimated.stories.find(story => story.id === "BUILDER-101").estimate = 5;
+  const source = stringify(estimated);
+  const loaded = loadStoryMap(source);
+  // BUILDER-102 and 103 share BUILDER-101's release. FINANCE-201 is in a release with no estimates.
+  assert.deepEqual(loaded.warnings.map(({ severity, path, itemId }) => [severity, path.join("."), itemId]), [
+    ["warning", "stories.1", "BUILDER-102"],
+    ["warning", "stories.2", "BUILDER-103"],
+  ]);
+  assert.match(loaded.warnings[0].message, /^Add an estimate/);
+  assert.equal(loaded.warnings[0].line, source.split("\n").findIndex(text => text.includes("id: BUILDER-102")) + 1);
+
+  // Merged and blocked stories are not flagged, nor are shipped or cut ones.
+  const settled = structuredClone(estimated);
+  const statuses = { "BUILDER-102": "merged", "BUILDER-103": "blocked" };
+  for (const story of settled.stories) if (statuses[story.id]) story.status = statuses[story.id];
+  assert.deepEqual(loadStoryMap(stringify(settled)).warnings.filter(warning => /estimate/.test(warning.message)), []);
+
+  const directory = await mkdtemp(join(tmpdir(), "story-map-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const file = join(directory, "map.yaml");
+  await writeFile(file, source);
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  assert.equal(spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" }).status, 0);
+  const strict = spawnSync(process.execPath, [cli, "validate", "--strict", file], { encoding: "utf8" });
+  assert.equal(strict.status, 1);
+  assert.match(strict.stderr, /warning: stories\.1 \(BUILDER-102\): Add an estimate/);
+});
+
+test("ESM-503: internal releases total their estimates and what is left to ship", () => {
+  const view = getStoryMapForViewer(withEstimates(), engineer);
+  const release = id => view.releases.find(release => release.id === id);
+  // 5 shipped + 3 merged; BUILDER-103 has no estimate; the cut story's 8 points have left the release.
+  assert.deepEqual(release("builder-mvp").estimates, { total: 8, left: 3, unestimated: 1 });
+  assert.equal(release("finance-follow-up").estimates, undefined);
+  assert.equal(release("reconciliation-internal").estimates, undefined);
+  assert.equal(view.stories.find(story => story.id === "BUILDER-102").estimate, 3);
+  assert.ok(!("estimate" in view.stories.find(story => story.id === "BUILDER-103")));
+  // The totals count the whole release, so filtering the board does not change them.
+  const filtered = filterStoryMapView(view, { query: "BUILDER-103" });
+  assert.deepEqual(filtered.releases.find(release => release.id === "builder-mvp").estimates, { total: 8, left: 3, unestimated: 1 });
+
+  // A release whose only estimate is on a cut story has no total.
+  const onlyCut = getStoryMapForViewer(editedSample(document => {
+    document.stories.find(story => story.id === "FINANCE-202").estimate = 8;
+  }), engineer);
+  assert.equal(onlyCut.releases.find(release => release.id === "reconciliation-internal").estimates, undefined);
+});
+
+test("ESM-503: customers never see estimates", async () => {
+  const estimated = withEstimates();
+  const view = getStoryMapForViewer(estimated, regular);
+  assert.ok(view.stories.length > 0);
+  assert.ok(view.stories.every(story => !("estimate" in story)));
+  assert.ok(view.releases.every(release => !("estimates" in release)));
+  for (const path of ["/story-map", "/api/story-map"]) {
+    const payload = await makeStoryMapResponse(path, estimated, regular).text();
+    assert.doesNotMatch(payload, /"estimates?"|\d pts|story points/i);
+  }
 });

@@ -4,6 +4,9 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
+- Stories can carry an optional `estimate` in story points: 1, 2, 3, 5, 8 or 13. Any other value is a validation error. New exports `estimatePoints` and type `EstimatePoints`. Existing maps stay valid.
+- Validation warns about a `planned` or `in-progress` story with no estimate, but only in a release where another story has one, so maps that do not use estimates get no new warnings. `--strict` makes it fail.
+- Internal views carry each story's `estimate`, and each release's `estimates`: `{ total, left, unestimated }`. Cut stories are left out, shipped stories leave `left`, and the totals count the whole release whatever the filters. Releases with no estimated story have no `estimates`. Customers never see either. New type `ReleaseEstimates`. The board does not show estimates yet.
 - The example host's page has a favicon, an inline SVG of a small story map. The package itself sets no favicon, so a host keeps its own.
 - The guide explains how to [link mockups and designs](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-mockups-and-designs) from the map: give the mockup a heading in its plan, add that link to the `sources` of each story it shows, and name it in the release notes. The `AGENTS.md` template asks agents to do this, and to read a story's `sources` before changing it. Hosts can copy the new paragraph from `node_modules/auto-story-map/templates/AGENTS.md`.
 

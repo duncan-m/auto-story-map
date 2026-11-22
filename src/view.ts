@@ -1,6 +1,6 @@
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
-import { defaultStalledAfterWeeks, type ReleaseImpact, type StoryMapDocument } from "./schema.js";
+import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 
@@ -54,6 +54,21 @@ export interface InternalReleaseLabel extends StoryMapLabel {
   impact?: ReleaseImpact[];
   /** Stories in the release by status, counted before any filter is applied. */
   storyCounts: Record<StoryStatus, number>;
+  /** Effort totals for the release. Absent when no story in the release has an estimate. */
+  estimates?: ReleaseEstimates;
+}
+
+/**
+ * A release’s story points, counted before any filter is applied, like `storyCounts`.
+ * Cut stories are left out of all three numbers.
+ */
+export interface ReleaseEstimates {
+  /** Points across every story in the release that is not cut. */
+  total: number;
+  /** Points on stories that are not shipped yet. Merged stories still count. */
+  left: number;
+  /** Stories in the total with no estimate. */
+  unestimated: number;
 }
 
 export interface StoryCard extends StoryMapLabel {
@@ -68,6 +83,8 @@ export type StoryHistoryEntry = Omit<StoryHistoryEvent, "storyId">;
 export interface InternalStoryCard extends StoryCard {
   /** Why the story is blocked or cut. */
   statusReason?: string;
+  /** Effort estimate in story points. */
+  estimate?: EstimatePoints;
   updatedBy?: string;
   notes?: string;
   sources?: string[];
@@ -157,6 +174,12 @@ function projectLabel(item: StoryMapLabel): StoryMapLabel {
   return { id: item.id, title: item.title, summary: item.summary };
 }
 
+/** Leaves the totals out when nothing in the release is estimated, so “no estimates” differs from “0 points”. */
+function releaseEstimates(totals: (ReleaseEstimates & { estimated: number }) | undefined): { estimates?: ReleaseEstimates } {
+  if (!totals?.estimated) return {};
+  return { estimates: { total: totals.total, left: totals.left, unestimated: totals.unestimated } };
+}
+
 function summariseRecentUpdates(
   map: StoryMapDocument,
   byStory: Map<string, StoryHistoryEntry[]>,
@@ -220,9 +243,22 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       release.id,
       Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>,
     ]));
+    const estimates = new Map<string, ReleaseEstimates & { estimated: number }>();
     for (const story of map.stories) {
       const counts = storyCounts.get(story.release);
-      if (counts) counts[story.status]++;
+      if (!counts) continue;
+      counts[story.status]++;
+      // Cut stories have left the release, so they add nothing, as in release progress.
+      if (story.status === "cut") continue;
+      let totals = estimates.get(story.release);
+      if (!totals) estimates.set(story.release, totals = { total: 0, left: 0, unestimated: 0, estimated: 0 });
+      if (story.estimate === undefined) {
+        totals.unestimated++;
+        continue;
+      }
+      totals.estimated++;
+      totals.total += story.estimate;
+      if (story.status !== "shipped") totals.left += story.estimate;
     }
     // Stalled needs to know when the story became in progress, so it only works with history.
     const stalledAfterWeeks = history ? stalledThreshold(map, options.stalledAfterWeeks) : 0;
@@ -238,6 +274,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
         notes: release.notes,
         impact: release.impact?.map(item => ({ ...item })),
         storyCounts: storyCounts.get(release.id)!,
+        ...releaseEstimates(estimates.get(release.id)),
       })),
       stories: map.stories.map(story => {
         const entries = byStory.get(story.id);
@@ -251,6 +288,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           release: story.release,
           status: story.status,
           statusReason: story.statusReason,
+          ...(story.estimate !== undefined ? { estimate: story.estimate } : {}),
           updatedBy: story.updatedBy,
           notes: story.notes,
           sources: story.sources,

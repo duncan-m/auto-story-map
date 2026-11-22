@@ -14,6 +14,10 @@ export const releaseNotesMaxLength = 800;
 /** Most impact items on one release. */
 export const releaseImpactMaxItems = 10;
 
+/** The story point scale an estimate must use. Any other value fails validation. */
+export const estimatePoints = [1, 2, 3, 5, 8, 13] as const;
+export type EstimatePoints = typeof estimatePoints[number];
+
 /** Weeks a story can stay in progress before it is flagged as stalled, when the map does not say. */
 export const defaultStalledAfterWeeks = 4;
 
@@ -70,6 +74,8 @@ function formatSchemas(strict: boolean) {
       .describe("planned: agreed work awaiting implementation. in-progress: work has started. merged: the work is merged to the default branch but not yet available to its intended users; customers see it as in progress. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers."),
     statusReason: z.string().trim().min(1).max(500).optional()
       .describe("Why the story is blocked or cut. Internal only."),
+    estimate: z.literal(estimatePoints, { error: `Use one of ${estimatePoints.join(", ")} story points.` }).optional()
+      .describe(`Optional effort estimate in story points: ${estimatePoints.join(", ")}. Internal only. A story above 13 should be split.`),
     updatedBy: z.string().trim().min(1).max(120).optional().describe("Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise."),
     notes: z.string().trim().max(4000).optional().describe("Internal engineering notes."),
     sources: z.array(z.string().trim().min(1).max(250)).max(20).optional()
@@ -292,7 +298,20 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
       });
     });
   });
+  const releasesWithEstimates = new Map<string, number>();
+  for (const story of map.stories) {
+    if (story.estimate !== undefined) releasesWithEstimates.set(story.release, (releasesWithEstimates.get(story.release) ?? 0) + 1);
+  }
   map.stories.forEach((story, index) => {
+    if ((story.status === "planned" || story.status === "in-progress") && story.estimate === undefined
+      && (releasesWithEstimates.get(story.release) ?? 0) > 0) {
+      warnings.push({
+        severity: "warning",
+        path: ["stories", index],
+        message: "Add an estimate: other stories in this release have one, so the release total leaves this story out.",
+        itemId: story.id,
+      });
+    }
     if ((story.status === "blocked" || story.status === "cut") && !story.statusReason) {
       warnings.push({
         severity: "warning",
