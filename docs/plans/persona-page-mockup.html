@@ -74,6 +74,7 @@
   .esm-lane-chevron { position: absolute; top: 0; right: 2px; color: var(--esm-faint); }
   .esm-job-statement { max-width: 78ch; margin: 0; font-size: .9rem; line-height: 1.5; }
   .esm-job-statement b { font-weight: 650; }
+  .esm-job-lane:not([data-collapsed]) .esm-job-statement, .esm-popover-core .esm-job-statement { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; }
   .esm-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0; color: var(--esm-muted); font-size: .8125rem; }
   .esm-job-meta a, .esm-step-cov a { color: var(--esm-accent-ink); text-underline-offset: 2px; }
   .esm-jobs-map .esm-cell { min-height: 0; padding: 0; }
@@ -160,7 +161,7 @@
                   <div class="esm-job-cell">
                     <svg class="esm-lane-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
                     <span class="esm-job-label">Core job</span>
-                    <p class="esm-job-statement"><b>When</b> I’m preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools, <b>I want</b> to quickly trace and reconcile the discrepancies, <b>so that</b> I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.</p>
+                    <p class="esm-job-statement"><b>When</b><span>I’m preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools,</span><b>I want</b><span>to quickly trace and reconcile the discrepancies,</span><b>so that</b><span>I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.</span></p>
                     <p class="esm-job-meta"><span class="esm-bar"><span data-status="shipped" style="width:40%"></span><span data-status="merged" style="width:20%"></span><span data-status="planned" style="width:40%"></span></span><a href="#">5 stories</a></p>
                   </div>
                   <div class="esm-cell"><div class="esm-step-card"><span class="esm-card-title"><span class="esm-step-num" aria-label="Step 1">1</span>Gather</span><span class="esm-step-text">Export pipeline from Salesforce and closed-won invoices from Stripe</span><span class="esm-step-cov"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span><a href="#">2 shipped</a></span></div></div>
@@ -172,7 +173,8 @@
                 <div class="esm-row esm-job-lane">
                   <div class="esm-job-cell">
                     <svg class="esm-lane-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
-                    <p class="esm-job-statement"><b>When</b> a rep moves a high-value deal to a later stage without notes, <b>I want</b> to hear about it the same day, <b>so that</b> I can check it before it skews the forecast rather than finding it on Sunday. <span class="esm-draft">Draft</span></p>
+                    <span class="esm-draft" style="justify-self:start">Draft</span>
+                    <p class="esm-job-statement"><b>When</b><span>a rep moves a high-value deal to a later stage without notes,</span><b>I want</b><span>to hear about it the same day,</span><b>so that</b><span>I can check it before it skews the forecast rather than finding it on Sunday.</span></p>
                     <p class="esm-job-meta"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span><a href="#">2 stories</a></p>
                   </div>
                   <div class="esm-cell"></div>
@@ -217,7 +219,7 @@
         <p class="esm-detail-summary">Sole RevOps lead at a 180-person SaaS company. Owns the weekly forecast.</p>
         <div class="esm-popover-core">
           <span class="esm-job-label">Core job</span>
-          <p class="esm-job-statement"><b>When</b> I’m preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools, <b>I want</b> to quickly trace and reconcile the discrepancies, <b>so that</b> I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.</p>
+          <p class="esm-job-statement"><b>When</b><span>I’m preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools,</span><b>I want</b><span>to quickly trace and reconcile the discrepancies,</span><b>so that</b><span>I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.</span></p>
           <p class="esm-job-meta"><span class="esm-bar"><span data-status="shipped" style="width:40%"></span><span data-status="merged" style="width:20%"></span><span data-status="planned" style="width:40%"></span></span><span>5 stories</span><span class="esm-job-gap">2 steps with no stories</span></p>
         </div>
         <div class="esm-popover-foot"><span>2 other jobs</span><a class="esm-open-persona" href="#">Open persona →</a></div>
