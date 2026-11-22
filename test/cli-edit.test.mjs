@@ -82,6 +82,10 @@ test("ESM-744: add gives the next free ID after the release's highest, and never
   assert.equal(nextStoryId(map.stories, "v0-7-5"), "ESM-748");
   assert.equal(nextStoryId([{ id: "B-1", release: "a" }, { id: "B-3", release: "b" }, { id: "B-2", release: "a" }], "a"), "B-4", "B-3 is taken, even in another release");
   assert.equal(nextStoryId([{ id: "B-07", release: "a" }], "new"), "B-08", "keeps the number's width");
+  assert.equal(nextStoryId([{ id: "7", release: "a" }, { id: "A9B-12", release: "a" }, { id: "x", release: "a" }], "a"), "8", "IDs without a prefix and without digits are handled");
+  const started = performance.now();
+  assert.throws(() => nextStoryId([{ id: `${"9".repeat(50000)}x`, release: "a" }], "a"), StoryMapEditError);
+  assert.ok(performance.now() - started < 200, "an ID of many digits with no trailing number is split in linear time");
 
   const result = await proposeStoryMapEdit(ownMap, [{ op: "add", title: "Check claims in CI", activity: "review", release: "v0-7-5" }]);
   assert.deepEqual(result.addedIds, ["ESM-748"]);

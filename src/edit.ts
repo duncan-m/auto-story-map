@@ -196,11 +196,19 @@ class TextEditor {
 
 // ---------------------------------------------------------------------------
 
+type SplitId = [id: string, prefix: string, digits: string];
+
+/** Splits an ID into its prefix and trailing digits by scanning back from the end, in linear time. Null when it has no trailing digits. */
+function splitStoryId(id: string): SplitId | null {
+  let start = id.length;
+  while (start > 0 && id.charCodeAt(start - 1) >= 48 && id.charCodeAt(start - 1) <= 57) start--;
+  return start === id.length ? null : [id, id.slice(0, start), id.slice(start)];
+}
+
 /** The next free number for the prefix, after the highest number in the release when it has stories with that prefix. Cut stories count, so an ID is never handed out twice. */
 export function nextStoryId(stories: readonly { id: string; release?: string }[], release: string): string {
-  const parse = (id: string) => /^(.*?)(\d+)$/.exec(id);
-  const inRelease = stories.filter(story => story.release === release).map(story => parse(story.id)).filter(Boolean) as RegExpExecArray[];
-  const all = stories.map(story => parse(story.id)).filter(Boolean) as RegExpExecArray[];
+  const inRelease = stories.filter(story => story.release === release).map(story => splitStoryId(story.id)).filter(Boolean) as SplitId[];
+  const all = stories.map(story => splitStoryId(story.id)).filter(Boolean) as SplitId[];
   const pool = inRelease.length ? inRelease : all;
   if (!pool.length) throw new StoryMapEditError("The map has no numbered story IDs to follow, so choose one with --id.");
   // The most used prefix in the pool, so a map with one stray ID still follows its own scheme.
