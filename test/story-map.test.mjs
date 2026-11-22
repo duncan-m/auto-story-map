@@ -2125,7 +2125,7 @@ test("the board shows the running version and commit, with links for internal vi
   assert.ok(customerFooter?.includes(`Auto Story Map ${pkg.version}`));
   if (storyMapCommit) assert.ok(customerFooter.includes(`<span class="esm-commit" title="The commit this build came from">${storyMapCommit}</span>`));
   assert.match(customerFooter, />By Duncan Malcolm</);
-  assert.match(customerFooter, />Apache-2\.0 licence</);
+  assert.match(customerFooter, />AGPL-3\.0-only licence</);
   assert.doesNotMatch(customerFooter, /<a /, "customers see the version, author and licence without links");
 
   const hidden = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer), showVersion: false }));
