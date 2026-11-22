@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personas mockup</title>
+<!-- Static mockup for docs/plans/personas.md. Uses the real board styles; persona styles are proposed below. -->
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 32px 40px 48px; background: #f4f5fa; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mock-label { margin: 0 0 10px; color: #5046d5; font: 700 .75rem/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  .mock-note { margin: 6px 0 0; color: #52617a; font-size: .8125rem; }
+  .mock-section + .mock-section { margin-top: 40px; }
+  .mock-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+  .mock-pair .esm-detail { position: static; display: block; width: auto; max-height: none; margin: 0; }
+  .mock-callout { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; background: #e2366d; color: #fff; font: 700 .7rem/1 system-ui, sans-serif; vertical-align: middle; }
+  .mock-legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 24px; margin: 18px 0 0; padding: 0; list-style: none; color: #19223a; font-size: .8125rem; line-height: 1.45; }
+  .mock-legend li { display: flex; gap: 6px; }
+  .mock-legend .mock-callout { flex: none; margin: 0; }
+
+  /* ---- Proposed persona styles (would move into styles.css) ---- */
+  .esm-board {
+    --esm-persona-0: #5046d5; --esm-persona-0-bg: #e9e7ff;
+    --esm-persona-1: #0b6e63; --esm-persona-1-bg: #dcf1ee;
+    --esm-persona-2: #9a4a00; --esm-persona-2-bg: #fbead6;
+    --esm-persona-3: #a2285a; --esm-persona-3-bg: #fbe3ec;
+    --esm-persona-4: #1f5f99; --esm-persona-4-bg: #dfeefb;
+    --esm-persona-5: #4d6020; --esm-persona-5-bg: #ebf1d9;
+  }
+  .esm-avatar { --c: var(--esm-persona-0); --bg: var(--esm-persona-0-bg); display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); color: var(--c); box-shadow: 0 0 0 2px var(--esm-paper); font-size: .625rem; font-weight: 750; letter-spacing: .02em; }
+  .esm-avatar[data-persona="1"] { --c: var(--esm-persona-1); --bg: var(--esm-persona-1-bg); }
+  .esm-avatar[data-persona="2"] { --c: var(--esm-persona-2); --bg: var(--esm-persona-2-bg); }
+  .esm-avatar[data-persona="3"] { --c: var(--esm-persona-3); --bg: var(--esm-persona-3-bg); }
+  .esm-avatar-lg { width: 40px; height: 40px; font-size: .875rem; }
+  .esm-avatars { display: inline-flex; }
+  .esm-avatars .esm-avatar + .esm-avatar { margin-left: -2px; }
+
+  .esm-personas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 17px 14px; }
+  .esm-personas-label { margin-right: 4px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; }
+  .esm-persona-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 4px 11px 4px 5px; border: 1px solid var(--esm-line); border-radius: 999px; background: var(--esm-paper); color: var(--esm-ink); font-size: .8125rem; font-weight: 600; text-decoration: none; }
+  .esm-persona-chip:hover { background: var(--esm-hover); }
+  .esm-persona-chip[aria-current="true"] { border-color: var(--esm-accent); background: var(--esm-activity-bg); box-shadow: inset 0 0 0 1px var(--esm-accent); }
+  .esm-persona-chip .esm-persona-count { color: var(--esm-muted); font-weight: 500; }
+  .esm-persona-clear { margin-left: 4px; color: var(--esm-accent-ink); font-size: .8125rem; }
+
+  .esm-activity .esm-avatars { margin-top: 6px; }
+  .esm-card-personas { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+  .esm-card-head { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 6px; }
+  .esm-card[data-dimmed] { opacity: .38; }
+
+  .esm-persona-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .esm-persona-row .esm-persona-chip { min-height: 28px; }
+  .esm-persona-head { display: flex; align-items: center; gap: 12px; }
+  .esm-goals { display: grid; gap: 6px; margin: 0; padding-left: 1.2em; line-height: 1.45; }
+  .esm-persona-releases { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .esm-persona-releases li { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+  .esm-bar { display: flex; height: 8px; overflow: hidden; border-radius: 4px; background: var(--esm-hover); }
+  .esm-bar span { display: block; height: 100%; }
+  .esm-persona-releases .esm-release-label { display: grid; gap: 4px; }
+</style>
+</head>
+<body>
+
+<div class="mock-section">
+  <p class="mock-label">1 · Internal board, filtered to one persona</p>
+  <section class="esm-board" data-theme="light">
+    <header class="esm-header">
+      <p class="esm-eyebrow">User story map</p>
+      <h2>Auto Story Map Demo</h2>
+      <p class="esm-goal">How product teams set up, plan, review and follow their story map, from the first release to what comes next.</p>
+    </header>
+    <div class="esm-frame">
+      <div class="esm-toolbar">
+        <p class="esm-toolbar-label">Journey map <span class="esm-toolbar-count">9 of 43 stories</span></p>
+        <form class="esm-filters">
+          <label class="esm-search"><svg class="esm-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><input placeholder="Search stories"></label>
+          <span class="esm-select">Product manager<span class="mock-callout">2</span></span>
+          <span class="esm-select">Active</span>
+          <span class="esm-select">All time</span>
+          <span class="esm-button">Export ▾</span>
+        </form>
+      </div>
+      <nav class="esm-personas" aria-label="Personas">
+        <span class="esm-personas-label">Personas<span class="mock-callout">1</span></span>
+        <a class="esm-persona-chip" aria-current="true" href="#"><span class="esm-avatar" data-persona="0">PM</span>Product manager <span class="esm-persona-count">9</span></a>
+        <a class="esm-persona-chip" href="#"><span class="esm-avatar" data-persona="1">EN</span>Engineer <span class="esm-persona-count">21</span></a>
+        <a class="esm-persona-chip" href="#"><span class="esm-avatar" data-persona="2">AG</span>Coding agent <span class="esm-persona-count">8</span></a>
+        <a class="esm-persona-chip" href="#"><span class="esm-avatar" data-persona="3">CU</span>Product customer <span class="esm-persona-count">5</span></a>
+        <a class="esm-persona-clear" href="#">Show everyone</a>
+      </nav>
+      <div class="esm-scroll">
+        <div class="esm-grid" style="--esm-columns: 4">
+          <div class="esm-row esm-activities">
+            <div class="esm-corner">Activities</div>
+            <div class="esm-activity"><span class="esm-activity-title">Plan the map</span><span class="esm-activity-summary">Write activities, releases and stories.</span>
+              <span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="2">AG</span><span class="mock-callout">3</span></span></div>
+            <div class="esm-activity"><span class="esm-activity-title">Review changes</span><span class="esm-activity-summary">Check and summarise map changes in PRs.</span>
+              <span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="1">EN</span></span></div>
+            <div class="esm-activity"><span class="esm-activity-title">Explore the board</span><span class="esm-activity-summary">Read the map, search it and open details.</span>
+              <span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="1">EN</span><span class="esm-avatar" data-persona="3">CU</span></span></div>
+            <div class="esm-activity"><span class="esm-activity-title">Track delivery</span><span class="esm-activity-summary">See what changed, who changed it and what is stuck.</span>
+              <span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="1">EN</span></span></div>
+          </div>
+          <div class="esm-row esm-lane" data-lane="0">
+            <div class="esm-release"><span class="esm-release-name"><span class="esm-release-dot"></span><button class="esm-release-button">0.4.0: Delivery tracking</button></span><span class="esm-release-summary">Merged, blocked and cut statuses, release impact and stalled stories.</span><span class="esm-release-count">3 of 7 stories</span></div>
+            <div class="esm-cell">
+              <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-403</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="2">AG</span></span></span><span class="esm-card-title">Record release notes and expected impact</span><span class="esm-card-meta"><span class="esm-status" data-status="shipped">✓ Shipped</span><span class="esm-changed">3 weeks ago</span></span></button>
+            </div>
+            <div class="esm-cell">
+              <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-401</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="1">EN</span></span></span><span class="esm-card-title">Warn about map problems without failing CI</span><span class="esm-card-meta"><span class="esm-status" data-status="shipped">✓ Shipped</span><span class="esm-changed">3 weeks ago</span></span></button>
+            </div>
+            <div class="esm-cell" data-empty></div>
+            <div class="esm-cell">
+              <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-405</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span></span><span class="mock-callout">4</span></span><span class="esm-card-title">Flag stories that stay in progress too long</span><span class="esm-card-meta"><span class="esm-status" data-status="shipped">✓ Shipped</span><span class="esm-changed">3 weeks ago</span></span></button>
+            </div>
+          </div>
+          <div class="esm-row esm-lane" data-lane="1">
+            <div class="esm-release"><span class="esm-release-name"><span class="esm-release-dot"></span><button class="esm-release-button">0.8.0: Personas</button></span><span class="esm-release-summary">Say who each story is for, and read the map one persona at a time.</span><span class="esm-release-count">3 of 6 stories</span></div>
+            
+            <div class="esm-cell">
+              <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-901</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="2">AG</span></span></span><span class="esm-card-title">Define personas in the map file</span><span class="esm-card-meta"><span class="esm-status" data-status="in-progress">◐ In progress</span></span></button>
+            </div>
+            <div class="esm-cell" data-empty></div>
+            <div class="esm-cell">
+              <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-903</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="1">EN</span></span></span><span class="esm-card-title">Filter the board by persona</span><span class="esm-card-meta"><span class="esm-status">○ Planned</span></span></button>
+              <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-904</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span></span></span><span class="esm-card-title">Open a persona to see their goals and coverage</span><span class="esm-card-meta"><span class="esm-status">○ Planned</span></span></button>
+            </div>
+            <div class="esm-cell" data-empty></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <ol class="mock-legend">
+    <li><span class="mock-callout">1</span><span><strong>Persona strip</strong> under the toolbar. Each chip is a link that filters to that persona and shows how many active stories are for them. Click the name again to open the persona panel.</span></li>
+    <li><span class="mock-callout">2</span><span><strong>Persona filter</strong> joins search, status and “Changed in”. The URL gains <code>persona=pm</code>, so links work without JavaScript and board.js applies it at once.</span></li>
+    <li><span class="mock-callout">3</span><span><strong>Activity avatars</strong> show who the step serves, worked out from its stories. Nothing to keep in sync by hand.</span></li>
+    <li><span class="mock-callout">4</span><span><strong>Card avatars</strong> sit beside the story ID, up to three, then “+2”. Initials and colour are paired, so colour is never the only cue.</span></li>
+  </ol>
+</div>
+
+<div class="mock-section">
+  <p class="mock-label">2 · Story panel and persona panel</p>
+  <div class="mock-pair">
+    <div class="esm-board" data-theme="light">
+      <div class="esm-detail" role="dialog">
+        <div class="esm-detail-head"><div><p class="esm-card-id">ESM-405</p><h3>Flag stories that stay in progress too long</h3></div><button class="esm-close">✕</button></div>
+        <span class="esm-status" data-status="shipped">✓ Shipped</span>
+        <p class="esm-detail-summary">Stories in progress for longer than the map’s threshold get a Stalled label on their card.</p>
+        <dl class="esm-detail-context">
+          <dt>For<span class="mock-callout">5</span></dt>
+          <dd class="esm-persona-row">
+            <a class="esm-persona-chip" href="#"><span class="esm-avatar" data-persona="0">PM</span>Product manager</a>
+          </dd>
+          <dt>Activity</dt><dd>Track delivery</dd>
+          <dt>Release</dt><dd>0.4.0: Delivery tracking</dd>
+        </dl>
+        <section class="esm-detail-section"><h4>Engineering</h4><a class="esm-overview-link" href="#">Stalled stories</a></section>
+      </div>
+    </div>
+    <div class="esm-board" data-theme="light">
+      <div class="esm-detail" role="dialog">
+        <div class="esm-detail-head">
+          <div class="esm-persona-head"><span class="esm-avatar esm-avatar-lg" data-persona="0">PM</span><div><p class="esm-card-id">Persona · pm</p><h3>Product manager</h3></div></div>
+          <button class="esm-close">✕</button>
+        </div>
+        <p class="esm-detail-summary">Owns the roadmap and decides what goes in each release. Reads the board weekly and in planning sessions.<span class="mock-callout">6</span></p>
+        <section class="esm-detail-section"><h4>Goals</h4>
+          <ul class="esm-goals"><li>See what is stuck before stand-up, not during it</li><li>Agree release scope in a PR, not a separate tool</li><li>Show customers what is coming without leaking internals</li></ul>
+        </section>
+        <section class="esm-detail-section"><h4>Stories by release</h4>
+          <ul class="esm-persona-releases">
+            <li><span class="esm-release-label">0.4.0: Delivery tracking<span class="esm-bar"><span style="width:100%;background:var(--esm-status-shipped)"></span></span></span><span>3 shipped</span></li>
+            <li><span class="esm-release-label">0.7.0: Export<span class="esm-bar"><span style="width:100%;background:var(--esm-status-shipped)"></span></span></span><span>2 shipped</span></li>
+            <li><span class="esm-release-label">0.8.0: Personas<span class="esm-bar"><span style="width:33%;background:var(--esm-status-in-progress)"></span><span style="width:67%;background:var(--esm-status-planned);opacity:.35"></span></span></span><span>1 of 3 started</span></li>
+          </ul>
+          <p class="esm-release-hidden"><a href="#">Show only this persona’s stories</a></p>
+        </section>
+      </div>
+    </div>
+  </div>
+  <ol class="mock-legend">
+    <li><span class="mock-callout">5</span><span><strong>“For” row</strong> in the story panel, first in the context list, linking to each persona.</span></li>
+    <li><span class="mock-callout">6</span><span><strong>Persona panel</strong> opens from a chip or avatar. Summary and goals come from the YAML. Coverage per release is derived, so it never goes stale.</span></li>
+    <li></li>
+    <li><span><strong>Customers</strong> see personas only when the persona has approved <code>customer</code> copy, as a “For” line in the panel. No avatars, no strip, no coverage.</span></li>
+  </ol>
+</div>
+
+</body>
+</html>
