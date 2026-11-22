@@ -1,8 +1,10 @@
-# Plan: link a story's pull requests and commits from its panel
+# Plan: link stories to their code, and to each other
 
-Status: proposed. The work is ESM-803 and ESM-804, both in the **0.7.3** release of the map.
+Status: proposed. The work is ESM-803, ESM-804 and ESM-805, all in the **0.7.3** release of the map.
 
 Internal viewers open a story and can follow its work to the code: each line in its **History** links to the pull request and commit that made the change, and a new **Changes** section lists the pull requests and commits that delivered the story. As with tests, changes point to stories, not the other way round: a commit message, pull request title or branch name names the story ID, and the history build collects them. Nobody edits the map to list them.
+
+The same release adds permalinks: a link that opens the board on one story's or release's panel, to paste into a PR, a chat or a ticket.
 
 Items are numbered in the order they should be built, and each section uses the same number:
 
@@ -10,9 +12,10 @@ Items are numbered in the order they should be built, and each section uses the 
 2. [Link history lines to their commit and pull request](#2-link-history-lines-to-their-commit-and-pull-request) (ESM-803)
 3. [Find the changes that name a story](#3-find-the-changes-that-name-a-story) (ESM-804)
 4. [Show changes in the story panel](#4-show-changes-in-the-story-panel) (ESM-804)
-5. [Document it](#5-document-it) (both)
+5. [Link to a story or release](#5-link-to-a-story-or-release) (ESM-805)
+6. [Document it](#6-document-it) (all three)
 
-Changes are internal only. The customer view and customer-facing copy do not change.
+Commit links and changes are internal only. Permalinks work on both boards, and a customer permalink opens only stories the customer view already shows. Customer-facing copy does not change.
 
 ## Why this way
 
@@ -44,6 +47,11 @@ These are proposals. Each is easy to change during review.
 | H. What a change shows | A pull request shows its number and title, when it was merged and by whom, and how many of its commits name the story, such as “#68 Export the map as JSON for agents · merged 21 Nov by Duncan Malcolm · 2 commits”. A direct commit shows its short hash and subject. Branch commits are not listed one by one; the pull request link has them. |
 | I. Empty state | When the history has a `changes` list and a story has none, the panel says “No pull requests or commits name ESM-803 yet” and shows how to name one. With an older history file, the section is left out. |
 | J. Search | Change titles are not searched. The board's search stays on IDs, titles and summaries. |
+| K. Permalink form | `?story=ESM-801#esm-story-ESM-801` for a story and `?release=v0-7-3#esm-release-v0-7-3` for a release. The query lets the server make sure the story is on the board; the fragment scrolls to its card without JavaScript. Story and release IDs are already stable and unique, so they are the link. |
+| L. What a permalink keeps | The host's `preservedParams`, but not the viewer's filters, so a link opens the same board for whoever follows it. |
+| M. A story the filters would hide | Shown anyway: a permalinked story is added to the view even when it is blocked, cut or in a collapsed lane, with its lane open. Other filters are left at their defaults. |
+| N. Where the link is offered | A **Copy link** button in each story and release panel's header. Without board.js it is a plain link, which viewers can copy or open; with board.js it copies the URL and says “Link copied”. |
+| O. Opening the panel | board.js opens the permalinked panel on load with `showPopover()`. Without JavaScript, the page scrolls to the card and highlights it with `:target`, and one click opens the panel. |
 
 ### Assumptions to confirm
 
@@ -60,9 +68,10 @@ These are proposals. Each is easy to change during review.
 | 2 | Link history lines to their commit and pull request | S | 1 |
 | 3 | Find the changes that name a story | M | 1 |
 | 4 | Show changes in the story panel | M | 2, 3 |
-| 5 | Document it | S | 2, 4 |
+| 5 | Link to a story or release | M | — |
+| 6 | Document it | S | 2, 4, 5 |
 
-Items 1 and 2 can ship in one PR, which sets ESM-803 to `merged`. Items 3 to 5 can follow in a second PR, with ESM-804 going to `in-progress` and then `merged`.
+Items 1 and 2 can ship in one PR, which sets ESM-803 to `merged`. Items 3 to 5 can follow in a second PR, with ESM-804 going to `in-progress` and then `merged`. Item 5 does not depend on the others, so ESM-805 can ship in its own PR at any point.
 
 Every PR follows the repository's rules: update `product/story-map.yaml` in the same PR, run `npm run validate` and `npm test`, name new tests with their story ID, add a `## Unreleased` entry to `CHANGELOG.md`, and include the `story-map diff origin/main` summary in the PR description.
 
@@ -136,17 +145,33 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 
 **Tests.** ESM-804: the panel lists changes newest first, links them with a repository URL, shows the empty state only with a `changes` list, and is absent on customer boards. The JSON export includes changes and the note.
 
-## 5. Document it
+## 5. Link to a story or release
+
+**Change.**
+
+- `filterStoryMapView` and `getStoryMapPage` read `story` and `release` from the search parameters. An ID must match the story or release ID format and be in the viewer's projection; anything else is ignored, so a customer board treats an internal-only story exactly like an ID that does not exist. A matching story is kept on the board whatever the status and changed filters say (decision M), and the view records it as `filter.story`, with `filter.release` for a release.
+- `StoryMapBoard` gives each card the stable ID `esm-story-<story ID>` and each release lane `esm-release-<release ID>`, alongside the `useId()` panel IDs. Two boards on one page would share these, so document that only the first gets the scroll.
+- Each story panel and internal release panel gets a **Copy link** control in its header (decisions K, L and N), built from the page's path, `preservedParams` and the ID. A new optional `permalinkBase` prop sets the page URL for hosts that render behind a proxy or on another path.
+- `board.js` opens the panel named by `filter.story` or `filter.release` on load (decision O), turns **Copy link** into a copy button using `navigator.clipboard`, and announces “Link copied” in a live region. Without clipboard access it leaves the plain link.
+- `:target` styles on `.esm-card` and the release header, using `--esm-accent`, in both copies of the dark palette.
+- The JSON export adds `permalink` to each story and release when the host passes `permalinkBase` to `storyMapToJson`, so an agent can link to the board in its suggestions.
+
+**Tests.** ESM-805: `?story=` keeps a blocked or cut story and opens its lane; an unknown ID, a badly formed ID and an internal-only story on a customer board are all ignored the same way; card and lane IDs are stable across renders; **Copy link** keeps `preservedParams` and drops filters; the board.js test opens the panel and copies the link. The smoke test still passes with React 18 and 19.
+
+## 6. Document it
 
 - `docs/story-map.md`: extend **Show status history** with the commit and pull request links and the `repositoryUrl` prop, and add a section, **Link pull requests and commits to stories**, on naming the story ID in branch names, pull request titles and commit messages, and on the panel.
 - `docs/ENGINEERING-OVERVIEW.md`: describe the second Git pass and the `changes` format under **Status history**, and add a line under **Security boundaries to preserve**: commit messages and branch names are untrusted and internal only.
 - `AGENTS.md` and `templates/AGENTS.md`: name the story ID in the branch, pull request title and commit messages. The branch rule already asks for this.
+- `docs/story-map.md`: a section, **Link to a story**, on the permalink form, **Copy link** and `permalinkBase`.
+- `docs/ENGINEERING-OVERVIEW.md`: the stable card and lane IDs under **Detail panels without JavaScript**.
 - `CHANGELOG.md`: the new props, history fields and view fields. Nothing breaks.
 
 ## Security
 
 - **Changes stay internal.** They are attached to internal views only, and the customer projection drops them by its allow-list. Titles can name unreleased work, so they are never served as a static asset, like the history file today.
 - **Messages render as text.** React escapes them, lengths are capped when the file is written and checked when it is parsed, and only `http:` and `https:` links are made.
+- **Permalinks reveal nothing new.** A story or release ID is only acted on when it is in the viewer's projection, and an unknown or hidden ID gets the same board as no ID, so a customer cannot probe for internal stories.
 - **No new network access.** Everything comes from the local Git history, as status history does now.
 
 ## Later: open pull requests
