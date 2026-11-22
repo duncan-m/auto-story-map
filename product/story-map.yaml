@@ -12,6 +12,13 @@ personas:
   - id: pm
     title: Product manager
     summary: Owns the roadmap and decides what goes in each release.
+    context:
+      success: Each release lands with the scope agreed when it was planned
+      usesToday: [GitHub pull requests, The board in the product, Asking engineers]
+      constraints:
+        - Does not edit the YAML, so relies on engineers or agents to change the map
+        - Shares plans with customers only through approved customer copy
+      draft: true
     jobs:
       - id: plan-release
         situation: a release is being planned
@@ -41,6 +48,12 @@ personas:
   - id: engineer
     title: Engineer
     summary: Builds the product and keeps the map in step with the code.
+    context:
+      success: The map changes in the same pull request as the code, and CI passes
+      usesToday: [GitHub pull requests, CI checks, The story-map CLI]
+      constraints:
+        - Serves the board behind the product's own sign-in, with no separate service
+      draft: true
     jobs:
       - id: set-up-host
         situation: my product adopts the story map
@@ -60,6 +73,13 @@ personas:
   - id: agent
     title: Coding agent
     summary: Plans and delivers changes in the repository, and keeps the map up to date as it goes.
+    context:
+      success: Its pull requests use the right story IDs and pass validation first time
+      usesToday: [The story-map CLI, AGENTS.md, The JSON export]
+      constraints:
+        - Reads the map from the repository and the CLI, not the board
+        - Cannot confirm drafts, because only a person removes draft
+      draft: true
     jobs:
       - id: draft-first-map
         situation: a product has no map yet
@@ -79,6 +99,12 @@ personas:
   - id: customer
     title: Product customer
     summary: A signed-in user of the host product who sees the customer view.
+    context:
+      success: Knows whether something they need is coming, without asking support
+      usesToday: [The customer view of the board, Asking support]
+      constraints:
+        - Sees only approved customer copy, never internal stories
+      draft: true
     jobs:
       - id: see-whats-coming
         situation: I wonder whether something I need is coming
@@ -837,7 +863,7 @@ stories:
     title: Describe a persona's context
     activity: plan
     release: v0-7-3
-    status: planned
+    status: merged
     jobs:
       - plan-release
       - read-the-map
@@ -847,6 +873,9 @@ stories:
       - docs/story-map.md#personas-and-jobs-to-be-done
       - docs/plans/personas.md#persona-context-mockup
       - docs/plans/personas.md#personas-tab-mockup
+      - docs/story-map.md#describe-a-personas-context
+      - src/schema.ts
+      - test/personas.test.mjs
   - id: ESM-908
     title: Mark a persona's core job
     activity: explore

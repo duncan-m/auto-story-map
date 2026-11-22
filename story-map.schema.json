@@ -89,6 +89,43 @@
             "type": "string",
             "maxLength": 500
           },
+          "context": {
+            "description": "Optional internal context: what success means to them, what they use today and their constraints. Never shown to customers.",
+            "type": "object",
+            "properties": {
+              "success": {
+                "description": "Optional. What a good result looks like to them, such as “Weekly forecast accuracy, judged by the VP of Sales” or “Every bill paid on time”.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "usesToday": {
+                "description": "Optional. Up to 8 products, tools and workarounds they rely on now, which a story competes with.",
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                }
+              },
+              "constraints": {
+                "description": "Optional. Up to 6 constraints they work under, which change what a story can assume.",
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "draft": {
+                "description": "true when an agent drafted this context and nobody has confirmed it yet. Only a person removes it.",
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
           "jobs": {
             "description": "Optional. Up to 8 jobs to be done that stories serve.",
             "maxItems": 8,
