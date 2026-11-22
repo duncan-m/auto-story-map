@@ -11,7 +11,7 @@ Export the map as JSON and an agent can review your stories and tests and sugges
 
 ## Screenshot
 
-![This library's own story map in the demo, as a super admin sees it. Under the title, a line says when the map was last updated, by whom, and which releases recent changes focused on. Activities from setting up to tracking delivery run across the top, with a lane for each release and its expected impact, and story cards showing each story's ID, title, status and when it last changed. The Active filter hides three cut stories and offers a link to show them, and an Export menu sits beside the filters.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
+![This library's own story map in the demo, as a super admin sees it. Under the title, a line says when the map was last updated, by whom, and which releases recent changes focused on. Story map and Personas tabs sit above the search, status, persona and time filters and an Export menu. Activities from setting up to tracking delivery run across the top, each with avatars for the personas it serves, with a lane for each release and its expected impact, and story cards showing each story's ID, title, status and persona avatars.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
 
 ## Try the demo
 
@@ -24,9 +24,39 @@ npm test
 npm run demo
 ```
 
-The demo shows this library’s own story map, `product/story-map.yaml`: what each release delivered, what is merged for the next one, and what is planned. Open [the local story map](http://127.0.0.1:4173/story-map). It starts as **Super admin**, who sees the full internal map. Select **Link stories to their engineering overview** to open its details, and follow the **Engineering overview** link into these docs. Select the **0.4.0: Delivery tracking** release title to see its notes, expected impact and progress. Search for “history”, filter by status, or use **Changed** to see recent changes. One story is cut, so it is hidden by default: choose **All, including blocked and cut** to see it and its reason. The demo reads this repository’s Git history to show when each story changed and who changed it. Switch to **Regular user** to see the customer roadmap, where merged stories read as in progress. The demo also offers **Engineer**, **Product manager** and **Guest** views. Product managers see the internal map because the demo host passes its own `canViewInternal` rule. It listens on loopback and serves the same view as JSON at `/api/story-map`.
+The demo shows this library’s own story map, `product/story-map.yaml`. It covers what each release delivered, what is merged for the next one, and what is planned.
 
-Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. Each release lane can be collapsed to its title and story count. The panel, the collapse toggles and the search form work without client-side JavaScript. The demo also loads the optional `board.js` script, so filters apply as soon as you choose them.
+Open [the local story map](http://127.0.0.1:4173/story-map). It starts as **Super admin**, who sees the full internal map.
+
+Things to try:
+
+- Select **Link stories to their engineering overview** to open its details, then follow the **Engineering overview** link into these docs.
+- Select the **0.4.0: Delivery tracking** release title to see its notes, expected impact and progress.
+- Search for “history”, filter by status, or use **Changed** to see recent changes.
+- Choose **All, including blocked and cut** to see the cut story and its reason. Cut stories are hidden by default.
+- Open the **Personas** tab to see each persona, their jobs to be done and the stories that serve them.
+
+The demo reads this repository’s Git history to show when each story changed and who changed it.
+
+### Viewer roles
+
+- **Super admin** sees the full internal map.
+- **Regular user** sees the customer roadmap, where merged stories read as in progress.
+- **Engineer**, **Product manager** and **Guest** views are also available. Product managers see the internal map because the demo host passes its own `canViewInternal` rule.
+
+The demo listens on loopback and serves the same view as JSON at `/api/story-map`.
+
+### Cards and panels
+
+Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release.
+
+Internal viewers also see engineering notes, sources and the last editor in the panel. Each release lane can be collapsed to its title and story count.
+
+The panel, the collapse toggles and the search form work without client-side JavaScript. The demo also loads the optional `board.js` script, so filters apply as soon as you choose them.
+
+### Personas
+
+![The Personas tab in the demo, as a super admin sees it. A list on the left shows four personas, Product manager, Engineer, Coding agent and Product customer, each with a story count. The selected Product manager page shows what success means, the tools they use today and their constraints. Below, their core job reads as When, I want and so that, with a progress bar for its stories and three numbered steps, each linking to its stories.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/personas-screenshot.png)
 
 ### Preview your own map
 
