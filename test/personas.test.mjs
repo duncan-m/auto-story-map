@@ -324,8 +324,9 @@ test("ESM-902: internal views carry personas and each story's personas and jobs"
   assert.equal(Object.hasOwn(story("FINANCE-202"), "personas"), false);
   assert.equal(Object.hasOwn(story("FINANCE-202"), "jobs"), false);
 
+  // Customers see approved persona copy only (ESM-905), and never jobs.
   const customer = JSON.stringify(getStoryMapForViewer(map, { roles: ["member"] }));
-  assert.doesNotMatch(customer, /"personas"|"jobs"|price-materials|Finance reviewer|"Builder"/);
+  assert.doesNotMatch(customer, /"jobs"|price-materials|Finance reviewer|"Builder"|"finance"/);
 });
 
 test("ESM-902: cards, activities and the story panel show who a story is for", () => {
@@ -365,8 +366,8 @@ test("ESM-902: a map without personas renders as before", () => {
   assert.ok(view.stories.every(story => !Object.hasOwn(story, "personas") && !Object.hasOwn(story, "jobs")));
   const html = render(view);
   assert.doesNotMatch(html, /esm-avatar|esm-card-tags|esm-persona|esm-story-jobs|<dt>For<\/dt>|<dt>Jobs<\/dt>/);
-  // A tagged map's customer board shows nothing about personas.
-  assert.doesNotMatch(render(getStoryMapForViewer(parse(tagged()), { roles: ["member"] })), /esm-avatar|esm-persona|<dt>For<\/dt>/);
+  // A tagged map's customer board shows no avatars or persona filter, even with an approved persona (ESM-905).
+  assert.doesNotMatch(render(getStoryMapForViewer(parse(tagged()), { roles: ["member"] })), /esm-avatar|esm-persona/);
 });
 
 const ids = view => view.stories.map(story => story.id);
@@ -584,4 +585,70 @@ test("ESM-903: board.js applies the persona menu when it closes, and returns foc
   listeners.toggle();
   assert.equal(submitted, 1);
   assert.equal(storage.get("esm-filter-focus"), "persona");
+});
+
+const member = { roles: ["member"] };
+
+test("ESM-905: customers see only approved personas that a shown story is for, with public IDs", () => {
+  const map = parse(tagged(document => {
+    // Approved, but only on a cut story, so customers never see it.
+    document.personas.push({ id: "auditor", title: "Auditor", customer: { title: "Audit teams" } });
+    document.stories.find(story => story.id === "FINANCE-202").personas = ["auditor"];
+    // Approved, but only on a story with no customer copy.
+    document.personas.push({ id: "buyer", title: "Buyer", customer: { title: "Buyers", summary: "People who order materials." } });
+    document.stories.push({ id: "BUYER-301", title: "Order materials", activity: "purchase", release: "finance-follow-up", status: "planned", personas: ["buyer"] });
+  }));
+  const view = getStoryMapForViewer(map, member);
+  assert.deepEqual(view.personas, [{ id: "persona-1", title: "Finance teams", summary: undefined }]);
+  const story = title => view.stories.find(item => item.title === title);
+  // BUILDER-102 serves a Finance reviewer job, so it is for Finance teams without listing the persona.
+  assert.deepEqual(story("Find material prices").personas, ["persona-1"]);
+  assert.deepEqual(story("Track approved purchases").personas, ["persona-1"]);
+  // Builder has no customer copy, so BUILDER-101 is for no one customers can see.
+  assert.equal(Object.hasOwn(story("Draft a project estimate"), "personas"), false);
+
+  const json = JSON.stringify(view);
+  assert.doesNotMatch(json, /"jobs"|"finance"|"builder"|"auditor"|"buyer"|Finance reviewer|Audit teams|Buyers|approve-estimate|catalogue prices|statement/);
+});
+
+test("ESM-905: a map whose personas have no approved copy gives customers none", () => {
+  const map = parse(tagged(document => { delete document.personas[1].customer; }));
+  const view = getStoryMapForViewer(map, member);
+  assert.equal(Object.hasOwn(view, "personas"), false);
+  assert.ok(view.stories.every(story => !Object.hasOwn(story, "personas")));
+  assert.doesNotMatch(render(view), /<dt>For<\/dt>/);
+});
+
+test("ESM-905: the customer story panel shows a For line, with no avatars", () => {
+  const html = render(getStoryMapForViewer(parse(tagged()), member));
+  assert.match(panelFor(html, "Find material prices"), /<dt>For<\/dt><dd>Finance teams<\/dd><dt>Activity<\/dt>/);
+  // A story tagged only with internal personas shows no For line.
+  assert.doesNotMatch(panelFor(html, "Draft a project estimate"), /<dt>For<\/dt>/);
+  assert.doesNotMatch(html, /esm-avatar|esm-personas|esm-persona-menu|Finance reviewer/);
+});
+
+test("ESM-905: customers get the persona filter with two or more personas, by public ID", () => {
+  const map = parse(tagged(document => {
+    document.personas[0].customer = { title: "Builders" };
+  }));
+  const everything = page(map, "", member);
+  assert.deepEqual(everything.personas.map(persona => persona.title), ["Builders", "Finance teams"]);
+  const finance = page(map, "persona=persona-2", member);
+  assert.deepEqual(finance.stories.map(story => story.title), ["Find material prices", "Track approved purchases"]);
+  assert.deepEqual(finance.filter.persona, ["persona-2"]);
+  // Internal IDs and jobs do nothing for customers.
+  for (const query of ["persona=finance", "job=approve-estimate", "q=finance reviewer"]) {
+    const view = page(map, query, member);
+    assert.equal(Object.hasOwn(view.filter, "persona"), false, query);
+    assert.equal(Object.hasOwn(view.filter, "job"), false, query);
+  }
+
+  const html = render(finance);
+  const menu = html.slice(html.indexOf('<details class="esm-menu esm-persona-menu"'), html.indexOf("</details>", html.indexOf("esm-persona-menu")));
+  assert.match(menu, /For: <\/span>Finance teams<\/summary>/);
+  assert.match(menu, /<input type="checkbox" name="persona" value="persona-1"\/>Builders<\/label>/);
+  assert.match(menu, /<input type="checkbox" name="persona" checked="" value="persona-2"\/>Finance teams<\/label>/);
+  assert.doesNotMatch(html, /esm-avatar|<nav class="esm-personas"/, "no avatars or strip for customers");
+  assert.match(html, /Showing 2 of 4 stories\./);
+  assert.match(panelFor(html, "Find material prices"), /<dt>For<\/dt><dd>Builders and Finance teams<\/dd>/);
 });
