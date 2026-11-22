@@ -1,6 +1,7 @@
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
+import { personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
 import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
-import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument } from "./schema.js";
+import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 
@@ -77,6 +78,16 @@ export interface StoryCard extends StoryMapLabel {
   status: StoryStatus;
 }
 
+/** A persona as internal viewers see it, with what the board needs to draw its avatar. */
+export interface PersonaLabel extends StoryMapLabel {
+  /** Up to two letters for the avatar, from the title. */
+  initials: string;
+  /** 0 to 5, from the persona's place in the map. Pairs with `initials`, so colour is never the only cue. */
+  colour: number;
+  /** The persona's jobs to be done, in map order. */
+  jobs: StoryMapJob[];
+}
+
 /** A story’s change as shown to internal viewers. */
 export type StoryHistoryEntry = Omit<StoryHistoryEvent, "storyId">;
 
@@ -85,6 +96,10 @@ export interface InternalStoryCard extends StoryCard {
   statusReason?: string;
   /** Effort estimate in story points. */
   estimate?: EstimatePoints;
+  /** IDs of the personas the story is for, primary first: the owners of its jobs, then the personas it lists. Absent when it names none. */
+  personas?: string[];
+  /** IDs of the jobs to be done the story serves, most important first. Absent when it names none. */
+  jobs?: string[];
   updatedBy?: string;
   notes?: string;
   sources?: string[];
@@ -152,6 +167,8 @@ export type StoryMapView =
     audience: "internal";
     releases: InternalReleaseLabel[];
     stories: InternalStoryCard[];
+    /** The map's personas, in map order. Absent when the map has none. */
+    personas?: PersonaLabel[];
     /** Present when the view has history and the stalled flag is on: the threshold it used. */
     stalledAfterWeeks?: number;
     /** Present when the history records at least one story change. */
@@ -178,6 +195,14 @@ function projectLabel(item: StoryMapLabel): StoryMapLabel {
 function releaseEstimates(totals: (ReleaseEstimates & { estimated: number }) | undefined): { estimates?: ReleaseEstimates } {
   if (!totals?.estimated) return {};
   return { estimates: { total: totals.total, left: totals.left, unestimated: totals.unestimated } };
+}
+
+/** Leaves both out for a story that names no one, so a map without personas projects as before. */
+function personaFields(personas: string[], jobs: string[] | undefined): Pick<InternalStoryCard, "personas" | "jobs"> {
+  return {
+    ...(personas.length ? { personas } : {}),
+    ...(jobs?.length ? { jobs: [...jobs] } : {}),
+  };
 }
 
 function summariseRecentUpdates(
@@ -264,11 +289,19 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     const stalledAfterWeeks = history ? stalledThreshold(map, options.stalledAfterWeeks) : 0;
     const stalledBefore = (options.now ?? new Date()).getTime() - stalledAfterWeeks * weekMs;
     const recentUpdates = summariseRecentUpdates(map, byStory, lastEdits);
+    const resolvePersonas = storyPersonaResolver(map);
+    const personas: PersonaLabel[] = (map.personas ?? []).map((persona, index) => ({
+      ...projectLabel(persona),
+      initials: personaInitials(persona.title),
+      colour: index % personaColourCount,
+      jobs: (persona.jobs ?? []).map(job => ({ ...job })),
+    }));
     return {
       audience: "internal",
       title: map.title,
       summary: map.summary,
       activities: map.activities.map(projectLabel),
+      ...(personas.length ? { personas } : {}),
       releases: map.releases.map(release => ({
         ...projectLabel(release),
         notes: release.notes,
@@ -289,6 +322,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           status: story.status,
           statusReason: story.statusReason,
           ...(story.estimate !== undefined ? { estimate: story.estimate } : {}),
+          ...personaFields(resolvePersonas(story), story.jobs),
           updatedBy: story.updatedBy,
           notes: story.notes,
           sources: story.sources,

@@ -62,3 +62,17 @@ export function withoutFinalPunctuation(text: string): string {
 export function jobStatement(job: Pick<StoryMapJob, "situation" | "motivation" | "outcome">): string {
   return `When ${job.situation}, I want ${job.motivation}, so ${withoutFinalPunctuation(job.outcome)}.`;
 }
+
+/** How many persona colours the board has. Personas take them in map order, and the seventh starts again. */
+export const personaColourCount = 6;
+
+/**
+ * Up to two letters for a persona's avatar: the first letters of its first two
+ * words, or the first two letters of a one-word title, such as “PM” for
+ * “Product manager” and “EN” for “Engineer”.
+ */
+export function personaInitials(title: string): string {
+  const words = title.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const letters = words.length > 1 ? words.slice(0, 2).map(word => Array.from(word)[0]) : Array.from(words[0] ?? "").slice(0, 2);
+  return letters.join("").toLocaleUpperCase() || "?";
+}

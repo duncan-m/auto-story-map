@@ -1,9 +1,10 @@
 import { Fragment, useId, version } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
-import type { ReleaseImpact } from "./schema.js";
+import { withoutFinalPunctuation } from "./personas.js";
+import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, ReleaseEstimates, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -387,8 +388,61 @@ function Status({ status }: { status: StoryStatus }) {
   );
 }
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks, testsIndexed }: {
+/** Most avatars a card or activity shows before “+N”. */
+const maxAvatars = 3;
+
+/** Joins names as “A”, “A and B” or “A, B and C”. */
+function listNames(names: readonly string[]) {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
+function PersonaAvatar({ persona }: { persona: PersonaLabel }) {
+  return <span className="esm-avatar" data-persona={persona.colour} aria-hidden="true">{persona.initials}</span>;
+}
+
+/**
+ * Up to three avatars, then “+N”. Screen readers hear the persona titles, such
+ * as “For Product manager and Coding agent”, instead of the initials.
+ */
+function PersonaAvatars({ personas }: { personas: readonly PersonaLabel[] }) {
+  if (!personas.length) return null;
+  const label = `For ${listNames(personas.map(persona => persona.title))}`;
+  const shown = personas.slice(0, maxAvatars);
+  const more = personas.length - shown.length;
+  return (
+    <span className="esm-avatars" title={label}>
+      {shown.map(persona => <PersonaAvatar persona={persona} key={persona.id} />)}
+      {more > 0 && <span className="esm-avatar esm-avatar-more" aria-hidden="true">{`+${more}`}</span>}
+      <span className="esm-visually-hidden">{label}</span>
+    </span>
+  );
+}
+
+/** A job statement with its lead words in bold: “When …, I want …, so ….” */
+function JobStatement({ job }: { job: StoryMapJob }) {
+  return <><b>When</b> {job.situation}, <b>I want</b> {job.motivation}, <b>so</b> {withoutFinalPunctuation(job.outcome)}.</>;
+}
+
+/** Looks up the view's personas and jobs by ID. Empty for a view without personas. */
+function personaLookup(view: StoryMapView) {
+  const personas = new Map<string, PersonaLabel>();
+  const jobs = new Map<string, { job: StoryMapJob; persona: PersonaLabel }>();
+  if (view.audience === "internal") {
+    for (const persona of view.personas ?? []) {
+      personas.set(persona.id, persona);
+      for (const job of persona.jobs) if (!jobs.has(job.id)) jobs.set(job.id, { job, persona });
+    }
+  }
+  return { personas, jobs };
+}
+type PersonaLookup = ReturnType<typeof personaLookup>;
+
+const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
+  (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
+
+function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks, testsIndexed, lookup }: {
   story: InternalStoryCard;
+  lookup: PersonaLookup;
   panelId: string;
   activityTitle: string;
   releaseTitle: string;
@@ -404,6 +458,8 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
   const overview = sources.find(source => source.overview);
   const references = sources.filter(source => source !== overview);
   const hasEngineering = internal && !!(overview || story.notes || references.length);
+  const personas = internal ? labelsFor(story.personas, lookup) : [];
+  const jobs = internal ? (story.jobs ?? []).flatMap(id => lookup.jobs.get(id) ?? []) : [];
 
   return (
     <div className="esm-detail" id={panelId} popover="auto" role="dialog" aria-labelledby={titleId}>
@@ -432,6 +488,27 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
       )}
       {story.summary && <p className="esm-detail-summary">{story.summary}</p>}
       <dl className="esm-detail-context">
+        {personas.length > 0 && <>
+          <dt>For</dt>
+          <dd className="esm-persona-row">
+            {personas.map(persona => (
+              <span className="esm-persona-chip" key={persona.id}><PersonaAvatar persona={persona} />{persona.title}</span>
+            ))}
+          </dd>
+        </>}
+        {jobs.length > 0 && <>
+          <dt>Jobs</dt>
+          <dd>
+            <ul className="esm-story-jobs">
+              {jobs.map(({ job, persona }) => (
+                <li key={job.id}>
+                  <JobStatement job={job} /> <span className="esm-story-job-persona">· {persona.title}</span>
+                  {job.draft && <> <DraftLabel /></>}
+                </li>
+              ))}
+            </ul>
+          </dd>
+        </>}
         <dt>Activity</dt>
         <dd>{activityTitle}</dd>
         <dt>Release</dt>
@@ -493,6 +570,19 @@ function Estimate({ estimate }: { estimate: number }) {
     <span className="esm-estimate" title={`Estimate: ${points(estimate)}`}>
       <span aria-hidden="true">{points(estimate, true)}</span>
       <span className="esm-visually-hidden">{`Estimate: ${points(estimate)}`}</span>
+    </span>
+  );
+}
+
+/** The card's ID, with its persona avatars and estimate to the right when it has them. */
+function CardHead({ story, personas }: { story: InternalStoryCard; personas: readonly PersonaLabel[] }) {
+  const id = <span className="esm-card-id">{story.id}</span>;
+  if (!personas.length && story.estimate === undefined) return id;
+  const estimate = story.estimate !== undefined && <Estimate estimate={story.estimate} />;
+  return (
+    <span className="esm-card-head">
+      {id}
+      {personas.length ? <span className="esm-card-tags"><PersonaAvatars personas={personas} />{estimate}</span> : estimate}
     </span>
   );
 }
@@ -864,6 +954,15 @@ export function StoryMapBoard({
   );
   const panelIds = new Map(placed.map((story, index) => [story, `${baseId}-story-${index}`]));
   const internalReleases = map.audience === "internal" ? new Map(map.releases.map(release => [release.id, release])) : undefined;
+  const lookup = personaLookup(map);
+  // Who each step of the journey serves, from the personas of its active stories, in map order.
+  const activityPersonas = new Map<string, PersonaLabel[]>();
+  if (lookup.personas.size) {
+    for (const activity of map.activities) {
+      const ids = new Set(placed.filter(story => story.activity === activity.id && isActiveStatus(story.status)).flatMap(story => story.personas ?? []));
+      activityPersonas.set(activity.id, [...lookup.personas.values()].filter(persona => ids.has(persona.id)));
+    }
+  }
 
   const cells = new Map<string, InternalStoryCard[]>();
   const releaseCounts = new Map<string, number>();
@@ -932,6 +1031,7 @@ export function StoryMapBoard({
                   <div className="esm-activity" role="columnheader" key={activity.id}>
                     <span className="esm-activity-title">{activity.title}</span>
                     {activity.summary && <span className="esm-activity-summary">{activity.summary}</span>}
+                    <PersonaAvatars personas={activityPersonas.get(activity.id) ?? []} />
                     {index < map.activities.length - 1 && (
                       <svg className="esm-icon esm-step" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="m6 3.5 4.5 4.5L6 12.5" />
@@ -978,9 +1078,7 @@ export function StoryMapBoard({
                             key={story.id}
                             {...popoverTarget(panelIds.get(story)!)}
                           >
-                            {internal && (story.estimate !== undefined
-                              ? <span className="esm-card-head"><span className="esm-card-id">{story.id}</span><Estimate estimate={story.estimate} /></span>
-                              : <span className="esm-card-id">{story.id}</span>)}
+                            {internal && <CardHead story={story} personas={labelsFor(story.personas, lookup)} />}
                             <span className="esm-card-title">{story.title}</span>
                             <span className="esm-card-meta">
                               <Status status={story.status} />
@@ -1013,6 +1111,7 @@ export function StoryMapBoard({
           settings={settings}
           stalledAfterWeeks={stalledAfterWeeks}
           testsIndexed={testsIndexed}
+          lookup={lookup}
         />
       ))}
       {internalReleases && showGrid && releases.map((release, index) => (
