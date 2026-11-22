@@ -15,6 +15,7 @@ export { defaultInternalRoles, getStoryMapForViewer, getStoryMapPage, recentUpda
 export type {
   InternalReleaseLabel,
   InternalStoryCard,
+  PersonaJobLabel,
   PersonaLabel,
   ReleaseEstimates,
   StoryCard,
