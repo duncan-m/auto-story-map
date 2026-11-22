@@ -40,16 +40,16 @@ personas:
     title: Product manager
     summary: Owns the roadmap and decides what goes in each release.
     goals:
-      - See what is stuck before stand-up, not during it
+      - Know which release each story is planned for
       - Agree release scope in a PR, not a separate tool
     customer:            # optional, approved wording only
       title: Product teams
 stories:
-  - id: ESM-405
-    title: Flag stories that stay in progress too long
-    activity: track
-    release: v0-4
-    personas: [pm]
+  - id: ESM-104
+    title: Render the map as a board in the product
+    activity: explore
+    release: v0-1
+    personas: [pm, engineer, customer]
 ```
 
 - `personas` on the map is optional, up to 12 entries. Each has the usual `id`, `title`, `summary` and `customer`, plus optional `goals` (up to 5, each up to 200 characters).
@@ -99,7 +99,7 @@ Items 1 and 2 can share a PR if the first is small. Every PR follows the reposit
 - Cross-reference checks: duplicate persona IDs, unknown persona IDs on a story, the same persona twice on a story, and a customer-facing persona used on a story that has no customer copy (allowed, but the persona is not shown).
 - Warnings: a persona no story uses, and the untagged-stories rule from decision C.
 - `story-map.schema.json` is rebuilt, so editors complete persona IDs.
-- `src/diff.ts`: report added, removed and renamed personas, and persona changes on stories, such as “ESM-405: for Product manager (was Engineer)”. Customer-facing persona copy is called out like other customer copy.
+- `src/diff.ts`: report added, removed and renamed personas, and persona changes on stories, such as “ESM-104: for Product manager (was Engineer)”. Customer-facing persona copy is called out like other customer copy.
 - `src/init.ts` and `templates/`: the starter map gets one example persona.
 - Dogfood: add personas to this repository's map (Product manager, Engineer, Coding agent, Product customer) and tag existing stories.
 
