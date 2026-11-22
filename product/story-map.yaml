@@ -25,6 +25,16 @@ personas:
         motivation: to agree its scope in the PR that changes the map
         outcome: engineers and product start from the same list, rather than finding out at the demo that they meant different things
         draft: true
+        steps:
+          - title: Gather
+            summary: Collect the candidate stories and the evidence for each
+            activity: plan
+          - title: Agree scope
+            summary: Settle what is in and out in the PR that changes the map
+            activity: review
+          - title: Check the plan on the board
+            summary: Read the release lane and its notes before the work starts
+            activity: explore
       - id: answer-whats-next
         situation: someone asks what is in the next release and the answer is spread across tickets and branches
         motivation: to open the map inside the product and read it there
@@ -650,16 +660,19 @@ stories:
     title: Break a job into steps
     activity: explore
     release: v0-7-3
-    status: planned
+    status: merged
     jobs:
       - plan-release
-    summary: Any job can list its workflow steps in order, each pointing to the activity where its stories live, which decides the stories it counts. On the Personas tab (ESM-911), each job is a lane with its steps in order, gaps are marked, and lanes collapse like release lanes.
-    notes: Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format.
+    summary: Any job can list up to 6 workflow steps in order, each pointing to the activity where its stories live. A step's stories serve its job and sit in its activity, validate warns about steps with none, the persona panel counts the core job's gaps, and the view, JSON export and diff carry steps and their coverage.
+    notes: Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format. The job lanes that show each step in order are drawn on the Personas tab, so they ship with ESM-911, as the full display of ESM-907 and ESM-908 does.
     sources:
       - docs/plans/personas.md#10-break-a-job-into-steps
       - docs/story-map.md#personas-and-jobs-to-be-done
       - docs/plans/personas.md#persona-context-mockup
       - docs/plans/personas.md#personas-tab-mockup
+      - test/personas.test.mjs
+      - src/personas.ts
+      - docs/story-map.md#break-a-job-into-steps
   - id: ESM-911
     title: Open a persona page next to the map
     activity: explore
@@ -669,7 +682,7 @@ stories:
       - plan-release
       - track-progress
     summary: "A Personas tab beside the story map gives each persona a page: their context, then their jobs as lanes, each with its steps in order and gaps marked. The tab does not show the map's activities. The persona popover becomes a quick look that links to it."
-    notes: Internal viewers only. Moves the full display of ESM-907, ESM-908 and ESM-910 out of the popover.
+    notes: "Internal viewers only. Moves the full display of ESM-907, ESM-908 and ESM-910 out of the popover, and draws ESM-910's job lanes: each step in order with its story count as a link, gaps dashed, and lanes that collapse like release lanes."
     sources:
       - docs/plans/personas.md#11-open-a-persona-page-next-to-the-map
       - docs/plans/personas.md#personas-tab-mockup

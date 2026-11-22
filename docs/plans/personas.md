@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: ESM-901 to ESM-909 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-910 and ESM-911 are planned for the same release. The release's notes and expected impact are in the map.
+Status: ESM-901 to ESM-909 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-910 is merged and ESM-911 is planned for the same release. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**, or **which need it meets**. Personas and their jobs to be done add that: the map file names the people the product serves and the jobs each of them is trying to get done, each story says which jobs it serves, and the board lets viewers read the map one persona at a time and see which jobs have no stories.
 
@@ -324,16 +324,16 @@ jobs:
 
 - `src/schema.ts`: optional `steps` on a job, up to 6, in order. Each has a `title` (up to 60 characters), an optional `summary` and an optional `activity` ID. An unknown activity is an error, as for stories.
 - Coverage: the stories for a step are those that serve the job and sit in the step's activity. A step without an activity has no coverage of its own.
-- `src/react.tsx`: on the Personas tab (item 11), each job is a lane. Its statement runs across the lane, with **When**, **I want** and **so that** each on a new line, and its steps sit below, left to right in order, each with its count of active stories. A step's activity decides which stories it counts, but the tab does not show the map's activities. A step with an activity but no stories is dashed and says **No stories yet**. A step with no activity has no count. Each step's count is a link that sets `job` and `activity`. Every job can have steps, not only the core job.
-- Each job lane collapses to one line like a release lane, with its story count and number of steps, and board.js remembers it in the same way. Without JavaScript, every lane stays open.
+- The view: each step with an activity gains `activeStories`, counted over the whole map. Every job can have steps, not only the core job.
 - The popover shows how many of the core job's steps have no stories, and nothing else about steps.
+- The job lanes are drawn on the Personas tab, so they are built with item 11, as items 7 and 8 leave their full display to it.
 - Validate warns about a step whose activity has no active stories for its job.
 - `src/diff.ts` and the JSON export: steps and their coverage.
 - Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6. When they land, a job step can also point to an activity step, as an optional addition that leaves this format unchanged.
 
 **Docs.** Steps in the persona section, and how they relate to activities.
 
-**Tests.** Valid and invalid steps, coverage per step, the warning, and job lanes with and without steps.
+**Tests.** Valid and invalid steps, coverage per step, the warning, the popover count, the export and the diff.
 
 ## 11. Open a persona page next to the map
 
@@ -347,13 +347,15 @@ A persona with context, a core job and steps on each job needs a page, not a pop
   - A persona list down the side: each persona's avatar, title, active stories and gaps, the steps with an activity but no stories. Each is a link to that persona.
   - The chosen persona's title, summary and a **Show their stories on the map** link, which opens the map filtered to them.
   - Their context (item 7) side by side, then their jobs as lanes, each with its steps in order (items 8 and 10).
+  - Each job lane (item 10): its statement runs across the lane, with **When**, **I want** and **so that** each on a new line, and its steps sit below, left to right in order, each with its count of active stories. A step's activity decides which stories it counts, but the tab does not show the map's activities. A step with an activity but no stories is dashed and says **No stories yet**. A step with no activity has no count. Each step's count is a link that sets `job` and `activity`.
+  - Each job lane collapses to one line like a release lane, with its story count and number of steps, and board.js remembers it in the same way. Without JavaScript, every lane stays open.
   - The persona popover (ESM-904) keeps the summary and the core job with its story count and gaps, says how many other jobs there are, and gains an **Open persona** link to the tab.
 - Narrow screens: the persona list becomes a menu above the page, the context cards stack, and each lane stacks its statement, then its steps in order.
 - No change to the exports: the JSON export already carries everything on the page.
 
 **Docs.** A **Personas tab** section under [Personas and jobs to be done](../story-map.md#personas-and-jobs-to-be-done), and the `view` parameter in [Integrate with a product](../story-map.md#integrate-with-a-product).
 
-**Tests.** The tab only for internal viewers of maps with personas, `view` ignored for customers, the persona list counts and gaps, filters kept across tabs, the slimmer popover, and that the page works without JavaScript.
+**Tests.** The tab only for internal viewers of maps with personas, `view` ignored for customers, the persona list counts and gaps, job lanes with and without steps, collapsing lanes, filters kept across tabs, the slimmer popover, and that the page works without JavaScript.
 
 ## Later
 

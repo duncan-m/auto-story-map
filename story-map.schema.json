@@ -159,6 +159,37 @@
                 "draft": {
                   "description": "true when an agent drafted this job and nobody has confirmed it yet. Only a person removes it.",
                   "type": "boolean"
+                },
+                "steps": {
+                  "description": "Optional. Up to 6 workflow steps, in order, each pointing to the activity where its stories live. Any job can have steps, not only the core job.",
+                  "maxItems": 6,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60,
+                        "description": "A short name for the step, up to 60 characters, such as “Gather” or “Agree scope”."
+                      },
+                      "summary": {
+                        "description": "Optional. What the persona does in this step.",
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      "activity": {
+                        "description": "Optional ID of the activity where the stories for this step live. The step's stories are those that serve its job and sit in this activity. A step without one has no stories of its own.",
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                      }
+                    },
+                    "required": [
+                      "title"
+                    ],
+                    "additionalProperties": false,
+                    "description": "One step of a job, in the order the persona does them. Internal only."
+                  }
                 }
               },
               "required": [
