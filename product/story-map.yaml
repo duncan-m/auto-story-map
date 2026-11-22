@@ -142,6 +142,14 @@ releases:
         expected: One JSON file with every story, its history and its tests, instead of reading the YAML, history and test files separately
         solves: Agents missing context when they suggest product work
         draft: true
+  - id: v0-7-3
+    title: "0.7.3: Pull request and commit links"
+    summary: Internal viewers follow a story to its code, from the pull request and commit behind each history line and a list of the pull requests and commits that name it.
+    impact:
+      - metric: Time to find the pull requests that delivered a story
+        expected: One click from the story panel, instead of searching the repository for its ID
+        solves: Asking engineers where a story's work was merged
+        draft: true
   - id: next
     title: Next
     summary: Proposed for 0.7.x or 0.8.0.
@@ -488,7 +496,7 @@ stories:
   - id: ESM-803
     title: Link history lines to their pull request and commit
     activity: track
-    release: next
+    release: v0-7-3
     status: planned
     summary: Each line in a story's History, and its last update, links to the pull request and commit that made the change, when the host passes its repository URL.
     sources:
@@ -496,7 +504,7 @@ stories:
   - id: ESM-804
     title: Show the pull requests and commits that name a story
     activity: track
-    release: next
+    release: v0-7-3
     status: planned
     summary: story-map history finds merged pull requests and commits whose title, message or branch names a story ID, and internal viewers see them in a Changes section of the story panel.
     notes: Changes point to stories, so the map is never edited to list them. Merged work only; open pull requests from the GitHub API are a possible follow-up.
