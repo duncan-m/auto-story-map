@@ -481,9 +481,6 @@ test("ESM-903: the job filter is kept by the form and named in the filter summar
   assert.match(html, /<input type="hidden" name="job" value="send-estimate"\/>/);
   assert.match(html, /Showing 1 of 5 stories\. Stories serving the job “<b>When<\/b> my estimate is ready, <b>I want<\/b> to send it for approval in one step, <b>so that<\/b> I do not chase finance by email\.” <span class="esm-story-job-persona">\(Builder\)<\/span>\. <a href="\?persona=builder">Show every job<\/a>/);
   assert.match(html, /<a href="\?">Clear filters<\/a>/);
-  // Show them, for hidden blocked and cut stories, keeps the persona and job.
-  const cut = parse(tagged(document => { document.stories.find(story => story.id === "FINANCE-202").jobs = ["send-estimate"]; }));
-  assert.match(render(page(cut, "persona=builder&job=send-estimate")), /1 cut hidden\. <a href="\?status=all&amp;persona=builder&amp;job=send-estimate">Show them<\/a>/);
 });
 
 /** The persona panel whose title is `title`. */

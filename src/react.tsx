@@ -1305,13 +1305,6 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
 }) {
   const filtering = isFiltering(filter);
   const clearHref = `?${new URLSearchParams(preservedParams ?? {})}`;
-  const showHiddenParams = new URLSearchParams(preservedParams ?? {});
-  if (filter.query) showHiddenParams.set("q", filter.query);
-  showHiddenParams.set("status", "all");
-  if (filter.changedWithinDays) showHiddenParams.set("changed", `${filter.changedWithinDays}d`);
-  for (const persona of filter.persona ?? []) showHiddenParams.append("persona", persona);
-  for (const job of filter.job ?? []) showHiddenParams.append("job", job);
-  for (const activity of filter.activity ?? []) showHiddenParams.append("activity", activity);
   const jobs = personas.flatMap(persona => persona.jobs.map(job => ({ job, persona })));
   const chosenJobs = jobs.filter(({ job }) => filter.job?.includes(job.id));
   const withoutJob = `?${boardParams({ ...filter, job: undefined }, preservedParams)}`;
@@ -1360,11 +1353,10 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
           {exportHref && <ExportMenu href={exportHref} />}
         </form>
       </div>
-      {(filtering || filter.hidden) && (
+      {/* Blocked and cut stories hidden by the default status filter go unmentioned: the status menu shows them. */}
+      {filtering && (
         <p className="esm-filter-results" role="status">
-          {filtering && <>
-            {shown === 0 ? "No stories match these filters." : `Showing ${shown} of ${storyCount(filter.total)}.`}{" "}
-          </>}
+          {shown === 0 ? "No stories match these filters." : `Showing ${shown} of ${storyCount(filter.total)}.`}{" "}
           {chosenJobs.length > 0 && <>
             {chosenJobs.length === 1 ? "Stories serving the job " : "Stories serving the jobs "}
             {chosenJobs.map(({ job, persona }, index) => (
@@ -1380,11 +1372,7 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
             {`Stories in ${listNames(chosenActivities.map(activity => activity.title))}. `}
             <a href={withoutActivity}>Show every activity</a>{" · "}
           </>}
-          {filter.hidden && <>
-            {`${hiddenSummary(filter.hidden)} hidden.`}{" "}
-            <a href={`?${showHiddenParams}`}>Show them</a>{filtering && " · "}
-          </>}
-          {filtering && <a href={clearHref}>Clear filters</a>}
+          <a href={clearHref}>Clear filters</a>
         </p>
       )}
     </>
