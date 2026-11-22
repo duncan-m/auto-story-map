@@ -66,6 +66,104 @@
       "additionalProperties": false,
       "description": "Optional settings for everyone who views the map. Hosts can override them."
     },
+    "personas": {
+      "description": "Optional. Up to 12 people the product serves, with their jobs to be done.",
+      "maxItems": 12,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+            "description": "Stable persona ID that stories reference in their personas. Keep it when renaming."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Internal persona name, such as “Product manager”. The board takes the avatar's initials from it."
+          },
+          "summary": {
+            "description": "Optional internal summary of who they are and what they own.",
+            "type": "string",
+            "maxLength": 500
+          },
+          "jobs": {
+            "description": "Optional. Up to 8 jobs to be done that stories serve.",
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+                  "description": "Stable job ID, unique across the map, that stories reference in their jobs. Keep it when rewording the job or moving it to another persona."
+                },
+                "situation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "description": "Written without its lead word, which the board adds: “When …”. Such as “a release is being planned”."
+                },
+                "motivation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "description": "Written without its lead word, which the board adds: “I want …”. Such as “to agree its scope in the PR that changes the map”."
+                },
+                "outcome": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "description": "Written without its lead word, which the board adds: “so …”. Such as “engineers and product start from the same list”."
+                },
+                "draft": {
+                  "description": "true when an agent drafted this job and nobody has confirmed it yet. Only a person removes it.",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "situation",
+                "motivation",
+                "outcome"
+              ],
+              "additionalProperties": false,
+              "description": "A job to be done: “When <situation>, I want <motivation>, so <outcome>.” Internal only."
+            }
+          },
+          "customer": {
+            "description": "Customer-facing persona name. Add only after the wording is approved.",
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "Customer-facing title. Add only after the wording is approved."
+              },
+              "summary": {
+                "description": "Optional customer-facing summary.",
+                "type": "string",
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "additionalProperties": false,
+        "description": "A person the product serves. The order sets each persona's colour on the board."
+      }
+    },
     "activities": {
       "minItems": 1,
       "maxItems": 50,
@@ -270,6 +368,24 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 500
+          },
+          "jobs": {
+            "description": "Optional. Up to 4 job IDs, most important first. The story's personas include the persona that owns each job.",
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+            }
+          },
+          "personas": {
+            "description": "Optional. Up to 4 persona IDs, most important first. For a persona the story helps without serving one of their jobs. Personas from jobs need not be repeated.",
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+            }
           },
           "estimate": {
             "description": "Optional effort estimate in story points: 1, 2, 3, 5, 8, 13. Internal only. A story above 13 should be split.",

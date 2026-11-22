@@ -17,6 +17,8 @@ Keep new stories internal by default. Add customer-facing copy only when the sto
 
 Record each release’s notes and expected impact in its `notes` and `impact`, following [Release notes and impact](docs/story-map.md#release-notes-and-impact). Mark impact items you draft with `draft: true`. Only a person removes `draft`, so never remove it yourself. The board cannot edit these fields, so update them in a PR like any other map change.
 
+Tag each story you add or change with the jobs to be done it serves, using the existing job IDs in the map's `personas`, following [Personas and jobs to be done](docs/story-map.md#personas-and-jobs-to-be-done). Never invent a persona or job without marking each job `draft: true` and saying so in the PR, and never remove `draft` yourself.
+
 A story's `estimate` is the team's agreed size in story points, following [Estimate effort](docs/story-map.md#estimate-effort). Do not set or change an estimate unless the team has agreed it. When a planned or in-progress story has none, flag it in the PR instead.
 
 When you add or change a test that covers a story, put the story ID at the start of the test's name, followed by a colon, such as `test("BILLING-204: refunds a cancelled order", …)`. See [Link tests to stories](docs/story-map.md#link-tests-to-stories).

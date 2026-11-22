@@ -20,6 +20,10 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("notes"), id: storyId, notes: text }).strict(),
   z.object({ op: z.literal("add-source"), id: storyId, source: text }).strict(),
   z.object({ op: z.literal("remove-source"), id: storyId, source: text }).strict(),
+  z.object({ op: z.literal("add-job"), id: storyId, job: text }).strict(),
+  z.object({ op: z.literal("remove-job"), id: storyId, job: text }).strict(),
+  z.object({ op: z.literal("add-persona"), id: storyId, persona: text }).strict(),
+  z.object({ op: z.literal("remove-persona"), id: storyId, persona: text }).strict(),
   z.object({ op: z.literal("customer-title"), id: storyId, title: text }).strict(),
   z.object({ op: z.literal("customer-summary"), id: storyId, summary: text }).strict(),
   z.object({
@@ -33,6 +37,8 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
     summary: text.optional(),
     notes: text.optional(),
     sources: z.array(text).optional(),
+    jobs: z.array(text).optional(),
+    personas: z.array(text).optional(),
   }).strict(),
   z.object({ op: z.literal("release-impact"), release: text, metric: text, expected: text, solves: text.optional() }).strict(),
 ]);
@@ -83,7 +89,7 @@ export class StoryMapEditError extends Error {
 }
 
 /** The order fields are written in when an edit adds one, following the guide's examples. */
-const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "updatedBy", "summary", "notes", "sources", "customer"];
+const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 
 type Raw = Record<string, unknown>;
@@ -222,6 +228,15 @@ export function nextStoryId(stories: readonly { id: string; release?: string }[]
   return `${prefix}${String(number).padStart(sample.length, "0")}`;
 }
 
+type ListOperation = Extract<StoryMapEditOperation, { op: `${"add" | "remove"}-${"source" | "job" | "persona"}` }>;
+
+/** The story field a list edit changes, and the value it adds or removes. */
+function listOperand(operation: ListOperation): ["sources" | "jobs" | "personas", string] {
+  if ("source" in operation) return ["sources", operation.source];
+  if ("job" in operation) return ["jobs", operation.job];
+  return ["personas", operation.persona];
+}
+
 function unknownStory(id: string, stories: RawStory[], index: number): never {
   const suggestions = closestIds(id, stories.map(story => story.id));
   throw new StoryMapEditError(`There is no story ${id}.${suggestions.length ? ` Did you mean ${suggestions.join(", ")}?` : ""}`, index);
@@ -281,6 +296,8 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
         release: operation.release,
         status,
         ...(operation.reason ? { statusReason: operation.reason } : {}),
+        ...(operation.jobs?.length ? { jobs: operation.jobs } : {}),
+        ...(operation.personas?.length ? { personas: operation.personas } : {}),
         ...(options.updatedBy ? { updatedBy: options.updatedBy } : {}),
         ...(operation.summary ? { summary: operation.summary } : {}),
         ...(operation.notes ? { notes: operation.notes } : {}),
@@ -320,21 +337,27 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       case "notes":
         set(operation.op, operation[operation.op as keyof typeof operation]);
         break;
-      case "add-source": {
-        const sources = (story.sources as string[] | undefined) ?? [];
-        if (sources.includes(operation.source)) break;
-        story.sources = [...sources, operation.source];
-        editor.appendToList("stories", story.id, "sources", operation.source, story.sources as string[]);
+      case "add-source":
+      case "add-job":
+      case "add-persona": {
+        const [key, value] = listOperand(operation);
+        const list = (story[key] as string[] | undefined) ?? [];
+        if (list.includes(value)) break;
+        story[key] = [...list, value];
+        editor.appendToList("stories", story.id, key, value, story[key] as string[]);
         break;
       }
-      case "remove-source": {
-        const sources = (story.sources as string[] | undefined) ?? [];
-        const at = sources.indexOf(operation.source);
-        if (at === -1) throw new StoryMapEditError(`${story.id} has no source ${operation.source}.`, index);
-        const rest = sources.filter((_, i) => i !== at);
-        if (rest.length) story.sources = rest;
-        else delete story.sources;
-        editor.removeFromList("stories", story.id, "sources", at);
+      case "remove-source":
+      case "remove-job":
+      case "remove-persona": {
+        const [key, value] = listOperand(operation);
+        const list = (story[key] as string[] | undefined) ?? [];
+        const at = list.indexOf(value);
+        if (at === -1) throw new StoryMapEditError(`${story.id} has no ${key === "sources" ? "source" : key === "jobs" ? "job" : "persona"} ${value}.`, index);
+        const rest = list.filter((_, i) => i !== at);
+        if (rest.length) story[key] = rest;
+        else delete story[key];
+        editor.removeFromList("stories", story.id, key, at);
         break;
       }
       case "customer-title":

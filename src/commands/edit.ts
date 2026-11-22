@@ -111,23 +111,27 @@ const escapeDiff = (diff: string) => diff.split("\n").map(escapeText).join("\n")
 export const edit = defineCommand({
   parse(rest: string[]) {
     const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from", string>> = {};
-    const addSources: string[] = [];
-    const removeSources: string[] = [];
+    const lists: [option: string, op: string, key: string][] = [
+      ["--add-source", "add-source", "source"], ["--remove-source", "remove-source", "source"],
+      ["--add-job", "add-job", "job"], ["--remove-job", "remove-job", "job"],
+      ["--add-persona", "add-persona", "persona"], ["--remove-persona", "remove-persona", "persona"],
+    ];
+    const listEdits: unknown[] = [];
     const ids: string[] = [];
     const names: Record<string, keyof typeof fields> = {
       "--status": "status", "--reason": "reason", "--release": "release", "--activity": "activity", "--title": "title",
       "--summary": "summary", "--notes": "notes", "--customer-title": "customerTitle", "--customer-summary": "customerSummary", "--from": "from",
     };
     const common = parseEditArgs(rest, (name, value) => {
-      if (name === "--add-source") addSources.push(value());
-      else if (name === "--remove-source") removeSources.push(value());
+      const list = lists.find(([option]) => option === name);
+      if (list) listEdits.push({ op: list[1], [list[2]]: value() });
       else if (names[name]) fields[names[name]] = value();
       else return false;
       return true;
     }, ids);
     if (!common) return null;
     if (fields.from) {
-      if (ids.length || Object.keys(fields).length > 1 || addSources.length || removeSources.length) throw new ArgumentError("--from takes every edit from the file, so give no story ID or other edits with it");
+      if (ids.length || Object.keys(fields).length > 1 || listEdits.length) throw new ArgumentError("--from takes every edit from the file, so give no story ID or other edits with it");
       return { ...common, from: fields.from };
     }
     if (ids.length !== 1) return null;
@@ -138,8 +142,7 @@ export const edit = defineCommand({
     for (const key of ["release", "activity", "title", "summary", "notes"] as const) {
       if (fields[key]) operations.push({ op: key, id, [key]: fields[key] });
     }
-    for (const source of addSources) operations.push({ op: "add-source", id, source });
-    for (const source of removeSources) operations.push({ op: "remove-source", id, source });
+    for (const listEdit of listEdits) operations.push({ ...(listEdit as object), id });
     if (fields.customerTitle) operations.push({ op: "customer-title", id, title: fields.customerTitle });
     if (fields.customerSummary) operations.push({ op: "customer-summary", id, summary: fields.customerSummary });
     if (!operations.length) throw new ArgumentError("say what to change, such as --status in-progress");
@@ -167,10 +170,14 @@ export const add = defineCommand({
   parse(rest: string[]) {
     const fields: Record<string, string> = {};
     const sources: string[] = [];
+    const jobs: string[] = [];
+    const personas: string[] = [];
     const positional: string[] = [];
     const common = parseEditArgs(rest, (name, value) => {
       if (["--id", "--title", "--activity", "--release", "--status", "--reason", "--summary", "--notes"].includes(name)) fields[name.slice(2)] = value();
       else if (name === "--source") sources.push(value());
+      else if (name === "--job") jobs.push(value());
+      else if (name === "--persona") personas.push(value());
       else return false;
       return true;
     }, positional);
@@ -178,7 +185,9 @@ export const add = defineCommand({
     for (const required of ["title", "activity", "release"]) {
       if (!fields[required]) throw new ArgumentError(`--${required} is required`);
     }
-    const operation = { op: "add", ...fields, ...(sources.length ? { sources } : {}) } as StoryMapEditOperation;
+    const operation = {
+      op: "add", ...fields, ...(sources.length ? { sources } : {}), ...(jobs.length ? { jobs } : {}), ...(personas.length ? { personas } : {}),
+    } as StoryMapEditOperation;
     return { ...common, operations: [operation] };
   },
   async run(options) {

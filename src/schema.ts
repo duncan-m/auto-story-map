@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LineCounter, isMap, isScalar, isSeq, parseDocument, visit, type Document, type Node } from "yaml";
+import { storyPersonaResolver } from "./personas.js";
 import { isActiveStatus, storyStatuses } from "./status.js";
 
 export { storyStatuses };
@@ -17,6 +18,15 @@ export const releaseImpactMaxItems = 10;
 /** The story point scale an estimate must use. Any other value fails validation. */
 export const estimatePoints = [1, 2, 3, 5, 8, 13] as const;
 export type EstimatePoints = typeof estimatePoints[number];
+
+/** Most personas on one map. */
+export const personasMaxItems = 12;
+/** Most jobs to be done on one persona. */
+export const personaJobsMaxItems = 8;
+/** Most jobs or personas on one story. */
+export const storyPersonasMaxItems = 4;
+/** Longest part of a job statement, in characters. */
+export const jobStatementMaxLength = 200;
 
 /** Weeks a story can stay in progress before it is flagged as stalled, when the map does not say. */
 export const defaultStalledAfterWeeks = 4;
@@ -56,6 +66,30 @@ function formatSchemas(strict: boolean) {
       .describe("true when an agent drafted this item and nobody has confirmed it yet. Only a person removes it."),
   });
 
+  const statementPart = (lead: string, example: string) => z.string().trim().min(1).max(jobStatementMaxLength)
+    .describe(`Written without its lead word, which the board adds: “${lead} …”. Such as “${example}”.`);
+
+  const job = object({
+    id: id.describe("Stable job ID, unique across the map, that stories reference in their jobs. Keep it when rewording the job or moving it to another persona."),
+    situation: statementPart("When", "a release is being planned"),
+    motivation: statementPart("I want", "to agree its scope in the PR that changes the map"),
+    outcome: statementPart("so", "engineers and product start from the same list"),
+    draft: z.boolean().optional()
+      .describe("true when an agent drafted this job and nobody has confirmed it yet. Only a person removes it."),
+  }).describe("A job to be done: “When <situation>, I want <motivation>, so <outcome>.” Internal only.");
+
+  const persona = object({
+    id: id.describe("Stable persona ID that stories reference in their personas. Keep it when renaming."),
+    title: title.describe("Internal persona name, such as “Product manager”. The board takes the avatar's initials from it."),
+    summary: summary.describe("Optional internal summary of who they are and what they own."),
+    jobs: z.array(job).max(personaJobsMaxItems).optional()
+      .describe(`Optional. Up to ${personaJobsMaxItems} jobs to be done that stories serve.`),
+    customer: customerCopy.optional().describe("Customer-facing persona name. Add only after the wording is approved."),
+  }).describe("A person the product serves. The order sets each persona's colour on the board.");
+
+  const storyRefs = (kind: string, extra: string) => z.array(id).max(storyPersonasMaxItems).optional()
+    .describe(`Optional. Up to ${storyPersonasMaxItems} ${kind} IDs, most important first. ${extra}`);
+
   const release = object({
     ...groupFields("release"),
     notes: z.string().trim().max(releaseNotesMaxLength).optional()
@@ -74,6 +108,8 @@ function formatSchemas(strict: boolean) {
       .describe("planned: agreed work awaiting implementation. in-progress: work has started. merged: the work is merged to the default branch but not yet available to its intended users; customers see it as in progress. shipped: available to its intended users. blocked: started or agreed, but cannot continue. cut: deliberately dropped from its release. Blocked and cut stories are hidden by default and never shown to customers."),
     statusReason: z.string().trim().min(1).max(500).optional()
       .describe("Why the story is blocked or cut. Internal only."),
+    jobs: storyRefs("job", "The story's personas include the persona that owns each job."),
+    personas: storyRefs("persona", "For a persona the story helps without serving one of their jobs. Personas from jobs need not be repeated."),
     estimate: z.literal(estimatePoints, { error: `Use one of ${estimatePoints.join(", ")} story points.` }).optional()
       .describe(`Optional effort estimate in story points: ${estimatePoints.join(", ")}. Internal only. A story above 13 should be split.`),
     updatedBy: z.string().trim().min(1).max(120).optional().describe("Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise."),
@@ -97,18 +133,20 @@ function formatSchemas(strict: boolean) {
       .describe("internal: only internal viewers can see the map. all-users: signed-in users see the customer-facing view."),
     customer: customerCopy.optional().describe("Customer-facing map title and summary. Required when visibility is all-users."),
     settings: settings.optional(),
+    personas: z.array(persona).max(personasMaxItems).optional()
+      .describe(`Optional. Up to ${personasMaxItems} people the product serves, with their jobs to be done.`),
     activities: z.array(activity).min(1).max(50),
     releases: z.array(release).min(1).max(50),
     stories: z.array(story.describe("Stories appear in this order within each cell.")).max(1000),
   });
-  return { map, story, impactItem };
+  return { map, story, impactItem, persona, job };
 }
 
 const strictSchemas = formatSchemas(true);
 const lenientSchemas = formatSchemas(false);
 
 type Path = (string | number)[];
-type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown };
+type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown; jobs?: unknown; personas?: unknown };
 
 function items(value: unknown): Item[] {
   return Array.isArray(value) ? value.map(item => item && typeof item === "object" ? item as Item : {}) : [];
@@ -128,7 +166,7 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
     issue(["customer"], "The all-users view requires customer-facing map copy.");
   }
 
-  for (const field of ["activities", "releases", "stories"] as const) {
+  for (const field of ["personas", "activities", "releases", "stories"] as const) {
     const ids = new Set<unknown>();
     items(map[field]).forEach((entry, index) => {
       if (typeof entry.id !== "string") return;
@@ -136,6 +174,16 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
       ids.add(entry.id);
     });
   }
+
+  const personaIds = new Set(items(map.personas).map(persona => persona.id));
+  const jobIds = new Set<unknown>();
+  items(map.personas).forEach((persona, personaIndex) => {
+    items(persona.jobs).forEach((job, jobIndex) => {
+      if (typeof job.id !== "string") return;
+      if (jobIds.has(job.id)) issue(["personas", personaIndex, "jobs", jobIndex, "id"], `Duplicate job ID '${job.id}'. Job IDs are unique across the map.`);
+      jobIds.add(job.id);
+    });
+  });
 
   const activities = new Map(items(map.activities).map(activity => [activity.id, activity]));
   const releases = new Map(items(map.releases).map(release => [release.id, release]));
@@ -146,6 +194,14 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
 
     if (typeof story.activity === "string" && !activity) issue(["stories", index, "activity"], `Unknown activity '${story.activity}'.`);
     if (typeof story.release === "string" && !release) issue(["stories", index, "release"], `Unknown release '${story.release}'.`);
+    for (const [field, known, kind] of [["jobs", jobIds, "job"], ["personas", personaIds, "persona"]] as const) {
+      const listed = Array.isArray(story[field]) ? story[field] as unknown[] : [];
+      listed.forEach((ref, refIndex) => {
+        if (typeof ref !== "string") return;
+        if (listed.indexOf(ref) !== refIndex) issue(["stories", index, field, refIndex], `${kind === "job" ? "Job" : "Persona"} '${ref}' is listed twice.`);
+        else if (!known.has(ref)) issue(["stories", index, field, refIndex], `Unknown ${kind} '${ref}'.`);
+      });
+    }
     if (story.customer && activity && !activity.customer) {
       issue(["stories", index, "activity"], "A customer-facing story requires customer-facing copy for its activity.");
     }
@@ -167,6 +223,8 @@ export const storyMapSchema = strictSchemas.map.superRefine((map, context) => {
 
 export type StoryMapDocument = z.infer<typeof storyMapSchema>;
 export type ReleaseImpact = z.infer<typeof strictSchemas.impactItem>;
+export type StoryMapPersona = z.infer<typeof strictSchemas.persona>;
+export type StoryMapJob = z.infer<typeof strictSchemas.job>;
 
 export type StoryMapIssueSeverity = "error" | "warning";
 
@@ -320,6 +378,77 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
         itemId: story.id,
       });
     }
+  });
+  warnings.push(...personaWarnings(map));
+  return warnings;
+}
+
+/**
+ * Advice about personas and jobs: ones no story uses, stories that say nothing
+ * about who they are for, and drafts that have shipped. A map with no personas,
+ * or no active stories yet, gets none.
+ */
+function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
+  const personas = map.personas ?? [];
+  const active = map.stories.filter(story => isActiveStatus(story.status));
+  if (!personas.length || !active.length) return [];
+  const warnings: StoryMapIssue[] = [];
+  const resolve = storyPersonaResolver(map);
+  const used = new Set(map.stories.flatMap(story => resolve(story)));
+  const served = new Set(active.flatMap(story => story.jobs ?? []));
+  const shipped = new Set(map.stories.filter(story => story.status === "shipped").flatMap(story => story.jobs ?? []));
+
+  personas.forEach((persona, index) => {
+    if (!used.has(persona.id)) {
+      warnings.push({
+        severity: "warning",
+        path: ["personas", index],
+        message: `No story is for ${persona.title}. Tag the stories that serve them, or remove the persona.`,
+        itemId: persona.id,
+      });
+    }
+    persona.jobs?.forEach((job, jobIndex) => {
+      if (!served.has(job.id)) {
+        warnings.push({
+          severity: "warning",
+          path: ["personas", index, "jobs", jobIndex],
+          message: `Job ${job.id} (${persona.title}) has no stories.`,
+          itemId: persona.id,
+        });
+      }
+      if (job.draft && shipped.has(job.id)) {
+        warnings.push({
+          severity: "warning",
+          path: ["personas", index, "jobs", jobIndex, "draft"],
+          message: `Confirm the drafted job ${job.id} and remove draft: true. Stories that serve it have shipped.`,
+          itemId: persona.id,
+        });
+      }
+    });
+  });
+
+  const untagged = active.filter(story => !resolve(story).length).length;
+  if (untagged * 2 > active.length) {
+    warnings.push({
+      severity: "warning",
+      path: ["personas"],
+      message: `${untagged} of ${active.length} active stories do not say who they are for. Add the jobs each serves, or its personas.`,
+    });
+  }
+
+  const byId = new Map(personas.map(persona => [persona.id, persona]));
+  map.stories.forEach((story, index) => {
+    if (!isActiveStatus(story.status)) return;
+    story.personas?.forEach((id, personaIndex) => {
+      const persona = byId.get(id);
+      if (!persona?.jobs?.length || persona.jobs.some(job => story.jobs?.includes(job.id))) return;
+      warnings.push({
+        severity: "warning",
+        path: ["stories", index, "personas", personaIndex],
+        message: `For ${persona.title}, but serves none of their jobs, so it may not match a known need. Add the job it serves, or draft one.`,
+        itemId: story.id,
+      });
+    });
   });
   return warnings;
 }

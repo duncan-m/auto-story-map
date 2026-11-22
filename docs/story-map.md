@@ -8,7 +8,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id`, a `title` in the form “[App Name] Story Map”, such as “Acme Story Map”, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
-3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, `merged` when the work is on the default branch but not yet available to its users, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. When a plan has a mockup or design, [link it](#link-mockups-and-designs) from the stories it shows. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
+3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, `merged` when the work is on the default branch but not yet available to its users, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Draft the [personas](#personas-and-jobs-to-be-done) the product serves from its roles, sign-in roles and docs, and their jobs to be done from docs, issues and research. Mark each job `draft: true`, keep them internal, tag each story with the jobs it serves, and ask a person to confirm them. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. When a plan has a mockup or design, [link it](#link-mockups-and-designs) from the stories it shows. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
 4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo, and `npx --no-install story-map stories` to read the stories back as a list. Suggest the person runs `npx --no-install story-map preview` to [see the map as a board](#preview-the-map-locally) before wiring up the host route. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
 ## Upgrade to 0.7.0
@@ -64,6 +64,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 | What a release is for | Edit the release’s `notes` and `impact`. See [Release notes and impact](#release-notes-and-impact). |
 | Work that stopped or was dropped | Set `status` to `blocked` or `cut` and explain why in `statusReason`. See [Blocked and cut stories](#blocked-and-cut-stories). |
 | How big a story is | Set its `estimate` in story points, once the team has agreed it. See [Estimate effort](#estimate-effort). |
+| Who a story is for | List the jobs to be done it serves in its `jobs`, or a persona in its `personas`. Add or reword personas and jobs in the map's `personas`. See [Personas and jobs to be done](#personas-and-jobs-to-be-done). |
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
 
@@ -184,6 +185,69 @@ On the internal board, a card shows its estimate at the top right, such as “5 
 `story-map diff` shows a change as “Estimate: 3 → 5”. The Visio file adds the estimate to each card, such as “BUILDER-102 · 3 pts”, and to its shape data, and shows each release's total in its header. The CSV has an `Estimate` column, and the JSON export carries each story's `estimate` and each release's `estimates`.
 
 Estimates are internal only. Customers never see them, on the board or in the JSON. Agents should not set or change an estimate unless the team has agreed it, and should flag a missing one in the PR instead.
+
+## Personas and jobs to be done
+
+The map can name the people the product serves, as personas, and the jobs each of them is trying to get done. Each story then says which jobs it serves, so the team agrees who a story is for in the PR that adds it, and can see which needs have no stories.
+
+```yaml
+personas:
+  - id: pm
+    title: Product manager
+    summary: Owns the roadmap and decides what goes in each release.
+    jobs:
+      - id: plan-release
+        situation: a release is being planned
+        motivation: to agree its scope in the PR that changes the map
+        outcome: engineers and product start from the same list
+      - id: share-roadmap
+        situation: customers ask what is coming
+        motivation: to show them approved stories only
+        outcome: I can answer without leaking internal work
+        draft: true
+  - id: customer
+    title: Product customer
+stories:
+  - id: BUILDER-102
+    title: Look up prices in the material catalogue
+    activity: prepare
+    release: builder-mvp
+    status: planned
+    jobs: [plan-release]
+    personas: [customer]
+```
+
+A job reads as a job statement: “**When** a release is being planned, **I want** to agree its scope in the PR that changes the map, **so** engineers and product start from the same list.” Write each part without its lead word:
+
+- `situation` (“When …”): the moment the need arises, not a role. “a release is being planned”, not “I am a product manager”.
+- `motivation` (“I want …”): what they want to do in that moment, in their words, without naming a feature.
+- `outcome` (“so …”): what is better for them once it is done.
+
+| Field | Rules |
+| --- | --- |
+| `personas` | Optional, up to 12. Order sets each persona's colour on the board. |
+| `personas[].id`, `title`, `summary` | As for activities. Keep the ID when renaming. |
+| `personas[].jobs` | Optional, up to 8 jobs to be done. |
+| `personas[].jobs[].id` | Required, unique across the map. Keep it when rewording the job or moving it to another persona, so its stories follow it. |
+| `personas[].jobs[].situation`, `motivation`, `outcome` | Required, up to 200 characters each. |
+| `personas[].jobs[].draft` | Optional. `true` while an agent's draft waits for a person to confirm it. |
+| `personas[].customer` | Optional customer-facing name. Add it only after the wording is approved. |
+| `stories[].jobs` | Optional, up to 4 job IDs, most important first. |
+| `stories[].personas` | Optional, up to 4 persona IDs, for a persona the story helps without serving one of their jobs. |
+
+A story is for the personas that own its jobs, in the order of its jobs, then the personas it lists, so a story that names its jobs need not repeat their personas. The first is its primary persona. BUILDER-102 above is for Product manager, from its job, and Product customer. In code, `storyPersonas(map, story)` gives the same list, and `jobStatement(job)` the statement.
+
+Validation fails on a duplicate persona ID, a job ID used twice anywhere in the map, a story job or persona that is not in the map, and one listed twice on a story. Removing a persona or job that stories still use is therefore an error, as for an activity. Once the map has personas and active stories, it warns about:
+
+- a persona no story is for;
+- a job no active story serves, such as “Job share-roadmap (Product manager) has no stories”;
+- an active story listing a persona that has jobs, but serving none of them, so it may not match a known need;
+- a drafted job that a shipped story serves, as for [drafted impact](#release-notes-and-impact);
+- more than half the active stories saying nothing about who they are for.
+
+Untagged stories are allowed, so an existing map stays valid. Agents can draft personas and jobs from the product's docs, issues and research, mark each job `draft: true`, and say so in the PR. A person confirms a job by removing `draft`. Tag stories with `story-map edit <ID> --add-job <job ID>` or `--add-persona <persona ID>`, and new stories with `story-map add --job <job ID>`.
+
+`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs, under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Personas and jobs are internal: the board and exports do not show them yet, and customers never see jobs.
 
 ## Link an engineering overview
 
@@ -339,6 +403,7 @@ npx --no-install story-map edit ESM-744 --status in-progress
 npx --no-install story-map edit ESM-745 --status blocked --reason "Waiting on the host's Git provider to accept custom refs"
 npx --no-install story-map edit ESM-743 --release v0-7-5 --activity review
 npx --no-install story-map edit ESM-741 --add-source docs/story-map.md#read-the-map-from-the-command-line
+npx --no-install story-map edit ESM-902 --add-job answer-whats-next
 npx --no-install story-map add --activity review --release v0-7-5 --title "Check claims in CI"
 npx --no-install story-map release-impact v0-7-5 --metric "Agents starting the same story" --expected "None, for teams that use claims"
 ```

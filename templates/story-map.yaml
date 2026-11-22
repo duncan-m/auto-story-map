@@ -4,6 +4,16 @@ id: __ID__
 title: __TITLE__
 summary: Starter map created by story-map init. Replace it by following the first-run workflow in docs/story-map.md.
 visibility: internal
+personas:
+  - id: primary-user
+    title: Primary user
+    summary: Replace with a person the product serves, drafted from its roles and docs.
+    jobs:
+      - id: first-job
+        situation: they reach the first step in the user journey
+        motivation: to get it done without help
+        outcome: they can move on to the next step
+        draft: true
 activities:
   - id: first-step
     title: First step in the user journey
