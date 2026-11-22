@@ -487,15 +487,34 @@
 .esm-persona-chip .esm-avatar { box-shadow: none; }
 .esm-personas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 17px 14px; }
 .esm-personas-label { margin-right: 4px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; }
-a.esm-persona-chip { min-height: 32px; text-decoration: none; }
-a.esm-persona-chip:hover { background: var(--esm-hover); }
-a.esm-persona-chip[aria-current="true"] { border-color: var(--esm-accent); background: var(--esm-activity-bg); box-shadow: inset 0 0 0 1px var(--esm-accent); }
+a.esm-persona-chip, .esm-personas button.esm-persona-chip { min-height: 32px; text-decoration: none; }
+button.esm-persona-chip { cursor: pointer; font-family: inherit; line-height: inherit; }
+a.esm-persona-chip:hover, button.esm-persona-chip:hover { background: var(--esm-hover); }
+.esm-personas .esm-persona-chip[aria-current="true"] { border-color: var(--esm-accent); background: var(--esm-activity-bg); box-shadow: inset 0 0 0 1px var(--esm-accent); }
 .esm-persona-count { color: var(--esm-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 .esm-persona-clear { margin-left: 4px; color: var(--esm-accent-ink); font-size: .8125rem; }
 .esm-menu-option .esm-avatar { box-shadow: none; }
 .esm-story-jobs { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; line-height: 1.45; }
 .esm-story-jobs b { font-weight: 650; }
 .esm-story-job-persona { color: var(--esm-faint); }
+.esm-avatar-button { display: inline-flex; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+.esm-avatars .esm-avatar-button + .esm-avatar-button, .esm-avatars .esm-avatar-button + .esm-avatar { margin-left: -2px; }
+.esm-avatar-button:hover .esm-avatar { box-shadow: 0 0 0 2px var(--esm-accent); }
+.esm-persona-head { display: flex; align-items: center; gap: 12px; }
+.esm-avatar-lg { width: 40px; height: 40px; box-shadow: none; font-size: .875rem; }
+.esm-jobs { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.esm-job-statement { margin: 0 0 6px; line-height: 1.45; }
+.esm-job-statement b { font-weight: 650; }
+.esm-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; color: var(--esm-muted); font-size: .8125rem; }
+.esm-job-meta a { color: var(--esm-accent-ink); }
+.esm-job-gap { color: var(--esm-status-blocked); font-weight: 650; }
+.esm-job-left { color: var(--esm-faint); }
+.esm-bar { display: flex; flex: none; width: 96px; height: 8px; overflow: hidden; border-radius: 4px; background: var(--esm-hover); }
+.esm-bar span { display: block; height: 100%; }
+.esm-bar [data-status="shipped"] { background: var(--esm-status-shipped); }
+.esm-bar [data-status="merged"] { background: var(--esm-status-merged); }
+.esm-bar [data-status="in-progress"] { background: var(--esm-status-in-progress); }
+.esm-bar [data-status="planned"] { background: var(--esm-status-planned); }
 
 @media (max-width: 650px) {
   .esm-header { margin-bottom: 1.1rem; }
