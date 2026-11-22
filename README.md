@@ -28,6 +28,10 @@ The demo shows this library’s own story map, `product/story-map.yaml`: what ea
 
 Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. Each release lane can be collapsed to its title and story count. The panel, the collapse toggles and the search form work without client-side JavaScript. The demo also loads the optional `board.js` script, so filters apply as soon as you choose them.
 
+### Preview your own map
+
+In a product that installs the library, `npx story-map preview` serves your own `product/story-map.yaml` as a board at `http://127.0.0.1:4173/story-map`, with internal and customer views, before you add the board to your product. It reads the map on every reload and shows validation errors on the page. See [Preview the map locally](docs/story-map.md#preview-the-map-locally).
+
 ## Embed it in a product
 
 Install the package in your host product, then set it up:

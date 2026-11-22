@@ -91,6 +91,7 @@ The tests and the demo import the package by its own name (`import … from "aut
 | `src/cli.ts` | The usage text, `help <command>` and the dispatch table. Nothing else |
 | `src/commands/` | One module per command, each a `defineCommand({ parse, run })`. `shared.ts` holds the helpers they share: `optionValue`, `readFormat`, `escapeText`, `escapeLines`, `report`, `loadMapOrReport`, `loadInputsOrReport`, `writeOutput` and `printJson` |
 | `src/check.ts` | `checkStoryMap`: the checks behind `validate`, returning every issue as data for the text, GitHub and JSON formats |
+| `src/preview.tsx` | `createStoryMapPreviewServer`, behind `story-map preview`. Not exported from the root entry point, because it imports `react-dom/server`. The CLI loads it with a dynamic `import()`, so the other commands work without React |
 | `src/read.ts` | `findStories` and `getStories`, behind `story-map stories` and `story`, built on `filterStoryMapView` and the JSON export's story shape |
 | `src/board.ts` | The optional browser script, `enhanceStoryMapFilters`. The only code that runs in the browser. |
 | `src/react.tsx` | `StoryMapBoard`: grid, cards, popover panels, filter toolbar, history list and date formatting |
@@ -360,10 +361,15 @@ Each command lives in `src/commands/<name>.ts` and parses its arguments by hand 
 | `story [--format text\|json] [--map] [--history] [--tests-index] <ID>…` | Prints stories in full | 0, 1 invalid map or an unknown ID, 2 usage error |
 | `stories [--format text\|json] [--status]… [--release]… [--activity]… [--query] [--changed-within] […]` | Lists stories with the board's filters | 0, 1 invalid map or an unknown release or activity, 2 usage error |
 | `releases [--format text\|json] […] [<release ID>…]` | Lists releases with counts, estimates, notes and impact | 0, 1 invalid map or an unknown release, 2 usage error |
+| `preview [--port] [--history] [--tests-index] [--source-base-url] [<map>]` | Serves the map as a board on loopback until stopped | 1 missing map, React not installed or port in use, 2 usage error |
 
 ### validate
 
 Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with `warning: ` before the path for warnings. `--format github` prints `::error` or `::warning file=…,line=…,col=…::` workflow commands to stdout, escaping `%`, newlines, `:` and `,` as GitHub requires, so problems appear on the PR diff. `--format json` prints one `auto-story-map.validation` document to stdout once every map is checked, with each map's `StoryMapCheckResult` and its `file`. All three formats print the issues `checkStoryMap` returns, so they cannot disagree. A map that cannot be read becomes a single error issue.
+
+### preview
+
+`preview` checks that the map exists, then imports `dist/preview.js`. When `react` or `react-dom` cannot be found, it prints how to install them and exits 1. The server listens on `127.0.0.1` and answers 421 to any request whose `Host` header is not `127.0.0.1:<port>` or `localhost:<port>`, so a web page cannot reach it through DNS rebinding. Every request reads the map, history and tests index again and runs `checkStoryMap`. An invalid map renders its errors in place of the board, or a 422 with the issues for the JSON and export routes. `?view=customer` builds the view with `canViewInternal` returning false for a viewer with no roles, which is what a signed-in customer sees. The page carries `storyMapResponseHeaders` and serves the package's own `styles.css` and `board.js`. `npm run demo` stays separate: it is the example of a host integration, with its own roles and Git history.
 
 ### Reads
 

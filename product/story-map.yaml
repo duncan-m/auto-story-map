@@ -536,12 +536,13 @@ stories:
     title: Preview the map locally before adding the board
     activity: set-up
     release: v0-7-2
-    status: planned
+    status: merged
     estimate: 2
     summary: story-map preview serves the repository's own map as a board on loopback, with internal and customer views, so a team sees its first map before wiring up a host route.
     notes: Reuses the demo server, moved into the package. Loopback only, for one person checking a map, never for deploying.
     sources:
       - docs/plans/native-cli.md#7-preview-the-map-locally
+      - docs/story-map.md#preview-the-map-locally
   - id: ESM-747
     title: Suggest shipped from release tags
     activity: track

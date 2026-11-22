@@ -9,7 +9,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id`, a `title` in the form “[App Name] Story Map”, such as “Acme Story Map”, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
 3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, `merged` when the work is on the default branch but not yet available to its users, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. When a plan has a mockup or design, [link it](#link-mockups-and-designs) from the stories it shows. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
-4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo, and `npx --no-install story-map stories` to read the stories back as a list. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
+4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo, and `npx --no-install story-map stories` to read the stories back as a list. Suggest the person runs `npx --no-install story-map preview` to [see the map as a board](#preview-the-map-locally) before wiring up the host route. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
 ## Upgrade to 0.7.0
 
@@ -430,6 +430,23 @@ npx --no-install story-map validate --format github --tests test product/story-m
 ```
 
 It reports an error, on the test's line, for a tag naming a story that is not in the map, and a warning, on the story, for an `in-progress` or `merged` story with no tagged tests. Planned, shipped, blocked and cut stories are not warned about. Warnings fail only with `--strict`.
+
+## Preview the map locally
+
+See your map as a board before you add the board to your product. From the repository root, run:
+
+```bash
+npx --no-install story-map preview
+```
+
+Open the address it prints, `http://127.0.0.1:4173/story-map`. **Internal** shows what your team will see, and **Signed-in customer** shows the customer roadmap, or a note when the map is `visibility: internal`. The preview reads the map on every request, so an edit shows when you reload. When the map is not valid, the page lists the errors instead of the board, and an internal view lists any warnings above it.
+
+- Pass the map's path when it is not `product/story-map.yaml`, `--port <n>` for another port, and `--history <file>` and `--tests-index <file>` for dates, changes and tagged tests.
+- Add `--source-base-url https://github.com/<owner>/<repo>/blob/main/` to turn repository-relative sources into links.
+- The board's search, filters, panels and export menu work as they will in your product. The JSON view is at `/api/story-map`.
+- It renders the React board, so it needs `react` and `react-dom` installed. If they are missing, it says how to add them.
+
+The preview is for one person checking a map. It listens on `127.0.0.1` only, answers only requests addressed to `127.0.0.1` or `localhost`, and has no sign-in, so never deploy it or expose its port. To show the map to your users, [integrate it with your product](#integrate-with-a-product).
 
 ## Integrate with a product
 

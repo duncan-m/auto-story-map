@@ -3,6 +3,7 @@ import diff from "./commands/diff.js";
 import exportMap from "./commands/export.js";
 import history from "./commands/history.js";
 import init from "./commands/init.js";
+import preview from "./commands/preview.js";
 import { releases, stories, story } from "./commands/read.js";
 import { ArgumentError, type Command } from "./commands/shared.js";
 import tests from "./commands/tests.js";
@@ -19,6 +20,7 @@ const usage = `Usage:
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
+  story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [<map.yaml>]
   story-map help [<command>]
 
 init
@@ -138,10 +140,26 @@ releases
   notes and expected impact. Impact items drafted by an agent are marked
   [draft]. Takes the same options as story.
 
+preview
+  Serves the map as a board on http://127.0.0.1:4173/story-map, with
+  internal and signed-in customer views, so you can check a map before adding
+  the board to your product. It reads the map on every request, so an edit
+  shows on reload, and shows validation errors on the page. It listens on
+  127.0.0.1 only and is never for deploying. Needs react and react-dom. The
+  map defaults to product/story-map.yaml.
+
+  --port <n>         Port to listen on. Defaults to 4173. 0 picks a free one.
+  --history <file>   History from story-map history, for dates and changes.
+  --tests-index <file>
+                     Tests index from story-map tests, for tagged tests.
+  --source-base-url <url>
+                     Base URL for repository-relative sources, such as
+                     https://github.com/<owner>/<repo>/blob/main/
+
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, preview };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {
