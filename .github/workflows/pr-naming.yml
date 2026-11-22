@@ -1,0 +1,31 @@
+name: PR naming
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  check:
+    name: Branch and title are descriptive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject generated branch names and titles
+        env:
+          BRANCH: ${{ github.head_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Session-generated names look like claude/zealous-fermat-srf6a2.
+          generated='^[Cc]laude/[a-z]+-[a-z]+-[a-z0-9]{6}$'
+          failed=0
+          if [[ "$BRANCH" =~ $generated ]]; then
+            echo "::error title=Generated branch name::Branch '$BRANCH' looks generated. Rename it for the work it holds, such as fix/esm-601-history-name-length. See AGENTS.md, Branches and pull requests."
+            failed=1
+          fi
+          # GitHub's default title for such a branch is "Claude/zealous fermat srf6a2".
+          if [[ "$TITLE" =~ ^[Cc]laude/ || "$TITLE" =~ ^[Cc]laude/?[[:space:]]?[a-z]+[[:space:]-][a-z]+[[:space:]-][a-z0-9]{6}$ || "$TITLE" == "$BRANCH" ]]; then
+            echo "::error title=Generated PR title::Title '$TITLE' looks generated. Say what the PR changes, such as 'ESM-601: Limit author names in the history file'."
+            failed=1
+          fi
+          exit "$failed"

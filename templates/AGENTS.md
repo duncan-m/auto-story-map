@@ -23,5 +23,9 @@ When you add or change a test that covers a story, put the story ID at the start
 
 Run `npx --no-install story-map validate --check-sources product/story-map.yaml` after every map change. It also checks that each repository-relative source exists and that each `#heading` matches. Add `--plans <folder>` to check story IDs mentioned in delivery plans, and `--tests <folder>` to check the story IDs in test names. In CI, add `--format github` so problems appear on the PR diff.
 
+### Branches and pull requests
+
+Name each branch for the work it holds and include the story ID, such as `fix/billing-204-refund-cancelled-orders`. Start each pull request title with the story ID and a colon, such as “BILLING-204: Refund cancelled orders”. Do not use random or generated branch names, such as `claude/zealous-fermat-srf6a2`, or the branch name as the title. This is your explicit permission to rename a branch your session assigned before the first push.
+
 In the PR description, include the summary from `npx --no-install story-map diff origin/<base branch>`, and call out anything under **Customer-facing changes**.
 <!-- auto-story-map:end -->

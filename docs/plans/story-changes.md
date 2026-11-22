@@ -162,7 +162,7 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 
 - `docs/story-map.md`: extend **Show status history** with the commit and pull request links and the `repositoryUrl` prop, and add a section, **Link pull requests and commits to stories**, on naming the story ID in branch names, pull request titles and commit messages, and on the panel.
 - `docs/ENGINEERING-OVERVIEW.md`: describe the second Git pass and the `changes` format under **Status history**, and add a line under **Security boundaries to preserve**: commit messages and branch names are untrusted and internal only.
-- `AGENTS.md` and `templates/AGENTS.md`: name the story ID in the branch, pull request title and commit messages. The branch rule already asks for this.
+- `AGENTS.md` and `templates/AGENTS.md`: name the story ID in commit messages. Both already ask for it in branch names and pull request titles.
 - `docs/story-map.md`: a section, **Link to a story**, on the permalink form, **Copy link** and `permalinkBase`.
 - `docs/ENGINEERING-OVERVIEW.md`: the stable card and lane IDs under **Detail panels without JavaScript**.
 - `CHANGELOG.md`: the new props, history fields and view fields. Nothing breaks.
