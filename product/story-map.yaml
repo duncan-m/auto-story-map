@@ -761,7 +761,7 @@ stories:
     title: Open a persona to see jobs and coverage
     activity: explore
     release: v0-7-3
-    status: planned
+    status: merged
     estimate: 3
     jobs:
       - plan-release
@@ -769,6 +769,9 @@ stories:
     sources:
       - docs/plans/personas.md#4-open-a-persona-to-see-jobs-and-coverage
       - docs/plans/personas.md#ui-mockup
+      - src/react.tsx
+      - test/personas.test.mjs
+      - docs/story-map.md#open-a-persona
   - id: ESM-905
     title: Share approved personas with customers
     activity: explore

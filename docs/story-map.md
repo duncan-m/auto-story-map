@@ -253,11 +253,19 @@ On the internal board, each card shows the avatars of the personas it is for bes
 
 ### Filter by persona
 
-When the host uses [search and filters](#integrate-with-a-product) and the map has personas, internal boards show a strip of personas under the toolbar, and a persona menu beside the status filter. Each chip links to that persona's stories with `?persona=<ID>`, keeping the search and other filters, so it works without JavaScript, and shows how many active stories are for them. The count ignores the filters, so it stays put as you filter. The chip of the only chosen persona, and **Show everyone**, go back to every persona. The menu chooses several personas, like the status filter, and keeps stories for any of them. With `board.js`, it applies when the menu closes.
+When the host uses [search and filters](#integrate-with-a-product) and the map has personas, internal boards show a strip of personas under the toolbar, and a persona menu beside the status filter. Each chip links to that persona's stories with `?persona=<ID>`, keeping the search and other filters, so it works without JavaScript, and shows how many active stories are for them. The count ignores the filters, so it stays put as you filter. **Show everyone** goes back to every persona, and the chip of the only chosen persona opens [their panel](#open-a-persona). The menu chooses several personas, like the status filter, and keeps stories for any of them. With `board.js`, it applies when the menu closes.
 
 `job=<ID>` keeps the stories that serve a job. It has no control of its own: links set it, and the filter summary names the job statement with a **Show every job** link. Unknown persona and job IDs are ignored. Search also matches the titles of a story's personas and the statements of its jobs.
 
 Customers never see internal personas or jobs, so internal persona IDs and their `job` parameters change nothing. They can filter by the personas [shared with them](#share-personas-with-customers).
+
+### Open a persona
+
+On internal boards, a persona panel shows the persona's summary and their **Jobs to be done**. Open it from a persona's avatar under an activity, from the **For** row of a story panel, or from the chip of the only chosen persona in the strip. Avatars on cards do not open it, because the card itself opens the story.
+
+Each job shows its statement, a **Draft** label when it is a draft, and a bar and count of the active stories that serve it by status, such as “7 stories: 3 shipped, 2 merged, 2 planned”. Blocked and cut stories are left out of the bar and noted beside it. A job with no active stories says **No stories yet**: that is a gap to plan stories for. The counts come from the whole map, so they do not change with the filters. When the host uses [search and filters](#integrate-with-a-product), each job has a **Show stories** link that sets `job=<ID>`, and the panel ends with a link that shows only the persona's stories, both keeping the search and other filters. The panel is a popover, so it works without JavaScript.
+
+In the view, each job of a persona gains `storyCounts`, the number of stories that serve it by status, like a release's.
 
 In the view, internal maps with personas gain `personas`, each with its `initials`, `colour` and `jobs`, and each story the `personas` it is for, primary first, and the `jobs` it serves. The JSON export and `story-map story --format json` carry each story's `personas` and `jobs` too.
 

@@ -4,7 +4,7 @@ import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatus
 import { withoutFinalPunctuation } from "./personas.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -402,16 +402,25 @@ function PersonaAvatar({ persona }: { persona: PersonaLabel }) {
 
 /**
  * Up to three avatars, then “+N”. Screen readers hear the persona titles, such
- * as “For Product manager and Coding agent”, instead of the initials.
+ * as “For Product manager and Coding agent”, instead of the initials. With
+ * `panelIds`, each avatar is a button that opens its persona's panel.
  */
-function PersonaAvatars({ personas }: { personas: readonly PersonaLabel[] }) {
+function PersonaAvatars({ personas, panelIds }: { personas: readonly PersonaLabel[]; panelIds?: ReadonlyMap<string, string> }) {
   if (!personas.length) return null;
   const label = `For ${listNames(personas.map(persona => persona.title))}`;
   const shown = personas.slice(0, maxAvatars);
   const more = personas.length - shown.length;
   return (
     <span className="esm-avatars" title={label}>
-      {shown.map(persona => <PersonaAvatar persona={persona} key={persona.id} />)}
+      {shown.map(persona => {
+        const panelId = panelIds?.get(persona.id);
+        if (!panelId) return <PersonaAvatar persona={persona} key={persona.id} />;
+        return (
+          <button type="button" className="esm-avatar-button" aria-haspopup="dialog" aria-label={`${persona.title}: open persona`} key={persona.id} {...popoverTarget(panelId)}>
+            <PersonaAvatar persona={persona} />
+          </button>
+        );
+      })}
       {more > 0 && <span className="esm-avatar esm-avatar-more" aria-hidden="true">{`+${more}`}</span>}
       <span className="esm-visually-hidden">{label}</span>
     </span>
@@ -429,7 +438,7 @@ function JobStatement({ job }: { job: StoryMapJob }) {
  */
 function personaLookup(view: StoryMapView) {
   const personas = new Map<string, PersonaLabel>();
-  const jobs = new Map<string, { job: StoryMapJob; persona: PersonaLabel }>();
+  const jobs = new Map<string, { job: PersonaJobLabel; persona: PersonaLabel }>();
   const customer = new Map<string, StoryMapLabel>();
   if (view.audience === "internal") {
     for (const persona of view.personas ?? []) {
@@ -446,9 +455,11 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks, testsIndexed, lookup }: {
+function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks, testsIndexed, lookup, personaPanelIds }: {
   story: InternalStoryCard;
   lookup: PersonaLookup;
+  /** Each persona's panel, by persona ID, so the For row can open it. */
+  personaPanelIds: ReadonlyMap<string, string>;
   panelId: string;
   activityTitle: string;
   releaseTitle: string;
@@ -499,9 +510,16 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
         {personas.length > 0 && <>
           <dt>For</dt>
           <dd className="esm-persona-row">
-            {personas.map(persona => (
-              <span className="esm-persona-chip" key={persona.id}><PersonaAvatar persona={persona} />{persona.title}</span>
-            ))}
+            {personas.map(persona => {
+              const personaPanelId = personaPanelIds.get(persona.id);
+              return personaPanelId
+                ? (
+                  <button type="button" className="esm-persona-chip" aria-haspopup="dialog" key={persona.id} {...popoverTarget(personaPanelId)}>
+                    <PersonaAvatar persona={persona} />{persona.title}
+                  </button>
+                )
+                : <span className="esm-persona-chip" key={persona.id}><PersonaAvatar persona={persona} />{persona.title}</span>;
+            })}
           </dd>
         </>}
         {customerPersonas.length > 0 && <>
@@ -735,6 +753,99 @@ function ReleaseDetail({ release, panelId, stories, storyPanelIds, filtered }: {
   );
 }
 
+/** Active statuses in the order a job's bar draws them, done first. */
+const coverageStatuses = ["shipped", "merged", "in-progress", "planned"] as const satisfies readonly StoryStatus[];
+
+/**
+ * “4 stories: 3 shipped, 1 in progress”, or “3 stories shipped” when they share a status.
+ * Counts active stories only: blocked and cut ones are noted apart. Null when there are none.
+ */
+function jobCoverage(counts: Record<StoryStatus, number>) {
+  const parts = coverageStatuses.filter(status => counts[status] > 0);
+  if (!parts.length) return null;
+  const total = parts.reduce((sum, status) => sum + counts[status], 0);
+  const label = (status: StoryStatus) => storyStatusLabels[status].toLowerCase();
+  return parts.length === 1
+    ? `${storyCount(total)} ${label(parts[0])}`
+    : `${storyCount(total)}: ${parts.map(status => `${counts[status]} ${label(status)}`).join(", ")}`;
+}
+
+/** The job's active stories as a bar, one segment per status. The text beside it says the same, so it is hidden from screen readers. */
+function CoverageBar({ counts }: { counts: Record<StoryStatus, number> }) {
+  const total = coverageStatuses.reduce((sum, status) => sum + counts[status], 0);
+  return (
+    <span className="esm-bar" aria-hidden="true">
+      {coverageStatuses.filter(status => counts[status] > 0).map(status => (
+        <span key={status} data-status={status} style={{ width: `${(counts[status] / total) * 100}%` }} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * A persona's summary and jobs to be done, each with its stories by status
+ * and, when the host reads filters, a link to them. Counts come from the whole
+ * map, so they do not change with the filters. A popover, so it works without JavaScript.
+ */
+function PersonaDetail({ persona, panelId, filter, preservedParams }: {
+  persona: PersonaLabel;
+  panelId: string;
+  /** The view's filters. Without them, the panel has no filter links. */
+  filter?: StoryMapView["filter"];
+  preservedParams?: Readonly<Record<string, string>>;
+}) {
+  const titleId = `${panelId}-title`;
+  const base = filter && filterParams(filter, preservedParams);
+  return (
+    <div className="esm-detail esm-persona-detail" id={panelId} popover="auto" role="dialog" aria-labelledby={titleId}>
+      <div className="esm-detail-head">
+        <div className="esm-persona-head">
+          <span className="esm-avatar esm-avatar-lg" data-persona={persona.colour} aria-hidden="true">{persona.initials}</span>
+          <div>
+            <p className="esm-card-id">Persona</p>
+            <h3 id={titleId}>{persona.title}</h3>
+          </div>
+        </div>
+        <CloseButton panelId={panelId} />
+      </div>
+      {persona.summary && <p className="esm-detail-summary">{persona.summary}</p>}
+      <section className="esm-detail-section" aria-labelledby={`${panelId}-jobs`}>
+        <h4 id={`${panelId}-jobs`}>Jobs to be done</h4>
+        {persona.jobs.length
+          ? (
+            <ul className="esm-jobs">
+              {persona.jobs.map((job, index) => {
+                const coverage = jobCoverage(job.storyCounts);
+                const statementId = `${panelId}-job-${index}`;
+                const left = hiddenSummary(job.storyCounts);
+                return (
+                  <li className="esm-job" key={job.id}>
+                    <p className="esm-job-statement" id={statementId}>
+                      <JobStatement job={job} />
+                      {job.draft && <> <DraftLabel /></>}
+                    </p>
+                    <p className="esm-job-meta">
+                      {coverage
+                        ? <>
+                          <CoverageBar counts={job.storyCounts} />
+                          <span>{coverage}</span>
+                          {base && <a href={withIds(base, "job", [job.id])} aria-describedby={statementId}>Show stories</a>}
+                        </>
+                        : <span className="esm-job-gap">No stories yet</span>}
+                      {left && <span className="esm-job-left">{`${left} not counted`}</span>}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )
+          : <p className="esm-release-hidden">No jobs to be done yet.</p>}
+        {base && <p className="esm-release-hidden"><a href={withIds(base, "persona", [persona.id])}>Show only this persona’s stories</a></p>}
+      </section>
+    </div>
+  );
+}
+
 /**
  * Collapses a release lane to its header. CSS does the collapsing with :has(), so it works
  * without JavaScript; browsers without :has() never show the toggle. The value is the
@@ -878,10 +989,12 @@ function PersonaMenu({ personas, chosen, hintId }: { personas: readonly (Persona
  * stories, keeping the other filters, and works without JavaScript. The link
  * for the only chosen persona goes back to everyone.
  */
-function PersonaStrip({ personas, filter, preservedParams }: {
+function PersonaStrip({ personas, filter, preservedParams, panelIds }: {
   personas: readonly PersonaLabel[];
   filter: NonNullable<StoryMapView["filter"]>;
   preservedParams?: Readonly<Record<string, string>>;
+  /** Each persona's panel, by persona ID. */
+  panelIds: ReadonlyMap<string, string>;
 }) {
   const base = filterParams(filter, preservedParams);
   const chosen = new Set(filter.persona ?? []);
@@ -892,21 +1005,27 @@ function PersonaStrip({ personas, filter, preservedParams }: {
       {personas.map(persona => {
         const current = chosen.has(persona.id);
         const only = current && chosen.size === 1 && !filter.job?.length;
-        return (
-          <a
-            key={persona.id}
-            className="esm-persona-chip"
-            href={only ? withIds(base, "persona", []) : withIds(base, "persona", [persona.id])}
-            aria-current={current ? "true" : undefined}
-          >
-            <PersonaAvatar persona={persona} />
-            {persona.title}
-            <span className="esm-persona-count">
-              <span aria-hidden="true">{persona.activeStories}</span>
-              <span className="esm-visually-hidden">{`, ${storyCount(persona.activeStories)}`}</span>
-            </span>
-          </a>
-        );
+        const content = <>
+          <PersonaAvatar persona={persona} />
+          {persona.title}
+          <span className="esm-persona-count">
+            <span aria-hidden="true">{persona.activeStories}</span>
+            <span className="esm-visually-hidden">{`, ${storyCount(persona.activeStories)}`}</span>
+          </span>
+        </>;
+        // The board already shows only this persona, so the chip opens their panel instead.
+        const panelId = only ? panelIds.get(persona.id) : undefined;
+        return panelId
+          ? (
+            <button type="button" key={persona.id} className="esm-persona-chip" aria-current="true" aria-haspopup="dialog" {...popoverTarget(panelId)}>
+              {content}
+            </button>
+          )
+          : (
+            <a key={persona.id} className="esm-persona-chip" href={withIds(base, "persona", [persona.id])} aria-current={current ? "true" : undefined}>
+              {content}
+            </a>
+          );
       })}
       {narrowed && <a className="esm-persona-clear" href={withIds(base, "persona", [])}>Show everyone</a>}
     </nav>
@@ -959,12 +1078,13 @@ function hiddenSummary({ blocked, cut }: { blocked: number; cut: number }) {
   return [blocked && `${blocked} blocked`, cut && `${cut} cut`].filter(Boolean).join(" and ");
 }
 
-function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks, exportHref, personas, customerPersonas }: {
+function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks, exportHref, personas, customerPersonas, personaPanelIds }: {
   filter: NonNullable<StoryMapView["filter"]>;
   /** The internal view's personas. The persona filter and strip show when there are any. */
   personas: readonly PersonaLabel[];
   /** The customer view's personas. The persona filter shows when there are two or more, and the strip never does. */
   customerPersonas: readonly StoryMapLabel[];
+  personaPanelIds: ReadonlyMap<string, string>;
   shown: number;
   preservedParams?: Readonly<Record<string, string>>;
   showChanged: boolean;
@@ -1025,7 +1145,7 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
           {exportHref && <ExportMenu href={exportHref} />}
         </form>
       </div>
-      {personas.length > 0 && <PersonaStrip personas={personas} filter={filter} preservedParams={preservedParams} />}
+      {personas.length > 0 && <PersonaStrip personas={personas} filter={filter} preservedParams={preservedParams} panelIds={personaPanelIds} />}
       {(filtering || filter.hidden) && (
         <p className="esm-filter-results" role="status">
           {filtering && <>
@@ -1080,6 +1200,7 @@ export function StoryMapBoard({
   const panelIds = new Map(placed.map((story, index) => [story, `${baseId}-story-${index}`]));
   const internalReleases = map.audience === "internal" ? new Map(map.releases.map(release => [release.id, release])) : undefined;
   const lookup = personaLookup(map);
+  const personaPanelIds = new Map([...lookup.personas.keys()].map((id, index) => [id, `${baseId}-persona-${index}`]));
   // Who each step of the journey serves, from the personas of its active stories, in map order.
   const activityPersonas = new Map<string, PersonaLabel[]>();
   if (lookup.personas.size) {
@@ -1136,6 +1257,7 @@ export function StoryMapBoard({
             exportHref={internal ? exportHref : undefined}
             personas={[...lookup.personas.values()]}
             customerPersonas={[...lookup.customer.values()]}
+            personaPanelIds={personaPanelIds}
           />
         )}
         {hideInactive && (
@@ -1158,7 +1280,7 @@ export function StoryMapBoard({
                   <div className="esm-activity" role="columnheader" key={activity.id}>
                     <span className="esm-activity-title">{activity.title}</span>
                     {activity.summary && <span className="esm-activity-summary">{activity.summary}</span>}
-                    <PersonaAvatars personas={activityPersonas.get(activity.id) ?? []} />
+                    <PersonaAvatars personas={activityPersonas.get(activity.id) ?? []} panelIds={personaPanelIds} />
                     {index < map.activities.length - 1 && (
                       <svg className="esm-icon esm-step" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="m6 3.5 4.5 4.5L6 12.5" />
@@ -1239,6 +1361,16 @@ export function StoryMapBoard({
           stalledAfterWeeks={stalledAfterWeeks}
           testsIndexed={testsIndexed}
           lookup={lookup}
+          personaPanelIds={personaPanelIds}
+        />
+      ))}
+      {[...lookup.personas.values()].map(persona => (
+        <PersonaDetail
+          key={persona.id}
+          persona={persona}
+          panelId={personaPanelIds.get(persona.id)!}
+          filter={map.filter}
+          preservedParams={preservedParams}
         />
       ))}
       {internalReleases && showGrid && releases.map((release, index) => (
