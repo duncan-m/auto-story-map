@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: merged. ESM-901 to ESM-906 are merged, ready for the 0.7.3 release. The stories are ESM-901 to ESM-906, in the **0.7.3: Personas** release of the map. The release's notes and expected impact are in the map.
+Status: ESM-901 to ESM-906 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-907 to ESM-909 are planned for the same release, and ESM-910 for **0.7.6: PM improvements**. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**, or **which need it meets**. Personas and their jobs to be done add that: the map file names the people the product serves and the jobs each of them is trying to get done, each story says which jobs it serves, and the board lets viewers read the map one persona at a time and see which jobs have no stories.
 
@@ -12,6 +12,12 @@ Items are numbered in the order they should be built, and each section uses the 
 4. [Open a persona to see jobs and coverage](#4-open-a-persona-to-see-jobs-and-coverage) · ESM-904
 5. [Share approved personas with customers](#5-share-approved-personas-with-customers) · ESM-905
 6. [Include personas in exports](#6-include-personas-in-exports) · ESM-906
+7. [Describe a persona's context](#7-describe-a-personas-context) · ESM-907
+8. [Mark a persona's core job](#8-mark-a-personas-core-job) · ESM-908
+9. [Write job statements with a trigger and a stake](#9-write-job-statements-with-a-trigger-and-a-stake) · ESM-909
+10. [Break a job into steps](#10-break-a-job-into-steps) · ESM-910
+
+Items 7 to 10 came from comparing the format with a fuller persona template: a role with what the persona is judged on, their daily tools, their constraints, one core job story, and the workflow steps of that job. Items 7 to 9 are small and fit 0.7.3, which has not shipped. Item 10 changes the persona panel and its coverage, so it waits for 0.7.6, next to activity steps (ESM-501).
 
 All stories are internal. Item 5 changes what customers can see, but only for personas whose customer copy has been approved, as for stories today. Jobs are internal only.
 
@@ -84,7 +90,8 @@ The board reads each job as a job statement: “**When** a release is being plan
 | B. Can a story have several personas | Yes, up to 4, first is primary | One persona per story. Simpler, but forces a choice for shared stories such as search |
 | C. Untagged stories | Allowed. The filter has no “Untagged” option at first, and validate warns only when the map has personas and more than half of the active stories are untagged | Make `personas` required once the map defines any. Too strict for existing maps |
 | D. What a persona filter keeps | Stories tagged with any chosen persona. Several personas can be chosen, like statuses | Primary persona only |
-| E. Persona fields | `id`, `title`, `summary`, `jobs`, `customer` | Add `pains`, `quote` or an image. Keep it small until teams ask; images also raise hosting and privacy questions |
+| E. Persona fields | `id`, `title`, `summary`, `jobs`, `customer`, and from item 7 an internal `context` with accountability, tools and constraints | Add `pains`, `quote` or an image. Still deferred; images also raise hosting and privacy questions. Item 7 reopens this decision for context only, because constraints change what a story can assume |
+| J. Which job is the core job | The first job in the persona's list (item 8) | A `core: true` field. Explicit, but two ways to say the same thing, and validation would need to allow only one |
 | F. Customer view | Show approved personas as a “For” line in the story panel only | No personas for customers at all. Also fine; item 5 can be dropped without affecting the rest |
 | G. Release | Decided: a new **0.7.3: Personas** release, after the export work and the CLI to read and edit the map | — |
 | H. Jobs to be done | Decided: structured jobs on each persona, with IDs that stories reference, in place of free-text goals | Job statements as free text, which cannot be checked. Jobs as their own list, shared between personas: more to maintain and show, for a case that is rare until teams ask |
@@ -109,6 +116,10 @@ The board reads each job as a job statement: “**When** a release is being plan
 | 4 | Open a persona to see jobs and coverage | M | 2 |
 | 6 | Include personas in exports | S | 1 |
 | 5 | Share approved personas with customers | S | 2 |
+| 7 | Describe a persona's context | S | 4 |
+| 8 | Mark a persona's core job | S | 4 |
+| 9 | Write job statements with a trigger and a stake | S | 1 |
+| 10 | Break a job into steps | M | 4, and ESM-501 if steps should point to activity steps |
 
 Items 1 and 2 can share a PR if the first is small. Every PR follows the repository's rules: update `product/story-map.yaml` in the same PR, run `npm run validate` and `npm test`, add a `## Unreleased` entry to `CHANGELOG.md`, and include the `story-map diff origin/main` summary in the PR description. Tag new tests with the story ID, such as `test("ESM-901: rejects an unknown persona", …)`.
 
@@ -191,6 +202,100 @@ The customer view never includes jobs, even for customer-facing personas. A stor
 - Visio: `Personas` and `Jobs` fields in each card's shape data, so Lucidchart can filter by them. No avatars on the exported cards for now.
 
 **Tests.** Each export with and without personas and jobs; CSV escaping of persona titles.
+
+## 7. Describe a persona's context
+
+The summary says who a persona is, but not what they are judged on, what they work with or what holds them back. Those constraints shape what a story can assume, such as “no engineering support for integrations”, so the team and agents should see them when they plan.
+
+```yaml
+personas:
+  - id: pm
+    title: Product manager
+    summary: Owns the roadmap and decides what goes in each release.
+    context:
+      accountability: Judged on whether releases land with the scope agreed at planning.
+      tools: [GitHub, Linear, Slack, Figma]
+      constraints:
+        - Cannot change code, so relies on engineers or agents to edit the map
+        - Shares plans with customers only through approved copy
+      draft: true
+```
+
+**Change.**
+
+- `src/schema.ts`: an optional `context` on a persona, with `accountability` (up to 200 characters), `tools` (up to 8 names of up to 60 characters), `constraints` (up to 6, of up to 200 characters) and `draft`. All parts are optional, but `context` needs at least one of the first three. `draft: true` works as for jobs: agents set it, and only a person removes it.
+- `src/view.ts`: the internal persona label carries `context`. The customer projection drops it, even for a customer-facing persona.
+- `src/react.tsx`: the persona panel shows **Accountable for**, **Tools** and **Constraints** between the summary and the jobs, with a **Draft** label on drafted context.
+- `src/diff.ts`: report added, removed and changed context under **Personas and jobs**, and a confirmed draft.
+- JSON export: each persona's `context`. `story-map stories --query` and board search do not match it, so results stay about stories.
+- Validate warns about drafted context on a persona that a shipped story is for, as for drafted jobs.
+- Dogfood: draft context for this repository's four personas, marked `draft: true`.
+
+**Docs.** The fields in [Personas and jobs to be done](../story-map.md#personas-and-jobs-to-be-done), and a sentence in the first-run workflow: draft context from the product's docs and research, mark it `draft: true`, and leave out what you cannot support with a source.
+
+**Tests.** Valid and invalid context, the customer view never including it, the panel with and without it, and the diff lines.
+
+## 8. Mark a persona's core job
+
+A persona usually has one job that matters most, and the rest support it. Today the order of jobs means nothing, so the board cannot show which job to cover first.
+
+**Change.**
+
+- The first job in a persona's `jobs` is their core job. No new field (decision J).
+- `src/react.tsx`: the persona panel labels it **Core job** and sets it apart from the others. The story panel's **Jobs** row marks it too.
+- Validate: a core job with no active stories gets its own warning, such as “Core job plan-release (Product manager) has no stories”, in place of the usual one.
+- `src/diff.ts`: report a change of core job when jobs are reordered, such as “Product manager's core job: plan-release → track-progress”.
+- JSON export: `core: true` on the first job of each persona, so agents need not know the rule.
+- Dogfood: put each persona's core job first in this repository's map.
+
+**Docs.** The rule in the field table and the job-writing advice, and that reordering jobs changes the core job.
+
+**Tests.** The label, the warning, the diff line on reorder, and that a persona with one job treats it as core.
+
+## 9. Write job statements with a trigger and a stake
+
+The format already reads as “When …, I want …, so …”, but drafts such as “When I start a task” say little. A good statement names the moment and what makes it hard, and the outcome names what is at stake: “When I'm preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools, I want to quickly trace and reconcile the discrepancies, so I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.”
+
+**Change.**
+
+- [Personas and jobs to be done](../story-map.md#personas-and-jobs-to-be-done): `situation` names the trigger and the complication, not only the moment. `outcome` names what gets better and what it costs today. One full example, and a weak and a strong version side by side.
+- `src/schema.ts`: the field descriptions say the same, so editors and agents see it.
+- First-run workflow: agents write jobs this way and cite the research or issue each one comes from in the PR.
+- Dogfood: rewrite this repository's drafted jobs to this standard, keeping their IDs and `draft: true`, so stories keep their tags and a person still confirms each one.
+
+No validation changes. A rule on length or wording would flag good short statements, so this is guidance only.
+
+**Tests.** None beyond validation of the rewritten map.
+
+## 10. Break a job into steps
+
+A job is done in steps, such as gather, audit, verify and brief. Steps show which part of a job the stories help with, and where the gaps are. They are also what a story map's activities describe, so each step can point to the activity where its stories live.
+
+```yaml
+jobs:
+  - id: plan-release
+    situation: …
+    steps:
+      - title: Gather
+        summary: Collect the candidate stories and the evidence for each
+        activity: plan
+      - title: Agree scope
+        summary: Settle what is in and out in the PR that changes the map
+        activity: review
+```
+
+**Change.**
+
+- `src/schema.ts`: optional `steps` on a job, up to 6, in order. Each has a `title` (up to 60 characters), an optional `summary` and an optional `activity` ID. An unknown activity is an error, as for stories.
+- Coverage: the stories for a step are those that serve the job and sit in the step's activity. A step without an activity has no coverage of its own.
+- `src/react.tsx`: the persona panel lists a job's steps in order, each with its count of active stories, and **No stories yet** for a step with an activity but no stories. A **Show stories** link per step sets `job` and `activity`.
+- Validate warns about a step whose activity has no active stories for its job.
+- `src/diff.ts` and the JSON export: steps and their coverage.
+- Once activity steps land (ESM-501), a step can point to an activity step instead. Settle the shape with ESM-501 before building either.
+
+**Docs.** Steps in the persona section, and how they relate to activities.
+
+**Tests.** Valid and invalid steps, coverage per step, the warning, and the panel with and without steps.
 
 ## Later
 
