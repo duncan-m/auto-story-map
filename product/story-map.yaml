@@ -413,6 +413,50 @@ stories:
     customer:
       title: Keep the map in step with the code
       summary: A scheduled check compares the map with your code and proposes corrections for you to review.
+  # Next: native CLI for agents
+  - id: ESM-901
+    title: Read the map from the command line
+    activity: explore
+    release: next
+    status: planned
+    summary: story-map story, stories and releases print stories and releases as text or JSON, with the board's filters and search, so agents stop reading the YAML by hand.
+    sources:
+      - docs/plans/native-cli.md#2-read-the-map
+  - id: ESM-902
+    title: Print validation results as JSON
+    activity: review
+    release: next
+    status: planned
+    summary: validate --format json returns each issue with its severity, file, line, YAML path and message, for agents and scripts.
+    sources:
+      - docs/plans/native-cli.md#3-validation-as-json
+  - id: ESM-903
+    title: Look up the evidence for a story
+    activity: review
+    release: next
+    status: planned
+    summary: story-map evidence reports the branches, default-branch commits, plans, tests and broken sources that mention each story, and suggests a status without changing anything.
+    notes: The deterministic evidence step of the scheduled audit (ESM-502), built first so agents can use it on its own.
+    sources:
+      - docs/plans/native-cli.md#4-look-up-evidence-for-a-story
+  - id: ESM-904
+    title: Propose map edits from the command line
+    activity: plan
+    release: next
+    status: planned
+    summary: story-map edit and add change statuses, releases, sources and impact as named operations, printing the diff and validation as a dry run until --write.
+    notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft.
+    sources:
+      - docs/plans/native-cli.md#5-propose-edits
+  - id: ESM-905
+    title: Claim stories so several agents do not clash
+    activity: plan
+    release: next
+    status: planned
+    summary: story-map claim records that an agent is on a story as a Git ref on the remote, so a second agent is told before it starts the same work.
+    notes: Opt-in, for teams running several agents. Never written to the map file.
+    sources:
+      - docs/plans/native-cli.md#6-claim-stories
   - id: ESM-801
     title: Show a story's tests in its panel
     activity: explore
