@@ -9,10 +9,12 @@ personas:
     title: Primary user
     summary: Replace with a person the product serves, drafted from its roles and docs.
     jobs:
+      # The first job is the core job. Name the trigger and what makes it hard,
+      # and what is at stake. See "Write a job statement" in docs/story-map.md.
       - id: first-job
-        situation: they reach the first step in the user journey
+        situation: they reach the first step in the user journey and nobody is there to help
         motivation: to get it done without help
-        outcome: they can move on to the next step
+        outcome: they can move on to the next step, rather than giving up and asking support
         draft: true
 activities:
   - id: first-step

@@ -43,7 +43,7 @@ export {
 export type { OmittedStoryTests, StoryMapTests, StoryTestEntry } from "./tests-index.js";
 export { storyMapCommit, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
-export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
+export type { CoreJobChange, CustomerStoryChange, GroupChanges, InactiveStoryChange, JobChanges, JobDiffRef, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";
 export { jsonContentType, storyMapToJson } from "./export-json.js";
@@ -57,5 +57,5 @@ export { findStories, getStories } from "./read.js";
 export type { FoundStories, MissingStory, StoryQuery } from "./read.js";
 export { nextStoryId, proposeStoryMapEdit, StoryMapEditError, storyMapEditOperationSchema } from "./edit.js";
 export type { StoryMapEditOperation, StoryMapEditOptions, StoryMapEditResult } from "./edit.js";
-export { jobStatement, personaColourCount, personaInitials, storyMapJobs, storyPersonaResolver, storyPersonas } from "./personas.js";
+export { jobStatement, personaColourCount, personaCoreJob, personaInitials, storyMapJobs, storyPersonaResolver, storyPersonas } from "./personas.js";
 export type { StoryMapJobOwner } from "./personas.js";

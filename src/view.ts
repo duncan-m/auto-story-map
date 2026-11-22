@@ -85,6 +85,8 @@ export interface StoryCard extends StoryMapLabel {
 
 /** A job to be done as internal viewers see it, with how many stories serve it. */
 export interface PersonaJobLabel extends StoryMapJob {
+  /** True on the persona's core job, the first in their list. Absent on the others. */
+  core?: true;
   /** Stories that serve the job, by status, counted before any filter is applied, like a release's `storyCounts`. */
   storyCounts: Record<StoryStatus, number>;
 }
@@ -97,7 +99,7 @@ export interface PersonaLabel extends StoryMapLabel {
   colour: number;
   /** What success means to them, what they use today and their constraints. Absent when the map gives none. Internal only. */
   context?: StoryMapPersonaContext;
-  /** The persona's jobs to be done, in map order, each with its stories by status. */
+  /** The persona's jobs to be done, in map order, core job first, each with its stories by status. */
   jobs: PersonaJobLabel[];
   /** Active stories for the persona, counted before any filter is applied, like a release's `storyCounts`. */
   activeStories: number;
@@ -332,8 +334,9 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       initials: personaInitials(persona.title),
       colour: index % personaColourCount,
       ...(persona.context ? { context: structuredClone(persona.context) } : {}),
-      jobs: (persona.jobs ?? []).map(job => ({
+      jobs: (persona.jobs ?? []).map((job, jobIndex) => ({
         ...job,
+        ...(jobIndex === 0 ? { core: true as const } : {}),
         storyCounts: jobCounts.get(job.id) ?? Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>,
       })),
       activeStories: personaCounts.get(persona.id) ?? 0,

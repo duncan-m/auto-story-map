@@ -18,6 +18,7 @@ import {
   getStoryMapForViewer,
   getStoryMapPage,
   parseStoryMap,
+  personaCoreJob,
   personaInitials,
   proposeStoryMapEdit,
   readStoryMapFilters,
@@ -94,13 +95,13 @@ test("ESM-901: accepts personas, jobs and story tags, and resolves each story's 
   assert.deepEqual(storyPersonas(map, {}), []);
   assert.deepEqual(storyPersonas(plain, { jobs: ["price-materials"] }), []);
 
-  assert.equal(jobStatement(personas[0].jobs[0]), "When I am pricing a project, I want to use the catalogue prices, so my estimate matches what finance pays.");
-  assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: "c." }), "When a, I want b, so c.");
-  assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: "c?!." }), "When a, I want b, so c.");
+  assert.equal(jobStatement(personas[0].jobs[0]), "When I am pricing a project, I want to use the catalogue prices, so that my estimate matches what finance pays.");
+  assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: "c." }), "When a, I want b, so that c.");
+  assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: "c?!." }), "When a, I want b, so that c.");
   // Many marks that do not end the text stay quick: the check scans back from the end once.
   const marks = "!".repeat(200_000);
   const started = performance.now();
-  assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: `${marks}x` }), `When a, I want b, so ${marks}x.`);
+  assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: `${marks}x` }), `When a, I want b, so that ${marks}x.`);
   assert.ok(performance.now() - started < 200, "linear in the outcome's length");
 });
 
@@ -153,7 +154,7 @@ test("ESM-901: warns about personas and jobs no story uses, untagged stories, un
   }));
   const messages = personaWarnings(map).map(warning => `${warning.path.join(".")} (${warning.itemId ?? "map"}): ${warning.message}`);
   assert.deepEqual(messages.sort(), [
-    "personas.1.jobs.0 (finance): Job approve-estimate (Finance reviewer) has no stories.",
+    "personas.1.jobs.0 (finance): Core job approve-estimate (Finance reviewer) has no stories.",
     "personas.2 (auditor): No story is for Auditor. Tag the stories that serve them, or remove the persona.",
     "personas.0.jobs.1.draft (builder): Confirm the drafted job send-estimate and remove draft: true. Stories that serve it have shipped.",
     "stories.3.personas.0 (FINANCE-201): For Finance reviewer, but serves none of their jobs, so it may not match a known need. Add the job it serves, or draft one.",
@@ -195,7 +196,7 @@ test("ESM-901: diffs report persona, job and story tag changes", () => {
   assert.deepEqual(diff.personas.renamed, [{ id: "builder", title: "Site builder", from: "Builder" }]);
   assert.deepEqual(diff.personas.customerLabelChanged, [{ id: "finance", title: "Finance reviewer" }]);
   assert.deepEqual(diff.jobs.added.map(job => job.id), ["audit"]);
-  assert.deepEqual(diff.jobs.moved, [{ id: "price-materials", persona: "Finance reviewer", from: "Builder", statement: "When I am pricing a project, I want to use the catalogue prices, so my estimate is right first time." }]);
+  assert.deepEqual(diff.jobs.moved, [{ id: "price-materials", persona: "Finance reviewer", from: "Builder", statement: "When I am pricing a project, I want to use the catalogue prices, so that my estimate is right first time." }]);
   assert.deepEqual(diff.jobs.reworded.map(job => job.id), ["price-materials"]);
   assert.deepEqual(diff.jobs.confirmed.map(job => job.id), ["send-estimate"]);
   assert.deepEqual(diff.jobs.removed, []);
@@ -208,7 +209,7 @@ test("ESM-901: diffs report persona, job and story tag changes", () => {
   assert.match(markdown, /- Added persona `auditor` Auditor/);
   assert.match(markdown, /- Renamed persona `builder` from “Builder” to “Site builder”/);
   assert.match(markdown, /- Changed the customer-facing label of persona `finance` Finance reviewer/);
-  assert.match(markdown, /- Added job `audit` \(Auditor\): When a quarter ends, I want to see who approved what, so audits take a day\./);
+  assert.match(markdown, /- Added job `audit` \(Auditor\): When a quarter ends, I want to see who approved what, so that audits take a day\./);
   assert.match(markdown, /- Moved job `price-materials` from Builder to Finance reviewer/);
   assert.match(markdown, /- Reworded job `price-materials` \(Finance reviewer\)/);
   assert.match(markdown, /- Confirmed drafted job `send-estimate` \(Site builder\)/);
@@ -362,9 +363,9 @@ test("ESM-902: cards, activities and the story panel show who a story is for", (
 
   const panel = panelFor(html, "Look up prices in the material catalogue");
   assert.match(panel, /<dt>For<\/dt><dd class="esm-persona-row"><button type="button" class="esm-persona-chip" aria-haspopup="dialog" popoverTarget="[^"]+-persona-0"><span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>Builder<\/button>/);
-  assert.match(panel, /<dt>Jobs<\/dt><dd><ul class="esm-story-jobs"><li><b>When<\/b> I am pricing a project, <b>I want<\/b> to use the catalogue prices, <b>so<\/b> my estimate matches what finance pays\. <span class="esm-story-job-persona">· Builder<\/span><\/li>/);
+  assert.match(panel, /<dt>Jobs<\/dt><dd><ul class="esm-story-jobs"><li><b>When<\/b> I am pricing a project, <b>I want<\/b> to use the catalogue prices, <b>so that<\/b> my estimate matches what finance pays\. <span class="esm-story-job-persona">· Builder<\/span> <span class="esm-core-label">Core job<\/span><\/li>/);
   assert.ok(panel.indexOf("<dt>For</dt>") < panel.indexOf("<dt>Activity</dt>"), "For comes first");
-  assert.match(panelFor(html, "Submit the estimate to finance"), /so<\/b> I do not chase finance by email\. <span class="esm-story-job-persona">· Builder<\/span> <span class="esm-draft"/);
+  assert.match(panelFor(html, "Submit the estimate to finance"), /so that<\/b> I do not chase finance by email\. <span class="esm-story-job-persona">· Builder<\/span> <span class="esm-draft"/);
 });
 
 test("ESM-902: a map without personas renders as before", () => {
@@ -472,7 +473,7 @@ test("ESM-903: the job filter is kept by the form and named in the filter summar
   const map = parse(tagged());
   const html = render(page(map, "persona=builder&job=send-estimate"));
   assert.match(html, /<input type="hidden" name="job" value="send-estimate"\/>/);
-  assert.match(html, /Showing 1 of 5 stories\. Stories serving the job “<b>When<\/b> my estimate is ready, <b>I want<\/b> to send it for approval in one step, <b>so<\/b> I do not chase finance by email\.” <span class="esm-story-job-persona">\(Builder\)<\/span>\. <a href="\?persona=builder">Show every job<\/a>/);
+  assert.match(html, /Showing 1 of 5 stories\. Stories serving the job “<b>When<\/b> my estimate is ready, <b>I want<\/b> to send it for approval in one step, <b>so that<\/b> I do not chase finance by email\.” <span class="esm-story-job-persona">\(Builder\)<\/span>\. <a href="\?persona=builder">Show every job<\/a>/);
   // The chosen persona's chip clears the job too, and Show everyone clears both.
   assert.match(html, /<a class="esm-persona-chip" href="\?persona=builder" aria-current="true">/);
   assert.match(html, /<a class="esm-persona-clear" href="\?">Show everyone<\/a>/);
@@ -488,7 +489,7 @@ const personaPanelFor = (html, title) => {
   return panel;
 };
 /** The list item of the job whose statement starts with `situation`. */
-const jobFor = (panel, situation) => panel.match(new RegExp(`<li class="esm-job">(?:(?!</li>).)*${situation}(?:(?!</li>).)*</li>`))?.[0];
+const jobFor = (panel, situation) => panel.match(new RegExp(`<li class="esm-job(?: esm-job-core)?">(?:(?!</li>).)*${situation}(?:(?!</li>).)*</li>`))?.[0];
 
 test("ESM-904: counts the stories that serve each job by status, before any filter", () => {
   const map = parse(tagged(document => { document.stories.find(story => story.id === "FINANCE-202").jobs = ["approve-estimate"]; }));
@@ -715,7 +716,7 @@ test("ESM-906: the JSON export lists personas with job statements and coverage, 
     { id: "finance", title: "Finance reviewer", activeStories: 2 },
   ]);
   const [price, send] = json.personas[0].jobs;
-  assert.equal(price.statement, "When I am pricing a project, I want to use the catalogue prices, so my estimate matches what finance pays.");
+  assert.equal(price.statement, "When I am pricing a project, I want to use the catalogue prices, so that my estimate matches what finance pays.");
   assert.equal(price.activeStories, 2);
   assert.deepEqual(price.storyCounts, { planned: 1, "in-progress": 1, merged: 0, shipped: 0, blocked: 0, cut: 0 });
   assert.equal(send.draft, true);
@@ -756,7 +757,7 @@ test("ESM-906: story-map story shows personas and jobs, and stories filters by t
 
   const story = run("story", "BUILDER-103");
   assert.equal(story.status, 0, story.stderr);
-  assert.match(story.stdout, /  For:       builder \(Builder\)\n  Jobs:\n    send-estimate  When my estimate is ready, I want to send it for approval in one step, so I do not chase finance by email\. \(Builder\) \[draft\]\n/);
+  assert.match(story.stdout, /  For:       builder \(Builder\)\n  Jobs:\n    send-estimate  When my estimate is ready, I want to send it for approval in one step, so that I do not chase finance by email\. \(Builder\) \[draft\]\n/);
   const json = JSON.parse(run("story", "BUILDER-102", "--format", "json").stdout);
   assert.deepEqual(json.stories[0].personas, ["builder", "finance"]);
 
@@ -888,4 +889,85 @@ test("ESM-907: diffs report added, changed, confirmed and removed context", () =
   assert.deepEqual(gone.personaContexts.removed, []);
   assert.equal(hasStoryMapChanges(diffStoryMaps(before, before)), false);
   assert.equal(hasStoryMapChanges(diffStoryMaps(before, parse(withContext(document => { document.personas[0].context.constraints.pop(); })))), true);
+});
+
+test("ESM-908: the first job is the core job in the view and the JSON export", () => {
+  const view = getStoryMapForViewer(parse(tagged()), engineer);
+  assert.deepEqual(view.personas.map(persona => persona.jobs.map(job => [job.id, job.core])), [
+    [["price-materials", true], ["send-estimate", undefined]],
+    // A persona with one job treats it as core.
+    [["approve-estimate", true]],
+  ]);
+  assert.ok(!("core" in view.personas[0].jobs[1]), "only the core job carries the flag");
+  assert.equal(personaCoreJob(view.personas[0]).id, "price-materials");
+  assert.equal(personaCoreJob({ jobs: [] }), undefined);
+  assert.equal(personaCoreJob({}), undefined);
+
+  const json = JSON.parse(storyMapToJson(view, { now: new Date("2026-11-20T09:00:00Z") }));
+  assert.deepEqual(json.personas.map(persona => persona.jobs.filter(job => job.core).map(job => job.id)), [["price-materials"], ["approve-estimate"]]);
+  assert.equal(json.personas[0].jobs[1].core, undefined);
+  assert.ok(json.provenance.notes.some(note => /first job is their core job, marked core: true/.test(note)));
+});
+
+test("ESM-908: the persona panel labels the core job and heads the rest as Other jobs, and the story panel marks it", () => {
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: page(parse(tagged()), "") }));
+  const builder = personaPanelFor(html, "Builder");
+  const core = builder.match(/<li class="esm-job esm-job-core">(?:(?!<\/li>).)*<\/li>/)?.[0];
+  assert.ok(core, "the core job is set apart");
+  assert.match(core, /^<li class="esm-job esm-job-core"><span class="esm-core-label">Core job<\/span><p class="esm-job-statement"[^>]*><b>When<\/b> I am pricing a project/);
+  assert.match(builder, /<\/ul><h5 class="esm-jobs-subhead" id="([^"]+)">Other jobs<\/h5><ul class="esm-jobs" aria-labelledby="\1"><li class="esm-job"><p class="esm-job-statement"[^>]*><b>When<\/b> my estimate is ready/);
+  assert.equal(builder.match(/Core job/g).length, 1);
+  // With one job there is nothing else to head.
+  const finance = personaPanelFor(html, "Finance reviewer");
+  assert.match(finance, /esm-job-core/);
+  assert.doesNotMatch(finance, /Other jobs/);
+
+  // BUILDER-102 serves both personas' core jobs; BUILDER-103 serves a job that is not core.
+  assert.equal(panelFor(html, "Look up prices in the material catalogue").match(/<span class="esm-core-label">Core job<\/span>/g).length, 2);
+  assert.doesNotMatch(panelFor(html, "Submit the estimate to finance"), /Core job/);
+});
+
+test("ESM-908: validate warns when a core job has no stories, in place of the usual warning", () => {
+  const map = parse(tagged(document => {
+    for (const story of document.stories) story.jobs = story.jobs?.filter(job => job !== "price-materials");
+    document.stories.find(story => story.id === "BUILDER-101").jobs = ["send-estimate"];
+  }));
+  const messages = personaWarnings(map).map(warning => warning.message);
+  assert.ok(messages.includes("Core job price-materials (Builder) has no stories."), messages.join("\n"));
+  assert.ok(!messages.some(message => message.startsWith("Job price-materials")));
+
+  // A job that is not core keeps the usual warning.
+  const other = parse(tagged(document => {
+    document.stories.find(story => story.id === "BUILDER-103").jobs = ["price-materials"];
+  }));
+  assert.ok(personaWarnings(other).some(warning => warning.message === "Job send-estimate (Builder) has no stories."));
+});
+
+test("ESM-908: diff reports a change of core job when jobs are reordered", () => {
+  const before = parse(tagged());
+  const after = parse(tagged(document => { document.personas[0].jobs.reverse(); }));
+  const diff = diffStoryMaps(before, after);
+  assert.deepEqual(diff.jobs.coreChanged, [{ id: "builder", persona: "Builder", from: "price-materials", to: "send-estimate" }]);
+  assert.deepEqual(diff.jobs.reworded, []);
+  assert.equal(hasStoryMapChanges(diff), true);
+  assert.match(formatStoryMapDiff(diff), /### Personas and jobs\n\n- Builder's core job: `price-materials` → `send-estimate`\n/);
+
+  // Removing the core job makes the next one core; a new persona has no earlier core job to compare.
+  const removed = diffStoryMaps(before, parse(tagged(document => {
+    document.personas[0].jobs.shift();
+    for (const story of document.stories) story.jobs = story.jobs?.filter(job => job !== "price-materials");
+    document.personas.push({ id: "auditor", title: "Auditor", jobs: [{ id: "audit", situation: "a quarter ends", motivation: "to see who approved what", outcome: "audits take a day" }] });
+  })));
+  assert.deepEqual(removed.jobs.coreChanged, [{ id: "builder", persona: "Builder", from: "price-materials", to: "send-estimate" }]);
+  assert.deepEqual(diffStoryMaps(before, before).jobs.coreChanged, []);
+});
+
+test("ESM-908: story-map story marks the core job", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "story-map-core-job-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const mapPath = join(directory, "map.yaml");
+  await writeFile(mapPath, stringify(tagged()));
+  const story = spawnSync(process.execPath, [cli, "story", "BUILDER-102", "--map", mapPath], { encoding: "utf8" });
+  assert.equal(story.status, 0, story.stderr);
+  assert.match(story.stdout, /    price-materials  When I am pricing a project, .*\. \(Builder\) \[core job\]\n    approve-estimate  .*\(Finance reviewer\) \[core job\]\n/);
 });

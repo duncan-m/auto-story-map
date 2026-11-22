@@ -74,17 +74,17 @@ function formatSchemas(strict: boolean) {
       .describe("true when an agent drafted this item and nobody has confirmed it yet. Only a person removes it."),
   });
 
-  const statementPart = (lead: string, example: string) => z.string().trim().min(1).max(jobStatementMaxLength)
-    .describe(`Written without its lead word, which the board adds: “${lead} …”. Such as “${example}”.`);
+  const statementPart = (lead: string, guidance: string, example: string) => z.string().trim().min(1).max(jobStatementMaxLength)
+    .describe(`Written without its lead word, which the board adds: “${lead} …”. ${guidance} Such as “${example}”.`);
 
   const job = object({
     id: id.describe("Stable job ID, unique across the map, that stories reference in their jobs. Keep it when rewording the job or moving it to another persona."),
-    situation: statementPart("When", "a release is being planned"),
-    motivation: statementPart("I want", "to agree its scope in the PR that changes the map"),
-    outcome: statementPart("so", "engineers and product start from the same list"),
+    situation: statementPart("When", "The trigger and what makes it hard, not only the moment or a role.", "a release is being planned and its scope is spread across chat threads and tickets"),
+    motivation: statementPart("I want", "What they want to do in that moment, in their words, without naming a feature.", "to agree its scope in the PR that changes the map"),
+    outcome: statementPart("so that", "What gets better for them and what is at stake if it does not.", "engineers and product start from the same list, rather than finding out at the demo that they meant different things"),
     draft: z.boolean().optional()
       .describe("true when an agent drafted this job and nobody has confirmed it yet. Only a person removes it."),
-  }).describe("A job to be done: “When <situation>, I want <motivation>, so <outcome>.” Internal only.");
+  }).describe("A job to be done: “When <situation>, I want <motivation>, so that <outcome>.” Internal only.");
 
   const contextLine = z.string().trim().min(1).max(personaContextMaxLength);
   const personaContext = object({
@@ -104,7 +104,7 @@ function formatSchemas(strict: boolean) {
     summary: summary.describe("Optional internal summary of who they are and what they own."),
     context: personaContext.optional().describe("Optional internal context: what success means to them, what they use today and their constraints. Never shown to customers."),
     jobs: z.array(job).max(personaJobsMaxItems).optional()
-      .describe(`Optional. Up to ${personaJobsMaxItems} jobs to be done that stories serve.`),
+      .describe(`Optional. Up to ${personaJobsMaxItems} jobs to be done that stories serve. The first is the persona's core job, the one that matters most, so reordering the jobs changes it.`),
     customer: customerCopy.optional().describe("Customer-facing persona name. Add only after the wording is approved."),
   }).describe("A person the product serves. The order sets each persona's colour on the board.");
 
@@ -441,7 +441,8 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
         warnings.push({
           severity: "warning",
           path: ["personas", index, "jobs", jobIndex],
-          message: `Job ${job.id} (${persona.title}) has no stories.`,
+          // The first job is the core job, so a gap there matters most.
+          message: `${jobIndex === 0 ? "Core job" : "Job"} ${job.id} (${persona.title}) has no stories.`,
           itemId: persona.id,
         });
       }

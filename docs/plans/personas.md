@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: ESM-901 to ESM-907 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-908 to ESM-911 are planned for the same release. The release's notes and expected impact are in the map.
+Status: ESM-901 to ESM-909 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-910 and ESM-911 are planned for the same release. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**, or **which need it meets**. Personas and their jobs to be done add that: the map file names the people the product serves and the jobs each of them is trying to get done, each story says which jobs it serves, and the board lets viewers read the map one persona at a time and see which jobs have no stories.
 
@@ -90,10 +90,10 @@ stories:
 
 ESM-104's personas resolve to Product manager and Engineer, from its jobs, and Product customer, from `personas`.
 
-The board reads each job as a job statement: “**When** a release is being planned, **I want** to agree its scope in the PR that changes the map, **so** engineers and product start from the same list.”
+The board reads each job as a job statement: “**When** a release is being planned, **I want** to agree its scope in the PR that changes the map, **so that** engineers and product start from the same list.” From item 9 the board reads the third part as “so that”.
 
 - `personas` on the map is optional, up to 12 entries. Each has the usual `id`, `title`, `summary` and `customer`, plus optional `jobs`.
-- `jobs` on a persona is optional, up to 8 entries. Each job has an `id`, unique across the map, and three required fields of up to 200 characters: `situation` (“When …”), `motivation` (“I want …”) and `outcome` (“so …”). Write each without its lead word, which the board adds. `draft: true` marks a job an agent drafted and nobody has confirmed. Only a person removes it, as for release impact.
+- `jobs` on a persona is optional, up to 8 entries. Each job has an `id`, unique across the map, and three required fields of up to 200 characters: `situation` (“When …”), `motivation` (“I want …”) and `outcome` (“so that …”). Write each without its lead word, which the board adds. `draft: true` marks a job an agent drafted and nobody has confirmed. Only a person removes it, as for release impact.
 - `jobs` on a story is optional: up to 4 job IDs, in order of importance. A story's personas are the owners of its jobs plus any listed in its own `personas`, so a story that names its jobs does not need to repeat their personas.
 - `personas` on a story is optional: up to 4 persona IDs, for a story that helps a persona but no single job of theirs. The first persona, from either list, is the primary one.
 - Initials come from the title (“Product manager” → PM), and the colour from the persona's position in the list, so neither is stored. A six-colour palette is enough for 12 personas, because initials and colour together tell them apart.

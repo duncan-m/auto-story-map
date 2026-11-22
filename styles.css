@@ -509,6 +509,10 @@ a.esm-persona-chip:hover, button.esm-persona-chip:hover { background: var(--esm-
 .esm-job-meta a { color: var(--esm-accent-ink); }
 .esm-job-gap { color: var(--esm-status-blocked); font-weight: 650; }
 .esm-job-left { color: var(--esm-faint); }
+.esm-core-label { display: block; margin-bottom: 6px; color: var(--esm-accent-ink); font-size: .6875rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.esm-story-jobs .esm-core-label { display: inline; margin: 0; }
+.esm-job-core { padding: 14px 16px; border: 1px solid var(--esm-accent); border-radius: 10px; background: var(--esm-activity-bg); }
+.esm-jobs-subhead { margin: 16px 0 10px; color: var(--esm-accent-ink); font-size: .6875rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
 .esm-bar { display: flex; flex: none; width: 96px; height: 8px; overflow: hidden; border-radius: 4px; background: var(--esm-hover); }
 .esm-bar span { display: block; height: 100%; }
 .esm-bar [data-status="shipped"] { background: var(--esm-status-shipped); }

@@ -21,29 +21,29 @@ personas:
       draft: true
     jobs:
       - id: plan-release
-        situation: a release is being planned
+        situation: a release is being planned and its scope is spread across chat threads, tickets and people's heads
         motivation: to agree its scope in the PR that changes the map
-        outcome: engineers and product start from the same list
+        outcome: engineers and product start from the same list, rather than finding out at the demo that they meant different things
         draft: true
       - id: answer-whats-next
-        situation: someone asks what is in the next release
-        motivation: to open the map inside the product
-        outcome: I can answer without asking engineering
+        situation: someone asks what is in the next release and the answer is spread across tickets and branches
+        motivation: to open the map inside the product and read it there
+        outcome: I can answer on the spot, without interrupting engineering or guessing
         draft: true
       - id: track-progress
-        situation: a release is under way
+        situation: a release is under way and stand-ups only say what each person is working on
         motivation: to see what has shipped, what is stuck and what is left
-        outcome: I know whether it will land as planned
+        outcome: I spot a slipping release while there is still time to cut scope, not on release day
         draft: true
       - id: share-roadmap
-        situation: customers ask what is coming
+        situation: customers ask what is coming and most of the map is internal work or wording nobody has approved
         motivation: to show them approved stories only
-        outcome: I can answer without leaking internal work
+        outcome: I can give a straight answer without leaking internal plans or promising work we have not agreed
         draft: true
       - id: plan-in-other-tools
-        situation: we plan in a workshop or diagram tool
+        situation: we plan in a workshop or diagram tool and the map there would be a copy someone typed by hand
         motivation: to bring the current map into it
-        outcome: the session starts from the agreed plan, not a copy typed by hand
+        outcome: the session starts from the agreed plan, rather than from a copy that is already out of date
         draft: true
   - id: engineer
     title: Engineer
@@ -55,20 +55,20 @@ personas:
         - Serves the board behind the product's own sign-in, with no separate service
       draft: true
     jobs:
-      - id: set-up-host
-        situation: my product adopts the story map
-        motivation: to add it in a few steps, with checks in CI
-        outcome: it works behind our sign-in without custom code
-        draft: true
       - id: review-in-context
-        situation: a pull request changes the map
-        motivation: to see what moved and why, next to the code
-        outcome: I review the scope with the change
+        situation: a pull request changes the map and the change is a wall of YAML
+        motivation: to see which stories moved or changed status, and why, next to the code
+        outcome: I review the scope with the change, rather than approving a plan change I did not notice
+        draft: true
+      - id: set-up-host
+        situation: my product adopts the story map and I have no time to build or run another service
+        motivation: to add it in a few steps, with checks in CI
+        outcome: it works behind our sign-in without custom code, and a broken map fails the build, not the board
         draft: true
       - id: find-the-code
-        situation: I pick up or review a story
-        motivation: to reach its plan, tests and code from the story
-        outcome: I start from what is already known
+        situation: I pick up or review a story and its plan, tests and code are in different places
+        motivation: to reach them all from the story
+        outcome: I start from what is already known, rather than rediscovering decisions or duplicating tests
         draft: true
   - id: agent
     title: Coding agent
@@ -81,20 +81,20 @@ personas:
         - Cannot confirm drafts, because only a person removes draft
       draft: true
     jobs:
+      - id: update-the-map
+        situation: my change affects a story and a hand edit to the YAML could break the map or another story
+        motivation: to make the smallest valid edit to the map
+        outcome: reviewers see the map change with the code, and validation passes the first time
+        draft: true
       - id: draft-first-map
-        situation: a product has no map yet
+        situation: a product has no map yet and its plans are scattered across docs, issues and code
         motivation: to draft one from the product's docs and code
-        outcome: the team reviews a draft instead of starting from a blank file
+        outcome: the team corrects a draft, rather than facing a blank file and putting the map off
         draft: true
       - id: read-the-map
-        situation: I start a task
+        situation: I start a task and the map is too large to read in full
         motivation: to find the stories it touches without reading the YAML by hand
-        outcome: my plan uses the right story IDs
-        draft: true
-      - id: update-the-map
-        situation: my change affects a story
-        motivation: to make the smallest valid edit to the map
-        outcome: reviewers see the map change with the code
+        outcome: my plan uses the right story IDs and does not duplicate a story that already exists
         draft: true
   - id: customer
     title: Product customer
@@ -107,9 +107,9 @@ personas:
       draft: true
     jobs:
       - id: see-whats-coming
-        situation: I wonder whether something I need is coming
+        situation: I need something the product does not do yet and must decide whether to wait or work around it
         motivation: to see the product's plans inside the product
-        outcome: I can plan around them without asking support
+        outcome: I can plan around them, without waiting days on a support ticket for an answer
         draft: true
 activities:
   - id: set-up
@@ -880,7 +880,7 @@ stories:
     title: Mark a persona's core job
     activity: explore
     release: v0-7-3
-    status: planned
+    status: merged
     jobs:
       - plan-release
     summary: The first job in a persona's list is their core job. The persona popover labels it, validate warns when it has no stories, and diff reports when it changes. On the Personas tab (ESM-911) it is the first lane.
@@ -889,11 +889,14 @@ stories:
       - docs/story-map.md#personas-and-jobs-to-be-done
       - docs/plans/personas.md#persona-context-mockup
       - docs/plans/personas.md#personas-tab-mockup
+      - docs/story-map.md#mark-a-core-job
+      - src/personas.ts
+      - test/personas.test.mjs
   - id: ESM-909
     title: Write job statements with a trigger and a stake
     activity: plan
     release: v0-7-3
-    status: planned
+    status: merged
     jobs:
       - draft-first-map
       - plan-release
@@ -903,6 +906,8 @@ stories:
       - docs/plans/personas.md#9-write-job-statements-with-a-trigger-and-a-stake
       - docs/story-map.md#personas-and-jobs-to-be-done
       - docs/plans/personas.md#persona-context-mockup
+      - docs/story-map.md#write-a-job-statement
+      - src/schema.ts
   - id: ESM-801
     title: Show a story's tests in its panel
     activity: explore
