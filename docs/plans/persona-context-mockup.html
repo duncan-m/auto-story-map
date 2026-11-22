@@ -28,6 +28,7 @@
   .esm-section-head { display: flex; align-items: center; gap: 8px; }
   .esm-job-core { display: grid; gap: 12px; margin: 4px 0 8px; padding: 20px 22px 22px; border: 1px solid var(--esm-accent); border-radius: 10px; background: var(--esm-activity-bg); }
   .esm-job-core .esm-job-statement { margin: 0; }
+  .esm-job-statement-lines { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; }
   .esm-core-label { display: inline-block; margin-bottom: 0; color: var(--esm-accent-ink); font-size: .6875rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
   .esm-job-steps { display: grid; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; counter-reset: step; }
   .esm-job-step { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 11px 14px; border-radius: 8px; background: var(--esm-paper); font-size: .8125rem; counter-increment: step; }
@@ -99,7 +100,7 @@
           <ul class="esm-jobs">
             <li class="esm-job esm-job-core">
               <span class="esm-core-label">Core job<span class="mock-callout">2</span></span>
-              <p class="esm-job-statement"><b>When</b> I’m preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools, <b>I want</b> to quickly trace and reconcile the discrepancies, <b>so</b> I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.<span class="mock-callout">3</span></p>
+              <p class="esm-job-statement esm-job-statement-lines"><b>When</b><span>I’m preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools,</span><b>I want</b><span>to quickly trace and reconcile the discrepancies,</span><b>so</b><span>I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.<span class="mock-callout">3</span></span></p>
               <p class="esm-job-meta"><span class="esm-bar"><span data-status="shipped" style="width:40%"></span><span data-status="merged" style="width:20%"></span><span data-status="planned" style="width:40%"></span></span><span>5 stories: 2 shipped, 1 merged, 2 planned</span><a href="#">Show stories</a></p>
               <ol class="esm-job-steps">
                 <li class="esm-job-step"><span class="esm-job-step-title">Gather <span class="esm-job-step-activity">· Import data</span><span class="mock-callout">4</span></span><span class="esm-job-step-summary">Export pipeline from Salesforce and closed-won invoices from Stripe</span><span class="esm-job-step-meta"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span>2 shipped <a href="#">Show</a></span></li>
