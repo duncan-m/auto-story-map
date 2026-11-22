@@ -486,20 +486,22 @@ stories:
     title: Read the map from the command line
     activity: explore
     release: v0-7-2
-    status: planned
+    status: merged
     estimate: 3
     summary: story-map story, stories and releases print stories and releases as text or JSON, with the board's filters and search, so agents stop reading the YAML by hand.
     sources:
       - docs/plans/native-cli.md#2-read-the-map
+      - docs/story-map.md#read-the-map-from-the-command-line
   - id: ESM-742
     title: Print validation results as JSON
     activity: review
     release: v0-7-2
-    status: planned
+    status: merged
     estimate: 1
     summary: validate --format json returns each issue with its severity, file, line, YAML path and message, for agents and scripts.
     sources:
       - docs/plans/native-cli.md#3-validation-as-json
+      - docs/story-map.md#validate-a-change
   - id: ESM-743
     title: Look up the evidence for a story
     activity: review
@@ -514,12 +516,13 @@ stories:
     title: Propose map edits from the command line
     activity: plan
     release: v0-7-2
-    status: planned
+    status: merged
     estimate: 5
     summary: story-map edit and add change statuses, releases, sources and impact as named operations, printing the diff and validation as a dry run until --write.
     notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft.
     sources:
       - docs/plans/native-cli.md#5-propose-edits
+      - docs/story-map.md#change-the-map-from-the-command-line
   - id: ESM-745
     title: Claim stories so several agents do not clash
     activity: plan
@@ -534,12 +537,13 @@ stories:
     title: Preview the map locally before adding the board
     activity: set-up
     release: v0-7-2
-    status: planned
+    status: merged
     estimate: 2
     summary: story-map preview serves the repository's own map as a board on loopback, with internal and customer views, so a team sees its first map before wiring up a host route.
     notes: Reuses the demo server, moved into the package. Loopback only, for one person checking a map, never for deploying.
     sources:
       - docs/plans/native-cli.md#7-preview-the-map-locally
+      - docs/story-map.md#preview-the-map-locally
   - id: ESM-747
     title: Suggest shipped from release tags
     activity: track

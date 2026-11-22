@@ -28,6 +28,10 @@ The demo shows this libraryâ€™s own story map, `product/story-map.yaml`: what ea
 
 Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release, and, for internal viewers, engineering notes, sources and the last editor. Each release lane can be collapsed to its title and story count. The panel, the collapse toggles and the search form work without client-side JavaScript. The demo also loads the optional `board.js` script, so filters apply as soon as you choose them.
 
+### Preview your own map
+
+In a product that installs the library, `npx story-map preview` serves your own `product/story-map.yaml` as a board at `http://127.0.0.1:4173/story-map`, with internal and customer views, before you add the board to your product. It reads the map on every reload and shows validation errors on the page. See [Preview the map locally](docs/story-map.md#preview-the-map-locally).
+
 ## Embed it in a product
 
 Install the package in your host product, then set it up:
@@ -68,6 +72,28 @@ It never overwrites an existing file, so it is safe to run again. [This libraryâ
 Start an agent in the host repo and give it this task.
 
 > Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, open a few story cards if the host renders the board, and flag any uncertain release or status decisions for review.
+
+## Read the map from the command line
+
+Agents and people can read the map without opening the YAML file. Each command prints text, or JSON with `--format json`:
+
+```sh
+npx story-map stories --query "export" --status all
+npx story-map story ESM-741
+npx story-map releases
+npx story-map validate --format json product/story-map.yaml
+```
+
+`stories` takes the board's filters, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
+
+Change it the same way. Each edit is a dry run that prints the YAML diff, the PR summary and any problems it causes, until you add `--write`. Comments and untouched lines stay exactly as they were:
+
+```sh
+npx story-map edit ESM-744 --status in-progress
+npx story-map add --activity review --release v0-7-5 --title "Check claims in CI" --write
+```
+
+See [Change the map from the command line](docs/story-map.md#change-the-map-from-the-command-line).
 
 ## Export the map
 
