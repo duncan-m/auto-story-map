@@ -10,10 +10,13 @@ import {
   formatStoryMapDiff,
   hasStoryMapChanges,
   jobStatement,
+  filterStoryMapView,
   getStoryMapForViewer,
+  getStoryMapPage,
   parseStoryMap,
   personaInitials,
   proposeStoryMapEdit,
+  readStoryMapFilters,
   storyMapWarnings,
   storyPersonas,
   StoryMapValidationError,
@@ -364,4 +367,147 @@ test("ESM-902: a map without personas renders as before", () => {
   assert.doesNotMatch(html, /esm-avatar|esm-card-tags|esm-persona|esm-story-jobs|<dt>For<\/dt>|<dt>Jobs<\/dt>/);
   // A tagged map's customer board shows nothing about personas.
   assert.doesNotMatch(render(getStoryMapForViewer(parse(tagged()), { roles: ["member"] })), /esm-avatar|esm-persona|<dt>For<\/dt>/);
+});
+
+const ids = view => view.stories.map(story => story.id);
+const page = (map, query, viewer = engineer, options = {}) => getStoryMapPage(map, viewer, { searchParams: new URLSearchParams(query), ...options });
+
+test("ESM-903: reads repeated persona and job parameters", () => {
+  const filters = readStoryMapFilters(new URLSearchParams("persona=builder&persona=finance&persona=builder&persona=bad%20id&job=price-materials&q=x"));
+  assert.deepEqual(filters.persona, ["builder", "finance"]);
+  assert.deepEqual(filters.job, ["price-materials"]);
+  assert.equal(Object.hasOwn(readStoryMapFilters(new URLSearchParams("q=x")), "persona"), false);
+  assert.equal(readStoryMapFilters(new URLSearchParams(Array.from({ length: 30 }, (_, index) => `persona=p${index}`).join("&"))).persona.length, 20);
+});
+
+test("ESM-903: filters by persona and job, alone and with the other filters", () => {
+  const map = parse(tagged());
+  // Any chosen persona: BUILDER-102 is for both, FINANCE-201 for Finance reviewer.
+  assert.deepEqual(ids(page(map, "persona=finance")), ["BUILDER-102", "FINANCE-201"]);
+  assert.deepEqual(ids(page(map, "persona=finance&persona=builder")), ["BUILDER-101", "BUILDER-102", "BUILDER-103", "FINANCE-201"]);
+  assert.deepEqual(page(map, "persona=finance&persona=builder").filter.persona, ["builder", "finance"], "in map order");
+  assert.deepEqual(ids(page(map, "job=price-materials")), ["BUILDER-101", "BUILDER-102"]);
+  assert.deepEqual(ids(page(map, "job=price-materials&persona=finance")), ["BUILDER-102"]);
+  assert.deepEqual(ids(page(map, "persona=builder&status=planned&q=submit the estimate")), ["BUILDER-103"]);
+
+  // Unknown IDs are ignored, so the board is not narrowed by them.
+  const unknown = page(map, "persona=nobody&job=invent-job");
+  assert.equal(unknown.stories.length, 4);
+  assert.equal(Object.hasOwn(unknown.filter, "persona"), false);
+  assert.equal(Object.hasOwn(unknown.filter, "job"), false);
+
+  // A persona with no stories narrows to nothing.
+  const empty = parse(tagged(document => document.personas.push({ id: "auditor", title: "Auditor" })));
+  assert.deepEqual(ids(page(empty, "persona=auditor")), []);
+  assert.match(render(page(empty, "persona=auditor")), /No stories match these filters\./);
+  // A job with no active stories narrows to nothing, and blocked and cut stories stay hidden by default.
+  const cutOnly = parse(tagged(document => { document.stories.find(story => story.id === "FINANCE-202").jobs = ["send-estimate"]; }));
+  assert.deepEqual(ids(page(cutOnly, "job=send-estimate")), ["BUILDER-103"]);
+  assert.deepEqual(ids(page(cutOnly, "job=send-estimate&status=all")), ["BUILDER-103", "FINANCE-202"]);
+
+  // Called directly, a single value works too.
+  assert.deepEqual(ids(filterStoryMapView(getStoryMapForViewer(map, engineer), { persona: "finance" })), ["BUILDER-102", "FINANCE-201"]);
+});
+
+test("ESM-903: search matches persona titles and job statements for internal viewers", () => {
+  const map = parse(tagged());
+  assert.deepEqual(ids(page(map, "q=finance reviewer")), ["BUILDER-102", "FINANCE-201"]);
+  assert.deepEqual(ids(page(map, "q=chase finance by email")), ["BUILDER-103"]);
+});
+
+test("ESM-903: customers' persona and job parameters do not reach internal personas", () => {
+  const map = parse(tagged());
+  const customer = { roles: ["member"] };
+  const everything = page(map, "", customer);
+  for (const query of ["persona=finance", "persona=builder&job=price-materials", "job=approve-estimate", "q=finance reviewer"]) {
+    const view = page(map, query, customer);
+    if (query.startsWith("q=")) {
+      assert.equal(view.stories.length, 0, "customer search does not match internal persona titles");
+      continue;
+    }
+    assert.deepEqual(view.stories, everything.stories, query);
+    assert.equal(Object.hasOwn(view.filter, "persona"), false);
+    assert.equal(Object.hasOwn(view.filter, "job"), false);
+  }
+  assert.doesNotMatch(render(page(map, "persona=finance", customer)), /esm-personas|esm-persona-menu|Show everyone/);
+});
+
+test("ESM-903: the persona strip and menu set the persona parameter and keep the other filters", () => {
+  const map = parse(tagged(document => document.personas.push({ id: "auditor", title: "Auditor" })));
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, {
+    map: page(map, "q=estimate&status=planned&status=in-progress&persona=builder"),
+    preservedParams: { tab: "roadmap" },
+  }));
+  const strip = html.slice(html.indexOf('<nav class="esm-personas"'), html.indexOf("</nav>"));
+  // Counts are active stories before any filter.
+  assert.match(strip, /<a class="esm-persona-chip" href="\?tab=roadmap&amp;q=estimate&amp;status=planned&amp;status=in-progress" aria-current="true"><span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>Builder<span class="esm-persona-count"><span aria-hidden="true">3<\/span><span class="esm-visually-hidden">, 3 stories<\/span><\/span><\/a>/);
+  assert.match(strip, /href="\?tab=roadmap&amp;q=estimate&amp;status=planned&amp;status=in-progress&amp;persona=finance">.*Finance reviewer<span class="esm-persona-count"><span aria-hidden="true">2</);
+  assert.match(strip, /Auditor<span class="esm-persona-count"><span aria-hidden="true">0</);
+  assert.match(strip, /<a class="esm-persona-clear" href="\?tab=roadmap&amp;q=estimate&amp;status=planned&amp;status=in-progress">Show everyone<\/a>/);
+
+  const menu = html.slice(html.indexOf('<details class="esm-menu esm-persona-menu"'), html.indexOf("</details>", html.indexOf("esm-persona-menu")));
+  assert.match(menu, /<summary class="esm-select esm-menu-button" data-esm-focus="persona" aria-describedby="[^"]+"><span class="esm-visually-hidden">For: <\/span>Builder<\/summary>/);
+  assert.match(menu, /<input type="checkbox" name="persona" checked="" value="builder"\/>/);
+  assert.match(menu, /<input type="checkbox" name="persona" value="finance"\/>/);
+  assert.match(html, /Showing 3 of 5 stories\./);
+
+  // Without a chosen persona: no current chip, no Show everyone, and the menu says Everyone.
+  const plainHtml = render(page(map, ""));
+  assert.doesNotMatch(plainHtml, /aria-current="true"|Show everyone/);
+  assert.match(plainHtml, /For: <\/span>Everyone<\/summary>/);
+  // Maps without personas get neither.
+  assert.doesNotMatch(render(page(plain, "persona=builder")), /esm-personas|esm-persona-menu/);
+});
+
+test("ESM-903: the job filter is kept by the form and named in the filter summary", () => {
+  const map = parse(tagged());
+  const html = render(page(map, "persona=builder&job=send-estimate"));
+  assert.match(html, /<input type="hidden" name="job" value="send-estimate"\/>/);
+  assert.match(html, /Showing 1 of 5 stories\. Stories serving the job “<b>When<\/b> my estimate is ready, <b>I want<\/b> to send it for approval in one step, <b>so<\/b> I do not chase finance by email\.” <span class="esm-story-job-persona">\(Builder\)<\/span>\. <a href="\?persona=builder">Show every job<\/a>/);
+  // The chosen persona's chip clears the job too, and Show everyone clears both.
+  assert.match(html, /<a class="esm-persona-chip" href="\?persona=builder" aria-current="true">/);
+  assert.match(html, /<a class="esm-persona-clear" href="\?">Show everyone<\/a>/);
+  // Show them, for hidden blocked and cut stories, keeps the persona and job.
+  const cut = parse(tagged(document => { document.stories.find(story => story.id === "FINANCE-202").jobs = ["send-estimate"]; }));
+  assert.match(render(page(cut, "persona=builder&job=send-estimate")), /1 cut hidden\. <a href="\?status=all&amp;persona=builder&amp;job=send-estimate">Show them<\/a>/);
+});
+
+test("ESM-903: board.js applies the persona menu when it closes, and returns focus to it", async t => {
+  class FakeNode {}
+  class FakeElement extends FakeNode {}
+  const storage = new Map();
+  const globals = {
+    Node: FakeNode,
+    Element: FakeElement,
+    HTMLElement: FakeElement,
+    HTMLInputElement: class {},
+    HTMLSelectElement: class {},
+    sessionStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
+    document: { readyState: "complete", querySelectorAll: () => [], addEventListener: () => {} },
+  };
+  const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  t.after(() => {
+    for (const [key, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  });
+
+  let submitted = 0;
+  const listeners = {};
+  const menu = Object.assign(new FakeElement(), {
+    open: true,
+    closest: () => ({ requestSubmit: () => submitted++ }),
+    contains: () => true,
+    querySelector: selector => selector === "[data-esm-focus]" ? { dataset: { esmFocus: "persona" } } : {},
+    addEventListener: (type, handler) => { listeners[type] = handler; },
+  });
+  const { enhanceStoryMapMenus } = await import("auto-story-map/board.js");
+  enhanceStoryMapMenus({ querySelectorAll: () => [menu] });
+  listeners.change();
+  menu.open = false;
+  listeners.toggle();
+  assert.equal(submitted, 1);
+  assert.equal(storage.get("esm-filter-focus"), "persona");
 });

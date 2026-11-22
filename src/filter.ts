@@ -1,4 +1,5 @@
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatuses, type StoryStatusFilter } from "./status.js";
+import { jobStatement } from "./personas.js";
 import type { InternalStoryCard, StoryMapView } from "./view.js";
 
 /** Windows offered by the board’s “Changed in” filter, in days. */
@@ -16,6 +17,10 @@ export interface StoryMapFilters {
   status?: StoryStatusFilter | "all" | readonly StoryStatusFilter[];
   /** Only stories added or changed in this many days. Needs history and an internal view. */
   changedWithinDays?: ChangedWithinDays;
+  /** Persona IDs. Keeps stories for any of them. IDs the view does not have are ignored. */
+  persona?: string | readonly string[];
+  /** Job IDs. Keeps stories that serve any of them. Internal views only; IDs the view does not have are ignored. */
+  job?: string | readonly string[];
 }
 
 export interface FilterOptions {
@@ -25,6 +30,15 @@ export interface FilterOptions {
 
 const maxQueryLength = 100;
 const dayMs = 24 * 60 * 60 * 1000;
+
+/** Most persona or job IDs read from one request. */
+const maxIdParams = 20;
+const idPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+/** Well-formed IDs from repeated parameters, without duplicates. Whether they exist is checked against the view. */
+function readIds(values: readonly string[]) {
+  return [...new Set(values.map(value => value.trim()).filter(value => idPattern.test(value)))].slice(0, maxIdParams);
+}
 
 const statusChoices: readonly StoryStatusFilter[] = [...storyStatuses, "stalled"];
 
@@ -36,9 +50,10 @@ function readStatuses(value: unknown): StoryStatusFilter[] {
 }
 
 /**
- * Reads the board’s `q`, `status` and `changed` (`1d`, `7d`, `14d` or `30d`)
- * parameters. `status` can repeat, once for each chosen status or `stalled`,
- * and `status=all` chooses every status. Unknown values are ignored.
+ * Reads the board’s `q`, `status`, `changed` (`1d`, `7d`, `14d` or `30d`),
+ * `persona` and `job` parameters. `status` can repeat, once for each chosen
+ * status or `stalled`, and `status=all` chooses every status. `persona` and
+ * `job` repeat, once for each ID. Unknown values are ignored.
  */
 export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const query = params.get("q")?.trim().slice(0, maxQueryLength) || undefined;
@@ -46,7 +61,15 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const status = chosen.length ? chosen : undefined;
   const changed = /^(\d+)d$/.exec(params.get("changed") ?? "")?.[1];
   const changedWithinDays = changedWithinOptions.find(days => String(days) === changed);
-  return { query, status, ...(changedWithinDays ? { changedWithinDays } : {}) };
+  const persona = readIds(params.getAll("persona"));
+  const job = readIds(params.getAll("job"));
+  return {
+    query,
+    status,
+    ...(changedWithinDays ? { changedWithinDays } : {}),
+    ...(persona.length ? { persona } : {}),
+    ...(job.length ? { job } : {}),
+  };
 }
 
 /**
@@ -76,13 +99,33 @@ export function filterStoryMapView<View extends StoryMapView>(
     : undefined;
   const since = changedWithinDays ? (options.now ?? new Date()).getTime() - changedWithinDays * dayMs : undefined;
 
+  // Only personas and jobs the view has count, in map order, so unknown IDs are ignored and customers
+  // can only choose personas their view shows. Customers never see jobs.
+  const personas = internal ? view.personas ?? [] : [];
+  const listed = (value: string | readonly string[] | undefined) => new Set(typeof value === "string" ? [value] : value ?? []);
+  const wantedPersonas = listed(filters.persona);
+  const wantedJobs = listed(filters.job);
+  const persona = personas.filter(item => wantedPersonas.has(item.id)).map(item => item.id);
+  const job = internal ? personas.flatMap(item => item.jobs).filter(item => wantedJobs.has(item.id)).map(item => item.id) : [];
+  const personaSet = new Set(persona);
+  const jobSet = new Set(job);
+  // Search also matches the titles of a story's personas and the statements of its jobs, for internal viewers.
+  const personaTitles = new Map(personas.map(item => [item.id, item.title]));
+  const statements = new Map(personas.flatMap(item => item.jobs.map(entry => [entry.id, jobStatement(entry)] as const)));
+
   const hidden = { blocked: 0, cut: 0 };
   const stories = (view.stories as InternalStoryCard[]).filter(story => {
     if (status && !chosen.has(story.status) && !(chosen.has("stalled") && story.stalled)) return false;
     if (since !== undefined && !(story.lastChangedAt && Date.parse(story.lastChangedAt) >= since)) return false;
+    if (personaSet.size && !story.personas?.some(id => personaSet.has(id))) return false;
+    if (jobSet.size && !story.jobs?.some(id => jobSet.has(id))) return false;
     if (needle) {
       const fields = internal
-        ? [story.id, story.title, story.summary, story.notes, story.statusReason]
+        ? [
+          story.id, story.title, story.summary, story.notes, story.statusReason,
+          ...(story.personas ?? []).map(id => personaTitles.get(id)),
+          ...(story.jobs ?? []).map(id => statements.get(id)),
+        ]
         : [story.title, story.summary];
       if (!fields.some(field => field?.toLocaleLowerCase().includes(needle))) return false;
     }
@@ -100,6 +143,8 @@ export function filterStoryMapView<View extends StoryMapView>(
       query,
       status,
       ...(changedWithinDays ? { changedWithinDays } : {}),
+      ...(persona.length ? { persona } : {}),
+      ...(job.length ? { job } : {}),
       total: view.stories.length,
       ...(hidden.blocked || hidden.cut ? { hidden } : {}),
     },

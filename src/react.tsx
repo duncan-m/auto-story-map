@@ -810,7 +810,92 @@ function VersionFooter({ internal }: { internal: boolean }) {
 /** True when a filter narrows the board. Choosing every status shows every story, so it does not count. */
 function isFiltering(filter: StoryMapView["filter"]) {
   const narrowsStatus = !!filter?.status && !storyStatuses.every(choice => filter.status!.includes(choice));
-  return !!(filter && (filter.query || narrowsStatus || filter.changedWithinDays));
+  return !!(filter && (filter.query || narrowsStatus || filter.changedWithinDays || filter.persona?.length || filter.job?.length));
+}
+
+/** The host's parameters and the search, status and “changed in” filters, for links that change only the persona or job. */
+function filterParams(filter: NonNullable<StoryMapView["filter"]>, preservedParams?: Readonly<Record<string, string>>) {
+  const params = new URLSearchParams(preservedParams ?? {});
+  if (filter.query) params.set("q", filter.query);
+  for (const status of filter.status ?? []) params.append("status", status);
+  if (filter.changedWithinDays) params.set("changed", `${filter.changedWithinDays}d`);
+  return params;
+}
+
+function withIds(params: URLSearchParams, name: string, ids: readonly string[]) {
+  const copy = new URLSearchParams(params);
+  for (const id of ids) copy.append(name, id);
+  return `?${copy}`;
+}
+
+/** What the persona button says: “Everyone” by default, one or two titles, or a count. */
+function personaSummary(chosen: readonly PersonaLabel[]) {
+  if (!chosen.length) return "Everyone";
+  if (chosen.length <= 2) return chosen.map(persona => persona.title).join(", ");
+  return `${chosen.length} personas`;
+}
+
+/** The persona filter, built like the status menu. board.js applies the choice when the menu closes. */
+function PersonaMenu({ personas, chosen, hintId }: { personas: readonly PersonaLabel[]; chosen: readonly string[]; hintId: string }) {
+  const picked = new Set(chosen);
+  return (
+    <details className="esm-menu esm-persona-menu">
+      <summary className="esm-select esm-menu-button" data-esm-focus="persona" aria-describedby={hintId}>
+        <span className="esm-visually-hidden">For: </span>{personaSummary(personas.filter(persona => picked.has(persona.id)))}
+      </summary>
+      <fieldset className="esm-menu-panel">
+        <legend className="esm-visually-hidden">Show stories for these personas</legend>
+        {personas.map(persona => (
+          <label key={persona.id} className="esm-menu-option">
+            <input type="checkbox" name="persona" value={persona.id} defaultChecked={picked.has(persona.id)} />
+            <PersonaAvatar persona={persona} />
+            {persona.title}
+          </label>
+        ))}
+      </fieldset>
+    </details>
+  );
+}
+
+/**
+ * One link per persona under the toolbar, with its count of active stories,
+ * which ignores the filters so it stays put. Each link shows that persona's
+ * stories, keeping the other filters, and works without JavaScript. The link
+ * for the only chosen persona goes back to everyone.
+ */
+function PersonaStrip({ personas, filter, preservedParams }: {
+  personas: readonly PersonaLabel[];
+  filter: NonNullable<StoryMapView["filter"]>;
+  preservedParams?: Readonly<Record<string, string>>;
+}) {
+  const base = filterParams(filter, preservedParams);
+  const chosen = new Set(filter.persona ?? []);
+  const narrowed = chosen.size > 0 || !!filter.job?.length;
+  return (
+    <nav className="esm-personas" aria-label="Personas">
+      <span className="esm-personas-label" aria-hidden="true">Personas</span>
+      {personas.map(persona => {
+        const current = chosen.has(persona.id);
+        const only = current && chosen.size === 1 && !filter.job?.length;
+        return (
+          <a
+            key={persona.id}
+            className="esm-persona-chip"
+            href={only ? withIds(base, "persona", []) : withIds(base, "persona", [persona.id])}
+            aria-current={current ? "true" : undefined}
+          >
+            <PersonaAvatar persona={persona} />
+            {persona.title}
+            <span className="esm-persona-count">
+              <span aria-hidden="true">{persona.activeStories}</span>
+              <span className="esm-visually-hidden">{`, ${storyCount(persona.activeStories)}`}</span>
+            </span>
+          </a>
+        );
+      })}
+      {narrowed && <a className="esm-persona-clear" href={withIds(base, "persona", [])}>Show everyone</a>}
+    </nav>
+  );
 }
 
 const statusFilterLabels: Record<StoryStatusFilter, string> = { ...storyStatusLabels, stalled: "Stalled" };
@@ -859,8 +944,10 @@ function hiddenSummary({ blocked, cut }: { blocked: number; cut: number }) {
   return [blocked && `${blocked} blocked`, cut && `${cut} cut`].filter(Boolean).join(" and ");
 }
 
-function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks, exportHref }: {
+function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks, exportHref, personas }: {
   filter: NonNullable<StoryMapView["filter"]>;
+  /** The view's personas. The persona filter shows when there are any. */
+  personas: readonly PersonaLabel[];
   shown: number;
   preservedParams?: Readonly<Record<string, string>>;
   showChanged: boolean;
@@ -875,6 +962,11 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
   if (filter.query) showHiddenParams.set("q", filter.query);
   showHiddenParams.set("status", "all");
   if (filter.changedWithinDays) showHiddenParams.set("changed", `${filter.changedWithinDays}d`);
+  for (const persona of filter.persona ?? []) showHiddenParams.append("persona", persona);
+  for (const job of filter.job ?? []) showHiddenParams.append("job", job);
+  const jobs = personas.flatMap(persona => persona.jobs.map(job => ({ job, persona })));
+  const chosenJobs = jobs.filter(({ job }) => filter.job?.includes(job.id));
+  const withoutJob = withIds(filterParams(filter, preservedParams), "persona", filter.persona ?? []);
   // Empty unless the optional board.js script runs: it explains that the filters apply as soon as they change.
   const hintId = `${useId()}-filter-hint`;
   return (
@@ -895,7 +987,10 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
             <input type="search" name="q" placeholder="Search stories" aria-label="Search stories" maxLength={100} defaultValue={filter.query ?? ""} />
           </label>
           <span className="esm-visually-hidden" id={hintId} data-esm-filter-hint="" />
+          {/* The job filter has no control of its own: the persona panel's links set it, and the form keeps it. */}
+          {(filter.job ?? []).map(job => <input key={job} type="hidden" name="job" value={job} />)}
           <StatusMenu status={filter.status} internal={internal} stalled={!!stalledAfterWeeks} hintId={hintId} />
+          {personas.length > 0 && <PersonaMenu personas={personas} chosen={filter.persona ?? []} hintId={hintId} />}
           {showChanged && (
             <select
               className="esm-select"
@@ -912,10 +1007,22 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
           {exportHref && <ExportMenu href={exportHref} />}
         </form>
       </div>
+      {personas.length > 0 && <PersonaStrip personas={personas} filter={filter} preservedParams={preservedParams} />}
       {(filtering || filter.hidden) && (
         <p className="esm-filter-results" role="status">
           {filtering && <>
             {shown === 0 ? "No stories match these filters." : `Showing ${shown} of ${storyCount(filter.total)}.`}{" "}
+          </>}
+          {chosenJobs.length > 0 && <>
+            {chosenJobs.length === 1 ? "Stories serving the job " : "Stories serving the jobs "}
+            {chosenJobs.map(({ job, persona }, index) => (
+              <Fragment key={job.id}>
+                {index > 0 && (index === chosenJobs.length - 1 ? " or " : ", ")}
+                “<JobStatement job={job} />” <span className="esm-story-job-persona">({persona.title})</span>
+              </Fragment>
+            ))}
+            {". "}
+            <a href={withoutJob}>Show every job</a>{" · "}
           </>}
           {filter.hidden && <>
             {`${hiddenSummary(filter.hidden)} hidden.`}{" "}
@@ -1009,6 +1116,7 @@ export function StoryMapBoard({
             internal={internal}
             stalledAfterWeeks={stalledAfterWeeks}
             exportHref={internal ? exportHref : undefined}
+            personas={[...lookup.personas.values()]}
           />
         )}
         {hideInactive && (

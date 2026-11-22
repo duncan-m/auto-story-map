@@ -4,7 +4,7 @@
  *
  * The board works without it: the filter form is a plain GET form with an
  * **Apply** button. With it, changing a filter applies it straight away and the
- * Apply button is hidden; the status filter applies when its menu closes. After
+ * Apply button is hidden; the status and persona filters apply when their menus close. After
  * the page reloads, focus returns to the filter that was changed, so keyboard and
  * screen reader users keep their place. Menus close on Escape or a click elsewhere.
  * It also remembers which release lanes the viewer collapsed, and adds them to
@@ -30,9 +30,11 @@ function restoreFocus(form: HTMLFormElement) {
   } catch {
     return;
   }
-  const field = name ? form.elements.namedItem(name) : null;
-  // The status filter is a group of checkboxes, so focus returns to its menu button.
-  const target = field instanceof HTMLElement ? field : name ? form.querySelector<HTMLElement>(`[data-esm-focus="${name}"]`) : null;
+  if (!name) return;
+  // The status and persona filters are checkboxes in a menu, so focus returns to the menu button,
+  // even when a map has a single persona and so a single checkbox.
+  const field = form.elements.namedItem(name);
+  const target = form.querySelector<HTMLElement>(`[data-esm-focus="${name}"]`) ?? (field instanceof HTMLElement ? field : null);
   target?.focus();
 }
 
@@ -49,7 +51,7 @@ export function enhanceStoryMapFilters(root: ParentNode = document) {
     enhanced.add(form);
     form.dataset.esmAuto = "";
     const hint = form.querySelector<HTMLElement>("[data-esm-filter-hint]");
-    if (hint) hint.textContent = "The board updates as soon as you choose an option. Status choices apply when you close the status list.";
+    if (hint) hint.textContent = "The board updates as soon as you choose an option. Status and persona choices apply when you close their list.";
     form.addEventListener("change", event => {
       if (event.target instanceof HTMLSelectElement) submit(form, event.target);
     });
@@ -135,9 +137,9 @@ export function enhanceStoryMapReleases(root: ParentNode = document) {
 const enhancedMenus = new WeakSet<Element>();
 
 /**
- * Closes the board's menus (the status filter and Export) on Escape or a click
- * elsewhere, and the Export menu after a choice. When the status menu closes with
- * a changed choice, it submits the filter form. Safe to call more than once.
+ * Closes the board's menus (the status and persona filters, and Export) on Escape
+ * or a click elsewhere, and the Export menu after a choice. When a filter menu
+ * closes with a changed choice, it submits the filter form. Safe to call more than once.
  */
 export function enhanceStoryMapMenus(root: ParentNode = document) {
   for (const menu of root.querySelectorAll<HTMLDetailsElement>("details.esm-menu")) {
@@ -167,7 +169,7 @@ export function enhanceStoryMapMenus(root: ParentNode = document) {
     menu.addEventListener("toggle", () => {
       if (menu.open || !changed) return;
       changed = false;
-      remember("status");
+      remember(menu.querySelector<HTMLElement>("[data-esm-focus]")?.dataset.esmFocus ?? "status");
       if (typeof form.requestSubmit === "function") form.requestSubmit();
       else form.submit();
     });
