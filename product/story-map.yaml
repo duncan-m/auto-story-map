@@ -182,16 +182,16 @@ releases:
         expected: None, for teams that use claims
         solves: Duplicate work when several agents pick from one map
         draft: true
-  - id: next
-    title: Next
-    summary: Proposed for 0.7.x or 0.8.0.
+  - id: v0-7-5
+    title: "0.7.5: PM improvements"
+    summary: Activities expand into steps, and a scheduled audit proposes map corrections from the code.
     impact:
       - metric: Map changes that are missing from feature PRs
         expected: Found by the weekly audit and proposed in a PR
         solves: The map drifting from the code when a PR forgets to update it
         draft: true
     customer:
-      title: Coming next
+      title: "0.7.5"
 stories:
   # 0.1.0
   - id: ESM-101
@@ -431,11 +431,11 @@ stories:
     summary: A footer shows the library version, author and licence. Internal viewers also get links to the changelog, source code, licence and author.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
-  # Next
+  # 0.7.5: PM improvements
   - id: ESM-501
     title: Expand activities into steps
     activity: explore
-    release: next
+    release: v0-7-5
     status: planned
     sources:
       - docs/plans/0.4.0-enhancements.md#6-expandable-steps-within-activities
@@ -445,7 +445,7 @@ stories:
   - id: ESM-502
     title: Audit the map against the code on a schedule
     activity: review
-    release: next
+    release: v0-7-5
     status: planned
     summary: A scheduled agent gathers evidence from branches, PRs and commits, and proposes corrections in a single PR.
     sources:
