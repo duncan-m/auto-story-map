@@ -664,7 +664,7 @@ stories:
     jobs:
       - plan-release
     summary: Any job can list up to 6 workflow steps in order, each pointing to the activity where its stories live. A step's stories serve its job and sit in its activity, validate warns about steps with none, the persona panel counts the core job's gaps, and the view, JSON export and diff carry steps and their coverage.
-    notes: Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format. The job lanes that show each step under its activity are drawn on the Personas tab, so they ship with ESM-911, as the full display of ESM-907 and ESM-908 does.
+    notes: Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format. The job lanes that show each step in order are drawn on the Personas tab, so they ship with ESM-911, as the full display of ESM-907 and ESM-908 does.
     sources:
       - docs/plans/personas.md#10-break-a-job-into-steps
       - docs/story-map.md#personas-and-jobs-to-be-done
@@ -681,8 +681,8 @@ stories:
     jobs:
       - plan-release
       - track-progress
-    summary: "A Personas tab beside the story map gives each persona a page: their context, then their jobs as lanes under the map's activities, with each step in its activity's column and gaps marked. The persona popover becomes a quick look that links to it."
-    notes: "Internal viewers only. Moves the full display of ESM-907, ESM-908 and ESM-910 out of the popover, and draws ESM-910's job lanes: each step under its activity with its story count, gaps dashed, a Show link per step, and lanes that collapse like release lanes."
+    summary: "A Personas tab beside the story map gives each persona a page: their context, then their jobs as lanes, each with its steps in order and gaps marked. The tab does not show the map's activities. The persona popover becomes a quick look that links to it."
+    notes: "Internal viewers only. Moves the full display of ESM-907, ESM-908 and ESM-910 out of the popover, and draws ESM-910's job lanes: each step in order with its story count as a link, gaps dashed, and lanes that collapse like release lanes."
     sources:
       - docs/plans/personas.md#11-open-a-persona-page-next-to-the-map
       - docs/plans/personas.md#personas-tab-mockup
