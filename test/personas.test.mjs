@@ -89,6 +89,12 @@ test("ESM-901: accepts personas, jobs and story tags, and resolves each story's 
 
   assert.equal(jobStatement(personas[0].jobs[0]), "When I am pricing a project, I want to use the catalogue prices, so my estimate matches what finance pays.");
   assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: "c." }), "When a, I want b, so c.");
+  assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: "c?!." }), "When a, I want b, so c.");
+  // Many marks that do not end the text stay quick: the check scans back from the end once.
+  const marks = "!".repeat(200_000);
+  const started = performance.now();
+  assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: `${marks}x` }), `When a, I want b, so ${marks}x.`);
+  assert.ok(performance.now() - started < 200, "linear in the outcome's length");
 });
 
 test("ESM-901: rejects duplicate, unknown and repeated persona and job IDs", () => {

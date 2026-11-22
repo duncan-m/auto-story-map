@@ -1,6 +1,7 @@
 import { Fragment, useId, version } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
+import { withoutFinalPunctuation } from "./personas.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
@@ -419,7 +420,7 @@ function PersonaAvatars({ personas }: { personas: readonly PersonaLabel[] }) {
 
 /** A job statement with its lead words in bold: “When …, I want …, so ….” */
 function JobStatement({ job }: { job: StoryMapJob }) {
-  return <><b>When</b> {job.situation}, <b>I want</b> {job.motivation}, <b>so</b> {job.outcome.replace(/[.!?]+$/, "")}.</>;
+  return <><b>When</b> {job.situation}, <b>I want</b> {job.motivation}, <b>so</b> {withoutFinalPunctuation(job.outcome)}.</>;
 }
 
 /** Looks up the view's personas and jobs by ID. Empty for a view without personas. */
