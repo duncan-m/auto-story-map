@@ -163,8 +163,8 @@ releases:
         solves: Building stories that no persona needs
         draft: true
   - id: v0-7-3
-    title: "0.7.3: Pull request and commit links"
-    summary: Internal viewers follow a story to its code, from the pull request and commit behind each history line and a list of the pull requests and commits that name it.
+    title: "0.7.3: Links to code and stories"
+    summary: Internal viewers follow a story to its code, from the pull request and commit behind each history line and a list of the pull requests and commits that name it, and anyone can share a permalink to a story or release.
     impact:
       - metric: Time to find the pull requests that delivered a story
         expected: One click from the story panel, instead of searching the repository for its ID
@@ -601,6 +601,15 @@ stories:
     notes: Changes point to stories, so the map is never edited to list them. Merged work only; open pull requests from the GitHub API are a possible follow-up.
     sources:
       - docs/plans/story-changes.md#3-find-the-changes-that-name-a-story
+  - id: ESM-805
+    title: Link to a story or release with a permalink
+    activity: explore
+    release: v0-7-3
+    status: planned
+    summary: Each story and release panel has a Copy link control, and following the link opens the board on that panel, even when the filters would hide the story.
+    notes: Links use the story or release ID, which is already stable. Works without JavaScript by scrolling to the card; board.js opens the panel and copies the link. On customer boards, IDs outside the customer view are ignored.
+    sources:
+      - docs/plans/story-changes.md#5-link-to-a-story-or-release
   # 0.6.1: fixes from the November 2026 code review
   - id: ESM-601
     title: Keep long Git names from breaking the history file
