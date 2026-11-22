@@ -2,7 +2,7 @@
   "name": "auto-story-map",
   "version": "0.7.1",
   "description": "Git-backed user story maps embedded in product applications",
-  "license": "Apache-2.0",
+  "license": "AGPL-3.0-only",
   "author": {
     "name": "Duncan Malcolm",
     "url": "https://github.com/duncan-m"

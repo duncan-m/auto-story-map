@@ -167,6 +167,12 @@ You can’t edit the map in the app. The map ships with each deployment, so an e
 
 See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one. To work on the library itself, start with [the engineering overview][overview].
 
+## Licence
+
+Copyright (C) 2026 Duncan Malcolm.
+
+Auto Story Map is licensed under the [GNU Affero General Public License, version 3 only][license] (`AGPL-3.0-only`).
+
 ## Disclaimer
 
 Auto Story Map is pre-1.0 software. Until 1.0.0, any minor version, such as 0.4.0 to 0.5.0, can include breaking changes to the map format, the API, the CLI, or the board’s markup and class names. Each breaking change is marked **Breaking** in [the changelog][changelog] with its upgrade steps. Pin the version you install, read the changelog before you upgrade, and check the board and your CI after each upgrade.
@@ -177,7 +183,7 @@ In no event shall the author or contributors be liable for any damages arising f
 
 You use the software at your own risk and are responsible for reviewing, testing and securing it before using it in your product. That includes deciding who can see the map: the library decides what each viewer sees, but your product must sign viewers in, pass their roles from a verified session, and keep internal content out of public pages and caches.
 
-The [Apache License 2.0][license], in particular its sections 7 (Disclaimer of Warranty) and 8 (Limitation of Liability), governs your use of this software. Where this summary and the licence differ, the licence applies.
+The [GNU Affero General Public License, version 3][license], in particular its sections 15 (Disclaimer of Warranty) and 16 (Limitation of Liability), governs your use of this software. Where this summary and the licence differ, the licence applies.
 
 [source]: https://github.com/duncan-m/auto-story-map
 [example-map]: https://github.com/duncan-m/auto-story-map/blob/main/product/story-map.yaml
