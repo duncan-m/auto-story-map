@@ -86,6 +86,8 @@ export interface PersonaLabel extends StoryMapLabel {
   colour: number;
   /** The persona's jobs to be done, in map order. */
   jobs: StoryMapJob[];
+  /** Active stories for the persona, counted before any filter is applied, like a release's `storyCounts`. */
+  activeStories: number;
 }
 
 /** A story’s change as shown to internal viewers. */
@@ -132,6 +134,10 @@ export interface StoryMapFilterState {
   status?: StoryStatusFilter[];
   /** Only stories added or changed in this many days. */
   changedWithinDays?: number;
+  /** IDs of the chosen personas, in map order. A story is kept when it is for any of them. Internal views only. */
+  persona?: string[];
+  /** IDs of the chosen jobs, in map order. A story is kept when it serves any of them. Internal views only. */
+  job?: string[];
   /** Number of stories in the view before filtering. */
   total: number;
   /** Blocked and cut stories that match the other filters but are hidden by the default status filter. */
@@ -290,11 +296,17 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     const stalledBefore = (options.now ?? new Date()).getTime() - stalledAfterWeeks * weekMs;
     const recentUpdates = summariseRecentUpdates(map, byStory, lastEdits);
     const resolvePersonas = storyPersonaResolver(map);
+    const personaCounts = new Map<string, number>();
+    for (const story of map.stories) {
+      if (!isActiveStatus(story.status)) continue;
+      for (const id of resolvePersonas(story)) personaCounts.set(id, (personaCounts.get(id) ?? 0) + 1);
+    }
     const personas: PersonaLabel[] = (map.personas ?? []).map((persona, index) => ({
       ...projectLabel(persona),
       initials: personaInitials(persona.title),
       colour: index % personaColourCount,
       jobs: (persona.jobs ?? []).map(job => ({ ...job })),
+      activeStories: personaCounts.get(persona.id) ?? 0,
     }));
     return {
       audience: "internal",
@@ -397,7 +409,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
 export interface StoryMapPageOptions<Viewer extends StoryMapViewer = StoryMapViewer> extends StoryMapAccessOptions<Viewer> {
   /**
    * The request's query parameters, such as `url.searchParams`. The `q`,
-   * `status` and `changed` filters are read from them, and anything else is ignored.
+   * `status`, `changed`, `persona` and `job` filters are read from them, and anything else is ignored.
    */
   searchParams?: URLSearchParams;
 }

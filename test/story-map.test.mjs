@@ -1971,7 +1971,7 @@ test("board.js applies filters as they change and restores focus", async t => {
       fields: { status, search },
       hint,
       elements: { namedItem: name => [status, search].find(field => field.name === name) ?? null },
-      querySelector: () => hint,
+      querySelector: selector => selector === "[data-esm-filter-hint]" ? hint : null,
       addEventListener: (type, listener) => { listeners[type] = listener; },
       requestSubmit() { this.submitted++; },
       fire: (type, event) => listeners[type]?.(event),
@@ -2693,7 +2693,7 @@ test("ESM-414: board.js applies the status filter when its menu closes with a ch
     open: false,
     closest: () => form,
     contains: target => target === menu,
-    querySelector: selector => selector === "summary" ? { focus() {} } : {},
+    querySelector: selector => selector === "summary" ? { focus() {} } : selector === "[data-esm-focus]" ? { dataset: { esmFocus: "status" } } : {},
     addEventListener: (type, handler) => { listeners[type] = handler; },
   });
   const setOpen = open => { menu.open = open; listeners.toggle(); };
