@@ -8,7 +8,8 @@
  * the page reloads, focus returns to the filter that was changed, so keyboard and
  * screen reader users keep their place. Menus close on Escape or a click elsewhere.
  * It also remembers which release lanes the viewer collapsed, and adds them to
- * the board's export links so the downloaded file matches.
+ * the board's export links so the downloaded file matches, and which job lanes
+ * they collapsed on the Personas tab.
  */
 
 const focusKey = "esm-filter-focus";
@@ -69,25 +70,26 @@ export function enhanceStoryMapFilters(root: ParentNode = document) {
 }
 
 const collapsedKeyPrefix = "esm-collapsed:";
+const collapsedJobsKeyPrefix = "esm-collapsed-jobs:";
 const enhancedBoards = new WeakSet<Element>();
 
-function collapsedKey() {
-  return collapsedKeyPrefix + (typeof location === "undefined" ? "" : location.pathname);
+function collapsedKey(prefix = collapsedKeyPrefix) {
+  return prefix + (typeof location === "undefined" ? "" : location.pathname);
 }
 
-function readCollapsed(): string[] {
+function readCollapsed(prefix = collapsedKeyPrefix): string[] {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem(collapsedKey()) ?? "[]");
+    const value: unknown = JSON.parse(localStorage.getItem(collapsedKey(prefix)) ?? "[]");
     return Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
   } catch {
     return [];
   }
 }
 
-function writeCollapsed(ids: string[]) {
+function writeCollapsed(ids: string[], prefix = collapsedKeyPrefix) {
   try {
-    if (ids.length) localStorage.setItem(collapsedKey(), JSON.stringify(ids));
-    else localStorage.removeItem(collapsedKey());
+    if (ids.length) localStorage.setItem(collapsedKey(prefix), JSON.stringify(ids));
+    else localStorage.removeItem(collapsedKey(prefix));
   } catch {
     // Storage can be unavailable. Collapsing still works, but resets on reload.
   }
@@ -108,27 +110,38 @@ function updateExportLinks(board: Element) {
   }
 }
 
+/** The kinds of lane a viewer can collapse: the checkbox class and where its choices are kept. */
+const laneKinds = [
+  { input: "esm-collapse-input", prefix: collapsedKeyPrefix },
+  { input: "esm-job-collapse-input", prefix: collapsedJobsKeyPrefix },
+] as const;
+
 /**
- * Remembers which release lanes the viewer collapsed, per page, so they stay collapsed
- * when a filter reloads the page, and keeps the export links in step. Safe to call more than once.
+ * Remembers which release lanes, and which job lanes on the Personas tab, the viewer
+ * collapsed, per page, so they stay collapsed when a filter or link reloads the page,
+ * and keeps the export links in step. Safe to call more than once.
  */
 export function enhanceStoryMapReleases(root: ParentNode = document) {
   for (const board of root.querySelectorAll(".esm-board")) {
     if (enhancedBoards.has(board)) continue;
     enhancedBoards.add(board);
-    const collapsed = new Set(readCollapsed());
-    for (const input of board.querySelectorAll<HTMLInputElement>("input.esm-collapse-input")) {
-      if (collapsed.has(input.value)) input.checked = true;
+    for (const kind of laneKinds) {
+      const collapsed = new Set(readCollapsed(kind.prefix));
+      for (const input of board.querySelectorAll<HTMLInputElement>(`input.${kind.input}`)) {
+        if (collapsed.has(input.value)) input.checked = true;
+      }
     }
     updateExportLinks(board);
     board.addEventListener("change", event => {
       const target = event.target;
-      if (!(target instanceof HTMLInputElement) || !target.classList.contains("esm-collapse-input")) return;
+      if (!(target instanceof HTMLInputElement)) return;
+      const kind = laneKinds.find(entry => target.classList.contains(entry.input));
+      if (!kind) return;
       // Read storage again so two boards on one page do not overwrite each other.
-      const ids = new Set(readCollapsed());
+      const ids = new Set(readCollapsed(kind.prefix));
       if (target.checked) ids.add(target.value);
       else ids.delete(target.value);
-      writeCollapsed([...ids]);
+      writeCollapsed([...ids], kind.prefix);
       updateExportLinks(board);
     });
   }

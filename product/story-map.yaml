@@ -274,9 +274,10 @@ releases:
     title: "0.7.3: Personas"
     summary: Say who each story is for, and read the map one persona at a time.
     notes: |
-      The map names the people the product serves and their jobs to be done, and each story says which jobs it serves. The board shows personas on cards and activities, filters by persona and job, and opens a panel with each persona's jobs and the stories that serve them.
+      The map names the people the product serves and their jobs to be done, and each story says which jobs it serves. The board shows personas on cards and activities, filters by persona and job, and opens a panel with each persona's jobs and the stories that serve them. A Personas tab beside the map gives each persona a page, with their context and their jobs as lanes, core job first, each with its steps in order and the gaps marked.
 
       Mockup: docs/plans/personas.md#ui-mockup
+      Personas tab mockup: docs/plans/personas.md#personas-tab-mockup
     impact:
       - metric: Stories on the map that show who they are for
         expected: Every active story names its personas on its card and in its panel
@@ -677,7 +678,7 @@ stories:
     title: Open a persona page next to the map
     activity: explore
     release: v0-7-3
-    status: planned
+    status: merged
     jobs:
       - plan-release
       - track-progress
@@ -687,6 +688,9 @@ stories:
       - docs/plans/personas.md#11-open-a-persona-page-next-to-the-map
       - docs/plans/personas.md#personas-tab-mockup
       - docs/story-map.md#personas-and-jobs-to-be-done
+      - docs/story-map.md#personas-tab
+      - src/react.tsx
+      - test/personas.test.mjs
   # 0.7.2 and 0.7.5: native CLI for agents
   - id: ESM-741
     title: Read the map from the command line
@@ -817,7 +821,7 @@ stories:
     estimate: 2
     jobs:
       - answer-whats-next
-    summary: A persona strip and menu narrow the board to the stories for one or more personas, and links in the persona panel narrow it to one job, through repeated persona and job parameters.
+    summary: A persona menu, with every persona ticked by default, narrows the board to the stories for the personas left ticked, and links in the persona panel narrow it to one job, through repeated persona and job parameters.
     sources:
       - docs/plans/personas.md#3-filter-the-board-by-persona
       - docs/plans/personas.md#ui-mockup

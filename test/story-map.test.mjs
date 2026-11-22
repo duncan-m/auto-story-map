@@ -95,7 +95,7 @@ test("customer HTML and JSON only contain the customer projection", async () => 
   assert.match(internal, /Confirm how a catalogue price/);
   // The demo’s cut story is hidden by default and shown on request.
   assert.doesNotMatch(internal, /Explore duplicate approval handling/);
-  assert.match(internal, /1 cut hidden\./);
+  assert.doesNotMatch(internal, /cut hidden|Show them/, "the board does not mention hidden stories");
   assert.match(await makeStoryMapResponse("/story-map?status=all", map, engineer).text(), /Explore duplicate approval handling/);
 
   const view = await makeStoryMapResponse("/api/story-map", map, regular).json();
@@ -1094,12 +1094,13 @@ test("blocked and cut stories are hidden by default and shown on request", async
   assert.equal(statusSummaryIn(html), "Active");
   assert.deepEqual(statusChoicesIn(html), ["planned:1", "in-progress:1", "merged:1", "shipped:1", "blocked:0", "cut:0"]);
   assert.doesNotMatch(html, /value="all"/);
-  assert.match(html, /Showing 3 of 5 stories\. 1 blocked and 1 cut hidden\. <a href="\?as=engineer&amp;q=e&amp;status=all">Show them<\/a> · <a href="\?as=engineer">Clear filters<\/a>/);
+  assert.match(html, /Showing 3 of 5 stories\. <a href="\?as=engineer">Clear filters<\/a>/);
+  assert.doesNotMatch(html, /hidden\.|Show them/, "hidden blocked and cut stories go unmentioned");
   assert.doesNotMatch(html, /Explore duplicate approval handling/);
 
   // With no other filters, every release still shows and the message has no “Clear filters” link.
   const plain = await makeStoryMapResponse("/story-map", inactive, engineer).text();
-  assert.match(plain, /<p class="esm-filter-results" role="status">1 blocked and 1 cut hidden\. <a href="\?status=all">Show them<\/a><\/p>/);
+  assert.doesNotMatch(plain, /esm-filter-results/, "no summary when nothing but the default status filter applies");
   assert.match(plain, /Reconciliation discovery/);
   assert.match(plain, /Finance follow-up<\/button><\/span>[\s\S]*?0 stories/);
 

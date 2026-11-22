@@ -58,7 +58,8 @@ test("ESM-746: preview serves the internal and customer views of a map on loopba
   assert.equal(internal.status, 200);
   assert.equal(internal.headers["cache-control"], "private, no-store");
   assert.match(internal.body, /Draft an estimate against a project/);
-  assert.match(internal.body, /Explore duplicate approval handling|1 cut hidden/);
+  assert.match(internal.body, /Draft an estimate against a project/);
+  assert.doesNotMatch(internal.body, /cut hidden/);
   assert.match(internal.body, /href="\/story-map\/export\?view=internal/);
 
   const customer = await get(`${base}/story-map?view=customer`);

@@ -162,6 +162,13 @@ export interface StoryMapFilterState {
   persona?: string[];
   /** IDs of the chosen jobs, in map order. A story is kept when it serves any of them. Internal views only. */
   job?: string[];
+  /** IDs of the chosen activities, in map order. A story is kept when it sits under any of them. */
+  activity?: string[];
+  /**
+   * `personas` when the board shows the Personas tab, with the first of `persona` as its page, or the
+   * first persona when none is chosen. Internal views of maps with personas only.
+   */
+  view?: "personas";
   /** Number of stories in the view before filtering. */
   total: number;
   /** Blocked and cut stories that match the other filters but are hidden by the default status filter. */
@@ -467,7 +474,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
 export interface StoryMapPageOptions<Viewer extends StoryMapViewer = StoryMapViewer> extends StoryMapAccessOptions<Viewer> {
   /**
    * The request's query parameters, such as `url.searchParams`. The `q`,
-   * `status`, `changed`, `persona` and `job` filters are read from them, and anything else is ignored.
+   * `status`, `changed`, `persona`, `job` and `activity` filters, and the `view`, are read from them, and anything else is ignored.
    */
   searchParams?: URLSearchParams;
 }
