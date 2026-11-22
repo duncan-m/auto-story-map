@@ -426,7 +426,7 @@ stories:
       title: Keep the map in step with the code
       summary: A scheduled check compares the map with your code and proposes corrections for you to review.
   # 0.7.4: native CLI for agents
-  - id: ESM-901
+  - id: ESM-741
     title: Read the map from the command line
     activity: explore
     release: v0-7-4
@@ -434,7 +434,7 @@ stories:
     summary: story-map story, stories and releases print stories and releases as text or JSON, with the board's filters and search, so agents stop reading the YAML by hand.
     sources:
       - docs/plans/native-cli.md#2-read-the-map
-  - id: ESM-902
+  - id: ESM-742
     title: Print validation results as JSON
     activity: review
     release: v0-7-4
@@ -442,7 +442,7 @@ stories:
     summary: validate --format json returns each issue with its severity, file, line, YAML path and message, for agents and scripts.
     sources:
       - docs/plans/native-cli.md#3-validation-as-json
-  - id: ESM-903
+  - id: ESM-743
     title: Look up the evidence for a story
     activity: review
     release: v0-7-4
@@ -451,7 +451,7 @@ stories:
     notes: The deterministic evidence step of the scheduled audit (ESM-502), built first so agents can use it on its own.
     sources:
       - docs/plans/native-cli.md#4-look-up-evidence-for-a-story
-  - id: ESM-904
+  - id: ESM-744
     title: Propose map edits from the command line
     activity: plan
     release: v0-7-4
@@ -460,7 +460,7 @@ stories:
     notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft.
     sources:
       - docs/plans/native-cli.md#5-propose-edits
-  - id: ESM-905
+  - id: ESM-745
     title: Claim stories so several agents do not clash
     activity: plan
     release: v0-7-4
@@ -469,6 +469,55 @@ stories:
     notes: Opt-in, for teams running several agents. Never written to the map file.
     sources:
       - docs/plans/native-cli.md#6-claim-stories
+  # Personas
+  - id: ESM-901
+    title: Define personas in the map file
+    activity: plan
+    release: next
+    status: planned
+    summary: The map lists the people the product serves, and each story names which of them it helps. Validate checks the references and diff reports persona changes.
+    sources:
+      - docs/plans/personas.md#1-define-personas-in-the-map-file
+  - id: ESM-902
+    title: Show who a story is for
+    activity: explore
+    release: next
+    status: planned
+    summary: Cards and activities show persona avatars, and the story panel gains a For row.
+    sources:
+      - docs/plans/personas.md#2-show-who-a-story-is-for
+  - id: ESM-903
+    title: Filter the board by persona
+    activity: explore
+    release: next
+    status: planned
+    summary: A persona strip and menu narrow the board to the stories for one or more personas, through a repeated persona parameter.
+    sources:
+      - docs/plans/personas.md#3-filter-the-board-by-persona
+  - id: ESM-904
+    title: Open a persona to see goals and coverage
+    activity: explore
+    release: next
+    status: planned
+    summary: A persona panel shows the persona's summary, goals and stories by release.
+    sources:
+      - docs/plans/personas.md#4-open-a-persona-to-see-goals-and-coverage
+  - id: ESM-905
+    title: Share approved personas with customers
+    activity: explore
+    release: next
+    status: planned
+    summary: Customers see a For line on stories whose personas have approved customer copy. Internal personas and IDs never reach them.
+    sources:
+      - docs/plans/personas.md#5-share-approved-personas-with-customers
+  - id: ESM-906
+    title: Include personas in exports
+    activity: explore
+    release: next
+    status: planned
+    summary: CSV, JSON and Visio exports carry each story's personas, and the JSON export lists the map's personas.
+    sources:
+      - docs/plans/personas.md#6-include-personas-in-exports
   - id: ESM-801
     title: Show a story's tests in its panel
     activity: explore

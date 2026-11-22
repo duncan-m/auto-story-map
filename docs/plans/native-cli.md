@@ -1,15 +1,15 @@
 # Plan: a native CLI for agents
 
-Status: proposed. The stories are ESM-901 to ESM-905, in the **0.7.4: Native CLI for agents** release of the map.
+Status: proposed. The stories are ESM-741 to ESM-745, in the **0.7.4: Native CLI for agents** release of the map.
 
 Agents working in a host repository read and change the map by opening `product/story-map.yaml`, grepping for IDs and editing the YAML by hand. That works, but each agent re-learns the format, misses rules that live in the guide, and only finds out it broke something when `validate` runs. This plan gives agents the same operations as commands with JSON output, built on the code the CLI and board already use, so there is one set of rules and no second implementation:
 
-1. [Share the command plumbing](#1-share-the-command-plumbing) (chore, part of ESM-901)
-2. [Read the map](#2-read-the-map) · ESM-901
-3. [Validation as JSON](#3-validation-as-json) · ESM-902
-4. [Look up evidence for a story](#4-look-up-evidence-for-a-story) · ESM-903
-5. [Propose edits](#5-propose-edits) · ESM-904
-6. [Claim stories](#6-claim-stories) · ESM-905, only when teams run several agents at once
+1. [Share the command plumbing](#1-share-the-command-plumbing) (chore, part of ESM-741)
+2. [Read the map](#2-read-the-map) · ESM-741
+3. [Validation as JSON](#3-validation-as-json) · ESM-742
+4. [Look up evidence for a story](#4-look-up-evidence-for-a-story) · ESM-743
+5. [Propose edits](#5-propose-edits) · ESM-744
+6. [Claim stories](#6-claim-stories) · ESM-745, only when teams run several agents at once
 7. [Document it](#7-document-it)
 
 All stories are internal. None of them changes customer-facing copy, and none of the commands writes customer copy unless asked to (see [Safeguards](#safeguards)).
@@ -33,7 +33,7 @@ These are proposals. Each is easy to change during review.
 | A. Output | Every new command takes `--format text|json`. Text is the default for people. JSON has `format: "auto-story-map.<kind>"` and `version: 1`, like the JSON export, so agents can check what they got. |
 | B. Story shape | Reads return the same story objects as the JSON export (`StoryMapJsonStory`), so an agent sees one shape everywhere. |
 | C. Audience | The CLI is always the internal view, as `export` already is: whoever runs it has the YAML file. |
-| D. Evidence and the audit | The deterministic evidence step planned for the scheduled audit (ESM-502, part 1) is built here as `story-map evidence`. ESM-502 keeps the agent workflow and depends on ESM-903. |
+| D. Evidence and the audit | The deterministic evidence step planned for the scheduled audit (ESM-502, part 1) is built here as `story-map evidence`. ESM-502 keeps the agent workflow and depends on ESM-743. |
 | E. Edits | Dry run by default. An edit prints the change and the `story-map diff` summary, and validates the result. `--write` applies it. |
 | F. Formatting | Edits keep comments, key order and untouched lines byte for byte. An edit that would reformat anything outside the node it changes is refused rather than written. |
 | G. Claims | Opt-in, for teams running several agents on one map. Stored as Git refs on the remote, never in the map file. |
@@ -117,10 +117,10 @@ The default branch comes from `origin/HEAD`, then `main`, then `master`. ID matc
 `story-map edit` makes the small, common map changes as named operations, so agents stop hand-editing YAML:
 
 ```bash
-npx --no-install story-map edit ESM-904 --status in-progress
-npx --no-install story-map edit ESM-905 --status blocked --reason "Waiting on the host's Git provider to accept custom refs"
-npx --no-install story-map edit ESM-903 --release v0-7-4 --activity review
-npx --no-install story-map edit ESM-901 --add-source docs/story-map.md#read-the-map
+npx --no-install story-map edit ESM-744 --status in-progress
+npx --no-install story-map edit ESM-745 --status blocked --reason "Waiting on the host's Git provider to accept custom refs"
+npx --no-install story-map edit ESM-743 --release v0-7-4 --activity review
+npx --no-install story-map edit ESM-741 --add-source docs/story-map.md#read-the-map
 npx --no-install story-map add --activity review --release v0-7-4 --title "Check claims in CI"
 npx --no-install story-map edit --from edits.json --write
 ```
@@ -147,9 +147,9 @@ The edit command enforces the rules in `AGENTS.md` instead of hoping an agent re
 When several agents pick work from the same map, two can start the same story before either opens a PR. A claim says “this agent is on this story” before any branch or PR exists. Teams that run one agent at a time never need it.
 
 ```bash
-npx --no-install story-map claim ESM-903 --agent "audit-bot" --ttl 4h
+npx --no-install story-map claim ESM-743 --agent "audit-bot" --ttl 4h
 npx --no-install story-map claims --format json
-npx --no-install story-map unclaim ESM-903
+npx --no-install story-map unclaim ESM-743
 ```
 
 **How claims are stored.** Each claim is a Git ref, `refs/story-map/claims/<ID>`, on the remote (`origin` by default), pointing at a commit with no parents whose message is the claim as JSON: agent, branch, when it was claimed and when it expires.
