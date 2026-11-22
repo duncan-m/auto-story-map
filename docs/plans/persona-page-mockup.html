@@ -49,7 +49,7 @@
   .esm-persona-title-end span { color: var(--esm-muted); font-size: .8125rem; }
 
   /* Context band */
-  .esm-context-band { display: grid; grid-template-columns: 1fr 1fr 1.35fr; gap: 32px; margin-bottom: 10px; }
+  .esm-context-band { display: grid; grid-template-columns: 1fr 1fr 1.35fr; gap: 32px; margin: 14px 0 10px; }
   .esm-context-card { display: grid; align-content: start; gap: 8px; font-size: .875rem; line-height: 1.45; }
   .esm-context-card h4 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--esm-muted); font-size: .75rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
   .esm-context-card ul { margin: 0; padding-left: 1.1em; }
@@ -58,14 +58,12 @@
 
   /* Jobs as lanes, each with its steps in order.
      Kept quiet on purpose: no box around the section or each lane, lanes split by a rule,
-     the core job marked by an accent edge, and flat step cards with the count as the link. */
+     the core job on a light tint, and flat step cards with the count as the link. */
   .esm-section-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; font-size: 1rem; font-weight: 700; }
   .esm-section-title span:not(.mock-callout) { color: var(--esm-muted); font-size: .8125rem; font-weight: 500; }
-  .esm-jobs-map { border-top: 1px solid var(--esm-line); }
   .esm-job-lane { position: relative; display: grid; gap: 12px; padding: 18px 0 20px; border-bottom: 1px solid var(--esm-line); }
   .esm-job-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-  .esm-job-lane[data-core] { padding-left: 14px; margin-left: -14px; box-shadow: inset 3px 0 0 var(--esm-accent); }
-  .esm-job-lane[data-core] .esm-job-cell { padding-left: 0; }
+  .esm-job-lane[data-core] { margin: 12px -16px 0; padding: 16px; border-bottom: 0; border-radius: 10px; background: color-mix(in srgb, var(--esm-activity-bg) 65%, var(--esm-paper)); }
   .esm-job-cell { position: relative; display: grid; align-content: start; gap: 8px; min-width: 0; padding-right: 36px; }
   .esm-job-label { color: var(--esm-accent-ink); font-size: .6875rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
   .esm-lane-chevron { position: absolute; top: 0; right: 2px; color: var(--esm-faint); }
