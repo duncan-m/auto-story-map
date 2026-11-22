@@ -76,6 +76,11 @@ export interface StoryCard extends StoryMapLabel {
   activity: string;
   release: string;
   status: StoryStatus;
+  /**
+   * IDs of the personas the story is for, primary first: the owners of its jobs, then the personas it lists.
+   * Absent when it names none. Customer views list only the view's own personas, by their public IDs.
+   */
+  personas?: string[];
 }
 
 /** A job to be done as internal viewers see it, with how many stories serve it. */
@@ -104,8 +109,6 @@ export interface InternalStoryCard extends StoryCard {
   statusReason?: string;
   /** Effort estimate in story points. */
   estimate?: EstimatePoints;
-  /** IDs of the personas the story is for, primary first: the owners of its jobs, then the personas it lists. Absent when it names none. */
-  personas?: string[];
   /** IDs of the jobs to be done the story serves, most important first. Absent when it names none. */
   jobs?: string[];
   updatedBy?: string;
@@ -140,7 +143,7 @@ export interface StoryMapFilterState {
   status?: StoryStatusFilter[];
   /** Only stories added or changed in this many days. */
   changedWithinDays?: number;
-  /** IDs of the chosen personas, in map order. A story is kept when it is for any of them. Internal views only. */
+  /** IDs of the chosen personas, in map order. A story is kept when it is for any of them. Customers choose from their view's personas. */
   persona?: string[];
   /** IDs of the chosen jobs, in map order. A story is kept when it serves any of them. Internal views only. */
   job?: string[];
@@ -190,7 +193,16 @@ export type StoryMapView =
     /** When the tests index was generated. Present with `testsIndexed`. */
     testsGeneratedAt?: string;
   })
-  | (StoryMapBaseView & { audience: "all-users"; releases: StoryMapLabel[]; stories: StoryCard[] });
+  | (StoryMapBaseView & {
+    audience: "all-users";
+    releases: StoryMapLabel[];
+    stories: StoryCard[];
+    /**
+     * Personas with approved customer copy that a story in the view is for, in map order, with
+     * public IDs such as `persona-1`. Absent when there are none. Customers never see jobs.
+     */
+    personas?: StoryMapLabel[];
+  });
 
 const weekMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -378,7 +390,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
   const releaseIds = new Set(publishedStories.map(({ story }) => story.release));
 
   function projectGroups(
-    groups: StoryMapDocument["activities"],
+    groups: readonly { id: string; customer?: { title: string; summary?: string } }[],
     visible: Set<string>,
     prefix: string,
   ) {
@@ -395,21 +407,27 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
 
   const activities = projectGroups(map.activities, activityIds, "activity");
   const releases = projectGroups(map.releases, releaseIds, "release");
-  const stories: StoryCard[] = [];
-  for (const { story, copy } of publishedStories) {
+  const resolvePersonas = storyPersonaResolver(map);
+  const shown = publishedStories.flatMap(({ story, copy }) => {
     const activity = activities.ids.get(story.activity);
     const release = releases.ids.get(story.release);
-    if (!activity || !release) continue;
-    stories.push({
-      id: `story-${stories.length + 1}`,
+    return activity && release ? [{ story, copy, activity, release, personaIds: resolvePersonas(story) }] : [];
+  });
+  // Only personas with approved copy that a shown story is for, renumbered so internal IDs never leak.
+  const personas = projectGroups(map.personas ?? [], new Set(shown.flatMap(({ personaIds }) => personaIds)), "persona");
+  const stories: StoryCard[] = shown.map(({ story, copy, activity, release, personaIds }, index) => {
+    const storyPersonas = personaIds.flatMap(id => personas.ids.get(id) ?? []);
+    return {
+      id: `story-${index + 1}`,
       title: copy.title,
       summary: copy.summary,
       activity,
       release,
       // A merged story is not available to customers yet.
       status: customerStatus(story.status),
-    });
-  }
+      ...(storyPersonas.length ? { personas: storyPersonas } : {}),
+    };
+  });
 
   return {
     audience: "all-users",
@@ -417,6 +435,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     summary: map.customer.summary,
     activities: activities.entries,
     releases: releases.entries,
+    ...(personas.entries.length ? { personas: personas.entries } : {}),
     stories,
   };
 }
