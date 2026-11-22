@@ -473,7 +473,7 @@ stories:
     title: Estimate effort on each story
     activity: plan
     release: v0-7-6
-    status: in-progress
+    status: merged
     summary: Each story can carry an effort estimate in story points, and each release lane shows its total and how much is left to ship.
     notes: Internal only, so customers never see estimates. Cut stories leave the total, and shipped stories leave the remaining count. Points use 1, 2, 3, 5, 8 or 13.
     sources:

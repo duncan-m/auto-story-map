@@ -63,6 +63,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 | Progress | Set `status` to `planned`, `in-progress`, `merged` or `shipped`. Merged means the work is on the default branch. Shipped means the intended audience can use it. See [Merged and shipped](#merged-and-shipped). |
 | What a release is for | Edit the release’s `notes` and `impact`. See [Release notes and impact](#release-notes-and-impact). |
 | Work that stopped or was dropped | Set `status` to `blocked` or `cut` and explain why in `statusReason`. See [Blocked and cut stories](#blocked-and-cut-stories). |
+| How big a story is | Set its `estimate` in story points, once the team has agreed it. See [Estimate effort](#estimate-effort). |
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
 
@@ -157,6 +158,32 @@ Agents can draft impact from plans, issues and the code, and mark each item `dra
 On the internal board, each release lane shows its first impact item under the title, with “+1 more” when there are more and a **Draft** label on drafts. Select the release title to open its panel: the summary, notes, every impact item with its expected and actual result, progress such as “3 of 5 stories shipped, 1 cut”, and the release’s stories grouped by status. Cut stories are left out of the total, because they have left the release. Progress counts every story in the release, while the list shows only the stories that match the current filters and says how many are hidden. Each story opens its own panel.
 
 The customer view never includes notes, impact or progress. It keeps the release’s `customer.title` and `customer.summary`.
+
+## Estimate effort
+
+Each story can carry an optional `estimate` in story points. Each release lane then shows its total and how much is left to ship, so a product manager can see whether a release is too big and how far through it the team is.
+
+```yaml
+- id: BUILDER-102
+  title: Look up prices in the material catalogue
+  activity: prepare
+  release: builder-mvp
+  status: planned
+  estimate: 3
+```
+
+- **The scale.** Use 1, 2, 3, 5, 8 or 13. Any other number is a validation error. A story bigger than 13 is a sign to split it.
+- **The total** counts every story in the release except `cut` ones, which have left the release, as release progress does.
+- **What is left** counts stories that are not `shipped`. Merged stories still count, because their users cannot use them yet.
+- **Unestimated stories** add nothing to the total, and the total says how many there are, such as “21 pts · 8 left · 2 unestimated”. A release with no estimated story shows no total at all.
+- **Filters** do not change the total, which always covers the whole release.
+- **Validation** warns about a `planned` or `in-progress` story with no estimate, but only in a release where another story has one, so maps that do not use estimates get no warnings. The warning fails validation only with `--strict`.
+
+On the internal board, a card shows its estimate at the top right, such as “5 pts”. The release lane shows the total under the story count, and keeps it on its one line when the lane is collapsed. The release panel adds a line under progress, such as “21 points, 8 left to ship. 2 stories have no estimate.”, and the story panel lists the estimate with the activity and release.
+
+`story-map diff` shows a change as “Estimate: 3 → 5”. The Visio file adds the estimate to each card, such as “BUILDER-102 · 3 pts”, and to its shape data, and shows each release's total in its header. The CSV has an `Estimate` column, and the JSON export carries each story's `estimate` and each release's `estimates`.
+
+Estimates are internal only. Customers never see them, on the board or in the JSON. Agents should not set or change an estimate unless the team has agreed it, and should flag a missing one in the PR instead.
 
 ## Link an engineering overview
 
@@ -418,7 +445,7 @@ return new Response(file, {
 });
 ```
 
-- The file is one page laid out like the board: activities across the top, then a lane per release with its title, story counts, notes and impact, with drafted items marked **Draft**. Each story is a card showing its ID and title. Each card also carries its ID, title, status, activity and release as shape data.
+- The file is one page laid out like the board: activities across the top, then a lane per release with its title, story counts, [estimate total](#estimate-effort), notes and impact, with drafted items marked **Draft**. Each story is a card showing its ID and title, with its estimate after the ID. Each card also carries its ID, title, status, activity, release and estimate as shape data.
 - The export is the whole map, including blocked and cut stories. Pass the view from `getStoryMapForViewer`, not a filtered one. A filtered view is refused.
 - `collapsedReleases` takes release IDs. Those lanes show only their title and story count.
 - At most 200 stories are exported, from lanes that are not collapsed. When there are more, the most recently changed are kept, so pass `history` if you have it, and the file says how many were left out. Without history, the last stories in the file are kept. Change the limit with `maxStories`.
@@ -449,8 +476,8 @@ return new Response(storyMapToCsv(view), {
 });
 ```
 
-- Each story is a row with the columns `Activity`, `Release`, `ID` and `Title`, using activity and release titles, in board order: by release, then activity, then map order.
-- A collapsed release is one row, with its title in `Release` and “Collapsed · N stories” in `Title`.
+- Each story is a row with the columns `Activity`, `Release`, `ID`, `Title` and `Estimate`, using activity and release titles, in board order: by release, then activity, then map order. `Estimate` is the story points, or empty when the story has none.
+- A collapsed release is one row, with its title in `Release`, “Collapsed · N stories” in `Title` and its points total, such as “21 pts · 8 left”, in `Estimate`.
 - Release notes and impact are left out, because they do not fit a row per story. The Visio file has them.
 - The same rules apply as for Visio: the whole map, internal views only, and at most 200 of the most recently changed stories. The CSV cannot say how many were left out, so `story-map export` reports it.
 - Fields are quoted following RFC 4180, with CRLF line endings. A field starting with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front, so spreadsheets do not run it as a formula. The file starts with a UTF-8 byte order mark so Excel reads non-ASCII titles.
@@ -475,7 +502,7 @@ return new Response(storyMapToJson(view), {
 ```
 
 - `format` is `"auto-story-map.export"` and `version` is `1`. The type is `StoryMapJsonExport`.
-- `activities` and `releases` are as on the internal board, with each release's notes, impact and `storyCounts`. `stories` are in map order, each with its summary, status, `statusReason`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
+- `activities` and `releases` are as on the internal board, with each release's notes, impact, `storyCounts` and, when it has estimated stories, `estimates`. `stories` are in map order, each with its summary, status, `statusReason`, `estimate`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
 - `statuses` says what each status means, such as that `merged` work is on the default branch but not yet available to its users.
 - `provenance` names the library version and commit that wrote the file, and when the history and tests index were generated. `completeness` counts the stories in the map, in the file and over the limit, and says whether history and tests were supplied. Both have `notes`: plain sentences for the agent, such as that statuses are recorded in PRs and can lag behind the code, that tests come from a static scan of tagged names without results, or that a shallow history is missing earlier changes. Ask the agent to read them before drawing conclusions.
 - Unlike the other formats, every story is included unless you pass `maxStories`, and collapsed lanes are ignored, so the file always covers every release. The board's JSON link and `storyMapExportResponse` ignore `collapsed` for this format, and `story-map export` warns that `--collapsed` is ignored.

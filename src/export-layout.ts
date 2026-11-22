@@ -178,8 +178,10 @@ export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
     const header: ExportTextRun[] = [{ text: release.title, size: 11, bold: true, color: exportColors.text }];
     if (release.collapsed) {
       header.push({ text: `Collapsed · ${release.storyCount === 1 ? "1 story" : `${release.storyCount} stories`}`, size: 9, color: exportColors.muted });
+      if (release.estimatesText) header.push({ text: release.estimatesText, size: 9, color: exportColors.muted });
     } else {
       header.push({ text: release.countsText, size: 9, color: exportColors.muted });
+      if (release.estimatesText) header.push({ text: release.estimatesText, size: 9, color: exportColors.muted });
       for (const paragraph of release.notes) header.push({ text: paragraph, size: 9, color: exportColors.text });
       for (const item of release.impact) {
         const actual = item.actual ? ` (actual: ${item.actual})` : "";
@@ -246,12 +248,19 @@ export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
           w: cardWidth,
           h: cardHeight,
           text: [
-            { text: story.id, size: cardIdSize, color: exportColors.muted },
+            { text: story.estimate === undefined ? story.id : `${story.id} · ${story.estimate} ${story.estimate === 1 ? "pt" : "pts"}`, size: cardIdSize, color: exportColors.muted },
             { text: titles.get(story.id)!, size: cardTitleSize, color: exportColors.text },
           ],
           fill: exportColors.card,
           line: exportColors.cardLine,
-          data: { ID: story.id, Title: story.title, Status: storyStatusLabels[story.status], Activity: story.activity, Release: story.release },
+          data: {
+            ID: story.id,
+            Title: story.title,
+            Status: storyStatusLabels[story.status],
+            Activity: story.activity,
+            Release: story.release,
+            ...(story.estimate !== undefined ? { Estimate: String(story.estimate) } : {}),
+          },
         });
       });
     });

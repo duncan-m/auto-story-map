@@ -18,6 +18,8 @@ Keep new stories internal by default. Add customer-facing copy only when the sto
 
 Record each release’s notes and expected impact in its `notes` and `impact`, following [Release notes and impact](docs/story-map.md#release-notes-and-impact). Mark impact items you draft with `draft: true`. Only a person removes `draft`, so never remove it yourself. The board cannot edit these fields, so update them in a PR like any other map change.
 
+A story's `estimate` is the team's agreed size in story points, following [Estimate effort](docs/story-map.md#estimate-effort). Do not set or change an estimate unless the team has agreed it. When a planned or in-progress story has none, flag it in the PR instead.
+
 When you add or change a test that covers a story, put the story ID at the start of the test's name, followed by a colon, such as `test("ESM-702: exports a valid Visio package", …)`. See [Link tests to stories](docs/story-map.md#link-tests-to-stories).
 
 Run `npm run validate` in this source repo. It also checks sources and the story IDs in `docs/`. In a product that installs the package, run `npx --no-install story-map validate product/story-map.yaml`. Add `--check-sources` to check that sources and `#heading` links exist, and `--tests <folder>` to check the story IDs in test names. Use the same validation in CI, adding `--format github` so problems appear on the PR diff. In the PR description, include the summary from `story-map diff origin/<base branch>` and call out any customer-facing changes.

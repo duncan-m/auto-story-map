@@ -2392,10 +2392,10 @@ const csvRows = csv => {
 test("ESM-705: exports the internal map as CSV in board order", () => {
   const view = exportView();
   const rows = csvRows(storyMapToCsv(view));
-  assert.deepEqual(rows[0], ["Activity", "Release", "ID", "Title"]);
+  assert.deepEqual(rows[0], ["Activity", "Release", "ID", "Title", "Estimate"]);
   const expected = view.releases.flatMap(release =>
     view.activities.flatMap(activity =>
-      view.stories.filter(story => story.release === release.id && story.activity === activity.id).map(story => [activity.title, release.title, story.id, story.title]),
+      view.stories.filter(story => story.release === release.id && story.activity === activity.id).map(story => [activity.title, release.title, story.id, story.title, ""]),
     ),
   );
   assert.deepEqual(rows.slice(1), expected);
@@ -2413,7 +2413,7 @@ test("ESM-705: collapsed releases are one CSV row with the story count", () => {
   const release = view.releases[0];
   const count = view.stories.filter(story => story.release === release.id).length;
   const rows = csvRows(storyMapToCsv(view, { collapsedReleases: [release.id, "no-such-release"] }));
-  assert.deepEqual(rows.filter(row => row[1] === release.title), [["", release.title, "", `Collapsed · ${count} ${count === 1 ? "story" : "stories"}`]]);
+  assert.deepEqual(rows.filter(row => row[1] === release.title), [["", release.title, "", `Collapsed · ${count} ${count === 1 ? "story" : "stories"}`, ""]]);
   assert.equal(rows.length - 1, map.stories.length - count + 1);
 });
 
@@ -3158,4 +3158,80 @@ test("ESM-503: customers never see estimates", async () => {
     const payload = await makeStoryMapResponse(path, estimated, regular).text();
     assert.doesNotMatch(payload, /"estimates?"|\d pts|story points/i);
   }
+});
+
+test("ESM-503: the board shows estimates on cards, lanes and panels", () => {
+  const render = (view, props = {}) => renderToStaticMarkup(createElement(StoryMapBoard, { map: view, ...props }));
+  const view = getStoryMapForViewer(withEstimates(), engineer);
+  const html = render(filterStoryMapView(view, readStoryMapFilters(new URLSearchParams("status=all"))));
+
+  // Card: top right, on the ID line, with the full wording for screen readers.
+  assert.match(html, /<span class="esm-card-head"><span class="esm-card-id">BUILDER-102<\/span><span class="esm-estimate" title="Estimate: 3 points"><span aria-hidden="true">3 pts<\/span><span class="esm-visually-hidden">Estimate: 3 points<\/span><\/span><\/span>/);
+  assert.doesNotMatch(html, /<span class="esm-card-head"><span class="esm-card-id">BUILDER-103</);
+  // Lane: under the story count, also shown when the lane is collapsed, since CSS does the collapsing.
+  assert.match(html, /<span class="esm-release-estimate"><span aria-hidden="true">8 pts · 3 left · 1 unestimated<\/span><span class="esm-visually-hidden">Estimate: 8 points, 3 left to ship, 1 story with no estimate<\/span><\/span>/);
+  assert.equal(html.match(/class="esm-release-estimate"/g).length, 1);
+  // Release panel and story panel.
+  assert.match(html, /<p class="esm-release-estimate-note">8 points, 3 left to ship\. 1 story has no estimate\.<\/p>/);
+  assert.match(html, /<dt>Estimate<\/dt><dd>3 points<\/dd>/);
+  assert.match(html, /<dt>Estimate<\/dt><dd>5 points<\/dd>/);
+  assert.equal(html.match(/<dt>Estimate<\/dt>/g).length, 3);
+  // One point reads as singular.
+  const one = render(getStoryMapForViewer(editedSample(document => { document.stories[0].estimate = 1; }), engineer));
+  assert.match(one, />1 pt<\/span>/);
+  assert.match(one, /<dd>1 point<\/dd>/);
+  assert.match(one, />1 pt · 1 left · 2 unestimated</);
+
+  // Nothing about estimates on a board with none, or for customers.
+  assert.doesNotMatch(render(getStoryMapForViewer(map, engineer)), /esm-estimate|esm-release-estimate|<dt>Estimate/);
+  assert.doesNotMatch(render(getStoryMapForViewer(withEstimates(), regular)), /esm-estimate|esm-release-estimate|<dt>Estimate|\d pts?\b/);
+});
+
+test("ESM-503: diffs show estimate changes, outside the customer-facing comparison", () => {
+  const before = withEstimates();
+  const after = editedSample(document => {
+    const story = id => document.stories.find(story => story.id === id);
+    story("BUILDER-102").estimate = 5;
+    story("BUILDER-103").estimate = 2;
+    delete story("BUILDER-101").estimate;
+  }, before);
+  const diff = diffStoryMaps(before, after);
+  const updates = Object.fromEntries(diff.stories.updated.map(update => [update.id, update]));
+  assert.deepEqual(updates["BUILDER-102"].estimate, { from: 3, to: 5 });
+  assert.deepEqual(updates["BUILDER-103"].estimate, { to: 2 });
+  assert.deepEqual(updates["BUILDER-101"].estimate, { from: 5 });
+  assert.deepEqual(updates["BUILDER-102"].details, []);
+  assert.equal(diff.customer.length, 0);
+  const markdown = formatStoryMapDiff(diff);
+  assert.match(markdown, /Estimate: 3 → 5/);
+  assert.match(markdown, /Estimate: none → 2/);
+  assert.match(markdown, /Estimate: 5 → none/);
+  assert.doesNotMatch(markdown, /customer-facing/i);
+});
+
+test("ESM-503: exports carry story estimates and release totals", () => {
+  const view = getStoryMapForViewer(withEstimates(), engineer);
+
+  const rows = csvRows(storyMapToCsv(view));
+  assert.equal(rows[0][4], "Estimate");
+  const estimateOf = id => rows.find(row => row[2] === id)[4];
+  assert.equal(estimateOf("BUILDER-102"), "3");
+  assert.equal(estimateOf("BUILDER-103"), "");
+  const collapsed = csvRows(storyMapToCsv(view, { collapsedReleases: ["builder-mvp", "finance-follow-up"] }));
+  assert.deepEqual(collapsed.find(row => row[1] === "Builder workflow").slice(3), ["Collapsed · 4 stories", "8 pts · 3 left · 1 unestimated"]);
+  assert.equal(collapsed.find(row => row[1] === "Finance follow-up")[4], "");
+
+  const json = JSON.parse(storyMapToJson(view, { now: exportNow }));
+  assert.equal(json.stories.find(story => story.id === "BUILDER-102").estimate, 3);
+  assert.ok(!("estimate" in json.stories.find(story => story.id === "BUILDER-103")));
+  assert.deepEqual(json.releases.find(release => release.id === "builder-mvp").estimates, { total: 8, left: 3, unestimated: 1 });
+  assert.ok(!("estimates" in json.releases.find(release => release.id === "finance-follow-up")));
+
+  const files = readStoredZip(storyMapToVsdx(view, { now: exportNow }));
+  assert.match(page(files), /BUILDER-102 · 3 pts/);
+  assert.doesNotMatch(page(files), /BUILDER-103 · /);
+  assert.match(page(files), /<Cell N="Value" V="3" U="STR"\/><Cell N="Label" V="Estimate"\/>/);
+  assert.match(page(files), /8 pts · 3 left · 1 unestimated/);
+  const collapsedVsdx = page(readStoredZip(storyMapToVsdx(view, { collapsedReleases: ["builder-mvp"], now: exportNow })));
+  assert.match(collapsedVsdx, /Collapsed · 4 stories[\s\S]*8 pts · 3 left · 1 unestimated/);
 });

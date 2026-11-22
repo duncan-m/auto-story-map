@@ -4,7 +4,7 @@ import type { StoryMapView } from "./view.js";
 /** The `Content-Type` for a `.csv` file. */
 export const csvContentType = "text/csv; charset=utf-8";
 
-const columns = ["Activity", "Release", "ID", "Title"] as const;
+const columns = ["Activity", "Release", "ID", "Title", "Estimate"] as const;
 
 /**
  * Formats one CSV field. A field that a spreadsheet could read as a formula
@@ -19,10 +19,10 @@ export function csvField(value: string): string {
 
 /**
  * Writes the internal map as CSV for importing into Lucidchart, Miro or a
- * spreadsheet: one row per story with its activity, release, ID and title, in
- * board order (release, then activity, then map order). A release in
- * `collapsedReleases` is one row with its title and story count instead of its
- * stories, and at most `maxStories` (200) of the most recently changed stories
+ * spreadsheet: one row per story with its activity, release, ID, title and
+ * estimate in story points, in board order (release, then activity, then map
+ * order). A release in `collapsedReleases` is one row with its title, story
+ * count and point total instead of its stories, and at most `maxStories` (200) of the most recently changed stories
  * are included. Release notes and impact are left out; the Visio file has them.
  *
  * Pass the unfiltered view from `getStoryMapForViewer`, with history if you have
@@ -35,12 +35,12 @@ export function storyMapToCsv(view: StoryMapView, options: StoryMapExportOptions
   const rows: string[][] = [[...columns]];
   for (const release of model.releases) {
     if (release.collapsed) {
-      rows.push(["", release.title, "", `Collapsed · ${release.storyCount} ${release.storyCount === 1 ? "story" : "stories"}`]);
+      rows.push(["", release.title, "", `Collapsed · ${release.storyCount} ${release.storyCount === 1 ? "story" : "stories"}`, release.estimatesText ?? ""]);
       continue;
     }
     for (const activity of model.activities) {
       for (const story of release.cells.get(activity.id) ?? []) {
-        rows.push([activity.title, release.title, story.id, story.title]);
+        rows.push([activity.title, release.title, story.id, story.title, story.estimate === undefined ? "" : String(story.estimate)]);
       }
     }
   }

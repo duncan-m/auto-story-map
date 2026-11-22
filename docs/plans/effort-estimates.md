@@ -1,6 +1,6 @@
 # Plan: effort estimates on stories
 
-Status: in progress. Items 1 and 2 are built. The work is ESM-503 in the **0.7.6: PM improvements** release of the map.
+Status: built, apart from the native CLI part of item 4, which waits for ESM-741. The work is ESM-503 in the **0.7.6: PM improvements** release of the map.
 
 Each story can carry an effort estimate in story points. Each release lane shows the total for the release and how much of it is left to ship, so a product manager can see at a glance whether a release is too big and how far through it the team is.
 
