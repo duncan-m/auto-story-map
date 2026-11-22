@@ -540,7 +540,7 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-persona-link-meta { color: var(--esm-muted); font-size: .75rem; }
 .esm-persona-picker { display: none; }
 .esm-persona-picker .esm-avatar { box-shadow: none; }
-.esm-persona-main { display: grid; align-content: start; gap: 22px; min-width: 0; padding: 22px 24px 24px; }
+.esm-persona-main { display: grid; align-content: start; gap: 32px; min-width: 0; padding: 22px 24px 24px; }
 .esm-persona-title { display: flex; align-items: flex-start; gap: 14px; }
 .esm-persona-title .esm-avatar-lg { width: 48px; height: 48px; font-size: 1rem; }
 .esm-persona-title-text { min-width: 0; }
@@ -562,7 +562,7 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-section-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 4px; font-size: 1rem; font-weight: 700; }
 .esm-section-title span { color: var(--esm-muted); font-size: .8125rem; font-weight: 500; }
 .esm-job-lanes { margin: 0; padding: 0; list-style: none; }
-.esm-job-lane { display: grid; gap: 12px; padding: 18px 0 20px; border-bottom: 1px solid var(--esm-line); }
+.esm-job-lane { display: grid; gap: 12px; padding: 26px 0 20px; border-bottom: 1px solid var(--esm-line); }
 .esm-job-lane[data-core] { margin: 8px -16px 0; padding: 16px; border-bottom: 0; border-radius: 10px; background: color-mix(in srgb, var(--esm-activity-bg) 65%, var(--esm-paper)); }
 .esm-job-cell { position: relative; display: grid; align-content: start; gap: 8px; min-width: 0; padding-right: 36px; }
 .esm-job-labels { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
