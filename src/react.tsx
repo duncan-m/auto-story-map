@@ -1208,23 +1208,24 @@ function withIds(params: URLSearchParams, name: string, ids: readonly string[]) 
   return `?${copy}`;
 }
 
-/** What the persona button says: “Everyone” by default, one or two titles, or a count. */
-function personaSummary(chosen: readonly StoryMapLabel[]) {
-  if (!chosen.length) return "Everyone";
+/** What the persona button says: “Everyone” by default or with every persona chosen, one or two titles, or a count. */
+function personaSummary(chosen: readonly StoryMapLabel[], total: number) {
+  if (!chosen.length || chosen.length === total) return "Everyone";
   if (chosen.length <= 2) return chosen.map(persona => persona.title).join(", ");
   return `${chosen.length} personas`;
 }
 
 /**
- * The persona filter, built like the status menu. board.js applies the choice when the menu closes.
- * Customer personas have no avatars, so their options show the title alone.
+ * The persona filter, built like the status menu, with every persona ticked by default, which
+ * shows everyone. Unticking a persona narrows the board to the others. board.js applies the
+ * choice when the menu closes. Customer personas have no avatars, so their options show the title alone.
  */
 function PersonaMenu({ personas, chosen, hintId }: { personas: readonly (PersonaLabel | StoryMapLabel)[]; chosen: readonly string[]; hintId: string }) {
-  const picked = new Set(chosen);
+  const picked = new Set(chosen.length ? chosen : personas.map(persona => persona.id));
   return (
     <details className="esm-menu esm-persona-menu">
       <summary className="esm-select esm-menu-button" data-esm-focus="persona" aria-describedby={hintId}>
-        <span className="esm-visually-hidden">For: </span>{personaSummary(personas.filter(persona => picked.has(persona.id)))}
+        <span className="esm-visually-hidden">For: </span>{personaSummary(personas.filter(persona => chosen.includes(persona.id)), personas.length)}
       </summary>
       <fieldset className="esm-menu-panel">
         <legend className="esm-visually-hidden">Show stories for these personas</legend>
@@ -1237,55 +1238,6 @@ function PersonaMenu({ personas, chosen, hintId }: { personas: readonly (Persona
         ))}
       </fieldset>
     </details>
-  );
-}
-
-/**
- * One link per persona under the toolbar, with its count of active stories,
- * which ignores the filters so it stays put. Each link shows that persona's
- * stories, keeping the other filters, and works without JavaScript. The link
- * for the only chosen persona goes back to everyone.
- */
-function PersonaStrip({ personas, filter, preservedParams, panelIds }: {
-  personas: readonly PersonaLabel[];
-  filter: NonNullable<StoryMapView["filter"]>;
-  preservedParams?: Readonly<Record<string, string>>;
-  /** Each persona's panel, by persona ID. */
-  panelIds: ReadonlyMap<string, string>;
-}) {
-  const base = filterParams(filter, preservedParams);
-  const chosen = new Set(filter.persona ?? []);
-  const narrowed = chosen.size > 0 || !!filter.job?.length;
-  return (
-    <nav className="esm-personas" aria-label="Personas">
-      <span className="esm-personas-label" aria-hidden="true">Personas</span>
-      {personas.map(persona => {
-        const current = chosen.has(persona.id);
-        const only = current && chosen.size === 1 && !filter.job?.length;
-        const content = <>
-          <PersonaAvatar persona={persona} />
-          {persona.title}
-          <span className="esm-persona-count">
-            <span aria-hidden="true">{persona.activeStories}</span>
-            <span className="esm-visually-hidden">{`, ${storyCount(persona.activeStories)}`}</span>
-          </span>
-        </>;
-        // The board already shows only this persona, so the chip opens their panel instead.
-        const panelId = only ? panelIds.get(persona.id) : undefined;
-        return panelId
-          ? (
-            <button type="button" key={persona.id} className="esm-persona-chip" aria-current="true" aria-haspopup="dialog" {...popoverTarget(panelId)}>
-              {content}
-            </button>
-          )
-          : (
-            <a key={persona.id} className="esm-persona-chip" href={withIds(base, "persona", [persona.id])} aria-current={current ? "true" : undefined}>
-              {content}
-            </a>
-          );
-      })}
-      {narrowed && <a className="esm-persona-clear" href={withIds(base, "persona", [])}>Show everyone</a>}
-    </nav>
   );
 }
 
@@ -1335,15 +1287,14 @@ function hiddenSummary({ blocked, cut }: { blocked: number; cut: number }) {
   return [blocked && `${blocked} blocked`, cut && `${cut} cut`].filter(Boolean).join(" and ");
 }
 
-function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks, exportHref, personas, customerPersonas, personaPanelIds, activities }: {
+function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks, exportHref, personas, customerPersonas, activities }: {
   filter: NonNullable<StoryMapView["filter"]>;
   /** The view's activities, to name the chosen ones. */
   activities: readonly StoryMapLabel[];
-  /** The internal view's personas. The persona filter and strip show when there are any. */
+  /** The internal view's personas. The persona filter shows when there are any. */
   personas: readonly PersonaLabel[];
-  /** The customer view's personas. The persona filter shows when there are two or more, and the strip never does. */
+  /** The customer view's personas. The persona filter shows when there are two or more. */
   customerPersonas: readonly StoryMapLabel[];
-  personaPanelIds: ReadonlyMap<string, string>;
   shown: number;
   preservedParams?: Readonly<Record<string, string>>;
   showChanged: boolean;
@@ -1409,7 +1360,6 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
           {exportHref && <ExportMenu href={exportHref} />}
         </form>
       </div>
-      {personas.length > 0 && <PersonaStrip personas={personas} filter={filter} preservedParams={preservedParams} panelIds={personaPanelIds} />}
       {(filtering || filter.hidden) && (
         <p className="esm-filter-results" role="status">
           {filtering && <>
@@ -1539,7 +1489,6 @@ export function StoryMapBoard({
             exportHref={internal ? exportHref : undefined}
             personas={[...lookup.personas.values()]}
             customerPersonas={[...lookup.customer.values()]}
-            personaPanelIds={personaPanelIds}
             activities={map.activities}
           />
         )}

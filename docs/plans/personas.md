@@ -192,6 +192,8 @@ Items 1 and 2 can share a PR if the first is small. Every PR follows the reposit
 
 **Tests.** URL reading, combined filters, a persona or job with no stories, that customers' persona parameters only match customer-facing personas, and that customers' job parameters are ignored.
 
+**Later change.** The persona strip was removed once the Personas tab (item 11) listed each persona with their stories. The persona menu now ticks every persona by default, which shows everyone, and unticking a persona narrows the board to the rest. Ticking every persona is the same as ticking none.
+
 ## 4. Open a persona to see jobs and coverage
 
 **Change.** A `PersonaDetail` popover, opened from a chip, an avatar or the story panel's **For** row, using the same popover pattern as `ReleaseDetail`. It shows:

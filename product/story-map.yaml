@@ -821,7 +821,7 @@ stories:
     estimate: 2
     jobs:
       - answer-whats-next
-    summary: A persona strip and menu narrow the board to the stories for one or more personas, and links in the persona panel narrow it to one job, through repeated persona and job parameters.
+    summary: A persona menu, with every persona ticked by default, narrows the board to the stories for the personas left ticked, and links in the persona panel narrow it to one job, through repeated persona and job parameters.
     sources:
       - docs/plans/personas.md#3-filter-the-board-by-persona
       - docs/plans/personas.md#ui-mockup

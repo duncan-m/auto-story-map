@@ -17,7 +17,7 @@ export interface StoryMapFilters {
   status?: StoryStatusFilter | "all" | readonly StoryStatusFilter[];
   /** Only stories added or changed in this many days. Needs history and an internal view. */
   changedWithinDays?: ChangedWithinDays;
-  /** Persona IDs. Keeps stories for any of them. IDs the view does not have are ignored. */
+  /** Persona IDs. Keeps stories for any of them. IDs the view does not have are ignored, and choosing every persona keeps every story. */
   persona?: string | readonly string[];
   /** Job IDs. Keeps stories that serve any of them. Internal views only; IDs the view does not have are ignored. */
   job?: string | readonly string[];
@@ -121,7 +121,9 @@ export function filterStoryMapView<View extends StoryMapView>(
   const listed = (value: string | readonly string[] | undefined) => new Set(typeof value === "string" ? [value] : value ?? []);
   const wantedPersonas = listed(filters.persona);
   const wantedJobs = listed(filters.job);
-  const persona = personas.filter(item => wantedPersonas.has(item.id)).map(item => item.id);
+  const chosenPersonas = personas.filter(item => wantedPersonas.has(item.id)).map(item => item.id);
+  // Choosing every persona shows everyone, as the menu does by default, so stories for no one stay.
+  const persona = chosenPersonas.length < personas.length ? chosenPersonas : [];
   const job = internalPersonas.flatMap(item => item.jobs).filter(item => wantedJobs.has(item.id)).map(item => item.id);
   const personaSet = new Set(persona);
   const jobSet = new Set(job);

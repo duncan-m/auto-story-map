@@ -335,7 +335,7 @@ On the internal board, each card shows the avatars of the personas it is for bes
 
 ### Filter by persona
 
-When the host uses [search and filters](#integrate-with-a-product) and the map has personas, internal boards show a strip of personas under the toolbar, and a persona menu beside the status filter. Each chip links to that persona's stories with `?persona=<ID>`, keeping the search and other filters, so it works without JavaScript, and shows how many active stories are for them. The count ignores the filters, so it stays put as you filter. **Show everyone** goes back to every persona, and the chip of the only chosen persona opens [their panel](#open-a-persona). The menu chooses several personas, like the status filter, and keeps stories for any of them. With `board.js`, it applies when the menu closes.
+When the host uses [search and filters](#integrate-with-a-product) and the map has personas, internal boards show a persona menu beside the status filter. Every persona is ticked by default, and the menu says **Everyone**. Untick a persona to leave out their stories: the board keeps the stories for any ticked persona, through repeated `?persona=<ID>` parameters, so it works without JavaScript. Ticking every persona again, or none, shows everyone, including stories that name no persona. With `board.js`, the choice applies when the menu closes. The [Personas tab](#personas-tab) lists each persona with their active stories.
 
 `job=<ID>` keeps the stories that serve a job. It has no control of its own: links set it, and the filter summary names the job statement with a **Show every job** link. Unknown persona and job IDs are ignored. Search also matches the titles of a story's personas and the statements of its jobs.
 
@@ -343,7 +343,7 @@ Customers never see internal personas or jobs, so internal persona IDs and their
 
 ### Open a persona
 
-On internal boards, a persona panel shows the persona's summary and their **Jobs to be done**. Open it from a persona's avatar under an activity, from the **For** row of a story panel, or from the chip of the only chosen persona in the strip. Avatars on cards do not open it, because the card itself opens the story.
+On internal boards, a persona panel shows the persona's summary and their **Jobs to be done**. Open it from a persona's avatar under an activity, or from the **For** row of a story panel. Avatars on cards do not open it, because the card itself opens the story.
 
 When the host uses [search and filters](#integrate-with-a-product), the full persona lives on the [Personas tab](#personas-tab), so the panel is a quick look: the summary, the core job with its stories and gaps, how many other jobs there are, and an **Open persona** link to the persona's page on the tab. Without filters, the panel lists every job as described below.
 
@@ -374,7 +374,7 @@ Each job lane collapses to one line, like a release lane, with its stories and n
 
 Signed-in customers see a persona only when it has approved `customer` copy and at least one story in their view is for it, from the story's jobs or its own `personas`. The customer view lists those personas in map order, with their `customer.title` and `customer.summary` and public IDs such as `persona-1`, like activities and releases, and each story lists the public IDs of its customer-facing personas. Internal persona IDs, titles and summaries, and every job, never reach customers, even for a customer-facing persona, and a story that is only for internal personas shows nothing about who it is for.
 
-The customer story panel shows a **For** line with the approved titles, such as “For: Product teams”. Customer cards show no avatars, and the board has no persona strip. When two or more personas are shared, the toolbar offers the persona menu, without avatars, and `?persona=persona-1` keeps the stories for that persona. Adding or removing a persona's `customer` copy is a customer-facing change, so review it like a story's.
+The customer story panel shows a **For** line with the approved titles, such as “For: Product teams”. Customer cards show no avatars. When two or more personas are shared, the toolbar offers the persona menu, without avatars, with every persona ticked by default, and `?persona=persona-1` keeps the stories for that persona. Adding or removing a persona's `customer` copy is a customer-facing change, so review it like a story's.
 
 ## Link an engineering overview
 
