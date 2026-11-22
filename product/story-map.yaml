@@ -773,7 +773,7 @@ stories:
     title: Share approved personas with customers
     activity: explore
     release: v0-7-3
-    status: planned
+    status: merged
     estimate: 2
     jobs:
       - share-roadmap
@@ -782,6 +782,9 @@ stories:
     sources:
       - docs/plans/personas.md#5-share-approved-personas-with-customers
       - docs/plans/personas.md#ui-mockup
+      - src/view.ts
+      - test/personas.test.mjs
+      - docs/story-map.md#share-personas-with-customers
   - id: ESM-906
     title: Include personas in exports
     activity: explore

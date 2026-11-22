@@ -1,6 +1,6 @@
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatuses, type StoryStatusFilter } from "./status.js";
 import { jobStatement } from "./personas.js";
-import type { InternalStoryCard, StoryMapView } from "./view.js";
+import type { InternalStoryCard, StoryMapLabel, StoryMapView } from "./view.js";
 
 /** Windows offered by the board’s “Changed in” filter, in days. */
 export const changedWithinOptions = [1, 7, 14, 30] as const;
@@ -100,18 +100,19 @@ export function filterStoryMapView<View extends StoryMapView>(
   const since = changedWithinDays ? (options.now ?? new Date()).getTime() - changedWithinDays * dayMs : undefined;
 
   // Only personas and jobs the view has count, in map order, so unknown IDs are ignored and customers
-  // can only choose personas their view shows. Customers never see jobs.
-  const personas = internal ? view.personas ?? [] : [];
+  // can only choose the personas their view shows, by their public IDs. Customers never see jobs.
+  const personas: readonly StoryMapLabel[] = view.personas ?? [];
+  const internalPersonas = internal ? view.personas ?? [] : [];
   const listed = (value: string | readonly string[] | undefined) => new Set(typeof value === "string" ? [value] : value ?? []);
   const wantedPersonas = listed(filters.persona);
   const wantedJobs = listed(filters.job);
   const persona = personas.filter(item => wantedPersonas.has(item.id)).map(item => item.id);
-  const job = internal ? personas.flatMap(item => item.jobs).filter(item => wantedJobs.has(item.id)).map(item => item.id) : [];
+  const job = internalPersonas.flatMap(item => item.jobs).filter(item => wantedJobs.has(item.id)).map(item => item.id);
   const personaSet = new Set(persona);
   const jobSet = new Set(job);
   // Search also matches the titles of a story's personas and the statements of its jobs, for internal viewers.
-  const personaTitles = new Map(personas.map(item => [item.id, item.title]));
-  const statements = new Map(personas.flatMap(item => item.jobs.map(entry => [entry.id, jobStatement(entry)] as const)));
+  const personaTitles = new Map(internalPersonas.map(item => [item.id, item.title]));
+  const statements = new Map(internalPersonas.flatMap(item => item.jobs.map(entry => [entry.id, jobStatement(entry)] as const)));
 
   const hidden = { blocked: 0, cut: 0 };
   const stories = (view.stories as InternalStoryCard[]).filter(story => {

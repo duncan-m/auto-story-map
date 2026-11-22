@@ -4,7 +4,7 @@ import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatus
 import { withoutFinalPunctuation } from "./personas.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -423,17 +423,23 @@ function JobStatement({ job }: { job: StoryMapJob }) {
   return <><b>When</b> {job.situation}, <b>I want</b> {job.motivation}, <b>so</b> {withoutFinalPunctuation(job.outcome)}.</>;
 }
 
-/** Looks up the view's personas and jobs by ID. Empty for a view without personas. */
+/**
+ * Looks up the view's personas and jobs by ID. Empty for a view without personas.
+ * Customer views have no avatars or jobs, so their personas go in `customer`.
+ */
 function personaLookup(view: StoryMapView) {
   const personas = new Map<string, PersonaLabel>();
   const jobs = new Map<string, { job: StoryMapJob; persona: PersonaLabel }>();
+  const customer = new Map<string, StoryMapLabel>();
   if (view.audience === "internal") {
     for (const persona of view.personas ?? []) {
       personas.set(persona.id, persona);
       for (const job of persona.jobs) if (!jobs.has(job.id)) jobs.set(job.id, { job, persona });
     }
+  } else {
+    for (const persona of view.personas ?? []) customer.set(persona.id, persona);
   }
-  return { personas, jobs };
+  return { personas, jobs, customer };
 }
 type PersonaLookup = ReturnType<typeof personaLookup>;
 
@@ -459,6 +465,8 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
   const references = sources.filter(source => source !== overview);
   const hasEngineering = internal && !!(overview || story.notes || references.length);
   const personas = internal ? labelsFor(story.personas, lookup) : [];
+  // Customers see the approved titles only, with no avatars.
+  const customerPersonas = internal ? [] : (story.personas ?? []).flatMap(id => lookup.customer.get(id) ?? []);
   const jobs = internal ? (story.jobs ?? []).flatMap(id => lookup.jobs.get(id) ?? []) : [];
 
   return (
@@ -495,6 +503,10 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
               <span className="esm-persona-chip" key={persona.id}><PersonaAvatar persona={persona} />{persona.title}</span>
             ))}
           </dd>
+        </>}
+        {customerPersonas.length > 0 && <>
+          <dt>For</dt>
+          <dd>{listNames(customerPersonas.map(persona => persona.title))}</dd>
         </>}
         {jobs.length > 0 && <>
           <dt>Jobs</dt>
@@ -829,14 +841,17 @@ function withIds(params: URLSearchParams, name: string, ids: readonly string[]) 
 }
 
 /** What the persona button says: “Everyone” by default, one or two titles, or a count. */
-function personaSummary(chosen: readonly PersonaLabel[]) {
+function personaSummary(chosen: readonly StoryMapLabel[]) {
   if (!chosen.length) return "Everyone";
   if (chosen.length <= 2) return chosen.map(persona => persona.title).join(", ");
   return `${chosen.length} personas`;
 }
 
-/** The persona filter, built like the status menu. board.js applies the choice when the menu closes. */
-function PersonaMenu({ personas, chosen, hintId }: { personas: readonly PersonaLabel[]; chosen: readonly string[]; hintId: string }) {
+/**
+ * The persona filter, built like the status menu. board.js applies the choice when the menu closes.
+ * Customer personas have no avatars, so their options show the title alone.
+ */
+function PersonaMenu({ personas, chosen, hintId }: { personas: readonly (PersonaLabel | StoryMapLabel)[]; chosen: readonly string[]; hintId: string }) {
   const picked = new Set(chosen);
   return (
     <details className="esm-menu esm-persona-menu">
@@ -848,7 +863,7 @@ function PersonaMenu({ personas, chosen, hintId }: { personas: readonly PersonaL
         {personas.map(persona => (
           <label key={persona.id} className="esm-menu-option">
             <input type="checkbox" name="persona" value={persona.id} defaultChecked={picked.has(persona.id)} />
-            <PersonaAvatar persona={persona} />
+            {"initials" in persona && <PersonaAvatar persona={persona} />}
             {persona.title}
           </label>
         ))}
@@ -944,10 +959,12 @@ function hiddenSummary({ blocked, cut }: { blocked: number; cut: number }) {
   return [blocked && `${blocked} blocked`, cut && `${cut} cut`].filter(Boolean).join(" and ");
 }
 
-function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks, exportHref, personas }: {
+function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, stalledAfterWeeks, exportHref, personas, customerPersonas }: {
   filter: NonNullable<StoryMapView["filter"]>;
-  /** The view's personas. The persona filter shows when there are any. */
+  /** The internal view's personas. The persona filter and strip show when there are any. */
   personas: readonly PersonaLabel[];
+  /** The customer view's personas. The persona filter shows when there are two or more, and the strip never does. */
+  customerPersonas: readonly StoryMapLabel[];
   shown: number;
   preservedParams?: Readonly<Record<string, string>>;
   showChanged: boolean;
@@ -991,6 +1008,7 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
           {(filter.job ?? []).map(job => <input key={job} type="hidden" name="job" value={job} />)}
           <StatusMenu status={filter.status} internal={internal} stalled={!!stalledAfterWeeks} hintId={hintId} />
           {personas.length > 0 && <PersonaMenu personas={personas} chosen={filter.persona ?? []} hintId={hintId} />}
+          {customerPersonas.length > 1 && <PersonaMenu personas={customerPersonas} chosen={filter.persona ?? []} hintId={hintId} />}
           {showChanged && (
             <select
               className="esm-select"
@@ -1117,6 +1135,7 @@ export function StoryMapBoard({
             stalledAfterWeeks={stalledAfterWeeks}
             exportHref={internal ? exportHref : undefined}
             personas={[...lookup.personas.values()]}
+            customerPersonas={[...lookup.customer.values()]}
           />
         )}
         {hideInactive && (

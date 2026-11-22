@@ -231,7 +231,7 @@ A job reads as a job statement: “**When** a release is being planned, **I want
 | `personas[].jobs[].id` | Required, unique across the map. Keep it when rewording the job or moving it to another persona, so its stories follow it. |
 | `personas[].jobs[].situation`, `motivation`, `outcome` | Required, up to 200 characters each. |
 | `personas[].jobs[].draft` | Optional. `true` while an agent's draft waits for a person to confirm it. |
-| `personas[].customer` | Optional customer-facing name. Add it only after the wording is approved. |
+| `personas[].customer` | Optional customer-facing `title` and `summary`. Add them only after the wording is approved. See [Share personas with customers](#share-personas-with-customers). |
 | `stories[].jobs` | Optional, up to 4 job IDs, most important first. |
 | `stories[].personas` | Optional, up to 4 persona IDs, for a persona the story helps without serving one of their jobs. |
 
@@ -247,7 +247,7 @@ Validation fails on a duplicate persona ID, a job ID used twice anywhere in the 
 
 Untagged stories are allowed, so an existing map stays valid. Agents can draft personas and jobs from the product's docs, issues and research, mark each job `draft: true`, and say so in the PR. A person confirms a job by removing `draft`. Tag stories with `story-map edit <ID> --add-job <job ID>` or `--add-persona <persona ID>`, and new stories with `story-map add --job <job ID>`.
 
-`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs, under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Personas and jobs are internal, and customers never see jobs.
+`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs, under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Personas are internal unless their customer copy is [approved](#share-personas-with-customers), and customers never see jobs.
 
 On the internal board, each card shows the avatars of the personas it is for beside its ID: the persona's initials on its colour, up to three, then “+1” and so on. Each activity shows the avatars of the personas its active stories are for, so you can see who each step of the journey serves. Screen readers hear the titles, such as “For Product manager and Coding agent”, not the initials. The story panel starts its details with a **For** row, listing the story's personas, and a **Jobs** row with the statement of each job it serves, its persona and a **Draft** label on drafts. Colours come from each persona's place in the list, six in all, so reordering personas changes them, and the seventh persona starts again from the first colour. Hosts can restyle them with `--esm-persona-0` to `--esm-persona-5` and their `-bg` pairs. A map without personas looks exactly as before.
 
@@ -257,9 +257,15 @@ When the host uses [search and filters](#integrate-with-a-product) and the map h
 
 `job=<ID>` keeps the stories that serve a job. It has no control of its own: links set it, and the filter summary names the job statement with a **Show every job** link. Unknown persona and job IDs are ignored. Search also matches the titles of a story's personas and the statements of its jobs.
 
-Customers never see internal personas or jobs, so their `persona` and `job` parameters change nothing.
+Customers never see internal personas or jobs, so internal persona IDs and their `job` parameters change nothing. They can filter by the personas [shared with them](#share-personas-with-customers).
 
 In the view, internal maps with personas gain `personas`, each with its `initials`, `colour` and `jobs`, and each story the `personas` it is for, primary first, and the `jobs` it serves. The JSON export and `story-map story --format json` carry each story's `personas` and `jobs` too.
+
+### Share personas with customers
+
+Signed-in customers see a persona only when it has approved `customer` copy and at least one story in their view is for it, from the story's jobs or its own `personas`. The customer view lists those personas in map order, with their `customer.title` and `customer.summary` and public IDs such as `persona-1`, like activities and releases, and each story lists the public IDs of its customer-facing personas. Internal persona IDs, titles and summaries, and every job, never reach customers, even for a customer-facing persona, and a story that is only for internal personas shows nothing about who it is for.
+
+The customer story panel shows a **For** line with the approved titles, such as “For: Product teams”. Customer cards show no avatars, and the board has no persona strip. When two or more personas are shared, the toolbar offers the persona menu, without avatars, and `?persona=persona-1` keeps the stories for that persona. Adding or removing a persona's `customer` copy is a customer-facing change, so review it like a story's.
 
 ## Link an engineering overview
 
