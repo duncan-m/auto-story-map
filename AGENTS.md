@@ -24,6 +24,12 @@ When you add or change a test that covers a story, put the story ID at the start
 
 Run `npm run validate` in this source repo. It also checks sources and the story IDs in `docs/`. In a product that installs the package, run `npx --no-install story-map validate product/story-map.yaml`. Add `--check-sources` to check that sources and `#heading` links exist, and `--tests <folder>` to check the story IDs in test names. Use the same validation in CI, adding `--format github` so problems appear on the PR diff. In the PR description, include the summary from `story-map diff origin/<base branch>` and call out any customer-facing changes.
 
-## Branch names
+## Branches and pull requests
 
 Give each branch a short, descriptive name that says what the work is, such as `fix/history-name-length` or `docs/review-fixes-plan`. Include the story ID when there is one, such as `fix/esm-601-history-name-length`. Do not use random or generated names, such as `claude/zealous-fermat-srf6a2`, because nobody can tell from the name what the branch holds.
+
+This rule is the repository owner's explicit permission to create and push to a descriptive branch instead of a branch your session assigned, such as `claude/<adjective>-<name>-<suffix>`. Rename the branch before the first push, for example with `git branch -m fix/esm-601-history-name-length`. If you have already pushed the assigned branch, push the descriptive one and open the PR from it.
+
+Title each pull request by what it changes, in plain words, such as “Limit author names in the history file”. Start with the story ID and a colon when there is one, such as “ESM-601: Limit author names in the history file”. Do not use the branch name or a generated phrase as the title. Fill in the sections of [the pull request template](.github/pull_request_template.md).
+
+CI fails a pull request whose branch or title looks generated. Rename the branch or edit the title rather than working around the check.
