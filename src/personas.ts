@@ -58,9 +58,17 @@ export function withoutFinalPunctuation(text: string): string {
   return text.slice(0, end);
 }
 
-/** A job as the board reads it: “When …, I want …, so ….” */
+/** A job as the board reads it: “When …, I want …, so that ….” */
 export function jobStatement(job: Pick<StoryMapJob, "situation" | "motivation" | "outcome">): string {
-  return `When ${job.situation}, I want ${job.motivation}, so ${withoutFinalPunctuation(job.outcome)}.`;
+  return `When ${job.situation}, I want ${job.motivation}, so that ${withoutFinalPunctuation(job.outcome)}.`;
+}
+
+/**
+ * A persona's core job: the first in their list, the one that matters most.
+ * Undefined for a persona with no jobs. Reordering the jobs changes it.
+ */
+export function personaCoreJob<Job>(persona: { jobs?: readonly Job[] }): Job | undefined {
+  return persona.jobs?.[0];
 }
 
 /** How many persona colours the board has. Personas take them in map order, and the seventh starts again. */

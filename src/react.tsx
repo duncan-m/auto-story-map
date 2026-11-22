@@ -427,9 +427,14 @@ function PersonaAvatars({ personas, panelIds }: { personas: readonly PersonaLabe
   );
 }
 
-/** A job statement with its lead words in bold: “When …, I want …, so ….” */
+/** A job statement with its lead words in bold: “When …, I want …, so that ….” */
 function JobStatement({ job }: { job: StoryMapJob }) {
-  return <><b>When</b> {job.situation}, <b>I want</b> {job.motivation}, <b>so</b> {withoutFinalPunctuation(job.outcome)}.</>;
+  return <><b>When</b> {job.situation}, <b>I want</b> {job.motivation}, <b>so that</b> {withoutFinalPunctuation(job.outcome)}.</>;
+}
+
+/** Marks a persona's core job, the first in their list. */
+function CoreJobLabel() {
+  return <span className="esm-core-label">Core job</span>;
 }
 
 /**
@@ -532,7 +537,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
             <ul className="esm-story-jobs">
               {jobs.map(({ job, persona }) => (
                 <li key={job.id}>
-                  <JobStatement job={job} /> <span className="esm-story-job-persona">· {persona.title}</span>
+                  <JobStatement job={job} /> <span className="esm-story-job-persona">· {persona.title}</span>{job.core && <> <CoreJobLabel /></>}
                   {job.draft && <> <DraftLabel /></>}
                 </li>
               ))}
@@ -782,6 +787,31 @@ function CoverageBar({ counts }: { counts: Record<StoryStatus, number> }) {
   );
 }
 
+/** One job in the persona panel: its statement, its stories by status and, with filters, a link to them. The core job is labelled and set apart. */
+function PersonaJob({ job, statementId, base }: { job: PersonaJobLabel; statementId: string; base?: URLSearchParams }) {
+  const coverage = jobCoverage(job.storyCounts);
+  const left = hiddenSummary(job.storyCounts);
+  return (
+    <li className={job.core ? "esm-job esm-job-core" : "esm-job"}>
+      {job.core && <CoreJobLabel />}
+      <p className="esm-job-statement" id={statementId}>
+        <JobStatement job={job} />
+        {job.draft && <> <DraftLabel /></>}
+      </p>
+      <p className="esm-job-meta">
+        {coverage
+          ? <>
+            <CoverageBar counts={job.storyCounts} />
+            <span>{coverage}</span>
+            {base && <a href={withIds(base, "job", [job.id])} aria-describedby={statementId}>Show stories</a>}
+          </>
+          : <span className="esm-job-gap">No stories yet</span>}
+        {left && <span className="esm-job-left">{`${left} not counted`}</span>}
+      </p>
+    </li>
+  );
+}
+
 /**
  * A persona's summary and jobs to be done, each with its stories by status
  * and, when the host reads filters, a link to them. Counts come from the whole
@@ -796,6 +826,7 @@ function PersonaDetail({ persona, panelId, filter, preservedParams }: {
 }) {
   const titleId = `${panelId}-title`;
   const base = filter && filterParams(filter, preservedParams);
+  const [core, ...others] = persona.jobs;
   return (
     <div className="esm-detail esm-persona-detail" id={panelId} popover="auto" role="dialog" aria-labelledby={titleId}>
       <div className="esm-detail-head">
@@ -811,34 +842,18 @@ function PersonaDetail({ persona, panelId, filter, preservedParams }: {
       {persona.summary && <p className="esm-detail-summary">{persona.summary}</p>}
       <section className="esm-detail-section" aria-labelledby={`${panelId}-jobs`}>
         <h4 id={`${panelId}-jobs`}>Jobs to be done</h4>
-        {persona.jobs.length
-          ? (
+        {core
+          ? <>
             <ul className="esm-jobs">
-              {persona.jobs.map((job, index) => {
-                const coverage = jobCoverage(job.storyCounts);
-                const statementId = `${panelId}-job-${index}`;
-                const left = hiddenSummary(job.storyCounts);
-                return (
-                  <li className="esm-job" key={job.id}>
-                    <p className="esm-job-statement" id={statementId}>
-                      <JobStatement job={job} />
-                      {job.draft && <> <DraftLabel /></>}
-                    </p>
-                    <p className="esm-job-meta">
-                      {coverage
-                        ? <>
-                          <CoverageBar counts={job.storyCounts} />
-                          <span>{coverage}</span>
-                          {base && <a href={withIds(base, "job", [job.id])} aria-describedby={statementId}>Show stories</a>}
-                        </>
-                        : <span className="esm-job-gap">No stories yet</span>}
-                      {left && <span className="esm-job-left">{`${left} not counted`}</span>}
-                    </p>
-                  </li>
-                );
-              })}
+              <PersonaJob job={core} statementId={`${panelId}-job-0`} base={base} />
             </ul>
-          )
+            {others.length > 0 && <>
+              <h5 className="esm-jobs-subhead" id={`${panelId}-other-jobs`}>Other jobs</h5>
+              <ul className="esm-jobs" aria-labelledby={`${panelId}-other-jobs`}>
+                {others.map((job, index) => <PersonaJob key={job.id} job={job} statementId={`${panelId}-job-${index + 1}`} base={base} />)}
+              </ul>
+            </>}
+          </>
           : <p className="esm-release-hidden">No jobs to be done yet.</p>}
         {base && <p className="esm-release-hidden"><a href={withIds(base, "persona", [persona.id])}>Show only this persona’s stories</a></p>}
       </section>
