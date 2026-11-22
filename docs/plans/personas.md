@@ -311,7 +311,8 @@ jobs:
 
 - `src/schema.ts`: optional `steps` on a job, up to 6, in order. Each has a `title` (up to 60 characters), an optional `summary` and an optional `activity` ID. An unknown activity is an error, as for stories.
 - Coverage: the stories for a step are those that serve the job and sit in the step's activity. A step without an activity has no coverage of its own.
-- `src/react.tsx`: the persona panel lists a job's steps in order, each with its count of active stories, and **No stories yet** for a step with an activity but no stories. A **Show stories** link per step sets `job` and `activity`.
+- `src/react.tsx`: the persona panel lists each job's steps in order, each with its count of active stories, and **No stories yet** for a step with an activity but no stories. A **Show stories** link per step sets `job` and `activity`. Every job can have steps, not only the core job.
+- Each job in the persona panel opens and closes on its own, as a `<details>` element, so it works without JavaScript. Closed, a job shows the first line of its statement, its story counts and how many steps it has. The core job starts open and the other jobs closed. A job with no steps has nothing to open, so it shows in full with no toggle.
 - Validate warns about a step whose activity has no active stories for its job.
 - `src/diff.ts` and the JSON export: steps and their coverage.
 - Once activity steps land (ESM-501), a step can point to an activity step instead. Settle the shape with ESM-501 before building either.

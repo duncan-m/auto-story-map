@@ -627,7 +627,7 @@ stories:
     status: planned
     jobs:
       - plan-release
-    summary: A job lists its workflow steps in order, each pointing to the activity where its stories live, and the persona panel shows which steps have no stories.
+    summary: Any job can list its workflow steps in order, each pointing to the activity where its stories live, and the persona panel shows which steps have no stories. Each job opens and closes on its own, with the core job open at first.
     notes: Settle the shape with activity steps (ESM-501) before building either.
     sources:
       - docs/plans/personas.md#10-break-a-job-into-steps
