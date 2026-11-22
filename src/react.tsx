@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 import type { ReleaseImpact } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, ReleaseEstimates, StoryHistoryEntry, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -436,6 +436,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
         <dd>{activityTitle}</dd>
         <dt>Release</dt>
         <dd>{releaseTitle}</dd>
+        {internal && story.estimate !== undefined && <><dt>Estimate</dt><dd>{points(story.estimate)}</dd></>}
       </dl>
       {internal && !!story.history?.length && (
         <section className="esm-detail-section">
@@ -482,6 +483,35 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
 
 function storyCount(count: number) {
   return `${count} ${count === 1 ? "story" : "stories"}`;
+}
+
+const points = (count: number, short = false) =>
+  `${count} ${short ? (count === 1 ? "pt" : "pts") : (count === 1 ? "point" : "points")}`;
+
+function Estimate({ estimate }: { estimate: number }) {
+  return (
+    <span className="esm-estimate" title={`Estimate: ${points(estimate)}`}>
+      <span aria-hidden="true">{points(estimate, true)}</span>
+      <span className="esm-visually-hidden">{`Estimate: ${points(estimate)}`}</span>
+    </span>
+  );
+}
+
+/** A release lane’s points and what is left, such as “21 pts · 8 left · 2 unestimated”. */
+function ReleaseEstimate({ estimates }: { estimates: ReleaseEstimates }) {
+  const { total, left, unestimated } = estimates;
+  const label = `Estimate: ${points(total)}, ${left} left to ship${unestimated ? `, ${storyCount(unestimated)} with no estimate` : ""}`;
+  return (
+    <span className="esm-release-estimate">
+      <span aria-hidden="true">{`${points(total, true)} · ${left} left${unestimated ? ` · ${unestimated} unestimated` : ""}`}</span>
+      <span className="esm-visually-hidden">{label}</span>
+    </span>
+  );
+}
+
+function releaseEstimateNote({ total, left, unestimated }: ReleaseEstimates) {
+  const missing = unestimated ? ` ${storyCount(unestimated)} ${unestimated === 1 ? "has" : "have"} no estimate.` : "";
+  return `${points(total)}, ${left} left to ship.${missing}`;
 }
 
 function CloseButton({ panelId }: { panelId: string }) {
@@ -581,6 +611,7 @@ function ReleaseDetail({ release, panelId, stories, storyPanelIds, filtered }: {
       <section className="esm-detail-section" aria-labelledby={`${panelId}-stories`}>
         <h4 id={`${panelId}-stories`}>Stories</h4>
         <p className="esm-release-progress">{releaseProgress(release.storyCounts)}</p>
+        {release.estimates && <p className="esm-release-estimate-note">{releaseEstimateNote(release.estimates)}</p>}
         {groups.map(group => (
           <div className="esm-release-group" key={group.status}>
             <h5><Status status={group.status} /></h5>
@@ -925,6 +956,7 @@ export function StoryMapBoard({
                       <span className="esm-release-count esm-count-active">{storyCount(activeCounts.get(release.id) ?? 0)}</span>
                       <span className="esm-release-count esm-count-all">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>
                     </> : <span className="esm-release-count">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>}
+                    {internalReleases?.get(release.id)?.estimates && <ReleaseEstimate estimates={internalReleases.get(release.id)!.estimates!} />}
                   </div>
                   {map.activities.map(activity => {
                     const stories = cells.get(`${release.id}:${activity.id}`) ?? [];
@@ -946,7 +978,9 @@ export function StoryMapBoard({
                             key={story.id}
                             {...popoverTarget(panelIds.get(story)!)}
                           >
-                            {internal && <span className="esm-card-id">{story.id}</span>}
+                            {internal && (story.estimate !== undefined
+                              ? <span className="esm-card-head"><span className="esm-card-id">{story.id}</span><Estimate estimate={story.estimate} /></span>
+                              : <span className="esm-card-id">{story.id}</span>)}
                             <span className="esm-card-title">{story.title}</span>
                             <span className="esm-card-meta">
                               <Status status={story.status} />

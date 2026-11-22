@@ -26,6 +26,8 @@ export interface StoryUpdate extends StoryDiffRef {
   activity?: Change<string>;
   /** Release titles before and after a move. */
   release?: Change<string>;
+  /** Story points before and after. Absent on one side when the story had no estimate. */
+  estimate?: { from?: number; to?: number };
   /** Other fields that changed, such as `summary`, `notes` or `sources`. */
   details: string[];
 }
@@ -187,10 +189,16 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
         to: releaseTitles[1].get(story.release) ?? story.release,
       };
     }
+    if (previous.estimate !== story.estimate) {
+      update.estimate = {
+        ...(previous.estimate !== undefined ? { from: previous.estimate } : {}),
+        ...(story.estimate !== undefined ? { to: story.estimate } : {}),
+      };
+    }
     for (const field of ["summary", "statusReason", "notes", "sources", "customer", "updatedBy"] as const) {
       if (!same(previous[field], story[field])) update.details.push(field);
     }
-    if (update.titleChange || update.status || update.activity || update.release || update.details.length) {
+    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.details.length) {
       updated.push(update);
     }
   }
@@ -343,6 +351,7 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     if (update.activity) changes.push(`Activity: ${text(update.activity.from)} → ${text(update.activity.to)}`);
     if (update.release) changes.push(`Release: ${text(update.release.from)} → ${text(update.release.to)}`);
     if (update.titleChange) changes.push(`Renamed from “${text(update.titleChange.from)}”`);
+    if (update.estimate) changes.push(`Estimate: ${update.estimate.from ?? "none"} → ${update.estimate.to ?? "none"}`);
     if (update.details.length) changes.push(`Edited ${update.details.map(field => `\`${field}\``).join(", ")}`);
     rows.push([story(update), changes.join("<br>")]);
   }

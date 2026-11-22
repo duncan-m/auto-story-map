@@ -178,7 +178,7 @@ The JSON Schema cannot express the cross-reference rules. Editors catch shape er
 | Viewer | Result |
 | --- | --- |
 | `null` (guest) | `null`. The host should answer 401. |
-| `canViewInternal(viewer) === true` | Internal view: all activities, releases and stories, with IDs, notes, sources, `updatedBy`, history, and each release's notes, impact and `storyCounts` |
+| `canViewInternal(viewer) === true` | Internal view: all activities, releases and stories, with IDs, notes, sources, `updatedBy`, estimates, history, and each release's notes, impact, `storyCounts` and `estimates` |
 | Anyone else, `visibility: all-users` | Customer view |
 | Anyone else, `visibility: internal` | `null`. The host should answer 403. |
 
@@ -191,12 +191,14 @@ The customer view is built from scratch, not by deleting fields from the interna
 - Only stories with `customer` copy and an active status are included, using the customer title and summary. Blocked and cut stories are dropped before activities and releases are chosen, so a release that only contains them disappears too.
 - Only activities and releases that contain a published story and have customer copy are included.
 - Real IDs are replaced with sequential ones (`story-1`, `activity-1`, `release-1`), so internal IDs and the number of hidden stories do not leak.
-- Notes, sources, `statusReason`, `updatedBy`, history, and release notes, impact and story counts are never copied.
+- Notes, sources, `statusReason`, `updatedBy`, `estimate`, history, and release notes, impact, story counts and estimate totals are never copied.
 - The status goes through `customerStatus`, which shows `merged` as `in-progress` because customers cannot use the work yet. Other active statuses are shown as they are, so reviewers must still check that a customer-facing story's status is right for customers.
 
 Both views have the same `StoryMapView` shape apart from `audience`, so the board and JSON endpoint treat them alike.
 
 Internal releases are `InternalReleaseLabel`s. `storyCounts` counts the release's stories by status in the projection, before any filter, so the release panel's progress describes the whole release whatever the board shows.
+
+Each internal story carries its `estimate` when it has one. Each internal release gets `estimates: { total, left, unestimated }` (`ReleaseEstimates`), built in the same loop as `storyCounts` and so also before any filter. Cut stories are left out of all three numbers. `left` counts the points on stories that are not shipped, so merged stories still count. `estimates` is absent when no story in the release that is not cut has an estimate, so the board can tell “no estimates” from “0 points”. The scale is `estimatePoints` in `src/schema.ts`, which the schema and docs share.
 
 When history is supplied, the internal view attaches each story's events newest first as `history`, and the newest event's time as `lastChangedAt`. It also records `history.generatedAt` and `history.complete` on the view so the board knows a history exists.
 
@@ -281,6 +283,8 @@ All classes start with `esm-` and all colours are `--esm-*` custom properties on
 The dark palette is written out twice in `styles.css`: under `[data-theme="dark"]` and under `[data-theme="auto"]` inside `@media (prefers-color-scheme: dark)`. The panel backdrop is set the same way. Change both copies together.
 
 Below 650px wide, each release lane becomes a stacked section, the activity header row is visually hidden (it stays available to screen readers), each cell shows its activity name, and empty cells are hidden.
+
+Estimates use `.esm-card-head`, which puts the ID and `.esm-estimate` on one line at the top of an internal card that has an estimate, `.esm-release-estimate` under the lane's story count (and after it on a collapsed lane), and `.esm-release-estimate-note` in the release panel. They use the existing `--esm-*` colours, so the three palettes need no new properties. The visible short text, such as “5 pts”, is hidden from screen readers, which read a visually hidden “Estimate: 5 points” instead, as the card's test count does.
 
 Class names and markup are part of the public contract. Hosts may have CSS that targets them, so changing them is a breaking change. 0.3.0 did this and documented an upgrade step.
 

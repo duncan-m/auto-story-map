@@ -1,6 +1,6 @@
 import type { ReleaseImpact } from "./schema.js";
 import { storyStatuses, storyStatusLabels, type StoryStatus } from "./status.js";
-import type { InternalStoryCard, StoryMapLabel, StoryMapView } from "./view.js";
+import type { InternalStoryCard, ReleaseEstimates, StoryMapLabel, StoryMapView } from "./view.js";
 
 export interface StoryMapExportOptions {
   /** Release IDs the viewer collapsed on the board. Their lanes are exported as a header and a story count. Unknown IDs are ignored. */
@@ -19,6 +19,8 @@ export interface ExportStory {
   status: StoryStatus;
   activity: string;
   release: string;
+  /** Story points. */
+  estimate?: number;
 }
 
 export interface ExportRelease {
@@ -28,6 +30,8 @@ export interface ExportRelease {
   /** Stories in the release, counted before the export limit, such as “4 stories · 1 shipped, 3 planned”. */
   countsText: string;
   storyCount: number;
+  /** The release’s points, such as “21 pts · 8 left · 2 unestimated”. Absent when no story in it has an estimate. */
+  estimatesText?: string;
   /** Paragraphs of the release notes. */
   notes: string[];
   impact: ReleaseImpact[];
@@ -53,6 +57,11 @@ export function storyCountsText(counts: Record<StoryStatus, number>): string {
   const total = storyStatuses.reduce((sum, status) => sum + counts[status], 0);
   const parts = storyStatuses.filter(status => counts[status] > 0).map(status => `${counts[status]} ${storyStatusLabels[status].toLowerCase()}`);
   return parts.length ? `${storyWord(total)} · ${parts.join(", ")}` : storyWord(total);
+}
+
+/** “21 pts · 8 left · 2 unestimated”, as on the board’s release lane. */
+export function releaseEstimatesText({ total, left, unestimated }: ReleaseEstimates): string {
+  return `${total} ${total === 1 ? "pt" : "pts"} · ${left} left${unestimated ? ` · ${unestimated} unestimated` : ""}`;
 }
 
 /** Last change time in ms, or -Infinity when the history does not say. */
@@ -99,7 +108,14 @@ export function prepareStoryMapExport(view: StoryMapView, options: StoryMapExpor
     if (!isCollapsed) {
       for (const story of view.stories) {
         if (story.release !== release.id || !kept.has(story)) continue;
-        cells.get(story.activity)?.push({ id: story.id, title: story.title, status: story.status, activity: story.activity, release: story.release });
+        cells.get(story.activity)?.push({
+          id: story.id,
+          title: story.title,
+          status: story.status,
+          activity: story.activity,
+          release: story.release,
+          ...(story.estimate !== undefined ? { estimate: story.estimate } : {}),
+        });
       }
     }
     return {
@@ -108,6 +124,7 @@ export function prepareStoryMapExport(view: StoryMapView, options: StoryMapExpor
       collapsed: isCollapsed,
       countsText: storyCountsText(release.storyCounts),
       storyCount: storyStatuses.reduce((sum, status) => sum + release.storyCounts[status], 0),
+      ...(release.estimates ? { estimatesText: releaseEstimatesText(release.estimates) } : {}),
       notes: (release.notes ?? "").split(/\n\s*\n/).map(paragraph => paragraph.replace(/\s+/g, " ").trim()).filter(Boolean),
       impact: release.impact ?? [],
       cells,
