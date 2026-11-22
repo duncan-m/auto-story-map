@@ -143,7 +143,21 @@ releases:
         solves: Agents missing context when they suggest product work
         draft: true
   - id: v0-7-2
-    title: "0.7.2: Personas"
+    title: "0.7.2: CLI to read, edit and preview the map"
+    summary: Agents read the map, validate it and propose edits with story-map commands that print JSON, and anyone can preview their own map locally before adding the board to their product.
+    notes: |
+      The first half of the native CLI plan, moved ahead of personas so agents can tag the existing stories with story-map edit instead of editing the YAML by hand. Evidence and claims follow in 0.7.5.
+    impact:
+      - metric: Map edits made by hand in the YAML file by agents
+        expected: Made with story-map edit, which checks the change before writing it
+        solves: Agents breaking the map or the guide's rules and finding out only when validate runs
+        draft: true
+      - metric: Time to see a new map as a board
+        expected: One story-map preview command, before any host integration
+        solves: Teams wiring up a board route behind their sign-in just to check their first map
+        draft: true
+  - id: v0-7-3
+    title: "0.7.3: Personas"
     summary: Say who each story is for, and read the map one persona at a time.
     notes: |
       The map names the people the product serves and their jobs to be done, and each story says which jobs it serves. The board shows personas on cards and activities, filters by persona and job, and opens a panel with each persona's jobs and the stories that serve them.
@@ -162,28 +176,30 @@ releases:
         expected: Fewer, because each story names the jobs to be done it serves before work starts, and validate flags stories that serve none
         solves: Building stories that no persona needs
         draft: true
-  - id: v0-7-3
-    title: "0.7.3: Links to code and stories"
+  - id: v0-7-4
+    title: "0.7.4: Links to code and stories"
     summary: Internal viewers follow a story to its code, from the pull request and commit behind each history line and a list of the pull requests and commits that name it, and anyone can share a permalink to a story or release.
     impact:
       - metric: Time to find the pull requests that delivered a story
         expected: One click from the story panel, instead of searching the repository for its ID
         solves: Asking engineers where a story's work was merged
         draft: true
-  - id: v0-7-4
-    title: "0.7.4: Native CLI for agents"
-    summary: Agents read the map, look up evidence, validate and propose edits with story-map commands that print JSON, and can claim stories when several agents work at once.
+  - id: v0-7-5
+    title: "0.7.5: Evidence and claims for agents"
+    summary: Agents look up the evidence for each story, including release tags that show merged work has shipped, and can claim stories when several agents work at once.
+    notes: |
+      The second half of the native CLI plan. It comes before the scheduled audit (ESM-502), which uses the evidence from ESM-743.
     impact:
-      - metric: Map edits made by hand in the YAML file by agents
-        expected: Made with story-map edit, which checks the change before writing it
-        solves: Agents breaking the map or the guide's rules and finding out only when validate runs
-        draft: true
       - metric: Agents starting the same story at the same time
         expected: None, for teams that use claims
         solves: Duplicate work when several agents pick from one map
         draft: true
-  - id: v0-7-5
-    title: "0.7.5: PM improvements"
+      - metric: Stories left in merged after their release goes out
+        expected: Suggested as shipped by story-map evidence, for products that tag their releases
+        solves: The map showing released work as not yet available
+        draft: true
+  - id: v0-7-6
+    title: "0.7.6: PM improvements"
     summary: Activities expand into steps, stories carry effort estimates with a total on each release, and a scheduled audit proposes map corrections from the code.
     impact:
       - metric: Map changes that are missing from feature PRs
@@ -191,7 +207,7 @@ releases:
         solves: The map drifting from the code when a PR forgets to update it
         draft: true
     customer:
-      title: "0.7.5"
+      title: "0.7.6"
 stories:
   # 0.1.0
   - id: ESM-101
@@ -431,11 +447,11 @@ stories:
     summary: A footer shows the library version, author and licence. Internal viewers also get links to the changelog, source code, licence and author.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
-  # 0.7.5: PM improvements
+  # 0.7.6: PM improvements
   - id: ESM-501
     title: Expand activities into steps
     activity: explore
-    release: v0-7-5
+    release: v0-7-6
     status: planned
     sources:
       - docs/plans/0.4.0-enhancements.md#6-expandable-steps-within-activities
@@ -445,7 +461,7 @@ stories:
   - id: ESM-502
     title: Audit the map against the code on a schedule
     activity: review
-    release: v0-7-5
+    release: v0-7-6
     status: planned
     summary: A scheduled agent gathers evidence from branches, PRs and commits, and proposes corrections in a single PR.
     sources:
@@ -456,17 +472,17 @@ stories:
   - id: ESM-503
     title: Estimate effort on each story
     activity: plan
-    release: v0-7-5
+    release: v0-7-6
     status: planned
     summary: Each story can carry an effort estimate in story points, and each release lane shows its total and how much is left to ship.
     notes: Internal only, so customers never see estimates. Cut stories leave the total, and shipped stories leave the remaining count. Points use 1, 2, 3, 5, 8 or 13.
     sources:
       - docs/plans/effort-estimates.md
-  # 0.7.4: native CLI for agents
+  # 0.7.2 and 0.7.5: native CLI for agents
   - id: ESM-741
     title: Read the map from the command line
     activity: explore
-    release: v0-7-4
+    release: v0-7-2
     status: planned
     summary: story-map story, stories and releases print stories and releases as text or JSON, with the board's filters and search, so agents stop reading the YAML by hand.
     sources:
@@ -474,7 +490,7 @@ stories:
   - id: ESM-742
     title: Print validation results as JSON
     activity: review
-    release: v0-7-4
+    release: v0-7-2
     status: planned
     summary: validate --format json returns each issue with its severity, file, line, YAML path and message, for agents and scripts.
     sources:
@@ -482,7 +498,7 @@ stories:
   - id: ESM-743
     title: Look up the evidence for a story
     activity: review
-    release: v0-7-4
+    release: v0-7-5
     status: planned
     summary: story-map evidence reports the branches, default-branch commits, plans, tests and broken sources that mention each story, and suggests a status without changing anything.
     notes: The deterministic evidence step of the scheduled audit (ESM-502), built first so agents can use it on its own.
@@ -491,7 +507,7 @@ stories:
   - id: ESM-744
     title: Propose map edits from the command line
     activity: plan
-    release: v0-7-4
+    release: v0-7-2
     status: planned
     summary: story-map edit and add change statuses, releases, sources and impact as named operations, printing the diff and validation as a dry run until --write.
     notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft.
@@ -500,26 +516,45 @@ stories:
   - id: ESM-745
     title: Claim stories so several agents do not clash
     activity: plan
-    release: v0-7-4
+    release: v0-7-5
     status: planned
     summary: story-map claim records that an agent is on a story as a Git ref on the remote, so a second agent is told before it starts the same work.
     notes: Opt-in, for teams running several agents. Never written to the map file.
     sources:
       - docs/plans/native-cli.md#6-claim-stories
+  - id: ESM-746
+    title: Preview the map locally before adding the board
+    activity: set-up
+    release: v0-7-2
+    status: planned
+    summary: story-map preview serves the repository's own map as a board on loopback, with internal and customer views, so a team sees its first map before wiring up a host route.
+    notes: Reuses the demo server, moved into the package. Loopback only, for one person checking a map, never for deploying.
+    sources:
+      - docs/plans/native-cli.md#7-preview-the-map-locally
+  - id: ESM-747
+    title: Suggest shipped from release tags
+    activity: track
+    release: v0-7-5
+    status: planned
+    summary: story-map evidence --shipped-tags suggests shipped for merged stories whose work is in a matching release tag, so stories stop waiting in merged after a release goes out.
+    notes: Opt-in, because many products deploy without tags or ship behind feature flags. Suggests only, like the rest of evidence.
+    sources:
+      - docs/plans/native-cli.md#8-suggest-shipped-from-release-tags
   # Personas
   - id: ESM-901
     title: Define personas in the map file
     activity: plan
-    release: v0-7-2
+    release: v0-7-3
     status: planned
     summary: The map lists the people the product serves and their jobs to be done as structured job statements, and each story names the jobs it serves. Validate checks the references and warns about jobs with no stories, and diff reports persona and job changes.
+    notes: Also adds --add-job and --remove-job to story-map edit (ESM-744), so agents can tag the existing stories.
     sources:
       - docs/plans/personas.md#1-define-personas-in-the-map-file
       - docs/plans/personas.md#ui-mockup
   - id: ESM-902
     title: Show who a story is for
     activity: explore
-    release: v0-7-2
+    release: v0-7-3
     status: planned
     summary: Cards and activities show persona avatars, and the story panel gains a For row and the job statements the story serves.
     sources:
@@ -528,7 +563,7 @@ stories:
   - id: ESM-903
     title: Filter the board by persona
     activity: explore
-    release: v0-7-2
+    release: v0-7-3
     status: planned
     summary: A persona strip and menu narrow the board to the stories for one or more personas, and links in the persona panel narrow it to one job, through repeated persona and job parameters.
     sources:
@@ -537,7 +572,7 @@ stories:
   - id: ESM-904
     title: Open a persona to see jobs and coverage
     activity: explore
-    release: v0-7-2
+    release: v0-7-3
     status: planned
     summary: A persona panel shows the persona's summary and jobs to be done, with the stories that serve each job and the jobs that have none.
     sources:
@@ -546,7 +581,7 @@ stories:
   - id: ESM-905
     title: Share approved personas with customers
     activity: explore
-    release: v0-7-2
+    release: v0-7-3
     status: planned
     summary: Customers see a For line on stories whose personas have approved customer copy. Internal personas and IDs never reach them.
     sources:
@@ -555,9 +590,10 @@ stories:
   - id: ESM-906
     title: Include personas in exports
     activity: explore
-    release: v0-7-2
+    release: v0-7-3
     status: planned
     summary: CSV, JSON and Visio exports carry each story's personas and jobs, and the JSON export lists the map's personas with their job statements.
+    notes: story-map story and stories (ESM-741) use the same story shape, so they show personas and jobs too, and stories gains --persona and --job.
     sources:
       - docs/plans/personas.md#6-include-personas-in-exports
       - docs/plans/personas.md#ui-mockup
@@ -587,7 +623,7 @@ stories:
   - id: ESM-803
     title: Link history lines to their pull request and commit
     activity: track
-    release: v0-7-3
+    release: v0-7-4
     status: planned
     summary: Each line in a story's History, and its last update, links to the pull request and commit that made the change, when the host passes its repository URL.
     sources:
@@ -595,7 +631,7 @@ stories:
   - id: ESM-804
     title: Show the pull requests and commits that name a story
     activity: track
-    release: v0-7-3
+    release: v0-7-4
     status: planned
     summary: story-map history finds merged pull requests and commits whose title, message or branch names a story ID, and internal viewers see them in a Changes section of the story panel.
     notes: Changes point to stories, so the map is never edited to list them. Merged work only; open pull requests from the GitHub API are a possible follow-up.
@@ -604,7 +640,7 @@ stories:
   - id: ESM-805
     title: Link to a story or release with a permalink
     activity: explore
-    release: v0-7-3
+    release: v0-7-4
     status: planned
     summary: Each story and release panel has a Copy link control, and following the link opens the board on that panel, even when the filters would hide the story.
     notes: Links use the story or release ID, which is already stable. Works without JavaScript by scrolling to the card; board.js opens the panel and copies the link. On customer boards, IDs outside the customer view are ignored.

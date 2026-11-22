@@ -1,6 +1,6 @@
 # Plan: effort estimates on stories
 
-Status: proposed. The work is ESM-503 in the **0.7.5: PM improvements** release of the map.
+Status: proposed. The work is ESM-503 in the **0.7.6: PM improvements** release of the map.
 
 Each story can carry an effort estimate in story points. Each release lane shows the total for the release and how much of it is left to ship, so a product manager can see at a glance whether a release is too big and how far through it the team is.
 

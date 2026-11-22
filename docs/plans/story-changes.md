@@ -1,6 +1,6 @@
 # Plan: link stories to their code, and to each other
 
-Status: proposed. The work is ESM-803, ESM-804 and ESM-805, all in the **0.7.3** release of the map.
+Status: proposed. The work is ESM-803, ESM-804 and ESM-805, all in the **0.7.4: Links to code and stories** release of the map.
 
 Internal viewers open a story and can follow its work to the code: each line in its **History** links to the pull request and commit that made the change, and a new **Changes** section lists the pull requests and commits that delivered the story. As with tests, changes point to stories, not the other way round: a commit message, pull request title or branch name names the story ID, and the history build collects them. Nobody edits the map to list them.
 
@@ -47,7 +47,7 @@ These are proposals. Each is easy to change during review.
 | H. What a change shows | A pull request shows its number and title, when it was merged and by whom, and how many of its commits name the story, such as “#68 Export the map as JSON for agents · merged 21 Nov by Duncan Malcolm · 2 commits”. A direct commit shows its short hash and subject. Branch commits are not listed one by one; the pull request link has them. |
 | I. Empty state | When the history has a `changes` list and a story has none, the panel says “No pull requests or commits name ESM-803 yet” and shows how to name one. With an older history file, the section is left out. |
 | J. Search | Change titles are not searched. The board's search stays on IDs, titles and summaries. |
-| K. Permalink form | `?story=ESM-801#esm-story-ESM-801` for a story and `?release=v0-7-3#esm-release-v0-7-3` for a release. The query lets the server make sure the story is on the board; the fragment scrolls to its card without JavaScript. Story and release IDs are already stable and unique, so they are the link. |
+| K. Permalink form | `?story=ESM-801#esm-story-ESM-801` for a story and `?release=v0-7-4#esm-release-v0-7-4` for a release. The query lets the server make sure the story is on the board; the fragment scrolls to its card without JavaScript. Story and release IDs are already stable and unique, so they are the link. |
 | L. What a permalink keeps | The host's `preservedParams`, but not the viewer's filters, so a link opens the same board for whoever follows it. |
 | M. A story the filters would hide | Shown anyway: a permalinked story is added to the view even when it is blocked, cut or in a collapsed lane, with its lane open. Other filters are left at their defaults. |
 | N. Where the link is offered | A **Copy link** button in each story and release panel's header. Without board.js it is a plain link, which viewers can copy or open; with board.js it copies the URL and says “Link copied”. |
