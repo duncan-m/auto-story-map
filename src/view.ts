@@ -78,14 +78,20 @@ export interface StoryCard extends StoryMapLabel {
   status: StoryStatus;
 }
 
+/** A job to be done as internal viewers see it, with how many stories serve it. */
+export interface PersonaJobLabel extends StoryMapJob {
+  /** Stories that serve the job, by status, counted before any filter is applied, like a release's `storyCounts`. */
+  storyCounts: Record<StoryStatus, number>;
+}
+
 /** A persona as internal viewers see it, with what the board needs to draw its avatar. */
 export interface PersonaLabel extends StoryMapLabel {
   /** Up to two letters for the avatar, from the title. */
   initials: string;
   /** 0 to 5, from the persona's place in the map. Pairs with `initials`, so colour is never the only cue. */
   colour: number;
-  /** The persona's jobs to be done, in map order. */
-  jobs: StoryMapJob[];
+  /** The persona's jobs to be done, in map order, each with its stories by status. */
+  jobs: PersonaJobLabel[];
   /** Active stories for the persona, counted before any filter is applied, like a release's `storyCounts`. */
   activeStories: number;
 }
@@ -297,7 +303,13 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     const recentUpdates = summariseRecentUpdates(map, byStory, lastEdits);
     const resolvePersonas = storyPersonaResolver(map);
     const personaCounts = new Map<string, number>();
+    const jobCounts = new Map<string, Record<StoryStatus, number>>();
     for (const story of map.stories) {
+      for (const id of new Set(story.jobs ?? [])) {
+        let counts = jobCounts.get(id);
+        if (!counts) jobCounts.set(id, counts = Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>);
+        counts[story.status]++;
+      }
       if (!isActiveStatus(story.status)) continue;
       for (const id of resolvePersonas(story)) personaCounts.set(id, (personaCounts.get(id) ?? 0) + 1);
     }
@@ -305,7 +317,10 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       ...projectLabel(persona),
       initials: personaInitials(persona.title),
       colour: index % personaColourCount,
-      jobs: (persona.jobs ?? []).map(job => ({ ...job })),
+      jobs: (persona.jobs ?? []).map(job => ({
+        ...job,
+        storyCounts: jobCounts.get(job.id) ?? Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>,
+      })),
       activeStories: personaCounts.get(persona.id) ?? 0,
     }));
     return {

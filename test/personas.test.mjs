@@ -360,7 +360,7 @@ test("ESM-902: cards, activities and the story panel show who a story is for", (
   assert.doesNotMatch(exceptions, /esm-avatar/, "a cut story does not count for its activity");
 
   const panel = panelFor(html, "Look up prices in the material catalogue");
-  assert.match(panel, /<dt>For<\/dt><dd class="esm-persona-row"><span class="esm-persona-chip"><span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>Builder<\/span>/);
+  assert.match(panel, /<dt>For<\/dt><dd class="esm-persona-row"><button type="button" class="esm-persona-chip" aria-haspopup="dialog" popoverTarget="[^"]+-persona-0"><span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>Builder<\/button>/);
   assert.match(panel, /<dt>Jobs<\/dt><dd><ul class="esm-story-jobs"><li><b>When<\/b> I am pricing a project, <b>I want<\/b> to use the catalogue prices, <b>so<\/b> my estimate matches what finance pays\. <span class="esm-story-job-persona">· Builder<\/span><\/li>/);
   assert.ok(panel.indexOf("<dt>For</dt>") < panel.indexOf("<dt>Activity</dt>"), "For comes first");
   assert.match(panelFor(html, "Submit the estimate to finance"), /so<\/b> I do not chase finance by email\. <span class="esm-story-job-persona">· Builder<\/span> <span class="esm-draft"/);
@@ -447,7 +447,8 @@ test("ESM-903: the persona strip and menu set the persona parameter and keep the
   }));
   const strip = html.slice(html.indexOf('<nav class="esm-personas"'), html.indexOf("</nav>"));
   // Counts are active stories before any filter.
-  assert.match(strip, /<a class="esm-persona-chip" href="\?tab=roadmap&amp;q=estimate&amp;status=planned&amp;status=in-progress" aria-current="true"><span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>Builder<span class="esm-persona-count"><span aria-hidden="true">3<\/span><span class="esm-visually-hidden">, 3 stories<\/span><\/span><\/a>/);
+  // The only chosen persona's chip opens their panel (ESM-904), and Show everyone goes back.
+  assert.match(strip, /<button type="button" class="esm-persona-chip" aria-current="true" aria-haspopup="dialog" popoverTarget="[^"]+-persona-0"><span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>Builder<span class="esm-persona-count"><span aria-hidden="true">3<\/span><span class="esm-visually-hidden">, 3 stories<\/span><\/span><\/button>/);
   assert.match(strip, /href="\?tab=roadmap&amp;q=estimate&amp;status=planned&amp;status=in-progress&amp;persona=finance">.*Finance reviewer<span class="esm-persona-count"><span aria-hidden="true">2</);
   assert.match(strip, /Auditor<span class="esm-persona-count"><span aria-hidden="true">0</);
   assert.match(strip, /<a class="esm-persona-clear" href="\?tab=roadmap&amp;q=estimate&amp;status=planned&amp;status=in-progress">Show everyone<\/a>/);
@@ -477,6 +478,79 @@ test("ESM-903: the job filter is kept by the form and named in the filter summar
   // Show them, for hidden blocked and cut stories, keeps the persona and job.
   const cut = parse(tagged(document => { document.stories.find(story => story.id === "FINANCE-202").jobs = ["send-estimate"]; }));
   assert.match(render(page(cut, "persona=builder&job=send-estimate")), /1 cut hidden\. <a href="\?status=all&amp;persona=builder&amp;job=send-estimate">Show them<\/a>/);
+});
+
+/** The persona panel whose title is `title`. */
+const personaPanelFor = (html, title) => {
+  const panel = panelFor(html, title);
+  assert.match(panel, /^<div class="esm-detail esm-persona-detail"/);
+  return panel;
+};
+/** The list item of the job whose statement starts with `situation`. */
+const jobFor = (panel, situation) => panel.match(new RegExp(`<li class="esm-job">(?:(?!</li>).)*${situation}(?:(?!</li>).)*</li>`))?.[0];
+
+test("ESM-904: counts the stories that serve each job by status, before any filter", () => {
+  const map = parse(tagged(document => { document.stories.find(story => story.id === "FINANCE-202").jobs = ["approve-estimate"]; }));
+  const view = getStoryMapForViewer(map, engineer);
+  const counts = id => view.personas.flatMap(persona => persona.jobs).find(job => job.id === id).storyCounts;
+  assert.deepEqual(counts("price-materials"), { planned: 1, "in-progress": 1, merged: 0, shipped: 0, blocked: 0, cut: 0 });
+  assert.deepEqual(counts("approve-estimate"), { planned: 2, "in-progress": 0, merged: 0, shipped: 0, blocked: 0, cut: 1 });
+  // Filters do not change the counts.
+  assert.deepEqual(page(map, "persona=builder&q=submit").personas, view.personas);
+});
+
+test("ESM-904: the persona panel shows each job's coverage, drafts and gaps, with links to its stories", () => {
+  const map = parse(tagged(document => {
+    document.personas.push({ id: "auditor", title: "Auditor", summary: "Checks approved estimates.", jobs: [
+      { id: "trace-approval", situation: "an approval is questioned", motivation: "to see who approved it", outcome: "I can answer the auditor" },
+    ] });
+    document.stories.find(story => story.id === "FINANCE-202").jobs = ["approve-estimate", "trace-approval"];
+  }));
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: page(map, "q=estimate"), preservedParams: { tab: "roadmap" } }));
+
+  const builder = personaPanelFor(html, "Builder");
+  assert.match(builder, /<div class="esm-persona-head"><span class="esm-avatar esm-avatar-lg" data-persona="0" aria-hidden="true">BU<\/span><div><p class="esm-card-id">Persona<\/p><h3 id="[^"]+">Builder<\/h3>/);
+  assert.match(builder, /<p class="esm-detail-summary">Prices and orders the materials for a project\.<\/p>/);
+  assert.match(builder, /<h4 id="[^"]+">Jobs to be done<\/h4>/);
+  // Bar segments in order, done first, and a count by status; the links keep the other filters but not the persona.
+  const price = jobFor(builder, "I am pricing a project");
+  assert.match(price, /<span class="esm-bar" aria-hidden="true"><span data-status="in-progress" style="width:50%"><\/span><span data-status="planned" style="width:50%"><\/span><\/span><span>2 stories: 1 in progress, 1 planned<\/span>/);
+  assert.match(price, /<a href="\?tab=roadmap&amp;q=estimate&amp;job=price-materials" aria-describedby="([^"]+)">Show stories<\/a>/);
+  assert.match(price, new RegExp(`<p class="esm-job-statement" id="${price.match(/aria-describedby="([^"]+)"/)[1]}">`));
+  // Drafted jobs are labelled.
+  assert.match(jobFor(builder, "my estimate is ready"), /<\/b> I do not chase finance by email\. <span class="esm-draft"[^>]*>Draft<\/span><\/p>.*<span>1 story planned<\/span>/);
+  assert.match(builder, /<a href="\?tab=roadmap&amp;q=estimate&amp;persona=builder">Show only this persona’s stories<\/a>/);
+
+  // Cut stories are left out of the bar and the count, and a job with only those has no stories yet.
+  const approve = jobFor(personaPanelFor(html, "Finance reviewer"), "an estimate arrives");
+  assert.match(approve, /<span data-status="planned" style="width:100%"><\/span><\/span><span>2 stories planned<\/span>.*<span class="esm-job-left">1 cut not counted<\/span>/);
+  const trace = jobFor(personaPanelFor(html, "Auditor"), "an approval is questioned");
+  assert.match(trace, /<span class="esm-job-gap">No stories yet<\/span><span class="esm-job-left">1 cut not counted<\/span>/);
+  assert.doesNotMatch(trace, /esm-bar|Show stories/);
+  // A persona with no jobs says so.
+  const plainMap = parse(tagged(document => document.personas.push({ id: "buyer", title: "Buyer" })));
+  assert.match(personaPanelFor(render(page(plainMap, "")), "Buyer"), /No jobs to be done yet\./);
+});
+
+test("ESM-904: the persona panel works without JavaScript, from chips, avatars and the story panel", () => {
+  const map = parse(tagged());
+  const html = render(page(map, "persona=builder"));
+  const panel = personaPanelFor(html, "Builder");
+  const id = panel.match(/^<div class="esm-detail esm-persona-detail" id="([^"]+)" popover="auto" role="dialog" aria-labelledby="\1-title">/)?.[1];
+  assert.ok(id, "a popover dialog named by its title");
+  assert.match(panel, new RegExp(`class="esm-close" aria-label="Close" autofocus="" popoverTarget="${id}" popoverTargetAction="hide"`));
+  // Openers: the only chosen persona's chip, each activity avatar and the story panel's For row.
+  const openers = html.match(new RegExp(`<button type="button" class="[^"]+"[^>]*popoverTarget="${id}"(?! popoverTargetAction)`, "g"));
+  assert.ok(openers.some(opener => opener.includes('class="esm-persona-chip" aria-current="true"')));
+  assert.ok(openers.some(opener => opener.includes('class="esm-avatar-button" aria-haspopup="dialog" aria-label="Builder: open persona"')));
+  assert.ok(openers.some(opener => opener.includes('class="esm-persona-chip" aria-haspopup="dialog"') && !opener.includes("aria-current")));
+  // Card avatars sit inside the card's button, so they stay plain.
+  assert.doesNotMatch(cardFor(html, "Submit the estimate to finance"), /esm-avatar-button/);
+
+  // Without the host's filters, the panel has no filter links. Customers get no persona panels.
+  const unfiltered = personaPanelFor(render(getStoryMapForViewer(map, engineer)), "Builder");
+  assert.doesNotMatch(unfiltered, /Show stories|Show only/);
+  assert.doesNotMatch(render(page(map, "", { roles: ["member"] })), /esm-persona-detail|esm-avatar-button/);
 });
 
 test("ESM-903: board.js applies the persona menu when it closes, and returns focus to it", async t => {
@@ -576,6 +650,7 @@ test("ESM-906: the JSON export lists personas with job statements and coverage, 
   const [price, send] = json.personas[0].jobs;
   assert.equal(price.statement, "When I am pricing a project, I want to use the catalogue prices, so my estimate matches what finance pays.");
   assert.equal(price.activeStories, 2);
+  assert.deepEqual(price.storyCounts, { planned: 1, "in-progress": 1, merged: 0, shipped: 0, blocked: 0, cut: 0 });
   assert.equal(send.draft, true);
   assert.ok(!("initials" in json.personas[0]) && !("colour" in json.personas[0]));
   const story = json.stories.find(item => item.id === "BUILDER-102");

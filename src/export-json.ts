@@ -1,9 +1,8 @@
 import { prepareStoryMapExport, type StoryMapExportOptions } from "./export.js";
 import { jobStatement } from "./personas.js";
-import type { StoryMapJob } from "./schema.js";
-import { isActiveStatus, storyStatuses, storyStatusLabels, type StoryStatus } from "./status.js";
+import { activeStoryStatuses, storyStatuses, storyStatusLabels, type StoryStatus } from "./status.js";
 import { storyMapCommit, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, StoryMapLabel, StoryMapRecentUpdates, StoryMapView } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, StoryMapLabel, StoryMapRecentUpdates, StoryMapView } from "./view.js";
 
 /** The `Content-Type` for a `.json` export. */
 export const jsonContentType = "application/json; charset=utf-8";
@@ -27,8 +26,8 @@ export interface StoryMapJsonStory extends InternalStoryCard {
   testCount?: number;
 }
 
-/** A job to be done in the JSON export, with its statement and how many active stories serve it. */
-export interface StoryMapJsonJob extends StoryMapJob {
+/** A job to be done in the JSON export, with its stories by status, its statement and how many active stories serve it. */
+export interface StoryMapJsonJob extends PersonaJobLabel {
   /** The job read as one sentence: “When …, I want …, so ….” */
   statement: string;
   /** Active stories that serve the job, across the whole map. 0 means no planned or delivered work meets it yet. */
@@ -114,18 +113,13 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
   const testsIndexed = view.testsIndexed === true;
   const stories = view.stories.filter(story => kept.has(story.id)).map(story => toJsonStory(story, testsIndexed));
 
-  const jobCounts = new Map<string, number>();
-  for (const story of view.stories) {
-    if (!isActiveStatus(story.status)) continue;
-    for (const id of story.jobs ?? []) jobCounts.set(id, (jobCounts.get(id) ?? 0) + 1);
-  }
   // Counted over the whole map, like release storyCounts, so maxStories does not hide a job's work.
   const personas: StoryMapJsonPersona[] = (view.personas ?? []).map(persona => ({
     id: persona.id,
     title: persona.title,
     ...(persona.summary ? { summary: persona.summary } : {}),
     activeStories: persona.activeStories,
-    jobs: persona.jobs.map(job => ({ ...job, statement: jobStatement(job), activeStories: jobCounts.get(job.id) ?? 0 })),
+    jobs: persona.jobs.map(job => ({ ...job, statement: jobStatement(job), activeStories: activeStoryStatuses.reduce((sum, status) => sum + job.storyCounts[status], 0) })),
   }));
   const hasDraftJobs = personas.some(persona => persona.jobs.some(job => job.draft));
 
