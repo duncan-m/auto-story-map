@@ -184,7 +184,7 @@ releases:
         draft: true
   - id: v0-7-5
     title: "0.7.5: PM improvements"
-    summary: Activities expand into steps, and a scheduled audit proposes map corrections from the code.
+    summary: Activities expand into steps, stories carry effort estimates with a total on each release, and a scheduled audit proposes map corrections from the code.
     impact:
       - metric: Map changes that are missing from feature PRs
         expected: Found by the weekly audit and proposed in a PR
@@ -453,6 +453,13 @@ stories:
     customer:
       title: Keep the map in step with the code
       summary: A scheduled check compares the map with your code and proposes corrections for you to review.
+  - id: ESM-503
+    title: Estimate effort on each story
+    activity: plan
+    release: v0-7-5
+    status: planned
+    summary: Each story can carry an effort estimate in story points, and each release lane shows its total and how much is left to ship.
+    notes: Internal only, so customers never see estimates. Cut stories leave the total, and shipped stories leave the remaining count. Points use 1, 2, 3, 5, 8 or 13. Not yet planned in detail.
   # 0.7.4: native CLI for agents
   - id: ESM-741
     title: Read the map from the command line
