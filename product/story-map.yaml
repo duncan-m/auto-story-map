@@ -163,7 +163,7 @@ releases:
         solves: Building stories that no persona needs
         draft: true
   - id: v0-7-3
-    title: "0.7.3: Pull request and commit links"
+    title: "0.7.3: Links to code and stories"
     summary: Internal viewers follow a story to its code, from the pull request and commit behind each history line and a list of the pull requests and commits that name it, and anyone can share a permalink to a story or release.
     impact:
       - metric: Time to find the pull requests that delivered a story
