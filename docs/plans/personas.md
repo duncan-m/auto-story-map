@@ -19,7 +19,7 @@ All stories are internal. Item 5 changes what customers can see, but only for pe
 
 ![Mockup of the board filtered to the Product manager persona, with the story and persona panels](personas-mockup.png)
 
-The mockup is [personas-mockup.html](personas-mockup.html), built on the real `styles.css`. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. The cards are real stories with illustrative persona tags.
+The mockup is [personas-mockup.html](personas-mockup.html), built on the real `styles.css`. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. The cards are real stories with illustrative persona tags. Each persona story links to this section from its `sources`, and the 0.7.2 release notes name it.
 
 What it shows:
 
