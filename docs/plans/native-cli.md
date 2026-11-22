@@ -1,6 +1,6 @@
 # Plan: a native CLI for agents
 
-Status: proposed. The stories are ESM-901 to ESM-905, in the **Next** release of the map until a release is chosen (see question 1).
+Status: proposed. The stories are ESM-901 to ESM-905, in the **0.7.4: Native CLI for agents** release of the map.
 
 Agents working in a host repository read and change the map by opening `product/story-map.yaml`, grepping for IDs and editing the YAML by hand. That works, but each agent re-learns the format, misses rules that live in the guide, and only finds out it broke something when `validate` runs. This plan gives agents the same operations as commands with JSON output, built on the code the CLI and board already use, so there is one set of rules and no second implementation:
 
@@ -119,9 +119,9 @@ The default branch comes from `origin/HEAD`, then `main`, then `master`. ID matc
 ```bash
 npx --no-install story-map edit ESM-904 --status in-progress
 npx --no-install story-map edit ESM-905 --status blocked --reason "Waiting on the host's Git provider to accept custom refs"
-npx --no-install story-map edit ESM-903 --release next --activity review
+npx --no-install story-map edit ESM-903 --release v0-7-4 --activity review
 npx --no-install story-map edit ESM-901 --add-source docs/story-map.md#read-the-map
-npx --no-install story-map add --activity review --release next --title "Check claims in CI"
+npx --no-install story-map add --activity review --release v0-7-4 --title "Check claims in CI"
 npx --no-install story-map edit --from edits.json --write
 ```
 
@@ -188,7 +188,7 @@ npx --no-install story-map unclaim ESM-903
 
 ## Questions for review
 
-1. **Release.** The stories sit in **Next** for now. Should they get their own release, such as **0.8.0: Native CLI for agents**?
+1. **Release.** Settled: the stories are in their own release, **0.7.4: Native CLI for agents**.
 2. **Evidence and the audit.** Is it right to build ESM-502's evidence step here and leave ESM-502 as the agent workflow only?
 3. **Claim storage.** Git refs on the remote by default, with a shared folder as the fallback. Is there a host where neither works that we need to support?
 4. **Claim lifetime.** A 4 hour default TTL. Should claims instead last until the story's PR merges?
