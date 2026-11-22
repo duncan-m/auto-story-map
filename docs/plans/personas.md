@@ -39,6 +39,12 @@ What it shows:
 
 When a persona is chosen, releases with no matching stories are hidden, as the other filters do now. A rejected alternative was to dim non-matching cards instead of hiding them. It keeps the shape of the map, but on large maps the persona's stories are hard to find among the dimmed ones. It could come back as a “Highlight” option later.
 
+## Persona context mockup
+
+![Mockup of the persona panel before and after items 7 to 10, for a Revenue Operations Manager persona](persona-context-mockup.png)
+
+The mockup is [persona-context-mockup.html](persona-context-mockup.html), built on the real `styles.css` like the one above. It shows the persona panel for a Revenue Operations Manager in a host product, as it is today and with items 7 to 10: context, a core job, a fuller job statement and the core job's steps. Story counts are illustrative. ESM-907 to ESM-910 link to this section from their `sources`.
+
 ## The format
 
 ```yaml
