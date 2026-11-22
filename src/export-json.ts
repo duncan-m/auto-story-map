@@ -127,6 +127,7 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
   }));
   const hasDraftJobs = personas.some(persona => persona.jobs.some(job => job.draft));
   const hasDraftContext = personas.some(persona => persona.context?.draft);
+  const hasSteps = personas.some(persona => persona.jobs.some(job => job.steps?.length));
 
   const exportedAt = (options.now ?? new Date()).toISOString();
   const hasDraftImpact = view.releases.some(release => release.impact?.some(item => item.draft));
@@ -145,6 +146,7 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
       ? ["A story's personas are the owners of the jobs it serves, then the personas it lists, primary first. Personas and jobs are written by people and agents, and say who the work is meant for, not who uses it. Each persona's first job is their core job, marked core: true."]
       : []),
     ...(hasDraftJobs ? ["Jobs with draft: true were drafted, often by an agent, and have not been confirmed by a person."] : []),
+    ...(hasSteps ? ["A job's steps are in the order the persona does them. A step's activeStories counts the active stories that serve its job and sit in its activity, across the whole map; 0 is a gap. A step without an activity has no count."] : []),
     ...(hasDraftContext ? ["Persona context with draft: true was drafted, often by an agent, and has not been confirmed by a person."] : []),
   ];
 

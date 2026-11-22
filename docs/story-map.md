@@ -243,6 +243,7 @@ The weak version says when, but not why it is hard, so no story can be judged ag
 | `personas[].jobs[].id` | Required, unique across the map. Keep it when rewording the job or moving it to another persona, so its stories follow it. |
 | `personas[].jobs[].situation`, `motivation`, `outcome` | Required, up to 200 characters each. |
 | `personas[].jobs[].draft` | Optional. `true` while an agent's draft waits for a person to confirm it. |
+| `personas[].jobs[].steps` | Optional, up to 6 steps in order, each with a `title` of up to 60 characters, an optional `summary` and an optional `activity` ID. See [Break a job into steps](#break-a-job-into-steps). |
 | `personas[].context` | Optional and internal: `success`, up to 200 characters, `usesToday`, up to 8 entries of up to 60 characters, and `constraints`, up to 6 of up to 200 characters. Needs at least one of the three. See [Describe a persona's context](#describe-a-personas-context). |
 | `personas[].context.draft` | Optional. `true` while an agent's draft waits for a person to confirm it. |
 | `personas[].customer` | Optional customer-facing `title` and `summary`. Add them only after the wording is approved. See [Share personas with customers](#share-personas-with-customers). |
@@ -251,11 +252,12 @@ The weak version says when, but not why it is hard, so no story can be judged ag
 
 A story is for the personas that own its jobs, in the order of its jobs, then the personas it lists, so a story that names its jobs need not repeat their personas. The first is its primary persona. BUILDER-102 above is for Product manager, from its job, and Product customer. In code, `storyPersonas(map, story)` gives the same list, and `jobStatement(job)` the statement.
 
-Validation fails on a duplicate persona ID, a job ID used twice anywhere in the map, a story job or persona that is not in the map, and one listed twice on a story. Removing a persona or job that stories still use is therefore an error, as for an activity. Once the map has personas and active stories, it warns about:
+Validation fails on a duplicate persona ID, a job ID used twice anywhere in the map, a story job or persona that is not in the map, one listed twice on a story, and a job step that names an activity not in the map. Removing a persona or job that stories still use is therefore an error, as for an activity. Once the map has personas and active stories, it warns about:
 
 - a persona no story is for;
 - a job no active story serves, such as “Job share-roadmap (Product manager) has no stories”, or “Core job plan-release (Product manager) has no stories” when it is the persona's core job;
 - an active story listing a persona that has jobs, but serving none of them, so it may not match a known need;
+- a [job step](#break-a-job-into-steps) whose activity has no active stories that serve its job, unless the job has no stories at all;
 - a drafted job that a shipped story serves, as for [drafted impact](#release-notes-and-impact);
 - more than half the active stories saying nothing about who they are for.
 
@@ -271,6 +273,38 @@ A persona usually has one job that matters most, and the rest support it. The fi
 - In the view and the JSON export, the core job has `core: true`, so agents need not know the rule. In code, `personaCoreJob(persona)` gives it.
 
 A persona with one job treats it as core.
+
+### Break a job into steps
+
+A job is done in steps, such as gather, agree scope and track. Steps show which part of a job the stories help with, and where the gaps are. A story map's activities describe the same journey, so each step can point to the activity where its stories live.
+
+```yaml
+personas:
+  - id: pm
+    title: Product manager
+    jobs:
+      - id: plan-release
+        situation: a release is being planned and its scope is spread across chat threads and tickets
+        motivation: to agree its scope in the PR that changes the map
+        outcome: engineers and product start from the same list, rather than finding out at the demo that they meant different things
+        steps:
+          - title: Gather
+            summary: Collect the candidate stories and the evidence for each
+            activity: plan
+          - title: Agree scope
+            summary: Settle what is in and out in the PR that changes the map
+            activity: review
+          - title: Brief the team
+```
+
+- Any job can have steps, not only the core job, up to 6 in the order the persona does them.
+- A step's stories are the active stories that serve its job and sit in its activity. A step with an `activity` but no such stories is a gap. A step without an `activity` has no stories of its own, so it is never a gap.
+- Validation fails on an activity that is not in the map, and warns about a gap, such as “Step “Agree scope” of job plan-release (Product manager) has no stories in Review changes”. A job with no stories at all gets its own warning instead, not one per step.
+- The [persona panel](#open-a-persona) shows how many of the core job's steps are gaps, such as “1 of 3 steps has no stories”, and nothing else about steps.
+- In the view and the JSON export, each job carries its `steps`, and each step with an activity has `activeStories`, counted over the whole map. In code, `jobStepGaps(job)` counts a job's gaps in the view, and `jobStepCounter(map)` counts a step's stories from the map.
+- `story-map diff` reports a job whose steps were added, removed, reordered, reworded or pointed to another activity under **Personas and jobs**, such as “Steps of job `plan-release` (Product manager): Gather (`plan`) → Agree scope (`review`) → Brief the team”.
+
+Steps point to activities, not to steps within an activity. Steps are internal, like jobs, and customers never see them. Steps on a drafted job are part of the draft, so a person confirms them when they remove the job's `draft`.
 
 ### Describe a persona's context
 

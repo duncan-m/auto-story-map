@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LineCounter, isMap, isScalar, isSeq, parseDocument, visit, type Document, type Node } from "yaml";
-import { storyPersonaResolver } from "./personas.js";
+import { jobStepCounter, storyPersonaResolver } from "./personas.js";
 import { isActiveStatus, storyStatuses } from "./status.js";
 
 export { storyStatuses };
@@ -25,6 +25,10 @@ export const personasMaxItems = 12;
 export const personaJobsMaxItems = 8;
 /** Most jobs or personas on one story. */
 export const storyPersonasMaxItems = 4;
+/** Most workflow steps on one job. */
+export const jobStepsMaxItems = 6;
+/** Longest job step title, in characters. */
+export const jobStepTitleMaxLength = 60;
 /** Longest part of a job statement, in characters. */
 export const jobStatementMaxLength = 200;
 /** Longest `success` or constraint in a persona's context, in characters. */
@@ -77,6 +81,13 @@ function formatSchemas(strict: boolean) {
   const statementPart = (lead: string, guidance: string, example: string) => z.string().trim().min(1).max(jobStatementMaxLength)
     .describe(`Written without its lead word, which the board adds: “${lead} …”. ${guidance} Such as “${example}”.`);
 
+  const jobStep = object({
+    title: z.string().trim().min(1).max(jobStepTitleMaxLength).describe(`A short name for the step, up to ${jobStepTitleMaxLength} characters, such as “Gather” or “Agree scope”.`),
+    summary: summary.describe("Optional. What the persona does in this step."),
+    activity: id.optional()
+      .describe("Optional ID of the activity where the stories for this step live. The step's stories are those that serve its job and sit in this activity. A step without one has no stories of its own."),
+  }).describe("One step of a job, in the order the persona does them. Internal only.");
+
   const job = object({
     id: id.describe("Stable job ID, unique across the map, that stories reference in their jobs. Keep it when rewording the job or moving it to another persona."),
     situation: statementPart("When", "The trigger and what makes it hard, not only the moment or a role.", "a release is being planned and its scope is spread across chat threads and tickets"),
@@ -84,6 +95,8 @@ function formatSchemas(strict: boolean) {
     outcome: statementPart("so that", "What gets better for them and what is at stake if it does not.", "engineers and product start from the same list, rather than finding out at the demo that they meant different things"),
     draft: z.boolean().optional()
       .describe("true when an agent drafted this job and nobody has confirmed it yet. Only a person removes it."),
+    steps: z.array(jobStep).max(jobStepsMaxItems).optional()
+      .describe(`Optional. Up to ${jobStepsMaxItems} workflow steps, in order, each pointing to the activity where its stories live. Any job can have steps, not only the core job.`),
   }).describe("A job to be done: “When <situation>, I want <motivation>, so that <outcome>.” Internal only.");
 
   const contextLine = z.string().trim().min(1).max(personaContextMaxLength);
@@ -160,14 +173,14 @@ function formatSchemas(strict: boolean) {
     releases: z.array(release).min(1).max(50),
     stories: z.array(story.describe("Stories appear in this order within each cell.")).max(1000),
   });
-  return { map, story, impactItem, persona, job, personaContext };
+  return { map, story, impactItem, persona, job, jobStep, personaContext };
 }
 
 const strictSchemas = formatSchemas(true);
 const lenientSchemas = formatSchemas(false);
 
 type Path = (string | number)[];
-type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown; jobs?: unknown; personas?: unknown; context?: unknown };
+type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown; jobs?: unknown; personas?: unknown; context?: unknown; steps?: unknown };
 
 function items(value: unknown): Item[] {
   return Array.isArray(value) ? value.map(item => item && typeof item === "object" ? item as Item : {}) : [];
@@ -196,6 +209,7 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
     });
   }
 
+  const activityIds = new Set(items(map.activities).map(activity => activity.id));
   const personaIds = new Set(items(map.personas).map(persona => persona.id));
   const jobIds = new Set<unknown>();
   items(map.personas).forEach((persona, personaIndex) => {
@@ -205,6 +219,11 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
       issue(["personas", personaIndex, "context"], "Context needs at least one of success, usesToday and constraints.");
     }
     items(persona.jobs).forEach((job, jobIndex) => {
+      items(job.steps).forEach((step, stepIndex) => {
+        if (typeof step.activity === "string" && !activityIds.has(step.activity)) {
+          issue(["personas", personaIndex, "jobs", jobIndex, "steps", stepIndex, "activity"], `Unknown activity '${step.activity}'.`);
+        }
+      });
       if (typeof job.id !== "string") return;
       if (jobIds.has(job.id)) issue(["personas", personaIndex, "jobs", jobIndex, "id"], `Duplicate job ID '${job.id}'. Job IDs are unique across the map.`);
       jobIds.add(job.id);
@@ -251,6 +270,7 @@ export type StoryMapDocument = z.infer<typeof storyMapSchema>;
 export type ReleaseImpact = z.infer<typeof strictSchemas.impactItem>;
 export type StoryMapPersona = z.infer<typeof strictSchemas.persona>;
 export type StoryMapJob = z.infer<typeof strictSchemas.job>;
+export type StoryMapJobStep = z.infer<typeof strictSchemas.jobStep>;
 export type StoryMapPersonaContext = z.infer<typeof strictSchemas.personaContext>;
 
 export type StoryMapIssueSeverity = "error" | "warning";
@@ -426,6 +446,8 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
   const shippedStories = map.stories.filter(story => story.status === "shipped");
   const shipped = new Set(shippedStories.flatMap(story => story.jobs ?? []));
   const shippedFor = new Set(shippedStories.flatMap(story => resolve(story)));
+  const stepStories = jobStepCounter(map);
+  const activityTitles = new Map(map.activities.map(activity => [activity.id, activity.title]));
 
   personas.forEach((persona, index) => {
     if (!used.has(persona.id)) {
@@ -444,6 +466,19 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
           // The first job is the core job, so a gap there matters most.
           message: `${jobIndex === 0 ? "Core job" : "Job"} ${job.id} (${persona.title}) has no stories.`,
           itemId: persona.id,
+        });
+      }
+      // A job with no stories at all is warned about above, so its steps add nothing.
+      if (served.has(job.id)) {
+        job.steps?.forEach((step, stepIndex) => {
+          if (step.activity === undefined || stepStories(job.id, step.activity)) return;
+          const activity = activityTitles.get(step.activity) ?? step.activity;
+          warnings.push({
+            severity: "warning",
+            path: ["personas", index, "jobs", jobIndex, "steps", stepIndex],
+            message: `Step “${step.title}” of job ${job.id} (${persona.title}) has no stories in ${activity}. Tag the stories there that serve the job, or point the step to another activity.`,
+            itemId: persona.id,
+          });
         });
       }
       if (job.draft && shipped.has(job.id)) {

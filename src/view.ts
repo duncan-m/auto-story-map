@@ -1,7 +1,7 @@
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
-import { personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
+import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
 import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
-import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapPersonaContext } from "./schema.js";
+import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 
@@ -83,12 +83,23 @@ export interface StoryCard extends StoryMapLabel {
   personas?: string[];
 }
 
+/** One step of a job as internal viewers see it, with how many stories it has. */
+export interface PersonaJobStepLabel extends StoryMapJobStep {
+  /**
+   * Active stories that serve the job and sit in the step's activity, counted before any filter is applied.
+   * 0 marks a gap. Absent when the step has no activity, because it has no stories of its own.
+   */
+  activeStories?: number;
+}
+
 /** A job to be done as internal viewers see it, with how many stories serve it. */
 export interface PersonaJobLabel extends StoryMapJob {
   /** True on the persona's core job, the first in their list. Absent on the others. */
   core?: true;
   /** Stories that serve the job, by status, counted before any filter is applied, like a release's `storyCounts`. */
   storyCounts: Record<StoryStatus, number>;
+  /** The job's workflow steps, in order, each with its stories. Absent when the job has none. */
+  steps?: PersonaJobStepLabel[];
 }
 
 /** A persona as internal viewers see it, with what the board needs to draw its avatar. */
@@ -318,6 +329,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     const stalledBefore = (options.now ?? new Date()).getTime() - stalledAfterWeeks * weekMs;
     const recentUpdates = summariseRecentUpdates(map, byStory, lastEdits);
     const resolvePersonas = storyPersonaResolver(map);
+    const stepStories = jobStepCounter(map);
     const personaCounts = new Map<string, number>();
     const jobCounts = new Map<string, Record<StoryStatus, number>>();
     for (const story of map.stories) {
@@ -338,6 +350,12 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
         ...job,
         ...(jobIndex === 0 ? { core: true as const } : {}),
         storyCounts: jobCounts.get(job.id) ?? Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>,
+        ...(job.steps ? {
+          steps: job.steps.map(step => ({
+            ...step,
+            ...(step.activity !== undefined ? { activeStories: stepStories(job.id, step.activity) } : {}),
+          })),
+        } : {}),
       })),
       activeStories: personaCounts.get(persona.id) ?? 0,
     }));

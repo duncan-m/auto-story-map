@@ -14,6 +14,7 @@ import {
   formatStoryMapDiff,
   hasStoryMapChanges,
   jobStatement,
+  jobStepGaps,
   filterStoryMapView,
   getStoryMapForViewer,
   getStoryMapPage,
@@ -970,4 +971,143 @@ test("ESM-908: story-map story marks the core job", async t => {
   const story = spawnSync(process.execPath, [cli, "story", "BUILDER-102", "--map", mapPath], { encoding: "utf8" });
   assert.equal(story.status, 0, story.stderr);
   assert.match(story.stdout, /    price-materials  When I am pricing a project, .*\. \(Builder\) \[core job\]\n    approve-estimate  .*\(Finance reviewer\) \[core job\]\n/);
+});
+
+const priceSteps = [
+  { title: "Gather", summary: "Collect the materials and quantities", activity: "prepare" },
+  { title: "Check with finance", activity: "submit" },
+  { title: "Note assumptions" },
+];
+
+/** The tagged map with steps on the builder's core job: one covered, one gap and one with no activity. */
+function withSteps(edit = () => {}) {
+  return tagged(document => {
+    document.personas[0].jobs[0].steps = structuredClone(priceSteps);
+    edit(document);
+  });
+}
+
+test("ESM-910: accepts steps on any job, with or without an activity", () => {
+  const map = parse(withSteps(document => {
+    document.personas[1].jobs[0].steps = [{ title: "Approve", activity: "purchase" }];
+  }));
+  assert.deepEqual(map.personas[0].jobs[0].steps, priceSteps);
+  assert.deepEqual(map.personas[1].jobs[0].steps, [{ title: "Approve", activity: "purchase" }]);
+  assert.ok(!("steps" in map.personas[0].jobs[1]));
+});
+
+test("ESM-910: rejects unknown activities, unknown fields and steps over their limits", () => {
+  const issues = issuesOf(withSteps(document => {
+    document.personas[0].jobs[0].steps[1].activity = "audit";
+    document.personas[0].jobs[0].steps[2].owner = "Finance";
+    document.personas[0].jobs[1].steps = Array.from({ length: 7 }, (_, index) => ({ title: `Step ${index}` }));
+    document.personas[1].jobs[0].steps = [{ title: "x".repeat(61) }, { title: " " }];
+  }));
+  assert.ok(issues.includes("personas.0.jobs.0.steps.1.activity: Unknown activity 'audit'."), issues.join("\n"));
+  for (const path of ["personas.0.jobs.0.steps.2.owner", "personas.0.jobs.1.steps", "personas.1.jobs.0.steps.0.title", "personas.1.jobs.0.steps.1.title"]) {
+    assert.ok(issues.some(issue => issue.startsWith(`${path}: `)), `${path} in ${issues.join("\n")}`);
+  }
+});
+
+test("ESM-910: counts each step's active stories, those that serve its job in its activity", () => {
+  const view = getStoryMapForViewer(parse(withSteps(document => {
+    // A cut story in the step's activity does not count.
+    document.stories.find(story => story.id === "FINANCE-202").jobs = ["price-materials"];
+    document.personas[0].jobs[0].steps.push({ title: "Handle exceptions", activity: "finance-ops" });
+  })), engineer);
+  assert.deepEqual(view.personas[0].jobs[0].steps.map(step => [step.title, step.activeStories]), [
+    ["Gather", 2],
+    ["Check with finance", 0],
+    ["Note assumptions", undefined],
+    ["Handle exceptions", 0],
+  ]);
+  assert.ok(!("activeStories" in view.personas[0].jobs[0].steps[2]), "a step with no activity has no count");
+  assert.equal(jobStepGaps(view.personas[0].jobs[0]), 2);
+  assert.equal(jobStepGaps(view.personas[0].jobs[1]), 0);
+  assert.ok(!("steps" in view.personas[0].jobs[1]));
+  // Filters do not change the counts, as for jobs.
+  assert.deepEqual(page(parse(withSteps()), "persona=finance").personas[0].jobs[0].steps.map(step => step.activeStories), [2, 0, undefined]);
+});
+
+test("ESM-910: validate warns about a step with no stories in its activity, unless the job has none at all", () => {
+  const messages = map => personaWarnings(map).map(warning => `${warning.path.join(".")}: ${warning.message}`);
+  const gap = "personas.0.jobs.0.steps.1: Step “Check with finance” of job price-materials (Builder) has no stories in Submit for finance review. Tag the stories there that serve the job, or point the step to another activity.";
+  assert.deepEqual(messages(parse(withSteps())), [gap]);
+  const covered = parse(withSteps(document => { document.stories.find(story => story.id === "BUILDER-103").jobs = ["send-estimate", "price-materials"]; }));
+  assert.deepEqual(messages(covered), []);
+  // A job with no stories is warned about once, not again for each step.
+  const empty = messages(parse(withSteps(document => {
+    document.personas[0].jobs[1].steps = [{ title: "Send", activity: "submit" }];
+    document.stories.find(story => story.id === "BUILDER-103").jobs = ["price-materials"];
+  })));
+  assert.ok(empty.includes("personas.0.jobs.1: Job send-estimate (Builder) has no stories."), empty.join("\n"));
+  assert.ok(!empty.some(message => message.startsWith("personas.0.jobs.1.steps")), empty.join("\n"));
+});
+
+test("ESM-910: the persona panel shows only how many of the core job's steps have no stories", () => {
+  const builder = personaPanelFor(render(page(parse(withSteps()), "")), "Builder");
+  const core = builder.match(/<li class="esm-job esm-job-core">(?:(?!<\/li>).)*<\/li>/)[0];
+  assert.match(core, /<span class="esm-job-gap">1 of 3 steps has no stories<\/span><\/p>/);
+  assert.doesNotMatch(builder, /Gather|Check with finance|Note assumptions/);
+
+  const two = personaPanelFor(render(page(parse(withSteps(document => { document.personas[0].jobs[0].steps[2].activity = "purchase"; })), "")), "Builder");
+  assert.match(two, /2 of 3 steps have no stories/);
+  // No gaps, steps on other jobs and a core job with no stories at all show nothing about steps.
+  const none = parse(withSteps(document => {
+    document.personas[0].jobs[0].steps = [{ title: "Gather", activity: "prepare" }];
+    document.personas[0].jobs[1].steps = [{ title: "Send", activity: "purchase" }];
+  }));
+  assert.doesNotMatch(personaPanelFor(render(page(none, "")), "Builder"), /steps? ha(s|ve) no stories/);
+  const unserved = parse(tagged(document => {
+    document.personas[1].jobs[0].steps = [{ title: "Approve", activity: "submit" }];
+    for (const story of document.stories) story.jobs = story.jobs?.filter(job => job !== "approve-estimate");
+  }));
+  assert.doesNotMatch(personaPanelFor(render(page(unserved, "")), "Finance reviewer"), /steps? ha(s|ve) no stories/);
+});
+
+test("ESM-910: the JSON export carries steps and their coverage, and customers never see them", () => {
+  const map = parse(withSteps());
+  const json = JSON.parse(storyMapToJson(getStoryMapForViewer(map, engineer), { now: new Date("2026-11-20T09:00:00Z") }));
+  assert.deepEqual(json.personas[0].jobs[0].steps, [
+    { ...priceSteps[0], activeStories: 2 },
+    { ...priceSteps[1], activeStories: 0 },
+    priceSteps[2],
+  ]);
+  assert.ok(json.provenance.notes.some(note => /A step's activeStories counts/.test(note)));
+  const without = JSON.parse(storyMapToJson(getStoryMapForViewer(parse(tagged()), engineer)));
+  assert.ok(!without.provenance.notes.some(note => /step/.test(note)));
+  assert.doesNotMatch(JSON.stringify(getStoryMapForViewer(map, member)), /steps|Gather|Check with finance/);
+});
+
+test("ESM-910: diff reports changed steps, including a new job's, and steps removed", () => {
+  const before = parse(tagged());
+  const added = diffStoryMaps(before, parse(withSteps()));
+  assert.deepEqual(added.jobs.stepsChanged, [{
+    id: "price-materials",
+    persona: "Builder",
+    statement: jobStatement(personas[0].jobs[0]),
+    steps: [{ title: "Gather", activity: "prepare" }, { title: "Check with finance", activity: "submit" }, { title: "Note assumptions" }],
+  }]);
+  assert.deepEqual(added.jobs.reworded, []);
+  assert.equal(hasStoryMapChanges(added), true);
+  assert.match(formatStoryMapDiff(added), /- Steps of job `price-materials` \(Builder\): Gather \(`prepare`\) → Check with finance \(`submit`\) → Note assumptions\n/);
+
+  // Rewording a summary, reordering or repointing a step all count; an unchanged map does not.
+  const withMap = parse(withSteps());
+  assert.deepEqual(diffStoryMaps(withMap, withMap).jobs.stepsChanged, []);
+  for (const edit of [
+    document => { document.personas[0].jobs[0].steps[0].summary = "Collect the materials"; },
+    document => { document.personas[0].jobs[0].steps.reverse(); },
+    document => { document.personas[0].jobs[0].steps[1].activity = "purchase"; },
+  ]) assert.equal(diffStoryMaps(withMap, parse(withSteps(edit))).jobs.stepsChanged.length, 1);
+
+  const removed = diffStoryMaps(withMap, before);
+  assert.deepEqual(removed.jobs.stepsChanged.map(change => change.steps), [[]]);
+  assert.match(formatStoryMapDiff(removed), /- Removed the steps of job `price-materials` \(Builder\)\n/);
+
+  // A new job with steps reports them; a removed job is reported once, as removed.
+  const auditor = { id: "auditor", title: "Auditor", jobs: [{ id: "audit", situation: "a quarter ends", motivation: "to see who approved what", outcome: "audits take a day", steps: [{ title: "Collect approvals" }] }] };
+  const withAuditor = parse(tagged(document => { document.personas.push(auditor); document.stories[0].personas = ["auditor"]; }));
+  assert.deepEqual(diffStoryMaps(before, withAuditor).jobs.stepsChanged.map(change => change.id), ["audit"]);
+  assert.deepEqual(diffStoryMaps(withAuditor, before).jobs.stepsChanged, []);
 });

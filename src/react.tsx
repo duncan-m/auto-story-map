@@ -1,7 +1,7 @@
 import { Fragment, useId, version } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
-import { withoutFinalPunctuation } from "./personas.js";
+import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
@@ -791,6 +791,8 @@ function CoverageBar({ counts }: { counts: Record<StoryStatus, number> }) {
 function PersonaJob({ job, statementId, base }: { job: PersonaJobLabel; statementId: string; base?: URLSearchParams }) {
   const coverage = jobCoverage(job.storyCounts);
   const left = hiddenSummary(job.storyCounts);
+  // Only the core job's gaps show here; the Personas tab shows every step.
+  const gaps = job.core && coverage ? jobStepGaps(job) : 0;
   return (
     <li className={job.core ? "esm-job esm-job-core" : "esm-job"}>
       {job.core && <CoreJobLabel />}
@@ -807,6 +809,7 @@ function PersonaJob({ job, statementId, base }: { job: PersonaJobLabel; statemen
           </>
           : <span className="esm-job-gap">No stories yet</span>}
         {left && <span className="esm-job-left">{`${left} not counted`}</span>}
+        {gaps > 0 && <span className="esm-job-gap">{`${gaps} of ${job.steps!.length} ${job.steps!.length === 1 ? "step" : "steps"} ${gaps === 1 ? "has" : "have"} no stories`}</span>}
       </p>
     </li>
   );
