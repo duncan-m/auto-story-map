@@ -264,7 +264,7 @@ A persona usually has one job that matters most, and the rest support it. Today 
 **Change.**
 
 - The first job in a persona's `jobs` is their core job. No new field (decision J).
-- `src/react.tsx`: the persona panel labels it **Core job** and sets it apart from the others, with “When”, “I want” and “so” each starting a new line, the lead words in a column of their own. The story panel's **Jobs** row marks it too.
+- `src/react.tsx`: the persona panel labels it **Core job** and sets it apart from the others, with “When”, “I want” and “so” each starting a new line, the lead words in a column of their own. The other jobs follow under an **Other jobs** heading, so they are not mistaken for stories. The story panel's **Jobs** row marks it too.
 - Validate: a core job with no active stories gets its own warning, such as “Core job plan-release (Product manager) has no stories”, in place of the usual one.
 - `src/diff.ts`: report a change of core job when jobs are reordered, such as “Product manager's core job: plan-release → track-progress”.
 - JSON export: `core: true` on the first job of each persona, so agents need not know the rule.
