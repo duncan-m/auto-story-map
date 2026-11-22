@@ -52,9 +52,9 @@ The panel grew too large for a popover, so item 11 moves the full persona to a t
 
 ## Personas tab mockup
 
-![Mockup of the Personas tab, with the persona list, context band and jobs laid out as lanes under the map's activities, and the slimmer persona popover](persona-page-mockup.png)
+![Mockup of the Personas tab, with the persona list, context band and jobs laid out as lanes with their steps in order, and the slimmer persona popover](persona-page-mockup.png)
 
-The mockup is [persona-page-mockup.html](persona-page-mockup.html), built on the real `styles.css`. It shows item 11: the **Personas** tab with a list of personas, the chosen persona's context across the top, and each job as a lane under the map's own activities, core job first, with its steps in the columns of their activities. Steps with no stories are dashed. The third job is collapsed. Below it is the slimmer popover that links to the tab. ESM-907 to ESM-911 link to this section from their `sources`.
+The mockup is [persona-page-mockup.html](persona-page-mockup.html), built on the real `styles.css`. It shows item 11: the **Personas** tab with a list of personas, the chosen persona's context across the top, and each job as a lane, core job first, with its steps below in order. The tab does not show the map's activities. Steps with no stories are dashed. The third job is collapsed. Below it is the slimmer popover that links to the tab. ESM-907 to ESM-911 link to this section from their `sources`.
 
 ## The format
 
@@ -324,7 +324,7 @@ jobs:
 
 - `src/schema.ts`: optional `steps` on a job, up to 6, in order. Each has a `title` (up to 60 characters), an optional `summary` and an optional `activity` ID. An unknown activity is an error, as for stories.
 - Coverage: the stories for a step are those that serve the job and sit in the step's activity. A step without an activity has no coverage of its own.
-- `src/react.tsx`: on the Personas tab (item 11), each job is a lane under the map's activities. Its statement runs across the lane, and its steps sit below in the columns of their activities, in order, each with its count of active stories. A step with an activity but no stories is dashed and says **No stories yet**. A step with no activity is listed under the statement. A **Show** link per step sets `job` and `activity`. Every job can have steps, not only the core job.
+- `src/react.tsx`: on the Personas tab (item 11), each job is a lane. Its statement runs across the lane, with **When**, **I want** and **so that** each on a new line, and its steps sit below, left to right in order, each with its count of active stories. A step's activity decides which stories it counts, but the tab does not show the map's activities. A step with an activity but no stories is dashed and says **No stories yet**. A step with no activity has no count. Each step's count is a link that sets `job` and `activity`. Every job can have steps, not only the core job.
 - Each job lane collapses to one line like a release lane, with its story count and number of steps, and board.js remembers it in the same way. Without JavaScript, every lane stays open.
 - The popover shows how many of the core job's steps have no stories, and nothing else about steps.
 - Validate warns about a step whose activity has no active stories for its job.
@@ -346,9 +346,9 @@ A persona with context, a core job and steps on each job needs a page, not a pop
   - **Story map** and **Personas** tabs at the top of the frame, as links, so they work without JavaScript. The tabs show only when the map has personas and the viewer is internal.
   - A persona list down the side: each persona's avatar, title, active stories and gaps, the steps with an activity but no stories. Each is a link to that persona.
   - The chosen persona's title, summary and a **Show their stories on the map** link, which opens the map filtered to them.
-  - Their context (item 7) side by side, then their jobs as lanes under the map's activities (items 8 and 10).
+  - Their context (item 7) side by side, then their jobs as lanes, each with its steps in order (items 8 and 10).
   - The persona popover (ESM-904) keeps the summary and the core job with its story count and gaps, says how many other jobs there are, and gains an **Open persona** link to the tab.
-- Narrow screens: the persona list becomes a menu above the page, the context cards stack, and each lane stacks its statement, then its steps in order, as the map does.
+- Narrow screens: the persona list becomes a menu above the page, the context cards stack, and each lane stacks its statement, then its steps in order.
 - No change to the exports: the JSON export already carries everything on the page.
 
 **Docs.** A **Personas tab** section under [Personas and jobs to be done](../story-map.md#personas-and-jobs-to-be-done), and the `view` parameter in [Integrate with a product](../story-map.md#integrate-with-a-product).

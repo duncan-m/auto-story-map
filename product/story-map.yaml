@@ -653,7 +653,7 @@ stories:
     status: planned
     jobs:
       - plan-release
-    summary: Any job can list its workflow steps in order, each pointing to the activity where its stories live. On the Personas tab (ESM-911), each job is a lane with its steps under their activities, gaps are marked, and lanes collapse like release lanes.
+    summary: Any job can list its workflow steps in order, each pointing to the activity where its stories live, which decides the stories it counts. On the Personas tab (ESM-911), each job is a lane with its steps in order, gaps are marked, and lanes collapse like release lanes.
     notes: Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format.
     sources:
       - docs/plans/personas.md#10-break-a-job-into-steps
@@ -668,7 +668,7 @@ stories:
     jobs:
       - plan-release
       - track-progress
-    summary: "A Personas tab beside the story map gives each persona a page: their context, then their jobs as lanes under the map's activities, with each step in its activity's column and gaps marked. The persona popover becomes a quick look that links to it."
+    summary: "A Personas tab beside the story map gives each persona a page: their context, then their jobs as lanes, each with its steps in order and gaps marked. The tab does not show the map's activities. The persona popover becomes a quick look that links to it."
     notes: Internal viewers only. Moves the full display of ESM-907, ESM-908 and ESM-910 out of the popover.
     sources:
       - docs/plans/personas.md#11-open-a-persona-page-next-to-the-map
