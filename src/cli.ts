@@ -21,9 +21,9 @@ const usage = `Usage:
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
-  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--customer-title <text>] [--customer-summary <text>] [common edit options]
+  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--customer-title <text>] [--customer-summary <text>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
-  story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [common edit options]
+  story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [<map.yaml>]
   story-map help [<command>]
@@ -157,14 +157,21 @@ edit
                      Set that field.
   --add-source, --remove-source <source>
                      Add or remove a source. Repeat for several.
+  --add-job, --remove-job <ID>
+                     Add or remove a job to be done the story serves, by its
+                     ID from the map's personas. Repeat for several.
+  --add-persona, --remove-persona <ID>
+                     Add or remove a persona the story helps without serving
+                     one of their jobs.
   --customer-title, --customer-summary <text>
                      Customer-facing copy. Needs --customer.
   --from <file>      A JSON list of edits, such as
                      [{"op": "status", "id": "ESM-744", "status": "merged"}],
                      applied all or none. The ops are status, release,
                      activity, title, summary, notes, add-source,
-                     remove-source, customer-title, customer-summary, add and
-                     release-impact.
+                     remove-source, add-job, remove-job, add-persona,
+                     remove-persona, customer-title, customer-summary, add
+                     and release-impact.
 
   Common edit options:
   --write            Save the change, only when the edited map is valid.
@@ -185,7 +192,8 @@ add
   Adds a story, as planned unless --status says otherwise, after the last
   story in its release. It takes the next free ID after the highest one in the
   release, counting cut stories so an ID is never reused, or --id. Takes
-  --source for each source, and the common edit options in story-map help edit.
+  --source for each source, --job for each job it serves, --persona for each
+  persona it helps, and the common edit options in story-map help edit.
 
 release-impact
   Adds an expected impact item to a release, always with draft: true. Only a

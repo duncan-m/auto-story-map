@@ -7,8 +7,8 @@ export {
   storyMapWarnings,
   storyStatuses,
 } from "./schema.js";
-export { defaultStalledAfterWeeks, estimatePoints, releaseImpactMaxItems, releaseNotesMaxLength } from "./schema.js";
-export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
+export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, personaJobsMaxItems, personasMaxItems, releaseImpactMaxItems, releaseNotesMaxLength, storyPersonasMaxItems } from "./schema.js";
+export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapPersona, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
 export { activeStoryStatuses, customerStatus, customerStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
 export type { CustomerStoryStatus, StoryStatusFilter } from "./status.js";
 export { defaultInternalRoles, getStoryMapForViewer, getStoryMapPage, recentUpdateDays, storyMapResponseHeaders } from "./view.js";
@@ -55,3 +55,5 @@ export { findStories, getStories } from "./read.js";
 export type { FoundStories, MissingStory, StoryQuery } from "./read.js";
 export { nextStoryId, proposeStoryMapEdit, StoryMapEditError, storyMapEditOperationSchema } from "./edit.js";
 export type { StoryMapEditOperation, StoryMapEditOptions, StoryMapEditResult } from "./edit.js";
+export { jobStatement, storyMapJobs, storyPersonaResolver, storyPersonas } from "./personas.js";
+export type { StoryMapJobOwner } from "./personas.js";

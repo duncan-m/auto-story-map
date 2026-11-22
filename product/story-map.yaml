@@ -7,6 +7,84 @@ visibility: all-users
 customer:
   title: Auto Story Map Demo
   summary: What you can do with Auto Story Map today, and what is coming next.
+# Drafted with ESM-901 from the README, the guide and the stories below. Every job is a draft until a person confirms it.
+personas:
+  - id: pm
+    title: Product manager
+    summary: Owns the roadmap and decides what goes in each release.
+    jobs:
+      - id: plan-release
+        situation: a release is being planned
+        motivation: to agree its scope in the PR that changes the map
+        outcome: engineers and product start from the same list
+        draft: true
+      - id: answer-whats-next
+        situation: someone asks what is in the next release
+        motivation: to open the map inside the product
+        outcome: I can answer without asking engineering
+        draft: true
+      - id: track-progress
+        situation: a release is under way
+        motivation: to see what has shipped, what is stuck and what is left
+        outcome: I know whether it will land as planned
+        draft: true
+      - id: share-roadmap
+        situation: customers ask what is coming
+        motivation: to show them approved stories only
+        outcome: I can answer without leaking internal work
+        draft: true
+      - id: plan-in-other-tools
+        situation: we plan in a workshop or diagram tool
+        motivation: to bring the current map into it
+        outcome: the session starts from the agreed plan, not a copy typed by hand
+        draft: true
+  - id: engineer
+    title: Engineer
+    summary: Builds the product and keeps the map in step with the code.
+    jobs:
+      - id: set-up-host
+        situation: my product adopts the story map
+        motivation: to add it in a few steps, with checks in CI
+        outcome: it works behind our sign-in without custom code
+        draft: true
+      - id: review-in-context
+        situation: a pull request changes the map
+        motivation: to see what moved and why, next to the code
+        outcome: I review the scope with the change
+        draft: true
+      - id: find-the-code
+        situation: I pick up or review a story
+        motivation: to reach its plan, tests and code from the story
+        outcome: I start from what is already known
+        draft: true
+  - id: agent
+    title: Coding agent
+    summary: Plans and delivers changes in the repository, and keeps the map up to date as it goes.
+    jobs:
+      - id: draft-first-map
+        situation: a product has no map yet
+        motivation: to draft one from the product's docs and code
+        outcome: the team reviews a draft instead of starting from a blank file
+        draft: true
+      - id: read-the-map
+        situation: I start a task
+        motivation: to find the stories it touches without reading the YAML by hand
+        outcome: my plan uses the right story IDs
+        draft: true
+      - id: update-the-map
+        situation: my change affects a story
+        motivation: to make the smallest valid edit to the map
+        outcome: reviewers see the map change with the code
+        draft: true
+  - id: customer
+    title: Product customer
+    summary: A signed-in user of the host product who sees the customer view.
+    jobs:
+      - id: see-whats-coming
+        situation: I wonder whether something I need is coming
+        motivation: to see the product's plans inside the product
+        outcome: I can plan around them without asking support
+        draft: true
 activities:
   - id: set-up
     title: Set up in a product
@@ -215,6 +293,9 @@ stories:
     activity: plan
     release: v0-1
     status: shipped
+    jobs:
+      - update-the-map
+      - plan-release
     summary: One YAML file per product, with strict validation, size limits and stable story IDs.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#the-map-file
@@ -226,6 +307,9 @@ stories:
     activity: review
     release: v0-1
     status: shipped
+    jobs:
+      - update-the-map
+      - review-in-context
     sources:
       - docs/ENGINEERING-OVERVIEW.md#validate
     customer:
@@ -236,6 +320,9 @@ stories:
     activity: set-up
     release: v0-1
     status: shipped
+    jobs:
+      - share-roadmap
+      - see-whats-coming
     summary: The host passes the viewer from its own session, and the library builds only what that viewer may see.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#audience-projection
@@ -247,6 +334,9 @@ stories:
     activity: explore
     release: v0-1
     status: shipped
+    jobs:
+      - answer-whats-next
+      - see-whats-coming
     sources:
       - docs/ENGINEERING-OVERVIEW.md#the-react-board
     customer:
@@ -258,6 +348,8 @@ stories:
     activity: explore
     release: v0-2
     status: shipped
+    jobs:
+      - find-the-code
     sources:
       - docs/story-map.md#link-an-engineering-overview
       - docs/ENGINEERING-OVERVIEW.md#engineering-links
@@ -269,6 +361,8 @@ stories:
     activity: plan
     release: v0-2
     status: shipped
+    jobs:
+      - draft-first-map
     sources:
       - docs/story-map.md#populate-the-first-map
     customer:
@@ -280,6 +374,8 @@ stories:
     activity: set-up
     release: v0-3
     status: shipped
+    jobs:
+      - set-up-host
     summary: Writes the starter map, the guide, an AGENTS.md section and a CI workflow, without overwriting anything.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#init
@@ -291,6 +387,8 @@ stories:
     activity: set-up
     release: v0-3
     status: shipped
+    jobs:
+      - set-up-host
     sources:
       - docs/releasing.md#release-a-version
     customer:
@@ -301,6 +399,8 @@ stories:
     activity: review
     release: v0-3
     status: shipped
+    jobs:
+      - review-in-context
     sources:
       - docs/story-map.md#validate-a-change
   - id: ESM-304
@@ -308,6 +408,9 @@ stories:
     activity: review
     release: v0-3
     status: shipped
+    jobs:
+      - review-in-context
+      - plan-release
     summary: story-map diff lists customer-facing changes first, then every story, activity and release change.
     sources:
       - docs/story-map.md#review-a-map-change
@@ -320,6 +423,8 @@ stories:
     activity: explore
     release: v0-3
     status: shipped
+    jobs:
+      - answer-whats-next
     sources:
       - docs/ENGINEERING-OVERVIEW.md#search-and-filters
     customer:
@@ -330,6 +435,9 @@ stories:
     activity: explore
     release: v0-3
     status: shipped
+    jobs:
+      - answer-whats-next
+      - set-up-host
     notes: Uses the HTML popover API. Keep the smoke test that checks every card targets a panel with both React versions.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#detail-panels-without-javascript
@@ -341,6 +449,8 @@ stories:
     activity: track
     release: v0-3
     status: shipped
+    jobs:
+      - track-progress
     sources:
       - docs/story-map.md#show-status-history
       - docs/ENGINEERING-OVERVIEW.md#status-history
@@ -353,6 +463,8 @@ stories:
     activity: review
     release: v0-4
     status: shipped
+    jobs:
+      - review-in-context
     sources:
       - docs/plans/0.4.0-enhancements.md#1-groundwork-validator-warnings
     customer:
@@ -363,6 +475,8 @@ stories:
     activity: plan
     release: v0-4
     status: shipped
+    jobs:
+      - track-progress
     sources:
       - docs/story-map.md#blocked-and-cut-stories
   - id: ESM-403
@@ -370,6 +484,8 @@ stories:
     activity: plan
     release: v0-4
     status: shipped
+    jobs:
+      - plan-release
     sources:
       - docs/story-map.md#release-notes-and-impact
     customer:
@@ -381,6 +497,8 @@ stories:
     release: v0-4
     status: cut
     statusReason: The board stays read-only. Saving edits would need the map on a hosted service, so agents update notes and impact in pull requests instead.
+    jobs:
+      - plan-release
     sources:
       - docs/plans/0.4.0-enhancements.md#not-editable-on-the-board
   - id: ESM-405
@@ -388,6 +506,8 @@ stories:
     activity: track
     release: v0-4
     status: shipped
+    jobs:
+      - track-progress
     sources:
       - docs/story-map.md#flag-stalled-stories
     customer:
@@ -398,6 +518,8 @@ stories:
     activity: track
     release: v0-4
     status: shipped
+    jobs:
+      - track-progress
     notes: Edits authored by bots are credited to whoever merged them.
     sources:
       - docs/plans/0.4.0-enhancements.md#5-last-updated-from-git
@@ -409,6 +531,9 @@ stories:
     activity: track
     release: v0-4
     status: shipped
+    jobs:
+      - track-progress
+      - answer-whats-next
     sources:
       - docs/story-map.md#merged-and-shipped
     customer:
@@ -420,6 +545,8 @@ stories:
     activity: explore
     release: v0-4-1
     status: shipped
+    jobs:
+      - answer-whats-next
     summary: The optional board.js script submits the filter form when a select changes or Enter is pressed in search, hides Apply, and returns focus to the filter that was used.
     notes: Progressive enhancement only. Without the script, the form and its Apply button work as before.
     sources:
@@ -434,6 +561,8 @@ stories:
     activity: explore
     release: v0-5
     status: shipped
+    jobs:
+      - answer-whats-next
     summary: A chevron in each release header collapses the lane to its title and story count. It works without JavaScript, and board.js remembers collapsed lanes across reloads.
     notes: CSS :has() does the collapsing. Browsers without :has() do not show the toggle, so every lane stays open.
     sources:
@@ -444,6 +573,8 @@ stories:
     activity: explore
     release: v0-5
     status: shipped
+    jobs:
+      - set-up-host
     summary: A footer shows the library version, author and licence. Internal viewers also get links to the changelog, source code, licence and author.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
@@ -454,6 +585,8 @@ stories:
     release: v0-7-6
     status: planned
     estimate: 8
+    jobs:
+      - plan-release
     sources:
       - docs/plans/0.4.0-enhancements.md#6-expandable-steps-within-activities
     customer:
@@ -465,6 +598,9 @@ stories:
     release: v0-7-6
     status: planned
     estimate: 5
+    jobs:
+      - update-the-map
+      - track-progress
     summary: A scheduled agent gathers evidence from branches, PRs and commits, and proposes corrections in a single PR.
     sources:
       - docs/plans/0.4.0-enhancements.md#7-scheduled-map-audit
@@ -476,6 +612,9 @@ stories:
     activity: plan
     release: v0-7-6
     status: merged
+    jobs:
+      - plan-release
+      - track-progress
     summary: Each story can carry an effort estimate in story points, and each release lane shows its total and how much is left to ship.
     notes: Internal only, so customers never see estimates. Cut stories leave the total, and shipped stories leave the remaining count. Points use 1, 2, 3, 5, 8 or 13.
     sources:
@@ -488,6 +627,8 @@ stories:
     release: v0-7-2
     status: merged
     estimate: 3
+    jobs:
+      - read-the-map
     summary: story-map story, stories and releases print stories and releases as text or JSON, with the board's filters and search, so agents stop reading the YAML by hand.
     sources:
       - docs/plans/native-cli.md#2-read-the-map
@@ -498,6 +639,8 @@ stories:
     release: v0-7-2
     status: merged
     estimate: 1
+    jobs:
+      - update-the-map
     summary: validate --format json returns each issue with its severity, file, line, YAML path and message, for agents and scripts.
     sources:
       - docs/plans/native-cli.md#3-validation-as-json
@@ -508,6 +651,8 @@ stories:
     release: v0-7-5
     status: planned
     estimate: 5
+    jobs:
+      - read-the-map
     summary: story-map evidence reports the branches, default-branch commits, plans, tests and broken sources that mention each story, and suggests a status without changing anything.
     notes: The deterministic evidence step of the scheduled audit (ESM-502), built first so agents can use it on its own.
     sources:
@@ -518,6 +663,8 @@ stories:
     release: v0-7-2
     status: merged
     estimate: 5
+    jobs:
+      - update-the-map
     summary: story-map edit and add change statuses, releases, sources and impact as named operations, printing the diff and validation as a dry run until --write.
     notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft.
     sources:
@@ -529,6 +676,8 @@ stories:
     release: v0-7-5
     status: planned
     estimate: 5
+    jobs:
+      - update-the-map
     summary: story-map claim records that an agent is on a story as a Git ref on the remote, so a second agent is told before it starts the same work.
     notes: Opt-in, for teams running several agents. Never written to the map file.
     sources:
@@ -539,6 +688,9 @@ stories:
     release: v0-7-2
     status: merged
     estimate: 2
+    jobs:
+      - set-up-host
+      - draft-first-map
     summary: story-map preview serves the repository's own map as a board on loopback, with internal and customer views, so a team sees its first map before wiring up a host route.
     notes: Reuses the demo server, moved into the package. Loopback only, for one person checking a map, never for deploying.
     sources:
@@ -550,6 +702,9 @@ stories:
     release: v0-7-5
     status: planned
     estimate: 2
+    jobs:
+      - track-progress
+      - update-the-map
     summary: story-map evidence --shipped-tags suggests shipped for merged stories whose work is in a matching release tag, so stories stop waiting in merged after a release goes out.
     notes: Opt-in, because many products deploy without tags or ship behind feature flags. Suggests only, like the rest of evidence.
     sources:
@@ -559,19 +714,27 @@ stories:
     title: Define personas in the map file
     activity: plan
     release: v0-7-3
-    status: planned
+    status: merged
     estimate: 5
+    jobs:
+      - plan-release
+      - update-the-map
     summary: The map lists the people the product serves and their jobs to be done as structured job statements, and each story names the jobs it serves. Validate checks the references and warns about jobs with no stories, and diff reports persona and job changes.
-    notes: Also adds --add-job and --remove-job to story-map edit (ESM-744), so agents can tag the existing stories.
+    notes: Also adds --add-job, --remove-job, --add-persona and --remove-persona to story-map edit, and --job and --persona to story-map add (ESM-744), so agents can tag stories. This repository's personas and jobs are drafts until a person confirms them.
     sources:
       - docs/plans/personas.md#1-define-personas-in-the-map-file
       - docs/plans/personas.md#ui-mockup
+      - src/personas.ts
+      - test/personas.test.mjs
+      - docs/story-map.md#personas-and-jobs-to-be-done
   - id: ESM-902
     title: Show who a story is for
     activity: explore
     release: v0-7-3
     status: planned
     estimate: 3
+    jobs:
+      - answer-whats-next
     summary: Cards and activities show persona avatars, and the story panel gains a For row and the job statements the story serves.
     sources:
       - docs/plans/personas.md#2-show-who-a-story-is-for
@@ -582,6 +745,8 @@ stories:
     release: v0-7-3
     status: planned
     estimate: 2
+    jobs:
+      - answer-whats-next
     summary: A persona strip and menu narrow the board to the stories for one or more personas, and links in the persona panel narrow it to one job, through repeated persona and job parameters.
     sources:
       - docs/plans/personas.md#3-filter-the-board-by-persona
@@ -592,6 +757,8 @@ stories:
     release: v0-7-3
     status: planned
     estimate: 3
+    jobs:
+      - plan-release
     summary: A persona panel shows the persona's summary and jobs to be done, with the stories that serve each job and the jobs that have none.
     sources:
       - docs/plans/personas.md#4-open-a-persona-to-see-jobs-and-coverage
@@ -602,6 +769,9 @@ stories:
     release: v0-7-3
     status: planned
     estimate: 2
+    jobs:
+      - share-roadmap
+      - see-whats-coming
     summary: Customers see a For line on stories whose personas have approved customer copy. Internal personas and IDs never reach them.
     sources:
       - docs/plans/personas.md#5-share-approved-personas-with-customers
@@ -612,6 +782,9 @@ stories:
     release: v0-7-3
     status: planned
     estimate: 2
+    jobs:
+      - read-the-map
+      - plan-in-other-tools
     summary: CSV, JSON and Visio exports carry each story's personas and jobs, and the JSON export lists the map's personas with their job statements.
     notes: story-map story and stories (ESM-741) use the same story shape, so they show personas and jobs too, and stories gains --persona and --job.
     sources:
@@ -622,6 +795,8 @@ stories:
     activity: explore
     release: v0-7-0
     status: shipped
+    jobs:
+      - find-the-code
     summary: Tests that name a story ID are indexed at build time, and internal viewers see them in the story panel, each linking to its line.
     notes: Tests point to stories, so the map is never edited to list them. A static scan, with no test code run. validate --tests flags tags for unknown stories. Pass and fail results are a possible follow-up.
     sources:
@@ -635,6 +810,9 @@ stories:
     activity: explore
     release: v0-7-0
     status: shipped
+    jobs:
+      - find-the-code
+      - track-progress
     summary: Internal cards show a flask and the number of tagged tests between the status and the last change, read as “7 tests”, so a column shows at a glance which stories are covered.
     notes: Counts listed tests and those the index left out. Nothing for stories without tests, or for customers. Chosen from four mocked-up options; a “No tests” flag on in-progress and merged stories was the runner-up.
     sources:
@@ -646,6 +824,8 @@ stories:
     release: v0-7-4
     status: planned
     estimate: 3
+    jobs:
+      - find-the-code
     summary: Each line in a story's History, and its last update, links to the pull request and commit that made the change, when the host passes its repository URL.
     sources:
       - docs/plans/story-changes.md#1-record-pull-requests-in-the-history
@@ -655,6 +835,8 @@ stories:
     release: v0-7-4
     status: planned
     estimate: 8
+    jobs:
+      - find-the-code
     summary: story-map history finds merged pull requests and commits whose title, message or branch names a story ID, and internal viewers see them in a Changes section of the story panel.
     notes: Changes point to stories, so the map is never edited to list them. Merged work only; open pull requests from the GitHub API are a possible follow-up.
     sources:
@@ -665,6 +847,8 @@ stories:
     release: v0-7-4
     status: planned
     estimate: 3
+    jobs:
+      - answer-whats-next
     summary: Each story and release panel has a Copy link control, and following the link opens the board on that panel, even when the filters would hide the story.
     notes: Links use the story or release ID, which is already stable. Works without JavaScript by scrolling to the card; board.js opens the panel and copies the link. On customer boards, IDs outside the customer view are ignored.
     sources:
@@ -675,6 +859,8 @@ stories:
     activity: track
     release: v0-6-1
     status: shipped
+    jobs:
+      - track-progress
     summary: story-map history truncates author and merger names to the history format's 120-character limit, so parseStoryMapHistory always accepts what it writes.
     sources:
       - docs/plans/0.6.0-review-fixes.md#2-history-names-that-fit-the-history-format
@@ -683,6 +869,9 @@ stories:
     activity: track
     release: v0-6-1
     status: shipped
+    jobs:
+      - review-in-context
+      - track-progress
     summary: Past versions of the map are read leniently with a migration step, history reports versions it skipped, and diff compares an older-format base instead of failing.
     sources:
       - docs/plans/0.6.0-review-fixes.md#3-history-and-diff-that-survive-format-changes
@@ -692,6 +881,8 @@ stories:
     release: v0-6-1
     status: cut
     statusReason: Out of scope for this release. The customer view keeps its positional IDs, so customers see no internal IDs.
+    jobs:
+      - share-roadmap
     summary: Would have kept the real activity, release and story IDs in the customer view, so a collapsed lane stays on the same release when other releases become visible.
     sources:
       - docs/plans/0.6.0-review-fixes.md#4-real-ids-in-the-customer-view-out-of-scope
@@ -701,6 +892,8 @@ stories:
     release: v0-6-1
     status: cut
     statusReason: The library is set up mainly for internal use, so the default engineer and super-admin rule stays. The risk is documented in the engineering overview instead.
+    jobs:
+      - set-up-host
     summary: Would have warned when the default engineer and super-admin rule was used, then required canViewInternal.
     sources:
       - docs/plans/0.6.0-review-fixes.md#5-the-default-rule-for-who-sees-the-internal-map-out-of-scope
@@ -710,6 +903,8 @@ stories:
     activity: set-up
     release: v0-6-1
     status: shipped
+    jobs:
+      - set-up-host
     summary: getStoryMapPage projects for the viewer and then filters, and storyMapResponseHeaders gives the no-store headers, so the safe order is the easy one. Documents page sizes for large maps.
     sources:
       - docs/plans/0.6.0-review-fixes.md#6-one-call-that-projects-and-filters
@@ -718,6 +913,8 @@ stories:
     activity: review
     release: v0-6-1
     status: shipped
+    jobs:
+      - update-the-map
     summary: Stop options taking the next flag as their value, and refuse sources that reach outside the repository through a symbolic link.
     sources:
       - docs/plans/0.6.0-review-fixes.md#7-cli-and-source-check-fixes
@@ -726,6 +923,8 @@ stories:
     activity: review
     release: v0-6-1
     status: shipped
+    jobs:
+      - review-in-context
     summary: The diff escapes @mentions and #references in map text, so pasting the summary into a PR does not notify people or link issues.
     sources:
       - docs/plans/0.6.0-review-fixes.md#8-diff-summaries-that-do-not-notify-people
@@ -734,6 +933,8 @@ stories:
     activity: explore
     release: v0-6-1
     status: shipped
+    jobs:
+      - set-up-host
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
       - docs/plans/0.6.0-review-fixes.md#9-a-board-that-survives-bad-date-settings
@@ -742,6 +943,8 @@ stories:
     activity: track
     release: v0-6-1
     status: shipped
+    jobs:
+      - answer-whats-next
     summary: The internal board's header says when the map was last updated, by whom, and which releases most recent changes were in, instead of a fixed summary.
     sources:
       - docs/story-map.md#show-status-history
@@ -750,6 +953,8 @@ stories:
     activity: review
     release: v0-6-1
     status: shipped
+    jobs:
+      - review-in-context
     summary: Heading anchors are read in linear time, and Markdown files over 5 MB are not read for anchors, so a crafted heading in a PR cannot stall CI.
     sources:
       - docs/plans/0.6.0-review-fixes.md#11-source-checks-that-stay-fast
@@ -759,6 +964,8 @@ stories:
     activity: explore
     release: v0-7-0
     status: merged
+    jobs:
+      - plan-in-other-tools
     summary: Import a hand-made Visio file and CSV into Miro, Lucidchart and LibreOffice before building the export, and record what survives.
     sources:
       - docs/plans/export-to-external-tools.md#1-check-that-miro-and-lucidchart-import-a-test-file
@@ -767,6 +974,8 @@ stories:
     activity: explore
     release: v0-7-0
     status: shipped
+    jobs:
+      - plan-in-other-tools
     summary: storyMapToVsdx writes the whole internal map as a .vsdx file, with collapsed lanes, release notes and impact, and at most 200 stories.
     notes: Hand-rolled stored zip, no new dependency. Refuses customer views. Includes the LibreOffice check in CI.
     sources:
@@ -777,6 +986,8 @@ stories:
     activity: explore
     release: v0-7-0
     status: shipped
+    jobs:
+      - plan-in-other-tools
     summary: story-map export writes a Visio or CSV file from the YAML file, optionally using history to choose the most recent stories.
     sources:
       - docs/plans/export-to-external-tools.md#3-export-from-the-command-line
@@ -785,6 +996,8 @@ stories:
     activity: explore
     release: v0-7-0
     status: shipped
+    jobs:
+      - plan-in-other-tools
     summary: Internal viewers get Export links on the board when the host sets exportHref, and lanes they collapsed stay collapsed in the file.
     sources:
       - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
@@ -793,6 +1006,8 @@ stories:
     activity: explore
     release: v0-7-0
     status: shipped
+    jobs:
+      - plan-in-other-tools
     summary: One row per story with its activity, release, ID and title, safe to open in spreadsheets and importable into Miro and Lucidchart.
     sources:
       - docs/plans/export-to-external-tools.md#5-export-the-map-as-csv
@@ -802,6 +1017,8 @@ stories:
     activity: explore
     release: v0-7-1
     status: merged
+    jobs:
+      - read-the-map
     summary: storyMapToJson writes every internal story with its notes, sources, history and tagged tests, plus notes on where the data came from and what is left out, so an agent can review stories and tests and suggest product work.
     notes: Every story and every release by default, unlike Visio and CSV, and collapsed lanes are ignored. Available from the CLI with --tests-index, from storyMapExportResponse and from the board's Export menu.
     sources:
@@ -811,6 +1028,9 @@ stories:
     activity: explore
     release: v0-7-0
     status: shipped
+    jobs:
+      - answer-whats-next
+      - track-progress
     summary: The status filter is a list of checkboxes with the active statuses ticked by default, so viewers can show any mix of statuses, including stalled stories, without an All option.
     notes: The URL repeats status once per choice, and status=all and single-status links still work. view.filter.status becomes an array, which is a breaking change for hosts that read it.
     sources:

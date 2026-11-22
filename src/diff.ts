@@ -1,3 +1,4 @@
+import { jobStatement, storyMapJobs } from "./personas.js";
 import { defaultStalledAfterWeeks, type StoryMapDocument } from "./schema.js";
 import { customerStatus, isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js";
 
@@ -26,6 +27,10 @@ export interface StoryUpdate extends StoryDiffRef {
   activity?: Change<string>;
   /** Release titles before and after a move. */
   release?: Change<string>;
+  /** Job IDs before and after, in the story's order. */
+  jobs?: Change<string[]>;
+  /** The persona IDs the story lists itself, before and after. Personas that come from its jobs are not repeated here. */
+  personas?: Change<string[]>;
   /** Story points before and after. Absent on one side when the story had no estimate. */
   estimate?: { from?: number; to?: number };
   /** Other fields that changed, such as `summary`, `notes` or `sources`. */
@@ -60,6 +65,26 @@ export interface GroupChanges {
   customerLabelChanged: StoryDiffRef[];
 }
 
+/** A job to be done, named by its ID, its persona's title and its statement. */
+export interface JobDiffRef {
+  id: string;
+  /** Title of the persona that owns the job. */
+  persona: string;
+  /** “When …, I want …, so ….” */
+  statement: string;
+}
+
+export interface JobChanges {
+  added: JobDiffRef[];
+  removed: JobDiffRef[];
+  /** Jobs whose statement changed, or that were marked as drafts again. */
+  reworded: JobDiffRef[];
+  /** Jobs that moved to another persona. `from` is the earlier persona's title. */
+  moved: (JobDiffRef & { from: string })[];
+  /** Drafts a person confirmed by removing `draft: true`. */
+  confirmed: JobDiffRef[];
+}
+
 /** Changes to a release’s notes or expected impact. Impact items are matched by `metric`. */
 export interface ReleaseDetailChange extends StoryDiffRef {
   notes?: "added" | "changed" | "removed";
@@ -90,6 +115,9 @@ export interface StoryMapDiff {
   stories: { added: StoryAddition[]; removed: StoryDiffRef[]; updated: StoryUpdate[] };
   activities: GroupChanges;
   releases: GroupChanges;
+  /** Personas added, removed, renamed or reordered. Reordering changes their colours on the board. */
+  personas: GroupChanges;
+  jobs: JobChanges;
   /** Releases whose notes or expected impact changed, including new releases that have them. */
   releaseDetails: ReleaseDetailChange[];
   /** The stalled threshold in weeks, including the default of 4 when the map does not set it. 0 is off. */
@@ -102,7 +130,7 @@ function customerVisible(map: StoryMapDocument | null, story: Story | undefined)
   return !!(map && story?.customer && isActiveStatus(story.status) && map.visibility === "all-users" && map.customer);
 }
 
-function groupChanges(before: Group[], after: Group[]): GroupChanges {
+function groupChanges(before: readonly Omit<Group, "summary">[], after: readonly Omit<Group, "summary">[]): GroupChanges {
   const old = new Map(before.map(group => [group.id, group]));
   const current = new Map(after.map(group => [group.id, group]));
   const kept = after.filter(group => old.has(group.id)).map(group => group.id);
@@ -118,6 +146,28 @@ function groupChanges(before: Group[], after: Group[]): GroupChanges {
     customerLabelChanged: after.flatMap(({ id, title, customer }) =>
       old.has(id) && !same(old.get(id)!.customer, customer) ? [{ id, title }] : []),
   };
+}
+
+function jobChanges(before: StoryMapDocument, after: StoryMapDocument): JobChanges {
+  const old = storyMapJobs(before);
+  const current = storyMapJobs(after);
+  const ref = ({ job, persona }: { job: Parameters<typeof jobStatement>[0] & { id: string }; persona: { title: string } }): JobDiffRef =>
+    ({ id: job.id, persona: persona.title, statement: jobStatement(job) });
+  const changes: JobChanges = { added: [], removed: [], reworded: [], moved: [], confirmed: [] };
+  for (const [id, owner] of current) {
+    const previous = old.get(id);
+    if (!previous) {
+      changes.added.push(ref(owner));
+      continue;
+    }
+    if (previous.persona.id !== owner.persona.id) changes.moved.push({ ...ref(owner), from: previous.persona.title });
+    if (jobStatement(previous.job) !== jobStatement(owner.job) || (!previous.job.draft && owner.job.draft)) changes.reworded.push(ref(owner));
+    if (previous.job.draft && !owner.job.draft) changes.confirmed.push(ref(owner));
+  }
+  for (const [id, owner] of old) {
+    if (!current.has(id)) changes.removed.push(ref(owner));
+  }
+  return changes;
 }
 
 function releaseDetailChange(previous: Release | undefined, release: Release): ReleaseDetailChange | undefined {
@@ -195,10 +245,13 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
         ...(story.estimate !== undefined ? { to: story.estimate } : {}),
       };
     }
+    for (const field of ["jobs", "personas"] as const) {
+      if (!same(previous[field] ?? [], story[field] ?? [])) update[field] = { from: previous[field] ?? [], to: story[field] ?? [] };
+    }
     for (const field of ["summary", "statusReason", "notes", "sources", "customer", "updatedBy"] as const) {
       if (!same(previous[field], story[field])) update.details.push(field);
     }
-    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.details.length) {
+    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.jobs || update.personas || update.details.length) {
       updated.push(update);
     }
   }
@@ -251,6 +304,8 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     stories: { added, removed, updated },
     activities: groupChanges(base.activities, after.activities),
     releases: groupChanges(base.releases, after.releases),
+    personas: groupChanges(base.personas ?? [], after.personas ?? []),
+    jobs: jobChanges(base, after),
     releaseDetails: after.releases.flatMap(release => {
       const change = releaseDetailChange(base.releases.find(previous => previous.id === release.id), release);
       return change ? [change] : [];
@@ -264,7 +319,8 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     changes.added.length || changes.removed.length || changes.renamed.length || changes.reordered || changes.customerLabelChanged.length;
   return !!(diff.created || diff.visibility || diff.titleChange || diff.customerCopyChanged || diff.customer.length || diff.blockedOrCut.length
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
-    || groups(diff.activities) || groups(diff.releases) || diff.releaseDetails.length || diff.stalledAfterWeeks);
+    || groups(diff.activities) || groups(diff.releases) || groups(diff.personas) || Object.values(diff.jobs).some(list => list.length)
+    || diff.releaseDetails.length || diff.stalledAfterWeeks);
 }
 
 /**
@@ -352,6 +408,9 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     if (update.release) changes.push(`Release: ${text(update.release.from)} → ${text(update.release.to)}`);
     if (update.titleChange) changes.push(`Renamed from “${text(update.titleChange.from)}”`);
     if (update.estimate) changes.push(`Estimate: ${update.estimate.from ?? "none"} → ${update.estimate.to ?? "none"}`);
+    const ids = (list: string[]) => list.map(code).join(", ") || "none";
+    if (update.jobs) changes.push(`Jobs: ${ids(update.jobs.from)} → ${ids(update.jobs.to)}`);
+    if (update.personas) changes.push(`Personas: ${ids(update.personas.from)} → ${ids(update.personas.to)}`);
     if (update.details.length) changes.push(`Edited ${update.details.map(field => `\`${field}\``).join(", ")}`);
     rows.push([story(update), changes.join("<br>")]);
   }
@@ -383,11 +442,22 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     ...changes.renamed.map(group => `- Renamed ${label} \`${group.id}\` from “${text(group.from)}” to “${text(group.title)}”`),
     ...changes.removed.map(group => `- Removed ${label} ${story(group)}`),
     ...changes.customerLabelChanged.map(group => `- Changed the customer-facing label of ${label} ${story(group)}`),
-    ...(changes.reordered ? [`- Reordered the ${label === "activity" ? "activities" : "releases"}`] : []),
+    ...(changes.reordered ? [`- Reordered the ${label === "activity" ? "activities" : `${label}s`}`] : []),
   ];
   const structure = [...groupLines("activity", diff.activities), ...groupLines("release", diff.releases)];
   if (diff.titleChange) structure.unshift(`- Renamed the map from “${text(diff.titleChange.from)}” to “${text(diff.titleChange.to)}”`);
   if (structure.length) lines.push("### Activities and releases", "", ...structure, "");
+
+  const job = (ref: JobDiffRef) => `${code(ref.id)} (${text(ref.persona)})`;
+  const personas = [
+    ...groupLines("persona", diff.personas),
+    ...diff.jobs.added.map(ref => `- Added job ${job(ref)}: ${text(ref.statement)}`),
+    ...diff.jobs.reworded.map(ref => `- Reworded job ${job(ref)}: ${text(ref.statement)}`),
+    ...diff.jobs.moved.map(ref => `- Moved job ${code(ref.id)} from ${text(ref.from)} to ${text(ref.persona)}`),
+    ...diff.jobs.confirmed.map(ref => `- Confirmed drafted job ${job(ref)}`),
+    ...diff.jobs.removed.map(ref => `- Removed job ${job(ref)}`),
+  ];
+  if (personas.length) lines.push("### Personas and jobs", "", ...personas, "");
 
   if (diff.stalledAfterWeeks) {
     const { from, to } = diff.stalledAfterWeeks;
