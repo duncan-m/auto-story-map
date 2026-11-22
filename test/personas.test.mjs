@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import fc from "fast-check";
 import { createElement } from "react";
@@ -17,6 +21,9 @@ import {
   personaInitials,
   proposeStoryMapEdit,
   readStoryMapFilters,
+  storyMapToCsv,
+  storyMapToJson,
+  storyMapToVsdx,
   storyMapWarnings,
   storyPersonas,
   StoryMapValidationError,
@@ -651,4 +658,118 @@ test("ESM-905: customers get the persona filter with two or more personas, by pu
   assert.doesNotMatch(html, /esm-avatar|<nav class="esm-personas"/, "no avatars or strip for customers");
   assert.match(html, /Showing 2 of 4 stories\./);
   assert.match(panelFor(html, "Find material prices"), /<dt>For<\/dt><dd>Builders and Finance teams<\/dd>/);
+});
+
+/** Parses RFC 4180 CSV, as written by storyMapToCsv, into rows of fields. */
+function csvRows(text) {
+  assert.ok(text.startsWith("\uFEFF"));
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  for (let index = 1; index < text.length; index++) {
+    const char = text[index];
+    if (quoted) {
+      if (char === '"' && text[index + 1] === '"') { field += '"'; index++; }
+      else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ",") { row.push(field); field = ""; }
+    else if (char === "\r" && text[index + 1] === "\n") { row.push(field); rows.push(row); row = []; field = ""; index++; }
+    else field += char;
+  }
+  return rows;
+}
+
+test("ESM-906: the CSV export adds Personas and Jobs columns when the map has personas", () => {
+  const rows = csvRows(storyMapToCsv(getStoryMapForViewer(parse(tagged()), engineer)));
+  assert.deepEqual(rows[0], ["Activity", "Release", "ID", "Title", "Estimate", "Personas", "Jobs"]);
+  const row = id => rows.find(item => item[2] === id);
+  assert.deepEqual(row("BUILDER-102").slice(5), ["Builder; Finance reviewer", "price-materials; approve-estimate"]);
+  assert.deepEqual(row("BUILDER-103").slice(5), ["Builder", "send-estimate"]);
+  assert.deepEqual(row("FINANCE-202").slice(5), ["", ""]);
+  assert.ok(rows.every(item => item.length === 7));
+
+  // Collapsed lanes keep the column count.
+  const collapsed = csvRows(storyMapToCsv(getStoryMapForViewer(parse(tagged()), engineer), { collapsedReleases: ["builder-mvp"] }));
+  assert.deepEqual(collapsed.find(item => item[1] === "Builder workflow").slice(5), ["", ""]);
+
+  // Maps without personas keep the old columns.
+  assert.deepEqual(csvRows(storyMapToCsv(getStoryMapForViewer(plain, engineer)))[0], ["Activity", "Release", "ID", "Title", "Estimate"]);
+});
+
+test("ESM-906: the CSV export escapes persona titles", () => {
+  const map = parse(tagged(document => {
+    document.personas[0].title = 'Builder, "site" lead';
+    document.personas[1].title = "=Finance";
+  }));
+  const csv = storyMapToCsv(getStoryMapForViewer(map, engineer));
+  assert.match(csv, /,"Builder, ""site"" lead; =Finance",/);
+  assert.deepEqual(csvRows(csv).find(item => item[2] === "BUILDER-102")[5], 'Builder, "site" lead; =Finance');
+  // A title that starts the field is guarded against formulas.
+  assert.equal(csvRows(csv).find(item => item[2] === "FINANCE-201")[5], "'=Finance");
+});
+
+test("ESM-906: the JSON export lists personas with job statements and coverage, and each story's personas and jobs", () => {
+  const json = JSON.parse(storyMapToJson(getStoryMapForViewer(parse(tagged()), engineer), { now: new Date("2026-11-20T09:00:00Z") }));
+  assert.deepEqual(json.personas.map(({ id, title, activeStories }) => ({ id, title, activeStories })), [
+    { id: "builder", title: "Builder", activeStories: 3 },
+    { id: "finance", title: "Finance reviewer", activeStories: 2 },
+  ]);
+  const [price, send] = json.personas[0].jobs;
+  assert.equal(price.statement, "When I am pricing a project, I want to use the catalogue prices, so my estimate matches what finance pays.");
+  assert.equal(price.activeStories, 2);
+  assert.deepEqual(price.storyCounts, { planned: 1, "in-progress": 1, merged: 0, shipped: 0, blocked: 0, cut: 0 });
+  assert.equal(send.draft, true);
+  assert.ok(!("initials" in json.personas[0]) && !("colour" in json.personas[0]));
+  const story = json.stories.find(item => item.id === "BUILDER-102");
+  assert.deepEqual([story.personas, story.jobs], [["builder", "finance"], ["price-materials", "approve-estimate"]]);
+  assert.ok(json.provenance.notes.some(note => /Jobs with draft: true/.test(note)));
+
+  // A job with no active stories counts 0, so an agent can find the gap; a cut story does not count.
+  const gap = JSON.parse(storyMapToJson(getStoryMapForViewer(parse(tagged(document => {
+    document.stories.find(item => item.id === "BUILDER-103").jobs = ["price-materials"];
+    document.stories.find(item => item.id === "FINANCE-202").jobs = ["send-estimate"];
+  })), engineer)));
+  assert.equal(gap.personas[0].jobs.find(job => job.id === "send-estimate").activeStories, 0);
+
+  // Maps without personas have no personas field or persona notes.
+  const none = JSON.parse(storyMapToJson(getStoryMapForViewer(plain, engineer)));
+  assert.ok(!("personas" in none));
+  assert.ok(!none.provenance.notes.some(note => /persona|Jobs with/i.test(note)));
+});
+
+test("ESM-906: Visio cards carry Personas and Jobs shape data", () => {
+  const xml = Buffer.from(storyMapToVsdx(getStoryMapForViewer(parse(tagged()), engineer), { now: new Date("2026-11-20T09:00:00Z") })).toString("utf8");
+  assert.match(xml, /<Cell N="Value" V="Builder; Finance reviewer" U="STR"\/><Cell N="Label" V="Personas"\/>/);
+  assert.match(xml, /<Cell N="Value" V="price-materials; approve-estimate" U="STR"\/><Cell N="Label" V="Jobs"\/>/);
+  const none = Buffer.from(storyMapToVsdx(getStoryMapForViewer(plain, engineer))).toString("utf8");
+  assert.doesNotMatch(none, /V="Personas"|V="Jobs"/);
+});
+
+const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+
+test("ESM-906: story-map story shows personas and jobs, and stories filters by them", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "story-map-personas-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const mapPath = join(directory, "map.yaml");
+  await writeFile(mapPath, stringify(tagged()));
+  const run = (...args) => spawnSync(process.execPath, [cli, ...args, "--map", mapPath], { encoding: "utf8" });
+
+  const story = run("story", "BUILDER-103");
+  assert.equal(story.status, 0, story.stderr);
+  assert.match(story.stdout, /  For:       builder \(Builder\)\n  Jobs:\n    send-estimate  When my estimate is ready, I want to send it for approval in one step, so I do not chase finance by email\. \(Builder\) \[draft\]\n/);
+  const json = JSON.parse(run("story", "BUILDER-102", "--format", "json").stdout);
+  assert.deepEqual(json.stories[0].personas, ["builder", "finance"]);
+
+  const ids = result => result.stdout.trim().split("\n").map(line => line.split(/\s+/)[0]);
+  assert.deepEqual(ids(run("stories", "--persona", "finance")), ["BUILDER-102", "FINANCE-201"]);
+  assert.deepEqual(ids(run("stories", "--job", "price-materials,send-estimate")), ["BUILDER-101", "BUILDER-102", "BUILDER-103"]);
+  assert.deepEqual(ids(run("stories", "--persona", "finance", "--job", "price-materials")), ["BUILDER-102"]);
+  const filtered = JSON.parse(run("stories", "--persona", "finance", "--format", "json").stdout);
+  assert.deepEqual(filtered.filter.persona, ["finance"]);
+
+  for (const [flag, id] of [["--persona", "nobody"], ["--job", "invent-job"]]) {
+    const result = run("stories", flag, id);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, new RegExp(`${flag} ${id}: no ${flag.slice(2)} with this ID`));
+  }
 });

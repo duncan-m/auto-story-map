@@ -1,0 +1,62 @@
+﻿Activity,Release,ID,Title,Estimate,Personas,Jobs
+Set up in a product,0.1.0: First release,ESM-103,Show internal and customer views of the same map,,Product manager; Product customer,share-roadmap; see-whats-coming
+Plan the map,0.1.0: First release,ESM-101,Keep the map in a validated YAML file,,Coding agent; Product manager,update-the-map; plan-release
+Review changes,0.1.0: First release,ESM-102,Validate the map from the command line,,Coding agent; Engineer,update-the-map; review-in-context
+Explore the board,0.1.0: First release,ESM-104,Render the map as a board in the product,,Product manager; Product customer,answer-whats-next; see-whats-coming
+Plan the map,0.2.0: Engineering links,ESM-202,Give agents a first-run workflow to populate the map,,Coding agent,draft-first-map
+Explore the board,0.2.0: Engineering links,ESM-201,Link stories to their engineering overview,,Engineer,find-the-code
+Set up in a product,"0.3.0: Board, search and history",ESM-301,Set up a host repository with story-map init,,Engineer,set-up-host
+Set up in a product,"0.3.0: Board, search and history",ESM-302,Publish the package to npm with provenance,,Engineer,set-up-host
+Review changes,"0.3.0: Board, search and history",ESM-303,Report validation problems by line on the PR diff,,Engineer,review-in-context
+Review changes,"0.3.0: Board, search and history",ESM-304,Summarise map changes in pull requests,,Engineer; Product manager,review-in-context; plan-release
+Explore the board,"0.3.0: Board, search and history",ESM-305,Search and filter the board,,Product manager,answer-whats-next
+Explore the board,"0.3.0: Board, search and history",ESM-306,Open story details without client-side JavaScript,,Product manager; Engineer,answer-whats-next; set-up-host
+Track delivery,"0.3.0: Board, search and history",ESM-307,Show status history from Git,,Product manager,track-progress
+Plan the map,0.4.0: Delivery tracking,ESM-402,Record blocked and cut stories with a reason,,Product manager,track-progress
+Plan the map,0.4.0: Delivery tracking,ESM-403,Record release notes and expected impact,,Product manager,plan-release
+Review changes,0.4.0: Delivery tracking,ESM-401,Warn about map problems without failing CI,,Engineer,review-in-context
+Explore the board,0.4.0: Delivery tracking,ESM-404,Edit release notes and impact on the board,,Product manager,plan-release
+Track delivery,0.4.0: Delivery tracking,ESM-405,Flag stories that stay in progress too long,,Product manager,track-progress
+Track delivery,0.4.0: Delivery tracking,ESM-406,"Show who last updated a story, from Git",,Product manager,track-progress
+Track delivery,0.4.0: Delivery tracking,ESM-407,Separate merged work from shipped work,,Product manager,track-progress; answer-whats-next
+Explore the board,0.4.1: Filters apply as you choose,ESM-411,Apply filters as soon as they change,,Product manager,answer-whats-next
+Explore the board,0.5.0: Collapsible releases and version footer,ESM-412,Collapse release lanes,,Product manager,answer-whats-next
+Explore the board,0.5.0: Collapsible releases and version footer,ESM-413,Show the running version on the board,,Engineer,set-up-host
+Set up in a product,0.6.1: Review and security fixes,ESM-604,Make hosts choose who sees the internal map,,Engineer,set-up-host
+Set up in a product,0.6.1: Review and security fixes,ESM-605,Project and filter the map in one call,,Engineer,set-up-host
+Review changes,0.6.1: Review and security fixes,ESM-606,Fix CLI and source check edge cases,,Coding agent,update-the-map
+Review changes,0.6.1: Review and security fixes,ESM-607,Stop diff summaries notifying people,,Engineer,review-in-context
+Review changes,0.6.1: Review and security fixes,ESM-610,Keep source checks fast on crafted headings,,Engineer,review-in-context
+Explore the board,0.6.1: Review and security fixes,ESM-603,Use real IDs in the customer view,,Product manager,share-roadmap
+Explore the board,0.6.1: Review and security fixes,ESM-608,Keep the board working with bad date settings,,Engineer,set-up-host
+Track delivery,0.6.1: Review and security fixes,ESM-601,Keep long Git names from breaking the history file,,Product manager,track-progress
+Track delivery,0.6.1: Review and security fixes,ESM-602,Keep history and diffs working when the map format changes,,Engineer; Product manager,review-in-context; track-progress
+Track delivery,0.6.1: Review and security fixes,ESM-609,See when the map last changed and where,,Product manager,answer-whats-next
+Explore the board,"0.7.0: Export, test links and status choices",ESM-801,Show a story's tests in its panel,,Engineer,find-the-code
+Explore the board,"0.7.0: Export, test links and status choices",ESM-802,Show how many tests a story has on its card,,Engineer; Product manager,find-the-code; track-progress
+Explore the board,"0.7.0: Export, test links and status choices",ESM-701,Check that Miro and Lucidchart import a test file,,Product manager,plan-in-other-tools
+Explore the board,"0.7.0: Export, test links and status choices",ESM-702,Export the internal map as a Visio file,,Product manager,plan-in-other-tools
+Explore the board,"0.7.0: Export, test links and status choices",ESM-703,Export the map from the command line,,Product manager,plan-in-other-tools
+Explore the board,"0.7.0: Export, test links and status choices",ESM-704,Download the export from the board,,Product manager,plan-in-other-tools
+Explore the board,"0.7.0: Export, test links and status choices",ESM-705,Export the map as CSV,,Product manager,plan-in-other-tools
+Explore the board,"0.7.0: Export, test links and status choices",ESM-414,Choose several statuses in the filter,,Product manager,answer-whats-next; track-progress
+Explore the board,0.7.1: JSON export for agents,ESM-706,Export the map as JSON for agents,,Coding agent,read-the-map
+Set up in a product,"0.7.2: CLI to read, edit and preview the map",ESM-746,Preview the map locally before adding the board,2,Engineer; Coding agent,set-up-host; draft-first-map
+Plan the map,"0.7.2: CLI to read, edit and preview the map",ESM-744,Propose map edits from the command line,5,Coding agent,update-the-map
+Review changes,"0.7.2: CLI to read, edit and preview the map",ESM-742,Print validation results as JSON,1,Coding agent,update-the-map
+Explore the board,"0.7.2: CLI to read, edit and preview the map",ESM-741,Read the map from the command line,3,Coding agent,read-the-map
+Plan the map,0.7.3: Personas,ESM-901,Define personas in the map file,5,Product manager; Coding agent,plan-release; update-the-map
+Explore the board,0.7.3: Personas,ESM-902,Show who a story is for,3,Product manager,answer-whats-next
+Explore the board,0.7.3: Personas,ESM-903,Filter the board by persona,2,Product manager,answer-whats-next
+Explore the board,0.7.3: Personas,ESM-904,Open a persona to see jobs and coverage,3,Product manager,plan-release
+Explore the board,0.7.3: Personas,ESM-905,Share approved personas with customers,2,Product manager; Product customer,share-roadmap; see-whats-coming
+Explore the board,0.7.3: Personas,ESM-906,Include personas in exports,2,Coding agent; Product manager,read-the-map; plan-in-other-tools
+Explore the board,0.7.4: Links to code and stories,ESM-805,Link to a story or release with a permalink,3,Product manager,answer-whats-next
+Track delivery,0.7.4: Links to code and stories,ESM-803,Link history lines to their pull request and commit,3,Engineer,find-the-code
+Track delivery,0.7.4: Links to code and stories,ESM-804,Show the pull requests and commits that name a story,8,Engineer,find-the-code
+Plan the map,0.7.5: Evidence and claims for agents,ESM-745,Claim stories so several agents do not clash,5,Coding agent,update-the-map
+Review changes,0.7.5: Evidence and claims for agents,ESM-743,Look up the evidence for a story,5,Coding agent,read-the-map
+Track delivery,0.7.5: Evidence and claims for agents,ESM-747,Suggest shipped from release tags,2,Product manager; Coding agent,track-progress; update-the-map
+Plan the map,0.7.6: PM improvements,ESM-503,Estimate effort on each story,,Product manager,plan-release; track-progress
+Review changes,0.7.6: PM improvements,ESM-502,Audit the map against the code on a schedule,5,Coding agent; Product manager,update-the-map; track-progress
+Explore the board,0.7.6: PM improvements,ESM-501,Expand activities into steps,8,Product manager,plan-release

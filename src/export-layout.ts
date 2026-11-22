@@ -260,6 +260,9 @@ export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
             Activity: story.activity,
             Release: story.release,
             ...(story.estimate !== undefined ? { Estimate: String(story.estimate) } : {}),
+            // Joined as in the CSV export, so Lucidchart can filter cards by them.
+            ...(story.personas?.length ? { Personas: story.personas.join("; ") } : {}),
+            ...(story.jobs?.length ? { Jobs: story.jobs.join("; ") } : {}),
           },
         });
       });

@@ -1,5 +1,6 @@
 import type { StoryMapJsonStory } from "../export-json.js";
 import { changedWithinOptions, type ChangedWithinDays } from "../filter.js";
+import { jobStatement } from "../personas.js";
 import { findStories, getStories } from "../read.js";
 import { storyStatuses, storyStatusLabels, type StoryStatusFilter } from "../status.js";
 import { getStoryMapForViewer, type InternalReleaseLabel, type StoryMapView } from "../view.js";
@@ -61,8 +62,10 @@ async function loadView(options: ReadOptions): Promise<Extract<StoryMapView, { a
 
 const statusLabel = (story: StoryMapJsonStory) => `${story.status}${story.stalled ? " (stalled)" : ""}`;
 
-function labelled(view: { releases: { id: string; title: string }[]; activities: { id: string; title: string }[] }, kind: "releases" | "activities", id: string) {
-  const title = view[kind].find(item => item.id === id)?.title;
+type Titled = { id: string; title: string }[];
+
+function labelled(view: { releases: Titled; activities: Titled; personas?: Titled }, kind: "releases" | "activities" | "personas", id: string) {
+  const title = view[kind]?.find(item => item.id === id)?.title;
   return title ? `${escapeText(id)} (${escapeText(title)})` : escapeText(id);
 }
 
@@ -81,6 +84,16 @@ function storyText(view: Extract<StoryMapView, { audience: "internal" }>, story:
   field(lines, "Release", labelled(view, "releases", story.release));
   field(lines, "Activity", labelled(view, "activities", story.activity));
   if (story.estimate) field(lines, "Estimate", `${story.estimate} pts`);
+  if (story.personas?.length) field(lines, "For", story.personas.map(id => labelled(view, "personas", id)).join(", "));
+  if (story.jobs?.length) {
+    const jobs = new Map((view.personas ?? []).flatMap(persona => persona.jobs.map(job => [job.id, { job, persona }] as const)));
+    lines.push("  Jobs:");
+    for (const id of story.jobs) {
+      const found = jobs.get(id);
+      const detail = found ? `  ${jobStatement(found.job)} (${found.persona.title})${found.job.draft ? " [draft]" : ""}` : "";
+      lines.push(`    ${escapeText(id)}${escapeText(detail)}`);
+    }
+  }
   field(lines, "Summary", story.summary);
   field(lines, "Notes", story.notes);
   if (story.updatedBy) field(lines, "Updated by", story.updatedBy);
@@ -134,6 +147,8 @@ export const stories = defineCommand({
     const statuses: StoryStatusFilter[] = [];
     const releases: string[] = [];
     const activities: string[] = [];
+    const personas: string[] = [];
+    const jobs: string[] = [];
     let query: string | undefined;
     let changedWithinDays: ChangedWithinDays | undefined;
     const options = parseReadArgs(rest, (name, value) => {
@@ -146,6 +161,10 @@ export const stories = defineCommand({
         releases.push(...value().split(",").map(part => part.trim()).filter(Boolean));
       } else if (name === "--activity") {
         activities.push(...value().split(",").map(part => part.trim()).filter(Boolean));
+      } else if (name === "--persona") {
+        personas.push(...value().split(",").map(part => part.trim()).filter(Boolean));
+      } else if (name === "--job") {
+        jobs.push(...value().split(",").map(part => part.trim()).filter(Boolean));
       } else if (name === "--query") {
         query = value();
       } else if (name === "--changed-within") {
@@ -157,15 +176,22 @@ export const stories = defineCommand({
       }
       return true;
     });
-    return options && { ...options, statuses, releases, activities, query, changedWithinDays };
+    return options && { ...options, statuses, releases, activities, personas, jobs, query, changedWithinDays };
   },
 
   async run(options) {
     const view = await loadView(options);
     if (!view) return;
     let unknown = false;
-    for (const [kind, ids] of [["release", options.releases], ["activity", options.activities]] as const) {
-      const known = new Set((kind === "release" ? view.releases : view.activities).map(item => item.id));
+    const choices = {
+      release: view.releases,
+      activity: view.activities,
+      persona: view.personas ?? [],
+      job: (view.personas ?? []).flatMap(persona => persona.jobs),
+    };
+    const asked = [["release", options.releases], ["activity", options.activities], ["persona", options.personas], ["job", options.jobs]] as const;
+    for (const [kind, ids] of asked) {
+      const known = new Set(choices[kind].map(item => item.id));
       for (const id of ids.filter(id => !known.has(id))) {
         console.error(`--${kind} ${escapeText(id)}: no ${kind} with this ID in ${escapeText(options.map)}.`);
         unknown = true;
@@ -184,6 +210,8 @@ export const stories = defineCommand({
       changedWithinDays: options.changedWithinDays,
       releases: options.releases,
       activities: options.activities,
+      ...(options.personas.length ? { persona: options.personas } : {}),
+      ...(options.jobs.length ? { job: options.jobs } : {}),
     });
     if (options.format === "json") {
       printJson("stories", { filter: found.filter, stories: found.stories });

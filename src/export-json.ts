@@ -1,7 +1,8 @@
 import { prepareStoryMapExport, type StoryMapExportOptions } from "./export.js";
-import { storyStatuses, storyStatusLabels, type StoryStatus } from "./status.js";
+import { jobStatement } from "./personas.js";
+import { activeStoryStatuses, storyStatuses, storyStatusLabels, type StoryStatus } from "./status.js";
 import { storyMapCommit, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, StoryMapLabel, StoryMapRecentUpdates, StoryMapView } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, StoryMapLabel, StoryMapRecentUpdates, StoryMapView } from "./view.js";
 
 /** The `Content-Type` for a `.json` export. */
 export const jsonContentType = "application/json; charset=utf-8";
@@ -23,6 +24,22 @@ const statusMeanings: Record<StoryStatus, string> = {
 export interface StoryMapJsonStory extends InternalStoryCard {
   /** Tagged tests, including those the index left out over its limits. Present only when a tests index was supplied, so 0 means none are tagged. */
   testCount?: number;
+}
+
+/** A job to be done in the JSON export, with its stories by status, its statement and how many active stories serve it. */
+export interface StoryMapJsonJob extends PersonaJobLabel {
+  /** The job read as one sentence: “When …, I want …, so ….” */
+  statement: string;
+  /** Active stories that serve the job, across the whole map. 0 means no planned or delivered work meets it yet. */
+  activeStories: number;
+}
+
+/** A persona in the JSON export. Avatar initials and colours are left out, as the board's business. */
+export interface StoryMapJsonPersona extends StoryMapLabel {
+  /** Active stories for the persona, from their jobs or their own `personas`, across the whole map. */
+  activeStories: number;
+  /** In map order. */
+  jobs: StoryMapJsonJob[];
 }
 
 /** Options for `storyMapToJson`. Collapsed lanes are a board view, so the JSON export always includes every release's stories. */
@@ -61,6 +78,8 @@ export interface StoryMapJsonExport {
   };
   statuses: { id: StoryStatus; label: string; meaning: string }[];
   activities: StoryMapLabel[];
+  /** The map's personas and their jobs to be done, in map order. Absent when the map has none. Stories refer to them by ID. */
+  personas?: StoryMapJsonPersona[];
   /** Each release's `storyCounts` count every story in it, even when some are left out by `maxStories`. */
   releases: InternalReleaseLabel[];
   /** In map order. */
@@ -94,6 +113,16 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
   const testsIndexed = view.testsIndexed === true;
   const stories = view.stories.filter(story => kept.has(story.id)).map(story => toJsonStory(story, testsIndexed));
 
+  // Counted over the whole map, like release storyCounts, so maxStories does not hide a job's work.
+  const personas: StoryMapJsonPersona[] = (view.personas ?? []).map(persona => ({
+    id: persona.id,
+    title: persona.title,
+    ...(persona.summary ? { summary: persona.summary } : {}),
+    activeStories: persona.activeStories,
+    jobs: persona.jobs.map(job => ({ ...job, statement: jobStatement(job), activeStories: activeStoryStatuses.reduce((sum, status) => sum + job.storyCounts[status], 0) })),
+  }));
+  const hasDraftJobs = personas.some(persona => persona.jobs.some(job => job.draft));
+
   const exportedAt = (options.now ?? new Date()).toISOString();
   const hasDraftImpact = view.releases.some(release => release.impact?.some(item => item.draft));
 
@@ -107,6 +136,10 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
       ? `Tests come from a static scan of test names that contain a story ID${view.testsGeneratedAt ? `, generated at ${view.testsGeneratedAt}` : ""}. No tests were run, so pass and fail results are not included.`
       : "No tests index was supplied, so the file says nothing about which tests cover a story.",
     ...(hasDraftImpact ? ["Impact items with draft: true were drafted, often by an agent, and have not been approved by a person."] : []),
+    ...(personas.length
+      ? ["A story's personas are the owners of the jobs it serves, then the personas it lists, primary first. Personas and jobs are written by people and agents, and say who the work is meant for, not who uses it."]
+      : []),
+    ...(hasDraftJobs ? ["Jobs with draft: true were drafted, often by an agent, and have not been confirmed by a person."] : []),
   ];
 
   const completenessNotes = [
@@ -145,6 +178,7 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
     },
     statuses: storyStatuses.map(id => ({ id, label: storyStatusLabels[id], meaning: statusMeanings[id] })),
     activities: view.activities,
+    ...(personas.length ? { personas } : {}),
     releases: view.releases,
     stories,
     ...(view.recentUpdates ? { recentUpdates: view.recentUpdates } : {}),
@@ -154,8 +188,9 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
 
 /**
  * Writes the internal map as JSON for an agent or script to review: every
- * activity and release, with notes and impact, and each story's summary,
- * status, notes, sources, history and tagged tests. `provenance` and
+ * activity and release, with notes and impact, the personas and their jobs to
+ * be done, and each story's summary, status, personas, jobs, notes, sources,
+ * history and tagged tests. `provenance` and
  * `completeness` say where the data came from and what is left out.
  *
  * Takes the same view as `storyMapToCsv`, but includes every story unless
