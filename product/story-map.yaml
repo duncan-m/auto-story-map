@@ -146,7 +146,7 @@ releases:
     title: "0.7.2: Personas"
     summary: Say who each story is for, and read the map one persona at a time.
     notes: |
-      The map names the people the product serves, and each story says which of them it helps. The board shows personas on cards and activities, filters by persona, and opens a panel with each persona's goals and stories.
+      The map names the people the product serves and their jobs to be done, and each story says which jobs it serves. The board shows personas on cards and activities, filters by persona and job, and opens a panel with each persona's jobs and the stories that serve them.
 
       Mockup: docs/plans/personas.md#ui-mockup
     impact:
@@ -159,7 +159,7 @@ releases:
         solves: Engineers and product working from different ideas of the user
         draft: true
       - metric: Stories that don't match user needs
-        expected: Fewer, because each story is tied to a persona and its goals before work starts
+        expected: Fewer, because each story names the jobs to be done it serves before work starts, and validate flags stories that serve none
         solves: Building stories that no persona needs
         draft: true
   - id: v0-7-3
@@ -512,7 +512,7 @@ stories:
     activity: plan
     release: v0-7-2
     status: planned
-    summary: The map lists the people the product serves, and each story names which of them it helps. Validate checks the references and diff reports persona changes.
+    summary: The map lists the people the product serves and their jobs to be done as structured job statements, and each story names the jobs it serves. Validate checks the references and warns about jobs with no stories, and diff reports persona and job changes.
     sources:
       - docs/plans/personas.md#1-define-personas-in-the-map-file
       - docs/plans/personas.md#ui-mockup
@@ -521,7 +521,7 @@ stories:
     activity: explore
     release: v0-7-2
     status: planned
-    summary: Cards and activities show persona avatars, and the story panel gains a For row.
+    summary: Cards and activities show persona avatars, and the story panel gains a For row and the job statements the story serves.
     sources:
       - docs/plans/personas.md#2-show-who-a-story-is-for
       - docs/plans/personas.md#ui-mockup
@@ -530,18 +530,18 @@ stories:
     activity: explore
     release: v0-7-2
     status: planned
-    summary: A persona strip and menu narrow the board to the stories for one or more personas, through a repeated persona parameter.
+    summary: A persona strip and menu narrow the board to the stories for one or more personas, and links in the persona panel narrow it to one job, through repeated persona and job parameters.
     sources:
       - docs/plans/personas.md#3-filter-the-board-by-persona
       - docs/plans/personas.md#ui-mockup
   - id: ESM-904
-    title: Open a persona to see goals and coverage
+    title: Open a persona to see jobs and coverage
     activity: explore
     release: v0-7-2
     status: planned
-    summary: A persona panel shows the persona's summary, goals and stories by release.
+    summary: A persona panel shows the persona's summary and jobs to be done, with the stories that serve each job and the jobs that have none.
     sources:
-      - docs/plans/personas.md#4-open-a-persona-to-see-goals-and-coverage
+      - docs/plans/personas.md#4-open-a-persona-to-see-jobs-and-coverage
       - docs/plans/personas.md#ui-mockup
   - id: ESM-905
     title: Share approved personas with customers
@@ -557,7 +557,7 @@ stories:
     activity: explore
     release: v0-7-2
     status: planned
-    summary: CSV, JSON and Visio exports carry each story's personas, and the JSON export lists the map's personas.
+    summary: CSV, JSON and Visio exports carry each story's personas and jobs, and the JSON export lists the map's personas with their job statements.
     sources:
       - docs/plans/personas.md#6-include-personas-in-exports
       - docs/plans/personas.md#ui-mockup
