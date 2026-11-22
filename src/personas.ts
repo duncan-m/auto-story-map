@@ -47,10 +47,20 @@ export function storyPersonas(map: PersonaSource, story: TaggedStory): string[] 
   return storyPersonaResolver(map)(story);
 }
 
+/**
+ * Drops the full stops, question and exclamation marks that end `text`, so a
+ * statement can add its own. Scans back from the end in linear time, where a
+ * regex anchored at the end would rescan the rest of the text from every mark.
+ */
+export function withoutFinalPunctuation(text: string): string {
+  let end = text.length;
+  while (end > 0 && (text[end - 1] === "." || text[end - 1] === "!" || text[end - 1] === "?")) end--;
+  return text.slice(0, end);
+}
+
 /** A job as the board reads it: “When …, I want …, so ….” */
 export function jobStatement(job: Pick<StoryMapJob, "situation" | "motivation" | "outcome">): string {
-  const outcome = job.outcome.replace(/[.!?]+$/, "");
-  return `When ${job.situation}, I want ${job.motivation}, so ${outcome}.`;
+  return `When ${job.situation}, I want ${job.motivation}, so ${withoutFinalPunctuation(job.outcome)}.`;
 }
 
 /** How many persona colours the board has. Personas take them in map order, and the seventh starts again. */
