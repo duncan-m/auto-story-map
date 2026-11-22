@@ -27,6 +27,14 @@ export const personaJobsMaxItems = 8;
 export const storyPersonasMaxItems = 4;
 /** Longest part of a job statement, in characters. */
 export const jobStatementMaxLength = 200;
+/** Longest `success` or constraint in a persona's context, in characters. */
+export const personaContextMaxLength = 200;
+/** Most entries in a persona's `usesToday`. */
+export const personaUsesTodayMaxItems = 8;
+/** Longest entry in a persona's `usesToday`, in characters. */
+export const personaUsesTodayMaxLength = 60;
+/** Most constraints in a persona's context. */
+export const personaConstraintsMaxItems = 6;
 
 /** Weeks a story can stay in progress before it is flagged as stalled, when the map does not say. */
 export const defaultStalledAfterWeeks = 4;
@@ -78,10 +86,23 @@ function formatSchemas(strict: boolean) {
       .describe("true when an agent drafted this job and nobody has confirmed it yet. Only a person removes it."),
   }).describe("A job to be done: “When <situation>, I want <motivation>, so <outcome>.” Internal only.");
 
+  const contextLine = z.string().trim().min(1).max(personaContextMaxLength);
+  const personaContext = object({
+    success: contextLine.optional()
+      .describe("Optional. What a good result looks like to them, such as “Weekly forecast accuracy, judged by the VP of Sales” or “Every bill paid on time”."),
+    usesToday: z.array(z.string().trim().min(1).max(personaUsesTodayMaxLength)).max(personaUsesTodayMaxItems).optional()
+      .describe(`Optional. Up to ${personaUsesTodayMaxItems} products, tools and workarounds they rely on now, which a story competes with.`),
+    constraints: z.array(contextLine).max(personaConstraintsMaxItems).optional()
+      .describe(`Optional. Up to ${personaConstraintsMaxItems} constraints they work under, which change what a story can assume.`),
+    draft: z.boolean().optional()
+      .describe("true when an agent drafted this context and nobody has confirmed it yet. Only a person removes it."),
+  }).describe("What success means to them, what they use today and their constraints. Needs at least one of success, usesToday and constraints. Internal only.");
+
   const persona = object({
     id: id.describe("Stable persona ID that stories reference in their personas. Keep it when renaming."),
     title: title.describe("Internal persona name, such as “Product manager”. The board takes the avatar's initials from it."),
     summary: summary.describe("Optional internal summary of who they are and what they own."),
+    context: personaContext.optional().describe("Optional internal context: what success means to them, what they use today and their constraints. Never shown to customers."),
     jobs: z.array(job).max(personaJobsMaxItems).optional()
       .describe(`Optional. Up to ${personaJobsMaxItems} jobs to be done that stories serve.`),
     customer: customerCopy.optional().describe("Customer-facing persona name. Add only after the wording is approved."),
@@ -139,14 +160,14 @@ function formatSchemas(strict: boolean) {
     releases: z.array(release).min(1).max(50),
     stories: z.array(story.describe("Stories appear in this order within each cell.")).max(1000),
   });
-  return { map, story, impactItem, persona, job };
+  return { map, story, impactItem, persona, job, personaContext };
 }
 
 const strictSchemas = formatSchemas(true);
 const lenientSchemas = formatSchemas(false);
 
 type Path = (string | number)[];
-type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown; jobs?: unknown; personas?: unknown };
+type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown; jobs?: unknown; personas?: unknown; context?: unknown };
 
 function items(value: unknown): Item[] {
   return Array.isArray(value) ? value.map(item => item && typeof item === "object" ? item as Item : {}) : [];
@@ -178,6 +199,11 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
   const personaIds = new Set(items(map.personas).map(persona => persona.id));
   const jobIds = new Set<unknown>();
   items(map.personas).forEach((persona, personaIndex) => {
+    const context = persona.context;
+    if (context && typeof context === "object" && !Array.isArray(context)
+      && !(["success", "usesToday", "constraints"] as const).some(field => (context as Record<string, unknown>)[field] !== undefined)) {
+      issue(["personas", personaIndex, "context"], "Context needs at least one of success, usesToday and constraints.");
+    }
     items(persona.jobs).forEach((job, jobIndex) => {
       if (typeof job.id !== "string") return;
       if (jobIds.has(job.id)) issue(["personas", personaIndex, "jobs", jobIndex, "id"], `Duplicate job ID '${job.id}'. Job IDs are unique across the map.`);
@@ -225,6 +251,7 @@ export type StoryMapDocument = z.infer<typeof storyMapSchema>;
 export type ReleaseImpact = z.infer<typeof strictSchemas.impactItem>;
 export type StoryMapPersona = z.infer<typeof strictSchemas.persona>;
 export type StoryMapJob = z.infer<typeof strictSchemas.job>;
+export type StoryMapPersonaContext = z.infer<typeof strictSchemas.personaContext>;
 
 export type StoryMapIssueSeverity = "error" | "warning";
 
@@ -396,7 +423,9 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
   const resolve = storyPersonaResolver(map);
   const used = new Set(map.stories.flatMap(story => resolve(story)));
   const served = new Set(active.flatMap(story => story.jobs ?? []));
-  const shipped = new Set(map.stories.filter(story => story.status === "shipped").flatMap(story => story.jobs ?? []));
+  const shippedStories = map.stories.filter(story => story.status === "shipped");
+  const shipped = new Set(shippedStories.flatMap(story => story.jobs ?? []));
+  const shippedFor = new Set(shippedStories.flatMap(story => resolve(story)));
 
   personas.forEach((persona, index) => {
     if (!used.has(persona.id)) {
@@ -425,6 +454,14 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
         });
       }
     });
+    if (persona.context?.draft && shippedFor.has(persona.id)) {
+      warnings.push({
+        severity: "warning",
+        path: ["personas", index, "context", "draft"],
+        message: `Confirm the drafted context for ${persona.title} and remove draft: true. Stories for them have shipped.`,
+        itemId: persona.id,
+      });
+    }
   });
 
   const untagged = active.filter(story => !resolve(story).length).length;

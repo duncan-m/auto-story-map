@@ -1,6 +1,7 @@
 import { prepareStoryMapExport, type StoryMapExportOptions } from "./export.js";
 import { jobStatement } from "./personas.js";
 import { activeStoryStatuses, storyStatuses, storyStatusLabels, type StoryStatus } from "./status.js";
+import type { StoryMapPersonaContext } from "./schema.js";
 import { storyMapCommit, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, StoryMapLabel, StoryMapRecentUpdates, StoryMapView } from "./view.js";
 
@@ -38,6 +39,8 @@ export interface StoryMapJsonJob extends PersonaJobLabel {
 export interface StoryMapJsonPersona extends StoryMapLabel {
   /** Active stories for the persona, from their jobs or their own `personas`, across the whole map. */
   activeStories: number;
+  /** What success means to them, what they use today and their constraints. Absent when the map gives none. */
+  context?: StoryMapPersonaContext;
   /** In map order. */
   jobs: StoryMapJsonJob[];
 }
@@ -119,9 +122,11 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
     title: persona.title,
     ...(persona.summary ? { summary: persona.summary } : {}),
     activeStories: persona.activeStories,
+    ...(persona.context ? { context: persona.context } : {}),
     jobs: persona.jobs.map(job => ({ ...job, statement: jobStatement(job), activeStories: activeStoryStatuses.reduce((sum, status) => sum + job.storyCounts[status], 0) })),
   }));
   const hasDraftJobs = personas.some(persona => persona.jobs.some(job => job.draft));
+  const hasDraftContext = personas.some(persona => persona.context?.draft);
 
   const exportedAt = (options.now ?? new Date()).toISOString();
   const hasDraftImpact = view.releases.some(release => release.impact?.some(item => item.draft));
@@ -140,6 +145,7 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
       ? ["A story's personas are the owners of the jobs it serves, then the personas it lists, primary first. Personas and jobs are written by people and agents, and say who the work is meant for, not who uses it."]
       : []),
     ...(hasDraftJobs ? ["Jobs with draft: true were drafted, often by an agent, and have not been confirmed by a person."] : []),
+    ...(hasDraftContext ? ["Persona context with draft: true was drafted, often by an agent, and has not been confirmed by a person."] : []),
   ];
 
   const completenessNotes = [

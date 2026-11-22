@@ -7,8 +7,8 @@ export {
   storyMapWarnings,
   storyStatuses,
 } from "./schema.js";
-export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, personaJobsMaxItems, personasMaxItems, releaseImpactMaxItems, releaseNotesMaxLength, storyPersonasMaxItems } from "./schema.js";
-export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapPersona, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
+export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, personaConstraintsMaxItems, personaContextMaxLength, personaJobsMaxItems, personasMaxItems, personaUsesTodayMaxItems, personaUsesTodayMaxLength, releaseImpactMaxItems, releaseNotesMaxLength, storyPersonasMaxItems } from "./schema.js";
+export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapPersona, StoryMapPersonaContext, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
 export { activeStoryStatuses, customerStatus, customerStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
 export type { CustomerStoryStatus, StoryStatusFilter } from "./status.js";
 export { defaultInternalRoles, getStoryMapForViewer, getStoryMapPage, recentUpdateDays, storyMapResponseHeaders } from "./view.js";
@@ -43,7 +43,7 @@ export {
 export type { OmittedStoryTests, StoryMapTests, StoryTestEntry } from "./tests-index.js";
 export { storyMapCommit, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
-export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
+export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";
 export { jsonContentType, storyMapToJson } from "./export-json.js";

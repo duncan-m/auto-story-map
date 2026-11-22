@@ -1,5 +1,5 @@
 import { jobStatement, storyMapJobs } from "./personas.js";
-import { defaultStalledAfterWeeks, type StoryMapDocument } from "./schema.js";
+import { defaultStalledAfterWeeks, type StoryMapDocument, type StoryMapPersona } from "./schema.js";
 import { customerStatus, isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js";
 
 type Story = StoryMapDocument["stories"][number];
@@ -85,6 +85,16 @@ export interface JobChanges {
   confirmed: JobDiffRef[];
 }
 
+/** Personas whose context was added, changed, removed or confirmed, named by ID and title. */
+export interface PersonaContextChanges {
+  added: StoryDiffRef[];
+  /** Context whose success, usesToday or constraints changed, or that was marked as a draft again. */
+  changed: StoryDiffRef[];
+  removed: StoryDiffRef[];
+  /** Drafts a person confirmed by removing `draft: true`. */
+  confirmed: StoryDiffRef[];
+}
+
 /** Changes to a release’s notes or expected impact. Impact items are matched by `metric`. */
 export interface ReleaseDetailChange extends StoryDiffRef {
   notes?: "added" | "changed" | "removed";
@@ -118,6 +128,8 @@ export interface StoryMapDiff {
   /** Personas added, removed, renamed or reordered. Reordering changes their colours on the board. */
   personas: GroupChanges;
   jobs: JobChanges;
+  /** Persona context changes, for personas on both maps or added with context. Removed personas are reported under `personas`. */
+  personaContexts: PersonaContextChanges;
   /** Releases whose notes or expected impact changed, including new releases that have them. */
   releaseDetails: ReleaseDetailChange[];
   /** The stalled threshold in weeks, including the default of 4 when the map does not set it. 0 is off. */
@@ -166,6 +178,25 @@ function jobChanges(before: StoryMapDocument, after: StoryMapDocument): JobChang
   }
   for (const [id, owner] of old) {
     if (!current.has(id)) changes.removed.push(ref(owner));
+  }
+  return changes;
+}
+
+function personaContextChanges(before: readonly StoryMapPersona[], after: readonly StoryMapPersona[]): PersonaContextChanges {
+  const old = new Map(before.map(persona => [persona.id, persona]));
+  const changes: PersonaContextChanges = { added: [], changed: [], removed: [], confirmed: [] };
+  const content = ({ success, usesToday, constraints }: NonNullable<StoryMapPersona["context"]>) => ({ success, usesToday, constraints });
+  for (const persona of after) {
+    const ref = { id: persona.id, title: persona.title };
+    const previous = old.get(persona.id)?.context;
+    const context = persona.context;
+    if (!previous && context) changes.added.push(ref);
+    else if (previous && !context) {
+      if (old.has(persona.id)) changes.removed.push(ref);
+    } else if (previous && context) {
+      if (!same(content(previous), content(context)) || (!previous.draft && context.draft)) changes.changed.push(ref);
+      if (previous.draft && !context.draft) changes.confirmed.push(ref);
+    }
   }
   return changes;
 }
@@ -306,6 +337,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     releases: groupChanges(base.releases, after.releases),
     personas: groupChanges(base.personas ?? [], after.personas ?? []),
     jobs: jobChanges(base, after),
+    personaContexts: personaContextChanges(base.personas ?? [], after.personas ?? []),
     releaseDetails: after.releases.flatMap(release => {
       const change = releaseDetailChange(base.releases.find(previous => previous.id === release.id), release);
       return change ? [change] : [];
@@ -320,6 +352,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
   return !!(diff.created || diff.visibility || diff.titleChange || diff.customerCopyChanged || diff.customer.length || diff.blockedOrCut.length
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
     || groups(diff.activities) || groups(diff.releases) || groups(diff.personas) || Object.values(diff.jobs).some(list => list.length)
+    || Object.values(diff.personaContexts).some(list => list.length)
     || diff.releaseDetails.length || diff.stalledAfterWeeks);
 }
 
@@ -456,6 +489,10 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     ...diff.jobs.moved.map(ref => `- Moved job ${code(ref.id)} from ${text(ref.from)} to ${text(ref.persona)}`),
     ...diff.jobs.confirmed.map(ref => `- Confirmed drafted job ${job(ref)}`),
     ...diff.jobs.removed.map(ref => `- Removed job ${job(ref)}`),
+    ...diff.personaContexts.added.map(persona => `- Added context for persona ${story(persona)}`),
+    ...diff.personaContexts.changed.map(persona => `- Changed the context of persona ${story(persona)}`),
+    ...diff.personaContexts.confirmed.map(persona => `- Confirmed the drafted context of persona ${story(persona)}`),
+    ...diff.personaContexts.removed.map(persona => `- Removed the context of persona ${story(persona)}`),
   ];
   if (personas.length) lines.push("### Personas and jobs", "", ...personas, "");
 

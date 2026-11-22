@@ -1,7 +1,7 @@
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
 import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
-import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob } from "./schema.js";
+import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapPersonaContext } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 
@@ -95,6 +95,8 @@ export interface PersonaLabel extends StoryMapLabel {
   initials: string;
   /** 0 to 5, from the persona's place in the map. Pairs with `initials`, so colour is never the only cue. */
   colour: number;
+  /** What success means to them, what they use today and their constraints. Absent when the map gives none. Internal only. */
+  context?: StoryMapPersonaContext;
   /** The persona's jobs to be done, in map order, each with its stories by status. */
   jobs: PersonaJobLabel[];
   /** Active stories for the persona, counted before any filter is applied, like a release's `storyCounts`. */
@@ -329,6 +331,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       ...projectLabel(persona),
       initials: personaInitials(persona.title),
       colour: index % personaColourCount,
+      ...(persona.context ? { context: structuredClone(persona.context) } : {}),
       jobs: (persona.jobs ?? []).map(job => ({
         ...job,
         storyCounts: jobCounts.get(job.id) ?? Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>,

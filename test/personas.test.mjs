@@ -773,3 +773,119 @@ test("ESM-906: story-map story shows personas and jobs, and stories filters by t
     assert.match(result.stderr, new RegExp(`${flag} ${id}: no ${flag.slice(2)} with this ID`));
   }
 });
+
+const builderContext = {
+  success: "Estimates approved the day they are sent",
+  usesToday: ["Supplier price lists", "A spreadsheet", "Phoning finance"],
+  constraints: ["Prices jobs on site, often on a phone", "Cannot see finance's approval queue"],
+  draft: true,
+};
+
+/** The tagged fixture, with context on the Builder and, optionally, the Finance reviewer. */
+function withContext(edit = () => {}) {
+  return tagged(document => {
+    document.personas[0].context = structuredClone(builderContext);
+    edit(document);
+  });
+}
+
+test("ESM-907: accepts persona context with any of its parts", () => {
+  const map = parse(withContext(document => {
+    document.personas[1].context = { constraints: ["Approves on a laptop, never on site"] };
+  }));
+  assert.deepEqual(map.personas[0].context, builderContext);
+  assert.deepEqual(map.personas[1].context, { constraints: ["Approves on a laptop, never on site"] });
+  assert.deepEqual(personaWarnings(map), []);
+});
+
+test("ESM-907: rejects empty context, unknown fields and parts over their limits", () => {
+  const empty = issuesOf(withContext(document => { document.personas[0].context = { draft: true }; }));
+  assert.deepEqual(empty, ["personas.0.context: Context needs at least one of success, usesToday and constraints."]);
+
+  const issues = issuesOf(withContext(document => {
+    Object.assign(document.personas[0].context, {
+      success: "x".repeat(201),
+      usesToday: Array.from({ length: 9 }, (_, index) => `Tool ${index}`),
+      constraints: Array.from({ length: 7 }, (_, index) => `Constraint ${index}`),
+      pains: ["Not a context field"],
+    });
+    document.personas[1].context = { usesToday: ["y".repeat(61)], constraints: [""] };
+  }));
+  for (const path of ["personas.0.context.success", "personas.0.context.usesToday", "personas.0.context.constraints", "personas.0.context.pains", "personas.1.context.usesToday.0", "personas.1.context.constraints.0"]) {
+    assert.ok(issues.some(issue => issue.startsWith(`${path}: `)), `${path} in ${issues.join("\n")}`);
+  }
+});
+
+test("ESM-907: warns about drafted context on a persona that a shipped story is for", () => {
+  const draft = "personas.0.context.draft (builder): Confirm the drafted context for Builder and remove draft: true. Stories for them have shipped.";
+  const warnings = map => personaWarnings(map).map(warning => `${warning.path.join(".")} (${warning.itemId ?? "map"}): ${warning.message}`);
+  assert.ok(!warnings(parse(withContext())).includes(draft));
+  const shipped = withContext(document => { document.stories.find(story => story.id === "BUILDER-101").status = "shipped"; });
+  assert.ok(warnings(parse(shipped)).includes(draft));
+  delete shipped.personas[0].context.draft;
+  assert.ok(!warnings(parse(shipped)).includes(draft));
+});
+
+test("ESM-907: internal views and the JSON export carry context, and customers never see it", () => {
+  const map = parse(withContext(document => {
+    document.personas[1].context = { success: "Approvals cleared by Friday", draft: true };
+  }));
+  const internal = getStoryMapForViewer(map, engineer);
+  assert.deepEqual(internal.personas[0].context, builderContext);
+
+  const json = JSON.parse(storyMapToJson(internal, { now: new Date("2026-11-20T09:00:00Z") }));
+  assert.deepEqual(json.personas[0].context, builderContext);
+  assert.ok(json.provenance.notes.some(note => /Persona context with draft: true/.test(note)));
+  const noContext = JSON.parse(storyMapToJson(getStoryMapForViewer(parse(tagged()), engineer)));
+  assert.ok(!("context" in noContext.personas[0]));
+  assert.ok(!noContext.provenance.notes.some(note => /Persona context/.test(note)));
+
+  // Finance reviewer has approved customer copy, but its context stays internal.
+  const customer = getStoryMapForViewer(map, member);
+  assert.ok(customer.personas.length);
+  assert.doesNotMatch(JSON.stringify(customer), /context|Approvals cleared|Supplier price lists|on a phone/);
+});
+
+test("ESM-907: search does not match persona context", () => {
+  const map = parse(withContext());
+  assert.deepEqual(ids(page(map, "q=supplier price lists")), []);
+});
+
+test("ESM-907: diffs report added, changed, confirmed and removed context", () => {
+  const before = parse(withContext());
+  const after = parse(withContext(document => {
+    document.personas[0].context.usesToday.push("Email");
+    document.personas[1].context = { success: "Approvals cleared by Friday" };
+  }));
+  const diff = diffStoryMaps(before, after);
+  assert.deepEqual(diff.personaContexts, {
+    added: [{ id: "finance", title: "Finance reviewer" }],
+    changed: [{ id: "builder", title: "Builder" }],
+    removed: [],
+    confirmed: [],
+  });
+  const markdown = formatStoryMapDiff(diff);
+  assert.match(markdown, /### Personas and jobs/);
+  assert.match(markdown, /- Added context for persona `finance` Finance reviewer/);
+  assert.match(markdown, /- Changed the context of persona `builder` Builder/);
+
+  const confirmed = diffStoryMaps(before, parse(withContext(document => { delete document.personas[0].context.draft; })));
+  assert.deepEqual(confirmed.personaContexts.confirmed, [{ id: "builder", title: "Builder" }]);
+  assert.deepEqual(confirmed.personaContexts.changed, []);
+  assert.match(formatStoryMapDiff(confirmed), /- Confirmed the drafted context of persona `builder` Builder/);
+
+  const removed = diffStoryMaps(before, parse(tagged()));
+  assert.deepEqual(removed.personaContexts.removed, [{ id: "builder", title: "Builder" }]);
+  assert.match(formatStoryMapDiff(removed), /- Removed the context of persona `builder` Builder/);
+
+  // A removed persona is reported once, under personas, not again for its context.
+  const auditor = { id: "auditor", title: "Auditor", context: { success: "Audits take a day" } };
+  const gone = diffStoryMaps(parse(withContext(document => {
+    document.personas.push(auditor);
+    document.stories[0].personas = ["auditor"];
+  })), before);
+  assert.deepEqual(gone.personas.removed, [{ id: "auditor", title: "Auditor" }]);
+  assert.deepEqual(gone.personaContexts.removed, []);
+  assert.equal(hasStoryMapChanges(diffStoryMaps(before, before)), false);
+  assert.equal(hasStoryMapChanges(diffStoryMaps(before, parse(withContext(document => { document.personas[0].context.constraints.pop(); })))), true);
+});
