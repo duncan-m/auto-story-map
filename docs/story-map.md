@@ -247,7 +247,11 @@ Validation fails on a duplicate persona ID, a job ID used twice anywhere in the 
 
 Untagged stories are allowed, so an existing map stays valid. Agents can draft personas and jobs from the product's docs, issues and research, mark each job `draft: true`, and say so in the PR. A person confirms a job by removing `draft`. Tag stories with `story-map edit <ID> --add-job <job ID>` or `--add-persona <persona ID>`, and new stories with `story-map add --job <job ID>`.
 
-`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs, under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Personas and jobs are internal: the board and exports do not show them yet, and customers never see jobs.
+`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs, under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Personas and jobs are internal, and customers never see jobs.
+
+On the internal board, each card shows the avatars of the personas it is for beside its ID: the persona's initials on its colour, up to three, then “+1” and so on. Each activity shows the avatars of the personas its active stories are for, so you can see who each step of the journey serves. Screen readers hear the titles, such as “For Product manager and Coding agent”, not the initials. The story panel starts its details with a **For** row, listing the story's personas, and a **Jobs** row with the statement of each job it serves, its persona and a **Draft** label on drafts. Colours come from each persona's place in the list, six in all, so reordering personas changes them, and the seventh persona starts again from the first colour. Hosts can restyle them with `--esm-persona-0` to `--esm-persona-5` and their `-bg` pairs. A map without personas looks exactly as before.
+
+In the view, internal maps with personas gain `personas`, each with its `initials`, `colour` and `jobs`, and each story the `personas` it is for, primary first, and the `jobs` it serves. The JSON export and `story-map story --format json` carry each story's `personas` and `jobs` too.
 
 ## Link an engineering overview
 

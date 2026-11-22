@@ -2,18 +2,23 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import fc from "fast-check";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { stringify } from "yaml";
 import {
   diffStoryMaps,
   formatStoryMapDiff,
   hasStoryMapChanges,
   jobStatement,
+  getStoryMapForViewer,
   parseStoryMap,
+  personaInitials,
   proposeStoryMapEdit,
   storyMapWarnings,
   storyPersonas,
   StoryMapValidationError,
 } from "auto-story-map";
+import { StoryMapBoard } from "auto-story-map/react";
 
 const fixture = await readFile(new URL("./fixtures/builder-estimates.yaml", import.meta.url), "utf8");
 const plain = parseStoryMap(fixture);
@@ -266,4 +271,91 @@ test("ESM-901: every persona and job reference survives a parse round trip", () 
     assert.deepEqual(twice.stories.map(story => [story.jobs, story.personas]), document.stories.map(story => [story.jobs, story.personas]));
     for (const story of twice.stories) assert.deepEqual(storyPersonas(twice, story), storyPersonas(once, story));
   }), { numRuns });
+});
+
+const engineer = { roles: ["engineer"] };
+const render = view => renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+
+/** The markup of the story panel whose title is `title`. */
+function panelFor(html, title) {
+  const panels = html.match(/<div class="esm-detail[" ][\s\S]*?(?=<div class="esm-detail[" ]|<\/section>$)/g) ?? [];
+  return panels.find(panel => panel.includes(`>${title}</h3>`));
+}
+
+/** The markup of the card whose title is `title`. */
+function cardFor(html, title) {
+  const end = html.indexOf(`<span class="esm-card-title">${title}</span>`);
+  return html.slice(html.lastIndexOf('<button type="button" class="esm-card"', end), end);
+}
+
+test("ESM-902: takes avatar initials from the persona title", () => {
+  assert.equal(personaInitials("Product manager"), "PM");
+  assert.equal(personaInitials("Engineer"), "EN");
+  assert.equal(personaInitials("Coding agent (CI)"), "CA");
+  assert.equal(personaInitials("  über-user "), "ÜU");
+  assert.equal(personaInitials("Ö"), "Ö");
+  assert.equal(personaInitials("!!!"), "?");
+});
+
+test("ESM-902: internal views carry personas and each story's personas and jobs", () => {
+  const map = parse(tagged(document => {
+    document.personas.push(...Array.from({ length: 6 }, (_, index) => ({ id: `extra-${index}`, title: `Extra ${index}` })));
+    document.stories.find(story => story.id === "BUILDER-101").personas = ["extra-5"];
+  }));
+  const view = getStoryMapForViewer(map, engineer);
+  assert.deepEqual(view.personas.slice(0, 2).map(({ id, title, initials, colour }) => ({ id, title, initials, colour })), [
+    { id: "builder", title: "Builder", initials: "BU", colour: 0 },
+    { id: "finance", title: "Finance reviewer", initials: "FR", colour: 1 },
+  ]);
+  assert.equal(view.personas.at(-1).colour, 1, "the seventh persona starts the colours again");
+  assert.deepEqual(view.personas[0].jobs.map(job => job.id), ["price-materials", "send-estimate"]);
+  const story = id => view.stories.find(item => item.id === id);
+  assert.deepEqual([story("BUILDER-101").personas, story("BUILDER-101").jobs], [["builder", "extra-5"], ["price-materials"]]);
+  assert.deepEqual([story("BUILDER-102").personas, story("BUILDER-102").jobs], [["builder", "finance"], ["price-materials", "approve-estimate"]]);
+  assert.equal(Object.hasOwn(story("FINANCE-202"), "personas"), false);
+  assert.equal(Object.hasOwn(story("FINANCE-202"), "jobs"), false);
+
+  const customer = JSON.stringify(getStoryMapForViewer(map, { roles: ["member"] }));
+  assert.doesNotMatch(customer, /"personas"|"jobs"|price-materials|Finance reviewer|"Builder"/);
+});
+
+test("ESM-902: cards, activities and the story panel show who a story is for", () => {
+  const map = parse(tagged(document => {
+    document.personas.push({ id: "auditor", title: "Auditor" }, { id: "buyer", title: "Buyer" });
+    document.stories.find(story => story.id === "BUILDER-102").personas = ["auditor", "buyer"];
+    document.stories.find(story => story.id === "BUILDER-103").estimate = 3;
+  }));
+  const html = render(getStoryMapForViewer(map, engineer));
+
+  // Up to three avatars, then “+N”, with the titles for screen readers instead of the initials.
+  const crowded = cardFor(html, "Look up prices in the material catalogue");
+  assert.match(crowded, /<span class="esm-card-head"><span class="esm-card-id">BUILDER-102<\/span><span class="esm-card-tags"><span class="esm-avatars" title="For Builder, Finance reviewer, Auditor and Buyer">/);
+  assert.equal(crowded.match(/class="esm-avatar" data-persona/g).length, 3);
+  assert.match(crowded, /<span class="esm-avatar esm-avatar-more" aria-hidden="true">\+1<\/span><span class="esm-visually-hidden">For Builder, Finance reviewer, Auditor and Buyer<\/span>/);
+  assert.match(crowded, /<span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>/);
+
+  // Avatars sit beside the estimate when the story has one.
+  assert.match(cardFor(html, "Submit the estimate to finance"), /<span class="esm-card-tags"><span class="esm-avatars" title="For Builder">.*<\/span><span class="esm-estimate"/);
+
+  // Activity avatars come from the activity's active stories.
+  const activity = html.slice(html.indexOf(">Prepare estimate<"), html.indexOf(">Submit for finance review<"));
+  assert.match(activity, /title="For Builder, Finance reviewer, Auditor and Buyer"/);
+  const exceptions = html.slice(html.indexOf(">Finance exception handling<"), html.indexOf("esm-lane"));
+  assert.doesNotMatch(exceptions, /esm-avatar/, "a cut story does not count for its activity");
+
+  const panel = panelFor(html, "Look up prices in the material catalogue");
+  assert.match(panel, /<dt>For<\/dt><dd class="esm-persona-row"><span class="esm-persona-chip"><span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>Builder<\/span>/);
+  assert.match(panel, /<dt>Jobs<\/dt><dd><ul class="esm-story-jobs"><li><b>When<\/b> I am pricing a project, <b>I want<\/b> to use the catalogue prices, <b>so<\/b> my estimate matches what finance pays\. <span class="esm-story-job-persona">· Builder<\/span><\/li>/);
+  assert.ok(panel.indexOf("<dt>For</dt>") < panel.indexOf("<dt>Activity</dt>"), "For comes first");
+  assert.match(panelFor(html, "Submit the estimate to finance"), /so<\/b> I do not chase finance by email\. <span class="esm-story-job-persona">· Builder<\/span> <span class="esm-draft"/);
+});
+
+test("ESM-902: a map without personas renders as before", () => {
+  const view = getStoryMapForViewer(plain, engineer);
+  assert.equal(Object.hasOwn(view, "personas"), false);
+  assert.ok(view.stories.every(story => !Object.hasOwn(story, "personas") && !Object.hasOwn(story, "jobs")));
+  const html = render(view);
+  assert.doesNotMatch(html, /esm-avatar|esm-card-tags|esm-persona|esm-story-jobs|<dt>For<\/dt>|<dt>Jobs<\/dt>/);
+  // A tagged map's customer board shows nothing about personas.
+  assert.doesNotMatch(render(getStoryMapForViewer(parse(tagged()), { roles: ["member"] })), /esm-avatar|esm-persona|<dt>For<\/dt>/);
 });

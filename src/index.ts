@@ -15,6 +15,7 @@ export { defaultInternalRoles, getStoryMapForViewer, getStoryMapPage, recentUpda
 export type {
   InternalReleaseLabel,
   InternalStoryCard,
+  PersonaLabel,
   ReleaseEstimates,
   StoryCard,
   StoryHistoryEntry,
@@ -55,5 +56,5 @@ export { findStories, getStories } from "./read.js";
 export type { FoundStories, MissingStory, StoryQuery } from "./read.js";
 export { nextStoryId, proposeStoryMapEdit, StoryMapEditError, storyMapEditOperationSchema } from "./edit.js";
 export type { StoryMapEditOperation, StoryMapEditOptions, StoryMapEditResult } from "./edit.js";
-export { jobStatement, storyMapJobs, storyPersonaResolver, storyPersonas } from "./personas.js";
+export { jobStatement, personaColourCount, personaInitials, storyMapJobs, storyPersonaResolver, storyPersonas } from "./personas.js";
 export type { StoryMapJobOwner } from "./personas.js";

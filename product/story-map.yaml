@@ -731,7 +731,7 @@ stories:
     title: Show who a story is for
     activity: explore
     release: v0-7-3
-    status: planned
+    status: merged
     estimate: 3
     jobs:
       - answer-whats-next
@@ -739,6 +739,9 @@ stories:
     sources:
       - docs/plans/personas.md#2-show-who-a-story-is-for
       - docs/plans/personas.md#ui-mockup
+      - src/react.tsx
+      - test/personas.test.mjs
+      - docs/story-map.md#personas-and-jobs-to-be-done
   - id: ESM-903
     title: Filter the board by persona
     activity: explore

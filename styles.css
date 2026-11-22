@@ -13,6 +13,12 @@
   --esm-accent: #5046d5;
   --esm-accent-ink: #4b43a8;
   --esm-activity-bg: #eeefff;
+  --esm-persona-0: #5046d5; --esm-persona-0-bg: #e9e7ff;
+  --esm-persona-1: #0b6e63; --esm-persona-1-bg: #dcf1ee;
+  --esm-persona-2: #9a4a00; --esm-persona-2-bg: #fbead6;
+  --esm-persona-3: #a2285a; --esm-persona-3-bg: #fbe3ec;
+  --esm-persona-4: #1f5f99; --esm-persona-4-bg: #dfeefb;
+  --esm-persona-5: #4d6020; --esm-persona-5-bg: #ebf1d9;
   --esm-activity-line: #dce0ff;
   --esm-activity-ink: #252253;
   --esm-activity-accent: #6a63bd;
@@ -52,6 +58,12 @@
   --esm-accent: #9d96ff;
   --esm-accent-ink: #b7b2ff;
   --esm-activity-bg: #222349;
+  --esm-persona-0: #c4c0ff; --esm-persona-0-bg: #2c2a5c;
+  --esm-persona-1: #8fded3; --esm-persona-1-bg: #123b37;
+  --esm-persona-2: #f5c08a; --esm-persona-2-bg: #45290d;
+  --esm-persona-3: #f6a9c8; --esm-persona-3-bg: #4a1a2e;
+  --esm-persona-4: #a9cff5; --esm-persona-4-bg: #16324f;
+  --esm-persona-5: #c6da95; --esm-persona-5-bg: #2b3514;
   --esm-activity-line: #34356b;
   --esm-activity-ink: #e4e2ff;
   --esm-activity-accent: #aaa4ff;
@@ -89,6 +101,12 @@
     --esm-accent: #9d96ff;
     --esm-accent-ink: #b7b2ff;
     --esm-activity-bg: #222349;
+    --esm-persona-0: #c4c0ff; --esm-persona-0-bg: #2c2a5c;
+    --esm-persona-1: #8fded3; --esm-persona-1-bg: #123b37;
+    --esm-persona-2: #f5c08a; --esm-persona-2-bg: #45290d;
+    --esm-persona-3: #f6a9c8; --esm-persona-3-bg: #4a1a2e;
+    --esm-persona-4: #a9cff5; --esm-persona-4-bg: #16324f;
+    --esm-persona-5: #c6da95; --esm-persona-5-bg: #2b3514;
     --esm-activity-line: #34356b;
     --esm-activity-ink: #e4e2ff;
     --esm-activity-accent: #aaa4ff;
@@ -451,6 +469,26 @@
 .esm-updater { margin: 18px 0 0; color: var(--esm-muted); font-size: .875rem; }
 
 /* Narrow screens: stack each release lane instead of scrolling sideways. */
+/* Personas: initials and colour together, so colour is never the only cue. Each pair has at least 4.5:1 contrast. */
+.esm-avatar { --esm-avatar-ink: var(--esm-persona-0); --esm-avatar-bg: var(--esm-persona-0-bg); display: inline-grid; flex: none; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--esm-avatar-bg); box-shadow: 0 0 0 2px var(--esm-paper); color: var(--esm-avatar-ink); font-size: .625rem; font-weight: 750; letter-spacing: .02em; line-height: 1; }
+.esm-avatar[data-persona="1"] { --esm-avatar-ink: var(--esm-persona-1); --esm-avatar-bg: var(--esm-persona-1-bg); }
+.esm-avatar[data-persona="2"] { --esm-avatar-ink: var(--esm-persona-2); --esm-avatar-bg: var(--esm-persona-2-bg); }
+.esm-avatar[data-persona="3"] { --esm-avatar-ink: var(--esm-persona-3); --esm-avatar-bg: var(--esm-persona-3-bg); }
+.esm-avatar[data-persona="4"] { --esm-avatar-ink: var(--esm-persona-4); --esm-avatar-bg: var(--esm-persona-4-bg); }
+.esm-avatar[data-persona="5"] { --esm-avatar-ink: var(--esm-persona-5); --esm-avatar-bg: var(--esm-persona-5-bg); }
+.esm-avatar-more { --esm-avatar-ink: var(--esm-muted); --esm-avatar-bg: var(--esm-hover); }
+.esm-avatars { display: inline-flex; flex: none; align-items: center; }
+.esm-avatars .esm-avatar + .esm-avatar { margin-left: -2px; }
+.esm-activity .esm-avatars { margin-top: 6px; }
+.esm-card-tags { display: inline-flex; flex: none; align-items: center; gap: 8px; margin: -3px 0; }
+.esm-card-tags .esm-estimate { margin: 0 -2px 0 0; }
+.esm-persona-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.esm-persona-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 3px 11px 3px 3px; border: 1px solid var(--esm-line); border-radius: 999px; background: var(--esm-paper); color: var(--esm-ink); font-size: .8125rem; font-weight: 600; }
+.esm-persona-chip .esm-avatar { box-shadow: none; }
+.esm-story-jobs { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; line-height: 1.45; }
+.esm-story-jobs b { font-weight: 650; }
+.esm-story-job-persona { color: var(--esm-faint); }
+
 @media (max-width: 650px) {
   .esm-header { margin-bottom: 1.1rem; }
   .esm-toolbar { flex-direction: column; align-items: stretch; padding: 12px; }
