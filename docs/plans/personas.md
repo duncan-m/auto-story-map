@@ -266,6 +266,7 @@ The format already reads as “When …, I want …, so …”, but drafts such 
 
 - [Personas and jobs to be done](../story-map.md#personas-and-jobs-to-be-done): `situation` names the trigger and the complication, not only the moment. `outcome` names what gets better and what it costs today. One full example, and a weak and a strong version side by side.
 - `src/schema.ts`: the field descriptions say the same, so editors and agents see it.
+- The board, `jobStatement()`, the CLI and the exports read the third part as “so that …” instead of “so …”, which reads more naturally before an outcome such as “I can present numbers I can defend”. The `outcome` field is unchanged, so existing maps need no edit.
 - First-run workflow: agents write jobs this way and cite the research or issue each one comes from in the PR.
 - Dogfood: rewrite this repository's drafted jobs to this standard, keeping their IDs and `draft: true`, so stories keep their tags and a person still confirms each one.
 
