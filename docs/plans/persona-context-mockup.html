@@ -23,8 +23,8 @@
   .esm-persona-context dt { color: var(--esm-muted); font-weight: 650; }
   .esm-persona-context dd { margin: 0; }
   .esm-persona-context ul { margin: 0; padding-left: 1.1em; }
-  .esm-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0 !important; list-style: none; }
-  .esm-tools li { padding: 1px 8px; border: 1px solid var(--esm-line); border-radius: 6px; background: var(--esm-paper); font-size: .8125rem; }
+  .esm-uses { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0 !important; list-style: none; }
+  .esm-uses li { padding: 1px 8px; border: 1px solid var(--esm-line); border-radius: 6px; background: var(--esm-paper); font-size: .8125rem; }
   .esm-section-head { display: flex; align-items: center; gap: 8px; }
   .esm-job-core { display: grid; gap: 12px; margin: 4px 0 8px; padding: 20px 22px 22px; border: 1px solid var(--esm-accent); border-radius: 10px; background: var(--esm-activity-bg); }
   .esm-job-core .esm-job-statement { margin: 0; }
@@ -86,8 +86,8 @@
         <section class="esm-detail-section">
           <h4 class="esm-section-head">Context <span class="esm-draft">Draft</span><span class="mock-callout">1</span></h4>
           <dl class="esm-persona-context">
-            <dt>Accountable for</dt><dd>Weekly forecast accuracy, reporting to the VP of Sales</dd>
-            <dt>Tools</dt><dd><ul class="esm-tools"><li>Salesforce</li><li>HubSpot</li><li>Stripe</li><li>Excel</li><li>Slack</li></ul></dd>
+            <dt>Success means</dt><dd>Weekly forecast accuracy, judged by the VP of Sales</dd>
+            <dt>Uses today</dt><dd><ul class="esm-uses"><li>Salesforce</li><li>HubSpot</li><li>Stripe</li><li>Excel</li><li>Slack</li></ul></dd>
             <dt>Constraints</dt><dd><ul>
               <li>CRM and billing data are not connected</li>
               <li>No engineering support for custom integrations</li>
@@ -121,7 +121,7 @@
   </div>
 
   <ol class="mock-legend">
-    <li><span class="mock-callout">1</span><span><strong>Context</strong> (ESM-907): what they are accountable for, their tools and their constraints, between the summary and the jobs. Drafts are labelled until a person confirms them.</span></li>
+    <li><span class="mock-callout">1</span><span><strong>Context</strong> (ESM-907): what success means to them, what they use today and their constraints, between the summary and the jobs. The same labels fit consumer and business personas. Drafts are labelled until a person confirms them.</span></li>
     <li><span class="mock-callout">2</span><span><strong>Core job</strong> (ESM-908): the first job in the list, set apart. Validate warns when it has no stories.</span></li>
     <li><span class="mock-callout">3</span><span><strong>Fuller statement</strong> (ESM-909): the moment and what makes it hard, and what is at stake. Same three fields and 200-character limit as today, with “so that” in place of “so”.</span></li>
     <li><span class="mock-callout">4</span><span><strong>Steps</strong> (ESM-910): ordered workflow steps, each linked to an activity, with the stories that serve the job in that activity. Gaps show which step to plan for next.</span></li>

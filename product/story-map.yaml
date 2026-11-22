@@ -826,7 +826,7 @@ stories:
     jobs:
       - plan-release
       - read-the-map
-    summary: A persona can say what they are accountable for, the tools they use and the constraints they work under, so stories are planned around them. Internal only, and drafts are marked until a person confirms them.
+    summary: A persona can say what success means to them, what they use today and the constraints they work under, so stories are planned around them. The labels fit consumer and business products. Internal only, and drafts are marked until a person confirms them.
     sources:
       - docs/plans/personas.md#7-describe-a-personas-context
       - docs/story-map.md#personas-and-jobs-to-be-done

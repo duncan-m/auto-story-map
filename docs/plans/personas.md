@@ -17,7 +17,7 @@ Items are numbered in the order they should be built, and each section uses the 
 9. [Write job statements with a trigger and a stake](#9-write-job-statements-with-a-trigger-and-a-stake) · ESM-909
 10. [Break a job into steps](#10-break-a-job-into-steps) · ESM-910
 
-Items 7 to 10 came from comparing the format with a fuller persona template: a role with what the persona is judged on, their daily tools, their constraints, one core job story, and the workflow steps of that job. Items 7 to 9 are small and fit 0.7.3, which has not shipped. Item 10 changes the persona panel and its coverage, so it waits for 0.7.6, next to activity steps (ESM-501).
+Items 7 to 10 came from comparing the format with a fuller persona template: a role with what success means to the persona, what they use today, their constraints, one core job story, and the workflow steps of that job. Items 7 to 9 are small and fit 0.7.3, which has not shipped. Item 10 changes the persona panel and its coverage, so it waits for 0.7.6, next to activity steps (ESM-501).
 
 All stories are internal. Item 5 changes what customers can see, but only for personas whose customer copy has been approved, as for stories today. Jobs are internal only.
 
@@ -96,7 +96,7 @@ The board reads each job as a job statement: “**When** a release is being plan
 | B. Can a story have several personas | Yes, up to 4, first is primary | One persona per story. Simpler, but forces a choice for shared stories such as search |
 | C. Untagged stories | Allowed. The filter has no “Untagged” option at first, and validate warns only when the map has personas and more than half of the active stories are untagged | Make `personas` required once the map defines any. Too strict for existing maps |
 | D. What a persona filter keeps | Stories tagged with any chosen persona. Several personas can be chosen, like statuses | Primary persona only |
-| E. Persona fields | `id`, `title`, `summary`, `jobs`, `customer`, and from item 7 an internal `context` with accountability, tools and constraints | Add `pains`, `quote` or an image. Still deferred; images also raise hosting and privacy questions. Item 7 reopens this decision for context only, because constraints change what a story can assume |
+| E. Persona fields | `id`, `title`, `summary`, `jobs`, `customer`, and from item 7 an internal `context` with what success means, what they use today and their constraints | Add `pains`, `quote` or an image. Still deferred; images also raise hosting and privacy questions. Item 7 reopens this decision for context only, because constraints change what a story can assume |
 | J. Which job is the core job | The first job in the persona's list (item 8) | A `core: true` field. Explicit, but two ways to say the same thing, and validation would need to allow only one |
 | F. Customer view | Show approved personas as a “For” line in the story panel only | No personas for customers at all. Also fine; item 5 can be dropped without affecting the rest |
 | G. Release | Decided: a new **0.7.3: Personas** release, after the export work and the CLI to read and edit the map | — |
@@ -219,19 +219,35 @@ personas:
     title: Product manager
     summary: Owns the roadmap and decides what goes in each release.
     context:
-      accountability: Judged on whether releases land with the scope agreed at planning.
-      tools: [GitHub, Linear, Slack, Figma]
+      success: Releases land with the scope agreed at planning
+      usesToday: [GitHub, Linear, Slack, a planning spreadsheet]
       constraints:
         - Cannot change code, so relies on engineers or agents to edit the map
         - Shares plans with customers only through approved copy
       draft: true
 ```
 
+The names work for consumer products as well as business ones. A consumer has no manager judging them, but still has their own measure of success, and what they use today includes workarounds and competitors as well as software:
+
+```yaml
+  - id: household-planner
+    title: Household budget planner
+    context:
+      success: Every bill paid on time without checking the account each week
+      usesToday: [Banking app, Shared spreadsheet, Calendar reminders, Asking their partner]
+      constraints:
+        - Checks money on a phone, often on the commute
+        - Will not link a bank account to an app they do not trust
+      draft: true
+```
+
+`success` says what a good result looks like to them, such as “weekly forecast accuracy, judged by the VP of Sales” for a business user. `usesToday` lists the products, tools and workarounds they rely on now, because those are what a story competes with.
+
 **Change.**
 
-- `src/schema.ts`: an optional `context` on a persona, with `accountability` (up to 200 characters), `tools` (up to 8 names of up to 60 characters), `constraints` (up to 6, of up to 200 characters) and `draft`. All parts are optional, but `context` needs at least one of the first three. `draft: true` works as for jobs: agents set it, and only a person removes it.
+- `src/schema.ts`: an optional `context` on a persona, with `success` (up to 200 characters), `usesToday` (up to 8 entries of up to 60 characters), `constraints` (up to 6, of up to 200 characters) and `draft`. All parts are optional, but `context` needs at least one of the first three. `draft: true` works as for jobs: agents set it, and only a person removes it.
 - `src/view.ts`: the internal persona label carries `context`. The customer projection drops it, even for a customer-facing persona.
-- `src/react.tsx`: the persona panel shows **Accountable for**, **Tools** and **Constraints** between the summary and the jobs, with a **Draft** label on drafted context.
+- `src/react.tsx`: the persona panel shows **Success means**, **Uses today** and **Constraints** between the summary and the jobs, with a **Draft** label on drafted context.
 - `src/diff.ts`: report added, removed and changed context under **Personas and jobs**, and a confirmed draft.
 - JSON export: each persona's `context`. `story-map stories --query` and board search do not match it, so results stay about stories.
 - Validate warns about drafted context on a persona that a shipped story is for, as for drafted jobs.
