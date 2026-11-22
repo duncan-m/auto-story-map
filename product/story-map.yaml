@@ -160,6 +160,18 @@ releases:
         expected: Fewer, because each story is tied to a persona and its goals before work starts
         solves: Building stories that no persona needs
         draft: true
+  - id: v0-7-4
+    title: "0.7.4: Native CLI for agents"
+    summary: Agents read the map, look up evidence, validate and propose edits with story-map commands that print JSON, and can claim stories when several agents work at once.
+    impact:
+      - metric: Map edits made by hand in the YAML file by agents
+        expected: Made with story-map edit, which checks the change before writing it
+        solves: Agents breaking the map or the guide's rules and finding out only when validate runs
+        draft: true
+      - metric: Agents starting the same story at the same time
+        expected: None, for teams that use claims
+        solves: Duplicate work when several agents pick from one map
+        draft: true
   - id: next
     title: Next
     summary: Proposed for 0.7.x or 0.8.0.
@@ -431,6 +443,50 @@ stories:
     customer:
       title: Keep the map in step with the code
       summary: A scheduled check compares the map with your code and proposes corrections for you to review.
+  # 0.7.4: native CLI for agents
+  - id: ESM-741
+    title: Read the map from the command line
+    activity: explore
+    release: v0-7-4
+    status: planned
+    summary: story-map story, stories and releases print stories and releases as text or JSON, with the board's filters and search, so agents stop reading the YAML by hand.
+    sources:
+      - docs/plans/native-cli.md#2-read-the-map
+  - id: ESM-742
+    title: Print validation results as JSON
+    activity: review
+    release: v0-7-4
+    status: planned
+    summary: validate --format json returns each issue with its severity, file, line, YAML path and message, for agents and scripts.
+    sources:
+      - docs/plans/native-cli.md#3-validation-as-json
+  - id: ESM-743
+    title: Look up the evidence for a story
+    activity: review
+    release: v0-7-4
+    status: planned
+    summary: story-map evidence reports the branches, default-branch commits, plans, tests and broken sources that mention each story, and suggests a status without changing anything.
+    notes: The deterministic evidence step of the scheduled audit (ESM-502), built first so agents can use it on its own.
+    sources:
+      - docs/plans/native-cli.md#4-look-up-evidence-for-a-story
+  - id: ESM-744
+    title: Propose map edits from the command line
+    activity: plan
+    release: v0-7-4
+    status: planned
+    summary: story-map edit and add change statuses, releases, sources and impact as named operations, printing the diff and validation as a dry run until --write.
+    notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft.
+    sources:
+      - docs/plans/native-cli.md#5-propose-edits
+  - id: ESM-745
+    title: Claim stories so several agents do not clash
+    activity: plan
+    release: v0-7-4
+    status: planned
+    summary: story-map claim records that an agent is on a story as a Git ref on the remote, so a second agent is told before it starts the same work.
+    notes: Opt-in, for teams running several agents. Never written to the map file.
+    sources:
+      - docs/plans/native-cli.md#6-claim-stories
   # Personas
   - id: ESM-901
     title: Define personas in the map file
