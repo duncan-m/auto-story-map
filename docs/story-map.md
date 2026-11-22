@@ -389,14 +389,14 @@ In code, `diffStoryMaps(before, after)` returns the same comparison and `formatS
 
 Read the map with `story-map story`, `stories` and `releases` instead of opening the YAML file. They print text for people, or JSON with `--format json` for agents and scripts. Reads are always the internal view, because whoever runs them has the file. Each takes `--map <path>`, which defaults to `product/story-map.yaml`, and the files from [`story-map history`](#show-status-history) and [`story-map tests`](#link-tests-to-stories) as `--history <file>` and `--tests-index <file>`, for dates, changes and tagged tests.
 
-Before you add a story, search for an existing one. `--query` matches IDs, titles, summaries, notes and status reasons, as the board's search does:
+Before you add a story, search for an existing one. `--query` matches IDs, titles, summaries, notes, status reasons, persona titles and job statements, as the board's search does:
 
 ```bash
 npx --no-install story-map stories --query "export" --status all
 ```
 
-- `story-map story <ID> [...]` prints stories in full: status, reason, release, activity, estimate, summary, notes and sources, with history and tests when their files are given. An ID that is not in the map exits 1 and suggests close matches, such as `ESM-742` for `esm-742`.
-- `story-map stories` lists stories one per line, with ID, status, release and title. It takes the board's filters: `--status`, repeated or comma-separated, with `stalled` and `all`; `--release` and `--activity`, repeated or comma-separated; `--query`; and `--changed-within 1`, `7`, `14` or `30` days. As on the board, blocked and cut stories are hidden unless `--status` chooses them, and the count of hidden stories is printed on stderr. `stalled` and `--changed-within` need `--history`.
+- `story-map story <ID> [...]` prints stories in full: status, reason, release, activity, estimate, the personas it is for, the jobs it serves with their statements and a `[draft]` mark on drafts, summary, notes and sources, with history and tests when their files are given. An ID that is not in the map exits 1 and suggests close matches, such as `ESM-742` for `esm-742`.
+- `story-map stories` lists stories one per line, with ID, status, release and title. It takes the board's filters: `--status`, repeated or comma-separated, with `stalled` and `all`; `--release`, `--activity`, `--persona` and `--job`, repeated or comma-separated; `--query`; and `--changed-within 1`, `7`, `14` or `30` days. As on the board, blocked and cut stories are hidden unless `--status` chooses them, and the count of hidden stories is printed on stderr. `stalled` and `--changed-within` need `--history`. An unknown release, activity, persona or job ID exits 1. `--persona` keeps stories for any chosen persona, from their jobs or their own `personas`, and `--job` the stories that serve any chosen job, as on the board's [persona filter](#filter-by-persona).
 - `story-map releases [<release ID> ...]` lists releases with their story counts by status, estimates, notes and expected impact. Impact items an agent drafted are marked `[draft]`.
 - `story-map help <command>` prints just that command's options.
 
@@ -608,7 +608,7 @@ return new Response(file, {
 });
 ```
 
-- The file is one page laid out like the board: activities across the top, then a lane per release with its title, story counts, [estimate total](#estimate-effort), notes and impact, with drafted items marked **Draft**. Each story is a card showing its ID and title, with its estimate after the ID. Each card also carries its ID, title, status, activity, release and estimate as shape data.
+- The file is one page laid out like the board: activities across the top, then a lane per release with its title, story counts, [estimate total](#estimate-effort), notes and impact, with drafted items marked **Draft**. Each story is a card showing its ID and title, with its estimate after the ID. Each card also carries its ID, title, status, activity, release and estimate as shape data, and, when it has them, `Personas`, the titles of the personas it is for, and `Jobs`, the IDs of the jobs it serves, each joined by “; ”, so Lucidchart can filter cards by them. Cards show no persona avatars.
 - The export is the whole map, including blocked and cut stories. Pass the view from `getStoryMapForViewer`, not a filtered one. A filtered view is refused.
 - `collapsedReleases` takes release IDs. Those lanes show only their title and story count.
 - At most 200 stories are exported, from lanes that are not collapsed. When there are more, the most recently changed are kept, so pass `history` if you have it, and the file says how many were left out. Without history, the last stories in the file are kept. Change the limit with `maxStories`.
@@ -639,7 +639,7 @@ return new Response(storyMapToCsv(view), {
 });
 ```
 
-- Each story is a row with the columns `Activity`, `Release`, `ID`, `Title` and `Estimate`, using activity and release titles, in board order: by release, then activity, then map order. `Estimate` is the story points, or empty when the story has none.
+- Each story is a row with the columns `Activity`, `Release`, `ID`, `Title` and `Estimate`, using activity and release titles, in board order: by release, then activity, then map order. `Estimate` is the story points, or empty when the story has none. When the map has [personas](#personas-and-jobs-to-be-done), two more columns follow: `Personas`, the titles of the personas the story is for, primary first, and `Jobs`, the IDs of the jobs it serves, each joined by “; ” and empty when it names none. Maps without personas keep the five columns.
 - A collapsed release is one row, with its title in `Release`, “Collapsed · N stories” in `Title` and its points total, such as “21 pts · 8 left”, in `Estimate`.
 - Release notes and impact are left out, because they do not fit a row per story. The Visio file has them.
 - The same rules apply as for Visio: the whole map, internal views only, and at most 200 of the most recently changed stories. The CSV cannot say how many were left out, so `story-map export` reports it.
@@ -665,7 +665,7 @@ return new Response(storyMapToJson(view), {
 ```
 
 - `format` is `"auto-story-map.export"` and `version` is `1`. The type is `StoryMapJsonExport`.
-- `activities` and `releases` are as on the internal board, with each release's notes, impact, `storyCounts` and, when it has estimated stories, `estimates`. `stories` are in map order, each with its summary, status, `statusReason`, `estimate`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
+- `activities` and `releases` are as on the internal board, with each release's notes, impact, `storyCounts` and, when it has estimated stories, `estimates`. When the map has personas, `personas` lists them in map order, each with its `activeStories` and its `jobs`, and each job with its fields, its `statement`, such as “When a release is being planned, I want …, so ….”, and its `activeStories`, counted across the whole map, so `0` is a job no planned or delivered work meets. An agent can use them to find jobs with no stories, and stories that serve no job, and suggest work. `stories` are in map order, each with its summary, status, `statusReason`, `estimate`, `personas` and `jobs`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
 - `statuses` says what each status means, such as that `merged` work is on the default branch but not yet available to its users.
 - `provenance` names the library version and commit that wrote the file, and when the history and tests index were generated. `completeness` counts the stories in the map, in the file and over the limit, and says whether history and tests were supplied. Both have `notes`: plain sentences for the agent, such as that statuses are recorded in PRs and can lag behind the code, that tests come from a static scan of tagged names without results, or that a shallow history is missing earlier changes. Ask the agent to read them before drawing conclusions.
 - Unlike the other formats, every story is included unless you pass `maxStories`, and collapsed lanes are ignored, so the file always covers every release. The board's JSON link and `storyMapExportResponse` ignore `collapsed` for this format, and `story-map export` warns that `--collapsed` is ignored.

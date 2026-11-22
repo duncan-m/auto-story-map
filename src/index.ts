@@ -46,7 +46,7 @@ export type { CustomerStoryChange, GroupChanges, InactiveStoryChange, ReleaseDet
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";
 export { jsonContentType, storyMapToJson } from "./export-json.js";
-export type { StoryMapJsonExport, StoryMapJsonExportOptions, StoryMapJsonStory } from "./export-json.js";
+export type { StoryMapJsonExport, StoryMapJsonExportOptions, StoryMapJsonJob, StoryMapJsonPersona, StoryMapJsonStory } from "./export-json.js";
 export { storyMapExportFormats, storyMapExportResponse } from "./export-response.js";
 export type { StoryMapExportFormat, StoryMapExportResponse, StoryMapExportResponseOptions } from "./export-response.js";
 export type { StoryMapExportOptions } from "./export.js";

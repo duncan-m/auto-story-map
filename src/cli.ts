@@ -19,7 +19,7 @@ const usage = `Usage:
   story-map tests [--tests <path>] [--root <path>] [--out <file>] [<map.yaml>]
   story-map export --format vsdx|csv|json [--output <file>] [--history <file>] [--tests-index <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
-  story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
+  story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
   story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--customer-title <text>] [--customer-summary <text>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
@@ -114,8 +114,8 @@ export
 
 story
   Prints one or more stories in full: status, release, activity, estimate,
-  summary, notes and sources, with history and tagged tests when their files
-  are given. An ID that is not in the map exits 1 and suggests close matches.
+  who it is for, the jobs it serves, summary, notes and sources, with history
+  and tagged tests when their files are given. An ID that is not in the map exits 1 and suggests close matches.
   Reads are always the internal view.
 
   --format json      Print the stories in the JSON export's story shape.
@@ -133,8 +133,12 @@ stories
                      stalled or all. Repeat, or separate with commas.
   --release <ID>     Only stories in this release. Repeat for several.
   --activity <ID>    Only stories under this activity. Repeat for several.
-  --query <text>     Search IDs, titles, summaries, notes and status reasons,
-                     as the board's search does. Use it to find an existing
+  --persona <ID>     Only stories for this persona, from their jobs or their
+                     own personas. Repeat for several.
+  --job <ID>         Only stories that serve this job. Repeat for several.
+  --query <text>     Search IDs, titles, summaries, notes, status reasons,
+                     persona titles and job statements, as the board's
+                     search does. Use it to find an existing
                      story before adding one.
   --changed-within <days>
                      Only stories added or changed in 1, 7, 14 or 30 days.

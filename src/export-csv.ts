@@ -5,6 +5,11 @@ import type { StoryMapView } from "./view.js";
 export const csvContentType = "text/csv; charset=utf-8";
 
 const columns = ["Activity", "Release", "ID", "Title", "Estimate"] as const;
+/** Added when the map has personas, so files for maps without them do not change. */
+const personaColumns = ["Personas", "Jobs"] as const;
+
+/** How the CSV and Visio exports join a story's persona titles and job IDs. */
+const exportListSeparator = "; ";
 
 /**
  * Formats one CSV field. A field that a spreadsheet could read as a formula
@@ -20,7 +25,8 @@ export function csvField(value: string): string {
 /**
  * Writes the internal map as CSV for importing into Lucidchart, Miro or a
  * spreadsheet: one row per story with its activity, release, ID, title and
- * estimate in story points, in board order (release, then activity, then map
+ * estimate in story points, and, when the map has personas, the titles of the
+ * personas it is for and the IDs of the jobs it serves, joined by “; ”, in board order (release, then activity, then map
  * order). A release in `collapsedReleases` is one row with its title, story
  * count and point total instead of its stories, and at most `maxStories` (200) of the most recently changed stories
  * are included. Release notes and impact are left out; the Visio file has them.
@@ -32,15 +38,22 @@ export function csvField(value: string): string {
  */
 export function storyMapToCsv(view: StoryMapView, options: StoryMapExportOptions = {}): string {
   const model = prepareStoryMapExport(view, options);
-  const rows: string[][] = [[...columns]];
+  const withPersonas = model.hasPersonas;
+  const rows: string[][] = [[...columns, ...(withPersonas ? personaColumns : [])]];
   for (const release of model.releases) {
     if (release.collapsed) {
-      rows.push(["", release.title, "", `Collapsed · ${release.storyCount} ${release.storyCount === 1 ? "story" : "stories"}`, release.estimatesText ?? ""]);
+      rows.push([
+        "", release.title, "", `Collapsed · ${release.storyCount} ${release.storyCount === 1 ? "story" : "stories"}`, release.estimatesText ?? "",
+        ...(withPersonas ? ["", ""] : []),
+      ]);
       continue;
     }
     for (const activity of model.activities) {
       for (const story of release.cells.get(activity.id) ?? []) {
-        rows.push([activity.title, release.title, story.id, story.title, story.estimate === undefined ? "" : String(story.estimate)]);
+        rows.push([
+          activity.title, release.title, story.id, story.title, story.estimate === undefined ? "" : String(story.estimate),
+          ...(withPersonas ? [(story.personas ?? []).join(exportListSeparator), (story.jobs ?? []).join(exportListSeparator)] : []),
+        ]);
       }
     }
   }

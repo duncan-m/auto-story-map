@@ -21,6 +21,10 @@ export interface ExportStory {
   release: string;
   /** Story points. */
   estimate?: number;
+  /** Titles of the personas the story is for, primary first. Absent when it names none. */
+  personas?: string[];
+  /** IDs of the jobs to be done the story serves, most important first. Absent when it names none. */
+  jobs?: string[];
 }
 
 export interface ExportRelease {
@@ -41,6 +45,8 @@ export interface ExportRelease {
 
 export interface StoryMapExport {
   title: string;
+  /** True when the map has personas, so the CSV export adds its Personas and Jobs columns. */
+  hasPersonas: boolean;
   exportedOn: string;
   activities: StoryMapLabel[];
   releases: ExportRelease[];
@@ -102,6 +108,7 @@ export function prepareStoryMapExport(view: StoryMapView, options: StoryMapExpor
       .map(({ story }) => story),
   );
 
+  const personaTitles = new Map((view.personas ?? []).map(persona => [persona.id, persona.title]));
   const releases: ExportRelease[] = view.releases.map(release => {
     const isCollapsed = collapsed.has(release.id);
     const cells = new Map<string, ExportStory[]>(view.activities.map(activity => [activity.id, []]));
@@ -115,6 +122,8 @@ export function prepareStoryMapExport(view: StoryMapView, options: StoryMapExpor
           activity: story.activity,
           release: story.release,
           ...(story.estimate !== undefined ? { estimate: story.estimate } : {}),
+          ...(story.personas?.length ? { personas: story.personas.map(id => personaTitles.get(id) ?? id) } : {}),
+          ...(story.jobs?.length ? { jobs: [...story.jobs] } : {}),
         });
       }
     }
@@ -133,6 +142,7 @@ export function prepareStoryMapExport(view: StoryMapView, options: StoryMapExpor
 
   return {
     title: view.title,
+    hasPersonas: personaTitles.size > 0,
     exportedOn: (options.now ?? new Date()).toISOString().slice(0, 10),
     activities: view.activities,
     releases,

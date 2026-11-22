@@ -786,7 +786,7 @@ stories:
     title: Include personas in exports
     activity: explore
     release: v0-7-3
-    status: planned
+    status: merged
     estimate: 2
     jobs:
       - read-the-map
@@ -796,6 +796,9 @@ stories:
     sources:
       - docs/plans/personas.md#6-include-personas-in-exports
       - docs/plans/personas.md#ui-mockup
+      - src/export-json.ts
+      - test/personas.test.mjs
+      - docs/story-map.md#export-as-json-for-agents
   - id: ESM-801
     title: Show a story's tests in its panel
     activity: explore
