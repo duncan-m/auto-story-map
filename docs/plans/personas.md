@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: proposed. The stories are ESM-901 to ESM-906, in the **Next** release of the map until a release is agreed (see [decision G](#decisions-to-make)).
+Status: proposed. The stories are ESM-901 to ESM-906, in the **0.7.2: Personas** release of the map. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**. Personas add that: the map file names the people the product serves, each story says which of them it helps, and the board lets viewers read the map one persona at a time.
 
@@ -67,7 +67,7 @@ stories:
 | D. What a persona filter keeps | Stories tagged with any chosen persona. Several personas can be chosen, like statuses | Primary persona only |
 | E. Persona fields | `id`, `title`, `summary`, `goals`, `customer` | Add `pains`, `quote` or an image. Keep it small until teams ask; images also raise hosting and privacy questions |
 | F. Customer view | Show approved personas as a “For” line in the story panel only | No personas for customers at all. Also fine; item 5 can be dropped without affecting the rest |
-| G. Release | A new **0.8.0: Personas** release, after the export work | Keep in **Next** |
+| G. Release | Decided: a new **0.7.2: Personas** release, after the export work | — |
 
 ### Assumptions to confirm
 

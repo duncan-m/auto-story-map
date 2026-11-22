@@ -1,6 +1,6 @@
 # Plan: link a story's pull requests and commits from its panel
 
-Status: proposed. The work is ESM-803 and ESM-804, both in the **0.7.2** release of the map.
+Status: proposed. The work is ESM-803 and ESM-804, both in the **0.7.3** release of the map.
 
 Internal viewers open a story and can follow its work to the code: each line in its **History** links to the pull request and commit that made the change, and a new **Changes** section lists the pull requests and commits that delivered the story. As with tests, changes point to stories, not the other way round: a commit message, pull request title or branch name names the story ID, and the history build collects them. Nobody edits the map to list them.
 
