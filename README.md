@@ -86,6 +86,15 @@ npx story-map validate --format json product/story-map.yaml
 
 `stories` takes the board's filters, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
 
+Change it the same way. Each edit is a dry run that prints the YAML diff, the PR summary and any problems it causes, until you add `--write`. Comments and untouched lines stay exactly as they were:
+
+```sh
+npx story-map edit ESM-744 --status in-progress
+npx story-map add --activity review --release v0-7-5 --title "Check claims in CI" --write
+```
+
+See [Change the map from the command line](docs/story-map.md#change-the-map-from-the-command-line).
+
 ## Export the map
 
 Exports are a one-way snapshot of the internal map. The YAML file stays the source of truth, and edits made elsewhere do not come back. Customers can never export the map.

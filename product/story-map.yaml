@@ -516,12 +516,13 @@ stories:
     title: Propose map edits from the command line
     activity: plan
     release: v0-7-2
-    status: planned
+    status: merged
     estimate: 5
     summary: story-map edit and add change statuses, releases, sources and impact as named operations, printing the diff and validation as a dry run until --write.
     notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft.
     sources:
       - docs/plans/native-cli.md#5-propose-edits
+      - docs/story-map.md#change-the-map-from-the-command-line
   - id: ESM-745
     title: Claim stories so several agents do not clash
     activity: plan

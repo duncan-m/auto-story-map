@@ -92,6 +92,7 @@ The tests and the demo import the package by its own name (`import … from "aut
 | `src/commands/` | One module per command, each a `defineCommand({ parse, run })`. `shared.ts` holds the helpers they share: `optionValue`, `readFormat`, `escapeText`, `escapeLines`, `report`, `loadMapOrReport`, `loadInputsOrReport`, `writeOutput` and `printJson` |
 | `src/check.ts` | `checkStoryMap`: the checks behind `validate`, returning every issue as data for the text, GitHub and JSON formats |
 | `src/preview.tsx` | `createStoryMapPreviewServer`, behind `story-map preview`. Not exported from the root entry point, because it imports `react-dom/server`. The CLI loads it with a dynamic `import()`, so the other commands work without React |
+| `src/edit.ts` | `proposeStoryMapEdit`, behind `story-map edit`, `add` and `release-impact`: applies named edits as line splices, checks the result, and renders the line diff |
 | `src/read.ts` | `findStories` and `getStories`, behind `story-map stories` and `story`, built on `filterStoryMapView` and the JSON export's story shape |
 | `src/board.ts` | The optional browser script, `enhanceStoryMapFilters`. The only code that runs in the browser. |
 | `src/react.tsx` | `StoryMapBoard`: grid, cards, popover panels, filter toolbar, history list and date formatting |
@@ -361,11 +362,18 @@ Each command lives in `src/commands/<name>.ts` and parses its arguments by hand 
 | `story [--format text\|json] [--map] [--history] [--tests-index] <ID>…` | Prints stories in full | 0, 1 invalid map or an unknown ID, 2 usage error |
 | `stories [--format text\|json] [--status]… [--release]… [--activity]… [--query] [--changed-within] […]` | Lists stories with the board's filters | 0, 1 invalid map or an unknown release or activity, 2 usage error |
 | `releases [--format text\|json] […] [<release ID>…]` | Lists releases with counts, estimates, notes and impact | 0, 1 invalid map or an unknown release, 2 usage error |
+| `edit <ID> […]`, `edit --from <file>`, `add […]`, `release-impact <release ID> […]` | Proposes named edits, and saves them with `--write` | 0 valid result, 1 refused edit or invalid result, 2 usage error |
 | `preview [--port] [--history] [--tests-index] [--source-base-url] [<map>]` | Serves the map as a board on loopback until stopped | 1 missing map, React not installed or port in use, 2 usage error |
 
 ### validate
 
 Text output goes to stderr as `file:line:column: path (ITEM-ID): message`, with `warning: ` before the path for warnings. `--format github` prints `::error` or `::warning file=…,line=…,col=…::` workflow commands to stdout, escaping `%`, newlines, `:` and `,` as GitHub requires, so problems appear on the PR diff. `--format json` prints one `auto-story-map.validation` document to stdout once every map is checked, with each map's `StoryMapCheckResult` and its `file`. All three formats print the issues `checkStoryMap` returns, so they cannot disagree. A map that cannot be read becomes a single error issue.
+
+### edit, add and release-impact
+
+`proposeStoryMapEdit` never writes. It keeps two copies of the map: a plain object, from `parseDocument(source).toJS()`, that each operation changes as intended, and the YAML text, which `TextEditor` changes by splicing whole lines. A field is replaced or removed by its key's line through the end of its value, using the ranges from a fresh `parseDocument` after each splice, and a new field is rendered with the `yaml` package and inserted after the last field that comes before it in the guide's order. Sources and impact items are appended after the list's last item, and a new story after the last story in its release. Every line outside those spans is left alone by construction. At the end, the edited text is parsed again and must equal the intended object exactly. If it does not, such as when an alias shares the edited value, the whole edit is refused with `StoryMapEditError`. The result is then checked with `checkStoryMap`, and compared with `diffStoryMaps` when valid. `newIssues` are the issues the original map did not have, matched by severity, file, item, field and message, because paths shift when a story is added.
+
+Operations are validated with `storyMapEditOperationSchema`, a Zod discriminated union with no delete. The rules from `AGENTS.md` are refusals in `proposeStoryMapEdit`, not CLI checks, so a host's own scripts get them too. `nextStoryId` takes the most used prefix among the release's stories, or the whole map's when the release has none, and the next number after the highest in that pool that no story in the map uses. The CLI resolves `--map` and `--from` with `resolveRootedPath` against the current directory, writes only when `valid` and `changed`, and prints errors and new warnings only, with a count of the warnings the map already had.
 
 ### preview
 

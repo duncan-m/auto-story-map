@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import diff from "./commands/diff.js";
+import { add, edit, releaseImpact } from "./commands/edit.js";
 import exportMap from "./commands/export.js";
 import history from "./commands/history.js";
 import init from "./commands/init.js";
@@ -20,6 +21,10 @@ const usage = `Usage:
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
+  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--customer-title <text>] [--customer-summary <text>] [common edit options]
+  story-map edit --from <edits.json> [common edit options]
+  story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [common edit options]
+  story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [<map.yaml>]
   story-map help [<command>]
 
@@ -140,6 +145,53 @@ releases
   notes and expected impact. Impact items drafted by an agent are marked
   [draft]. Takes the same options as story.
 
+edit
+  Changes a story with named edits instead of editing the YAML by hand. By
+  default it is a dry run: it prints the line diff of the YAML, the story-map
+  diff summary and any problems the edit introduces, and writes nothing.
+  Comments and every line outside the changed fields are kept as they are.
+
+  --status <status>  planned, in-progress, merged, shipped, blocked or cut.
+                     blocked and cut need --reason, which says why.
+  --release, --activity, --title, --summary, --notes
+                     Set that field.
+  --add-source, --remove-source <source>
+                     Add or remove a source. Repeat for several.
+  --customer-title, --customer-summary <text>
+                     Customer-facing copy. Needs --customer.
+  --from <file>      A JSON list of edits, such as
+                     [{"op": "status", "id": "ESM-744", "status": "merged"}],
+                     applied all or none. The ops are status, release,
+                     activity, title, summary, notes, add-source,
+                     remove-source, customer-title, customer-summary, add and
+                     release-impact.
+
+  Common edit options:
+  --write            Save the change, only when the edited map is valid.
+  --format json      Print the line diff, summary and validation as JSON.
+  --map <path>       Map to edit, inside the current directory. Defaults to
+                     product/story-map.yaml.
+  --customer         Allow customer-facing copy, once it is approved.
+  --updated-by <name>
+                     Credit this person on each story the edit touches, when
+                     you edit on their behalf. Git credits the author otherwise.
+  --check-sources    Also check that sources exist.
+
+  There is no delete: cut a story with --status cut --reason <text>. Exit
+  codes: 0 for a valid result, 1 for a refused edit or an invalid result,
+  2 for a usage error.
+
+add
+  Adds a story, as planned unless --status says otherwise, after the last
+  story in its release. It takes the next free ID after the highest one in the
+  release, counting cut stories so an ID is never reused, or --id. Takes
+  --source for each source, and the common edit options in story-map help edit.
+
+release-impact
+  Adds an expected impact item to a release, always with draft: true. Only a
+  person confirms it, by removing draft by hand. Takes the common edit options
+  in story-map help edit.
+
 preview
   Serves the map as a board on http://127.0.0.1:4173/story-map, with
   internal and signed-in customer views, so you can check a map before adding
@@ -159,15 +211,15 @@ preview
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, preview };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, preview, edit, add, "release-impact": releaseImpact };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {
-  const line = usage.split("\n").find(text => text.startsWith(`  story-map ${name} `) || text === `  story-map ${name}`);
-  if (!line) return null;
+  const lines = usage.split("\n").filter(text => text.startsWith(`  story-map ${name} `) || text === `  story-map ${name}`);
+  if (!lines.length) return null;
   const start = usage.indexOf(`\n\n${name}\n`);
-  const section = start === -1 ? "" : usage.slice(start + 2).split(/\n\n(?=[a-z]+\n)/)[0];
-  return `Usage:\n${line}\n\n${section}`.trimEnd();
+  const section = start === -1 ? "" : usage.slice(start + 2).split(/\n\n(?=[a-z][a-z-]*\n)/)[0];
+  return `Usage:\n${lines.join("\n")}\n\n${section}`.trimEnd();
 }
 
 const [command, ...rest] = process.argv.slice(2);

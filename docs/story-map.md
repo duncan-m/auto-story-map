@@ -330,6 +330,38 @@ Map text is untrusted. Text output escapes line breaks and terminal control char
 
 In code, `findStories(view, query)` and `getStories(view, ids)` do the same from an unfiltered internal view.
 
+## Change the map from the command line
+
+Make the common map changes with `story-map edit`, `add` and `release-impact` instead of editing the YAML by hand. They follow the rules in this guide for you, and check the result before anything is saved:
+
+```bash
+npx --no-install story-map edit ESM-744 --status in-progress
+npx --no-install story-map edit ESM-745 --status blocked --reason "Waiting on the host's Git provider to accept custom refs"
+npx --no-install story-map edit ESM-743 --release v0-7-5 --activity review
+npx --no-install story-map edit ESM-741 --add-source docs/story-map.md#read-the-map-from-the-command-line
+npx --no-install story-map add --activity review --release v0-7-5 --title "Check claims in CI"
+npx --no-install story-map release-impact v0-7-5 --metric "Agents starting the same story" --expected "None, for teams that use claims"
+```
+
+- **Dry run first.** Each command prints the line diff of the YAML, the [`story-map diff`](#review-a-map-change) summary for the PR, and any errors, plus any warnings the edit introduces. Nothing is saved until you add `--write`, and only a valid map is saved. Check the dry run before you write.
+- **Only the change moves.** Comments, key order and every line outside the changed fields stay exactly as they were. An edit that cannot be made that way, such as one that changes a value another story shares through a YAML alias, is refused.
+- **Several edits at once.** `--from edits.json` takes a JSON list of edits and applies all of them or none, such as `[{"op": "status", "id": "ESM-744", "status": "merged"}, {"op": "add-source", "id": "ESM-744", "source": "docs/story-map.md#change-the-map-from-the-command-line"}]`. Run `story-map help edit` for every op and option.
+- **JSON for agents.** `--format json` returns `written`, `valid`, the `lineDiff`, the `diff` and its Markdown `summary`, the `check` result as from [`validate --format json`](#validate-a-change), and `newIssues`, the issues the edit introduced. A refused edit returns `refused`, with the message and the index of the edit at fault.
+- Exit codes are 0 for a valid result, 1 for a refused edit or an invalid result, and 2 for a usage error.
+
+The commands enforce the rules in `AGENTS.md`:
+
+- **No deletes.** There is no remove operation. Cut a story with `--status cut --reason …` instead.
+- **Reasons for blocked and cut.** `--status blocked` and `--status cut` need `--reason`, which becomes `statusReason`. Any other status removes the reason.
+- **No customer copy by default.** `--customer-title` and `--customer-summary` need `--customer`, once the wording is approved. The summary lists them under customer-facing changes for the PR description.
+- **Drafts stay drafts.** `release-impact` always adds `draft: true`, and nothing removes it. Only a person does, by hand.
+- **No `updatedBy` by default.** Git credits the commit author. `--updated-by <name>` sets it on each story the edit touches, when you edit on someone else's behalf.
+- **IDs are kept.** No edit changes an existing ID. `add` takes the next free number after the highest ID in the story's release, such as `BUILDER-104` after `BUILDER-103`, skipping any number already used, including by cut stories. Pass `--id` to choose one, and an ID already in the map is refused.
+- **Estimates are the team's.** No command sets an estimate. `add` warns when the release uses estimates, so flag the missing one in the PR.
+- The map, and the `--from` file, must be inside the current directory.
+
+In code, `proposeStoryMapEdit(source, operations, options)` returns the same result without writing, and throws a `StoryMapEditError` for a refused edit.
+
 ## Show status history
 
 Internal viewers can see when each story was added or changed status, who made the change and who merged it. The board shows the time since the last change on each card, such as “Shipped · 2 days ago”, and the full history in the story panel. The panel also says who last edited the story and when, such as “Last updated 3 days ago by Sam Patel”, counting any change to the story, including notes, sources and moves. A **Changed** filter in the toolbar narrows the board to stories added or changed in the last day, 7, 14 or 30 days. Moving a story to another activity or release does not count as a change. The customer view never includes history.

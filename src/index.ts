@@ -53,3 +53,5 @@ export { checkStoryMap } from "./check.js";
 export type { StoryMapCheckIssue, StoryMapCheckOptions, StoryMapCheckResult } from "./check.js";
 export { findStories, getStories } from "./read.js";
 export type { FoundStories, MissingStory, StoryQuery } from "./read.js";
+export { nextStoryId, proposeStoryMapEdit, StoryMapEditError, storyMapEditOperationSchema } from "./edit.js";
+export type { StoryMapEditOperation, StoryMapEditOptions, StoryMapEditResult } from "./edit.js";
