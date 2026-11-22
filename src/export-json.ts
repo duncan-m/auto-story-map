@@ -142,7 +142,7 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
       : "No tests index was supplied, so the file says nothing about which tests cover a story.",
     ...(hasDraftImpact ? ["Impact items with draft: true were drafted, often by an agent, and have not been approved by a person."] : []),
     ...(personas.length
-      ? ["A story's personas are the owners of the jobs it serves, then the personas it lists, primary first. Personas and jobs are written by people and agents, and say who the work is meant for, not who uses it."]
+      ? ["A story's personas are the owners of the jobs it serves, then the personas it lists, primary first. Personas and jobs are written by people and agents, and say who the work is meant for, not who uses it. Each persona's first job is their core job, marked core: true."]
       : []),
     ...(hasDraftJobs ? ["Jobs with draft: true were drafted, often by an agent, and have not been confirmed by a person."] : []),
     ...(hasDraftContext ? ["Persona context with draft: true was drafted, often by an agent, and has not been confirmed by a person."] : []),

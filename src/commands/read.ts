@@ -90,7 +90,7 @@ function storyText(view: Extract<StoryMapView, { audience: "internal" }>, story:
     lines.push("  Jobs:");
     for (const id of story.jobs) {
       const found = jobs.get(id);
-      const detail = found ? `  ${jobStatement(found.job)} (${found.persona.title})${found.job.draft ? " [draft]" : ""}` : "";
+      const detail = found ? `  ${jobStatement(found.job)} (${found.persona.title})${found.job.core ? " [core job]" : ""}${found.job.draft ? " [draft]" : ""}` : "";
       lines.push(`    ${escapeText(id)}${escapeText(detail)}`);
     }
   }

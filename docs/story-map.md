@@ -8,7 +8,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id`, a `title` in the form “[App Name] Story Map”, such as “Acme Story Map”, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
-3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, `merged` when the work is on the default branch but not yet available to its users, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Draft the [personas](#personas-and-jobs-to-be-done) the product serves from its roles, sign-in roles and docs, and their jobs to be done from docs, issues and research. Mark each job `draft: true`, keep them internal, tag each story with the jobs it serves, and ask a person to confirm them. Draft each persona's [`context`](#describe-a-personas-context) from the product's docs and research, mark it `draft: true`, and leave out what you cannot support with a source. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. When a plan has a mockup or design, [link it](#link-mockups-and-designs) from the stories it shows. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
+3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, `merged` when the work is on the default branch but not yet available to its users, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Draft the [personas](#personas-and-jobs-to-be-done) the product serves from its roles, sign-in roles and docs, and their jobs to be done from docs, issues and research. Put each persona's [core job](#mark-a-core-job) first, and [write each statement](#write-a-job-statement) with its trigger and what is at stake. Mark each job `draft: true`, cite in the PR the doc, issue or research each one comes from, keep them internal, tag each story with the jobs it serves, and ask a person to confirm them. Draft each persona's [`context`](#describe-a-personas-context) from the product's docs and research, mark it `draft: true`, and leave out what you cannot support with a source. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. When a plan has a mockup or design, [link it](#link-mockups-and-designs) from the stories it shows. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
 4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo, and `npx --no-install story-map stories` to read the stories back as a list. Suggest the person runs `npx --no-install story-map preview` to [see the map as a board](#preview-the-map-locally) before wiring up the host route. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
 ## Upgrade to 0.7.0
@@ -196,14 +196,14 @@ personas:
     title: Product manager
     summary: Owns the roadmap and decides what goes in each release.
     jobs:
-      - id: plan-release
-        situation: a release is being planned
+      - id: plan-release      # the first job is the core job
+        situation: a release is being planned and its scope is spread across chat threads and tickets
         motivation: to agree its scope in the PR that changes the map
-        outcome: engineers and product start from the same list
+        outcome: engineers and product start from the same list, rather than finding out at the demo that they meant different things
       - id: share-roadmap
-        situation: customers ask what is coming
+        situation: customers ask what is coming and most of the map is internal work
         motivation: to show them approved stories only
-        outcome: I can answer without leaking internal work
+        outcome: I can give a straight answer without leaking internal plans
         draft: true
   - id: customer
     title: Product customer
@@ -217,17 +217,29 @@ stories:
     personas: [customer]
 ```
 
-A job reads as a job statement: “**When** a release is being planned, **I want** to agree its scope in the PR that changes the map, **so** engineers and product start from the same list.” Write each part without its lead word:
+A job reads as a job statement: “**When** a release is being planned and its scope is spread across chat threads and tickets, **I want** to agree its scope in the PR that changes the map, **so that** engineers and product start from the same list, rather than finding out at the demo that they meant different things.” Write each part without its lead word. The first job in a persona's list is their [core job](#mark-a-core-job).
 
-- `situation` (“When …”): the moment the need arises, not a role. “a release is being planned”, not “I am a product manager”.
+### Write a job statement
+
+A good statement names the moment and what makes it hard, and its outcome names what is at stake:
+
+- `situation` (“When …”): the trigger and the complication, not only the moment, and never a role. “a release is being planned and its scope is spread across chat threads and tickets”, not “I am a product manager” or only “a release is being planned”.
 - `motivation` (“I want …”): what they want to do in that moment, in their words, without naming a feature.
-- `outcome` (“so …”): what is better for them once it is done.
+- `outcome` (“so that …”): what gets better for them, and what it costs them today when it does not.
+
+One full example, from a revenue operations persona: “When I'm preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools, I want to quickly trace and reconcile the discrepancies, so that I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.”
+
+| Weak | Strong |
+| --- | --- |
+| When I start a task, I want to find the stories it touches, so that my plan uses the right IDs. | When I start a task and the map is too large to read in full, I want to find the stories it touches without reading the YAML by hand, so that my plan uses the right story IDs and does not duplicate a story that already exists. |
+
+The weak version says when, but not why it is hard, so no story can be judged against it. Each part still fits in 200 characters. Validation does not check the wording, because a rule on length or words would flag good short statements, so reviewers judge it in the PR. Agents drafting jobs cite the doc, issue or research each one comes from in the PR.
 
 | Field | Rules |
 | --- | --- |
 | `personas` | Optional, up to 12. Order sets each persona's colour on the board. |
 | `personas[].id`, `title`, `summary` | As for activities. Keep the ID when renaming. |
-| `personas[].jobs` | Optional, up to 8 jobs to be done. |
+| `personas[].jobs` | Optional, up to 8 jobs to be done. The first is the persona's core job, so reordering the jobs changes it. |
 | `personas[].jobs[].id` | Required, unique across the map. Keep it when rewording the job or moving it to another persona, so its stories follow it. |
 | `personas[].jobs[].situation`, `motivation`, `outcome` | Required, up to 200 characters each. |
 | `personas[].jobs[].draft` | Optional. `true` while an agent's draft waits for a person to confirm it. |
@@ -242,12 +254,23 @@ A story is for the personas that own its jobs, in the order of its jobs, then th
 Validation fails on a duplicate persona ID, a job ID used twice anywhere in the map, a story job or persona that is not in the map, and one listed twice on a story. Removing a persona or job that stories still use is therefore an error, as for an activity. Once the map has personas and active stories, it warns about:
 
 - a persona no story is for;
-- a job no active story serves, such as “Job share-roadmap (Product manager) has no stories”;
+- a job no active story serves, such as “Job share-roadmap (Product manager) has no stories”, or “Core job plan-release (Product manager) has no stories” when it is the persona's core job;
 - an active story listing a persona that has jobs, but serving none of them, so it may not match a known need;
 - a drafted job that a shipped story serves, as for [drafted impact](#release-notes-and-impact);
 - more than half the active stories saying nothing about who they are for.
 
 Untagged stories are allowed, so an existing map stays valid. Agents can draft personas and jobs from the product's docs, issues and research, mark each job `draft: true`, and say so in the PR. A person confirms a job by removing `draft`. Tag stories with `story-map edit <ID> --add-job <job ID>` or `--add-persona <persona ID>`, and new stories with `story-map add --job <job ID>`.
+
+### Mark a core job
+
+A persona usually has one job that matters most, and the rest support it. The first job in their `jobs` is their core job, with no field of its own, so reorder the jobs to change it. Put first the job the persona would be most let down to see unmet.
+
+- The [persona panel](#open-a-persona) labels it **Core job** and sets it apart, with the others under **Other jobs**. The story panel's **Jobs** row and `story-map story` mark it too.
+- Validation warns about a core job with no active stories in its own words, such as “Core job plan-release (Product manager) has no stories”, in place of the usual warning.
+- `story-map diff` reports a change of core job under **Personas and jobs**, such as “Product manager's core job: `plan-release` → `track-progress`”, when jobs are reordered or the core job is removed or moved.
+- In the view and the JSON export, the core job has `core: true`, so agents need not know the rule. In code, `personaCoreJob(persona)` gives it.
+
+A persona with one job treats it as core.
 
 ### Describe a persona's context
 
@@ -272,9 +295,9 @@ personas:
 
 Context is internal. Customers never see it, even for a persona with approved customer copy. Internal views and the JSON export carry it, search does not match it, and `story-map diff` reports added, changed, confirmed and removed context under **Personas and jobs**. Agents may draft context from the product's docs and research, mark it `draft: true`, and leave out what no source supports. A person confirms it by removing `draft`, and validate warns about drafted context on a persona that a shipped story is for.
 
-`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs, under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Personas are internal unless their customer copy is [approved](#share-personas-with-customers), and customers never see jobs.
+`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs and changes of [core job](#mark-a-core-job), under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Personas are internal unless their customer copy is [approved](#share-personas-with-customers), and customers never see jobs.
 
-On the internal board, each card shows the avatars of the personas it is for beside its ID: the persona's initials on its colour, up to three, then “+1” and so on. Each activity shows the avatars of the personas its active stories are for, so you can see who each step of the journey serves. Screen readers hear the titles, such as “For Product manager and Coding agent”, not the initials. The story panel starts its details with a **For** row, listing the story's personas, and a **Jobs** row with the statement of each job it serves, its persona and a **Draft** label on drafts. Colours come from each persona's place in the list, six in all, so reordering personas changes them, and the seventh persona starts again from the first colour. Hosts can restyle them with `--esm-persona-0` to `--esm-persona-5` and their `-bg` pairs. A map without personas looks exactly as before.
+On the internal board, each card shows the avatars of the personas it is for beside its ID: the persona's initials on its colour, up to three, then “+1” and so on. Each activity shows the avatars of the personas its active stories are for, so you can see who each step of the journey serves. Screen readers hear the titles, such as “For Product manager and Coding agent”, not the initials. The story panel starts its details with a **For** row, listing the story's personas, and a **Jobs** row with the statement of each job it serves, its persona, a **Core job** label on a persona's core job and a **Draft** label on drafts. Colours come from each persona's place in the list, six in all, so reordering personas changes them, and the seventh persona starts again from the first colour. Hosts can restyle them with `--esm-persona-0` to `--esm-persona-5` and their `-bg` pairs. A map without personas looks exactly as before.
 
 ### Filter by persona
 
@@ -288,9 +311,9 @@ Customers never see internal personas or jobs, so internal persona IDs and their
 
 On internal boards, a persona panel shows the persona's summary and their **Jobs to be done**. Open it from a persona's avatar under an activity, from the **For** row of a story panel, or from the chip of the only chosen persona in the strip. Avatars on cards do not open it, because the card itself opens the story.
 
-Each job shows its statement, a **Draft** label when it is a draft, and a bar and count of the active stories that serve it by status, such as “7 stories: 3 shipped, 2 merged, 2 planned”. Blocked and cut stories are left out of the bar and noted beside it. A job with no active stories says **No stories yet**: that is a gap to plan stories for. The counts come from the whole map, so they do not change with the filters. When the host uses [search and filters](#integrate-with-a-product), each job has a **Show stories** link that sets `job=<ID>`, and the panel ends with a link that shows only the persona's stories, both keeping the search and other filters. The panel is a popover, so it works without JavaScript.
+The [core job](#mark-a-core-job) comes first, labelled **Core job** and set apart, and the others follow under **Other jobs**. Each job shows its statement, a **Draft** label when it is a draft, and a bar and count of the active stories that serve it by status, such as “7 stories: 3 shipped, 2 merged, 2 planned”. Blocked and cut stories are left out of the bar and noted beside it. A job with no active stories says **No stories yet**: that is a gap to plan stories for. The counts come from the whole map, so they do not change with the filters. When the host uses [search and filters](#integrate-with-a-product), each job has a **Show stories** link that sets `job=<ID>`, and the panel ends with a link that shows only the persona's stories, both keeping the search and other filters. The panel is a popover, so it works without JavaScript.
 
-In the view, each job of a persona gains `storyCounts`, the number of stories that serve it by status, like a release's.
+In the view, each job of a persona gains `storyCounts`, the number of stories that serve it by status, like a release's, and the core job `core: true`.
 
 In the view, internal maps with personas gain `personas`, each with its `initials`, `colour` and `jobs`, and each story the `personas` it is for, primary first, and the `jobs` it serves. The JSON export and `story-map story --format json` carry each story's `personas` and `jobs` too.
 
@@ -434,7 +457,7 @@ Before you add a story, search for an existing one. `--query` matches IDs, title
 npx --no-install story-map stories --query "export" --status all
 ```
 
-- `story-map story <ID> [...]` prints stories in full: status, reason, release, activity, estimate, the personas it is for, the jobs it serves with their statements and a `[draft]` mark on drafts, summary, notes and sources, with history and tests when their files are given. An ID that is not in the map exits 1 and suggests close matches, such as `ESM-742` for `esm-742`.
+- `story-map story <ID> [...]` prints stories in full: status, reason, release, activity, estimate, the personas it is for, the jobs it serves with their statements, a `[core job]` mark on a persona's core job and a `[draft]` mark on drafts, summary, notes and sources, with history and tests when their files are given. An ID that is not in the map exits 1 and suggests close matches, such as `ESM-742` for `esm-742`.
 - `story-map stories` lists stories one per line, with ID, status, release and title. It takes the board's filters: `--status`, repeated or comma-separated, with `stalled` and `all`; `--release`, `--activity`, `--persona` and `--job`, repeated or comma-separated; `--query`; and `--changed-within 1`, `7`, `14` or `30` days. As on the board, blocked and cut stories are hidden unless `--status` chooses them, and the count of hidden stories is printed on stderr. `stalled` and `--changed-within` need `--history`. An unknown release, activity, persona or job ID exits 1. `--persona` keeps stories for any chosen persona, from their jobs or their own `personas`, and `--job` the stories that serve any chosen job, as on the board's [persona filter](#filter-by-persona).
 - `story-map releases [<release ID> ...]` lists releases with their story counts by status, estimates, notes and expected impact. Impact items an agent drafted are marked `[draft]`.
 - `story-map help <command>` prints just that command's options.
@@ -704,7 +727,7 @@ return new Response(storyMapToJson(view), {
 ```
 
 - `format` is `"auto-story-map.export"` and `version` is `1`. The type is `StoryMapJsonExport`.
-- `activities` and `releases` are as on the internal board, with each release's notes, impact, `storyCounts` and, when it has estimated stories, `estimates`. When the map has personas, `personas` lists them in map order, each with its `activeStories`, its `context` when it has one, and its `jobs`, and each job with its fields, its `storyCounts` by status, its `statement`, such as “When a release is being planned, I want …, so ….”, and its `activeStories`, counted across the whole map, so `0` is a job no planned or delivered work meets. An agent can use them to find jobs with no stories, and stories that serve no job, and suggest work. `stories` are in map order, each with its summary, status, `statusReason`, `estimate`, `personas` and `jobs`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
+- `activities` and `releases` are as on the internal board, with each release's notes, impact, `storyCounts` and, when it has estimated stories, `estimates`. When the map has personas, `personas` lists them in map order, each with its `activeStories`, its `context` when it has one, and its `jobs`, and each job with its fields, its `storyCounts` by status, its `statement`, such as “When a release is being planned, I want …, so that ….”, `core: true` on each persona's [core job](#mark-a-core-job), and its `activeStories`, counted across the whole map, so `0` is a job no planned or delivered work meets. An agent can use them to find jobs with no stories, and stories that serve no job, and suggest work. `stories` are in map order, each with its summary, status, `statusReason`, `estimate`, `personas` and `jobs`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
 - `statuses` says what each status means, such as that `merged` work is on the default branch but not yet available to its users.
 - `provenance` names the library version and commit that wrote the file, and when the history and tests index were generated. `completeness` counts the stories in the map, in the file and over the limit, and says whether history and tests were supplied. Both have `notes`: plain sentences for the agent, such as that statuses are recorded in PRs and can lag behind the code, that tests come from a static scan of tagged names without results, or that a shallow history is missing earlier changes. Ask the agent to read them before drawing conclusions.
 - Unlike the other formats, every story is included unless you pass `maxStories`, and collapsed lanes are ignored, so the file always covers every release. The board's JSON link and `storyMapExportResponse` ignore `collapsed` for this format, and `story-map export` warns that `--collapsed` is ignored.
