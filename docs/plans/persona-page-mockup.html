@@ -56,40 +56,38 @@
   .esm-uses { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 !important; list-style: none; }
   .esm-uses li { padding: 1px 8px; border: 1px solid var(--esm-line); border-radius: 6px; background: var(--esm-canvas); font-size: .8125rem; }
 
-  /* Jobs as lanes under the map's activities */
+  /* Jobs as lanes under the map's activities.
+     Kept quiet on purpose: no box around the section or each lane, lanes split by a rule,
+     the core job marked by an accent edge, and flat step cards with the count as the link. */
   .esm-section-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; font-size: 1rem; font-weight: 700; }
   .esm-section-title span:not(.mock-callout) { color: var(--esm-muted); font-size: .8125rem; font-weight: 500; }
-  .esm-jobs-map { border: 1px solid var(--esm-line); border-radius: 10px; overflow: hidden; }
-  .esm-jobs-map .esm-grid { grid-template-columns: repeat(var(--esm-columns), minmax(10rem, 1fr)); min-width: 0; }
-  .esm-jobs-map .esm-job-lane { row-gap: 0; }
-  .esm-job-cell { grid-column: 1 / -1; }
-  .esm-job-cell .esm-job-statement { max-width: 78ch; }
-  .esm-job-lane { position: relative; border-radius: 9px; background: var(--esm-paper); box-shadow: inset 0 0 0 1px var(--esm-line); }
-  .esm-job-lane[data-core] { background: var(--esm-activity-bg); box-shadow: inset 0 0 0 1.5px var(--esm-accent); }
-  .esm-job-cell { display: grid; align-content: start; gap: 10px; min-width: 0; padding: 14px 14px 4px; }
-  .esm-job-label { display: flex; align-items: center; gap: 8px; color: var(--esm-accent-ink); font-size: .6875rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
-  .esm-job-toggle { position: absolute; top: 12px; left: calc(17rem - 6px); display: none; }
-  .esm-lane-chevron { position: absolute; top: 11px; right: 8px; color: var(--esm-muted); }
-  .esm-job-cell { position: relative; padding-right: 44px; }
-  .esm-job-statement { margin: 0; font-size: .875rem; line-height: 1.45; }
+  .esm-jobs-map .esm-grid { grid-template-columns: repeat(var(--esm-columns), minmax(10rem, 1fr)); min-width: 0; padding: 0; background: none; row-gap: 0; }
+  .esm-jobs-map .esm-row { column-gap: 12px; }
+  .esm-jobs-map .esm-activity { padding: 0 2px 10px; border: 0; border-bottom: 2px solid var(--esm-activity-line); border-radius: 0; background: none; }
+  .esm-jobs-map .esm-activity-title { font-size: .9375rem; }
+  .esm-jobs-map .esm-activity-summary { font-size: .8125rem; }
+  .esm-job-lane { position: relative; row-gap: 12px; padding: 18px 0 20px; border-bottom: 1px solid var(--esm-line); }
+  .esm-job-lane[data-core] { padding-left: 14px; margin-left: -14px; box-shadow: inset 3px 0 0 var(--esm-accent); }
+  .esm-job-lane[data-core] .esm-job-cell { padding-left: 0; }
+  .esm-job-cell { position: relative; grid-column: 1 / -1; display: grid; align-content: start; gap: 8px; min-width: 0; padding-right: 36px; }
+  .esm-job-label { color: var(--esm-accent-ink); font-size: .6875rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+  .esm-lane-chevron { position: absolute; top: 0; right: 2px; color: var(--esm-faint); }
+  .esm-job-statement { max-width: 78ch; margin: 0; font-size: .9rem; line-height: 1.5; }
   .esm-job-statement b { font-weight: 650; }
-  .esm-job-statement-lines { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 10px; }
-  .esm-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; color: var(--esm-muted); font-size: .8125rem; }
-  .esm-job-meta a { color: var(--esm-accent-ink); }
-  .esm-step-card { display: grid; align-content: start; gap: 5px; padding: 10px 11px; border: 1px solid var(--esm-card-line); border-radius: 8px; background: var(--esm-paper); box-shadow: 0 1px 2px var(--esm-shadow); font-size: .8125rem; line-height: 1.38; }
-  .esm-step-card[data-gap] { border-style: dashed; border-color: color-mix(in srgb, var(--esm-status-blocked) 55%, transparent); box-shadow: none; background: color-mix(in srgb, var(--esm-paper) 70%, transparent); }
-  .esm-step-num { color: var(--esm-faint); font-size: .6875rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-  .esm-step-card .esm-card-title { font-size: .9rem; }
+  .esm-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0; color: var(--esm-muted); font-size: .8125rem; }
+  .esm-job-meta a, .esm-step-cov a { color: var(--esm-accent-ink); text-underline-offset: 2px; }
+  .esm-jobs-map .esm-cell { min-height: 0; padding: 0; }
+  .esm-step-card { display: grid; align-content: start; gap: 4px; height: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--esm-line); border-radius: 8px; background: var(--esm-paper); font-size: .8125rem; line-height: 1.4; }
+  .esm-step-card[data-gap] { border-style: dashed; border-color: var(--esm-card-line); background: transparent; }
+  .esm-step-card .esm-card-title { display: flex; align-items: baseline; gap: 6px; font-size: .875rem; }
+  .esm-step-num { color: var(--esm-faint); font-size: .75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .esm-step-text { color: var(--esm-muted); }
-  .esm-step-cov { display: flex; flex-wrap: nowrap; white-space: nowrap; align-items: center; gap: 6px 8px; margin-top: 3px; color: var(--esm-muted); }
-  .esm-step-cov .esm-bar { width: 48px; }
-  .esm-step-cov a { color: var(--esm-accent-ink); }
-  .esm-jobs-map .esm-cell { padding: 10px 0; }
-  .esm-jobs-map .esm-row > .esm-cell:last-child { padding-right: 10px; }
-  .esm-jobs-map .esm-job-lane > .esm-cell:nth-child(2) { padding-left: 10px; }
-  .esm-job-lane[data-collapsed] { display: flex; align-items: center; gap: 12px; padding: 11px 40px 11px 14px; font-size: .875rem; }
+  .esm-step-cov { display: flex; align-items: center; gap: 8px; margin-top: 4px; color: var(--esm-muted); white-space: nowrap; }
+  .esm-step-cov .esm-bar { width: 40px; }
+  .esm-job-lane[data-collapsed] { display: flex; align-items: center; gap: 12px; padding: 14px 36px 14px 0; font-size: .875rem; }
   .esm-job-lane[data-collapsed] .esm-job-statement { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .esm-job-lane[data-collapsed] .esm-job-meta { flex: none; }
+  .esm-job-lane[data-collapsed] .esm-lane-chevron { top: 50%; margin-top: -9px; }
   .esm-lane-chevron[data-closed] { transform: rotate(-90deg); }
 
   /* Slimmer persona popover */
@@ -162,25 +160,25 @@
                   <div class="esm-job-cell">
                     <svg class="esm-lane-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
                     <span class="esm-job-label">Core job</span>
-                    <p class="esm-job-statement esm-job-statement-lines"><b>When</b> <span>I’m preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools,</span> <b>I want</b> <span>to quickly trace and reconcile the discrepancies,</span> <b>so that</b> <span>I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.</span></p>
-                    <p class="esm-job-meta"><span class="esm-bar"><span data-status="shipped" style="width:40%"></span><span data-status="merged" style="width:20%"></span><span data-status="planned" style="width:40%"></span></span><span>5 stories</span><a href="#">Show stories</a></p>
+                    <p class="esm-job-statement"><b>When</b> I’m preparing the Monday forecast and spot conflicting numbers between our CRM and billing tools, <b>I want</b> to quickly trace and reconcile the discrepancies, <b>so that</b> I can present numbers I can defend to leadership without losing my Sunday evening to spreadsheets.</p>
+                    <p class="esm-job-meta"><span class="esm-bar"><span data-status="shipped" style="width:40%"></span><span data-status="merged" style="width:20%"></span><span data-status="planned" style="width:40%"></span></span><a href="#">5 stories</a></p>
                   </div>
-                  <div class="esm-cell"><div class="esm-step-card"><span class="esm-step-num">Step 1</span><span class="esm-card-title">Gather</span><span class="esm-step-text">Export pipeline from Salesforce and closed-won invoices from Stripe</span><span class="esm-step-cov"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span>2 shipped <a href="#">Show</a></span></div></div>
-                  <div class="esm-cell"><div class="esm-step-card"><span class="esm-step-num">Step 2</span><span class="esm-card-title">Audit</span><span class="esm-step-text">Flag overdue close dates, sudden stage jumps and mismatched contract values</span><span class="esm-step-cov"><span class="esm-bar"><span data-status="merged" style="width:33%"></span><span data-status="planned" style="width:67%"></span></span>3 stories <a href="#">Show</a></span></div></div>
-                  <div class="esm-cell"><div class="esm-step-card" data-gap><span class="esm-step-num">Step 3</span><span class="esm-card-title">Verify</span><span class="esm-step-text">Ask account executives on Slack whether stalled high-value deals are still closing</span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet</span><span class="mock-callout">5</span></span></div></div>
-                  <div class="esm-cell"><div class="esm-step-card" data-gap><span class="esm-step-num">Step 4</span><span class="esm-card-title">Reconcile and brief</span><span class="esm-step-text">Update the master forecast and write a three-bullet summary of what shifted</span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet</span></span></div></div>
+                  <div class="esm-cell"><div class="esm-step-card"><span class="esm-card-title"><span class="esm-step-num" aria-label="Step 1">1</span>Gather</span><span class="esm-step-text">Export pipeline from Salesforce and closed-won invoices from Stripe</span><span class="esm-step-cov"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span><a href="#">2 shipped</a></span></div></div>
+                  <div class="esm-cell"><div class="esm-step-card"><span class="esm-card-title"><span class="esm-step-num" aria-label="Step 2">2</span>Audit</span><span class="esm-step-text">Flag overdue close dates, sudden stage jumps and mismatched contract values</span><span class="esm-step-cov"><span class="esm-bar"><span data-status="merged" style="width:33%"></span><span data-status="planned" style="width:67%"></span></span><a href="#">3 stories</a></span></div></div>
+                  <div class="esm-cell"><div class="esm-step-card" data-gap><span class="esm-card-title"><span class="esm-step-num" aria-label="Step 3">3</span>Verify</span><span class="esm-step-text">Ask account executives on Slack whether stalled high-value deals are still closing</span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet</span><span class="mock-callout">5</span></span></div></div>
+                  <div class="esm-cell"><div class="esm-step-card" data-gap><span class="esm-card-title"><span class="esm-step-num" aria-label="Step 4">4</span>Reconcile and brief</span><span class="esm-step-text">Update the master forecast and write a three-bullet summary of what shifted</span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet</span></span></div></div>
                 </div>
 
                 <div class="esm-row esm-job-lane">
                   <div class="esm-job-cell">
                     <svg class="esm-lane-chevron" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
                     <p class="esm-job-statement"><b>When</b> a rep moves a high-value deal to a later stage without notes, <b>I want</b> to hear about it the same day, <b>so that</b> I can check it before it skews the forecast rather than finding it on Sunday. <span class="esm-draft">Draft</span></p>
-                    <p class="esm-job-meta"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span><span>2 stories</span><a href="#">Show stories</a></p>
+                    <p class="esm-job-meta"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span><a href="#">2 stories</a></p>
                   </div>
                   <div class="esm-cell"></div>
-                  <div class="esm-cell"><div class="esm-step-card"><span class="esm-step-num">Step 1</span><span class="esm-card-title">Spot</span><span class="esm-step-text">See a stage jump or a later close date that has no notes</span><span class="esm-step-cov"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span>2 shipped <a href="#">Show</a></span></div></div>
-                  <div class="esm-cell"><div class="esm-step-card" data-gap><span class="esm-step-num">Step 2</span><span class="esm-card-title">Ask</span><span class="esm-step-text">Message the rep on Slack for the reason</span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet</span></span></div></div>
-                  <div class="esm-cell"><div class="esm-step-card" data-gap><span class="esm-step-num">Step 3</span><span class="esm-card-title">Adjust</span><span class="esm-step-text">Mark the deal at risk in the forecast, or confirm it</span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet</span></span></div></div>
+                  <div class="esm-cell"><div class="esm-step-card"><span class="esm-card-title"><span class="esm-step-num" aria-label="Step 1">1</span>Spot</span><span class="esm-step-text">See a stage jump or a later close date that has no notes</span><span class="esm-step-cov"><span class="esm-bar"><span data-status="shipped" style="width:100%"></span></span><a href="#">2 shipped</a></span></div></div>
+                  <div class="esm-cell"><div class="esm-step-card" data-gap><span class="esm-card-title"><span class="esm-step-num" aria-label="Step 2">2</span>Ask</span><span class="esm-step-text">Message the rep on Slack for the reason</span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet</span></span></div></div>
+                  <div class="esm-cell"><div class="esm-step-card" data-gap><span class="esm-card-title"><span class="esm-step-num" aria-label="Step 3">3</span>Adjust</span><span class="esm-step-text">Mark the deal at risk in the forecast, or confirm it</span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet</span></span></div></div>
                 </div>
 
                 <div class="esm-row esm-job-lane" data-collapsed>
