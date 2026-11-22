@@ -49,3 +49,7 @@ export type { StoryMapJsonExport, StoryMapJsonExportOptions, StoryMapJsonStory }
 export { storyMapExportFormats, storyMapExportResponse } from "./export-response.js";
 export type { StoryMapExportFormat, StoryMapExportResponse, StoryMapExportResponseOptions } from "./export-response.js";
 export type { StoryMapExportOptions } from "./export.js";
+export { checkStoryMap } from "./check.js";
+export type { StoryMapCheckIssue, StoryMapCheckOptions, StoryMapCheckResult } from "./check.js";
+export { findStories, getStories } from "./read.js";
+export type { FoundStories, MissingStory, StoryQuery } from "./read.js";

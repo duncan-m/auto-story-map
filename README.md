@@ -69,6 +69,19 @@ Start an agent in the host repo and give it this task.
 
 > Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, open a few story cards if the host renders the board, and flag any uncertain release or status decisions for review.
 
+## Read the map from the command line
+
+Agents and people can read the map without opening the YAML file. Each command prints text, or JSON with `--format json`:
+
+```sh
+npx story-map stories --query "export" --status all
+npx story-map story ESM-741
+npx story-map releases
+npx story-map validate --format json product/story-map.yaml
+```
+
+`stories` takes the board's filters, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
+
 ## Export the map
 
 Exports are a one-way snapshot of the internal map. The YAML file stays the source of truth, and edits made elsewhere do not come back. Customers can never export the map.

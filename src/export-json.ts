@@ -69,6 +69,14 @@ export interface StoryMapJsonExport {
   stalledAfterWeeks?: number;
 }
 
+/** A story in the shape the JSON export and the CLI's read commands share. `testsIndexed` adds `testCount`. */
+export function toJsonStory(story: InternalStoryCard, testsIndexed: boolean): StoryMapJsonStory {
+  return {
+    ...story,
+    ...(testsIndexed ? { testCount: (story.tests?.length ?? 0) + (story.moreTests ?? []).reduce((sum, more) => sum + more.count, 0) } : {}),
+  };
+}
+
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
@@ -84,10 +92,7 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
 
   const kept = new Set(model.releases.flatMap(release => [...release.cells.values()].flat().map(story => story.id)));
   const testsIndexed = view.testsIndexed === true;
-  const stories: StoryMapJsonStory[] = view.stories.filter(story => kept.has(story.id)).map(story => ({
-    ...story,
-    ...(testsIndexed ? { testCount: (story.tests?.length ?? 0) + (story.moreTests ?? []).reduce((sum, more) => sum + more.count, 0) } : {}),
-  }));
+  const stories = view.stories.filter(story => kept.has(story.id)).map(story => toJsonStory(story, testsIndexed));
 
   const exportedAt = (options.now ?? new Date()).toISOString();
   const hasDraftImpact = view.releases.some(release => release.impact?.some(item => item.draft));

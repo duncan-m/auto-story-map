@@ -9,7 +9,7 @@ When `product/story-map.yaml` is missing, still contains the builder estimates d
 
 ### Maintain the map
 
-When a change affects a user journey, story scope, release assignment or delivery status, update the map in the same PR. Find existing IDs before creating stories and reference those IDs in the delivery plan. Make the smallest map change that matches the agreed work. The status history credits the commit author with each edit, or whoever merged it when the author is a bot. Set `updatedBy` only when neither is the person to credit, such as when you make an edit on someone else’s behalf, and use their display name.
+When a change affects a user journey, story scope, release assignment or delivery status, update the map in the same PR. Find existing IDs before creating stories, with `npx --no-install story-map stories --query <text> --status all` and `npx --no-install story-map story <ID>`, and reference those IDs in the delivery plan. Make the smallest map change that matches the agreed work. The status history credits the commit author with each edit, or whoever merged it when the author is a bot. Set `updatedBy` only when neither is the person to credit, such as when you make an edit on someone else’s behalf, and use their display name.
 
 When a plan has a mockup, screenshot or design, add its link to the `sources` of each story it shows, after the story’s plan section, and name it in the release `notes` when it covers the release. See [Link mockups and designs](docs/story-map.md#link-mockups-and-designs). Read a story’s `sources` to find its plan, mockups and other material before changing it.
 
