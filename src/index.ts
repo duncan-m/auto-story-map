@@ -7,8 +7,8 @@ export {
   storyMapWarnings,
   storyStatuses,
 } from "./schema.js";
-export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, personaConstraintsMaxItems, personaContextMaxLength, personaJobsMaxItems, personasMaxItems, personaUsesTodayMaxItems, personaUsesTodayMaxLength, releaseImpactMaxItems, releaseNotesMaxLength, storyPersonasMaxItems } from "./schema.js";
-export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapPersona, StoryMapPersonaContext, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
+export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, jobStepsMaxItems, jobStepTitleMaxLength, personaConstraintsMaxItems, personaContextMaxLength, personaJobsMaxItems, personasMaxItems, personaUsesTodayMaxItems, personaUsesTodayMaxLength, releaseImpactMaxItems, releaseNotesMaxLength, storyPersonasMaxItems } from "./schema.js";
+export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapJobStep, StoryMapPersona, StoryMapPersonaContext, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
 export { activeStoryStatuses, customerStatus, customerStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
 export type { CustomerStoryStatus, StoryStatusFilter } from "./status.js";
 export { defaultInternalRoles, getStoryMapForViewer, getStoryMapPage, recentUpdateDays, storyMapResponseHeaders } from "./view.js";
@@ -16,6 +16,7 @@ export type {
   InternalReleaseLabel,
   InternalStoryCard,
   PersonaJobLabel,
+  PersonaJobStepLabel,
   PersonaLabel,
   ReleaseEstimates,
   StoryCard,
@@ -43,7 +44,7 @@ export {
 export type { OmittedStoryTests, StoryMapTests, StoryTestEntry } from "./tests-index.js";
 export { storyMapCommit, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
-export type { CoreJobChange, CustomerStoryChange, GroupChanges, InactiveStoryChange, JobChanges, JobDiffRef, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
+export type { CoreJobChange, CustomerStoryChange, GroupChanges, InactiveStoryChange, JobChanges, JobDiffRef, JobStepsChange, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";
 export { jsonContentType, storyMapToJson } from "./export-json.js";
@@ -57,5 +58,5 @@ export { findStories, getStories } from "./read.js";
 export type { FoundStories, MissingStory, StoryQuery } from "./read.js";
 export { nextStoryId, proposeStoryMapEdit, StoryMapEditError, storyMapEditOperationSchema } from "./edit.js";
 export type { StoryMapEditOperation, StoryMapEditOptions, StoryMapEditResult } from "./edit.js";
-export { jobStatement, personaColourCount, personaCoreJob, personaInitials, storyMapJobs, storyPersonaResolver, storyPersonas } from "./personas.js";
+export { jobStatement, jobStepCounter, jobStepGaps, personaColourCount, personaCoreJob, personaInitials, storyMapJobs, storyPersonaResolver, storyPersonas } from "./personas.js";
 export type { StoryMapJobOwner } from "./personas.js";

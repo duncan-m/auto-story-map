@@ -1,4 +1,5 @@
 import type { StoryMapDocument, StoryMapJob, StoryMapPersona } from "./schema.js";
+import { isActiveStatus, type StoryStatus } from "./status.js";
 
 /** A job to be done, with the persona that owns it. */
 export interface StoryMapJobOwner {
@@ -69,6 +70,32 @@ export function jobStatement(job: Pick<StoryMapJob, "situation" | "motivation" |
  */
 export function personaCoreJob<Job>(persona: { jobs?: readonly Job[] }): Job | undefined {
   return persona.jobs?.[0];
+}
+
+/**
+ * Returns a function that counts the active stories for one step of a job:
+ * those that serve the job and sit in the step's activity. Validate, the view
+ * and the exports all use this, so they agree.
+ */
+export function jobStepCounter(map: { stories: readonly { activity: string; status: StoryStatus; jobs?: readonly string[] }[] }): (jobId: string, activityId: string) => number {
+  const counts = new Map<string, Map<string, number>>();
+  for (const story of map.stories) {
+    if (!isActiveStatus(story.status)) continue;
+    for (const job of new Set(story.jobs ?? [])) {
+      let byActivity = counts.get(job);
+      if (!byActivity) counts.set(job, byActivity = new Map());
+      byActivity.set(story.activity, (byActivity.get(story.activity) ?? 0) + 1);
+    }
+  }
+  return (jobId, activityId) => counts.get(jobId)?.get(activityId) ?? 0;
+}
+
+/**
+ * How many of a job's steps point to an activity but have no active stories
+ * there: the gaps in the job. Steps without an activity are never gaps.
+ */
+export function jobStepGaps(job: { steps?: readonly { activity?: string; activeStories?: number }[] }): number {
+  return (job.steps ?? []).filter(step => step.activity !== undefined && !step.activeStories).length;
 }
 
 /** How many persona colours the board has. Personas take them in map order, and the seventh starts again. */

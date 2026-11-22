@@ -1,5 +1,5 @@
 import { jobStatement, personaCoreJob, storyMapJobs } from "./personas.js";
-import { defaultStalledAfterWeeks, type StoryMapDocument, type StoryMapPersona } from "./schema.js";
+import { defaultStalledAfterWeeks, type StoryMapDocument, type StoryMapJob, type StoryMapPersona } from "./schema.js";
 import { customerStatus, isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js";
 
 type Story = StoryMapDocument["stories"][number];
@@ -85,6 +85,17 @@ export interface JobChanges {
   confirmed: JobDiffRef[];
   /** Personas on both maps whose core job, the first in their list, is now a different job. */
   coreChanged: CoreJobChange[];
+  /**
+   * Jobs whose steps were added, removed, reordered, reworded or pointed to another activity,
+   * including new jobs that have steps. Removed jobs are reported under `removed` only.
+   */
+  stepsChanged: JobStepsChange[];
+}
+
+/** A job whose workflow steps changed, with its steps on the new map. */
+export interface JobStepsChange extends JobDiffRef {
+  /** The job's steps on the new map, in order. Empty when they were all removed. */
+  steps: { title: string; activity?: string }[];
 }
 
 /** A persona whose core job changed, because its jobs were reordered, or the core job was removed, moved or added in front. */
@@ -178,9 +189,13 @@ function jobChanges(before: StoryMapDocument, after: StoryMapDocument): JobChang
   const current = storyMapJobs(after);
   const ref = ({ job, persona }: { job: Parameters<typeof jobStatement>[0] & { id: string }; persona: { title: string } }): JobDiffRef =>
     ({ id: job.id, persona: persona.title, statement: jobStatement(job) });
-  const changes: JobChanges = { added: [], removed: [], reworded: [], moved: [], confirmed: [], coreChanged: [] };
+  const changes: JobChanges = { added: [], removed: [], reworded: [], moved: [], confirmed: [], coreChanged: [], stepsChanged: [] };
+  const steps = (job: StoryMapJob) => (job.steps ?? []).map(({ title, summary, activity }) => ({ title, summary, activity }));
   for (const [id, owner] of current) {
     const previous = old.get(id);
+    if (!same(previous ? steps(previous.job) : [], steps(owner.job))) {
+      changes.stepsChanged.push({ ...ref(owner), steps: steps(owner.job).map(({ title, activity }) => activity === undefined ? { title } : { title, activity }) });
+    }
     if (!previous) {
       changes.added.push(ref(owner));
       continue;
@@ -509,6 +524,9 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     ...diff.jobs.confirmed.map(ref => `- Confirmed drafted job ${job(ref)}`),
     ...diff.jobs.removed.map(ref => `- Removed job ${job(ref)}`),
     ...diff.jobs.coreChanged.map(change => `- ${text(change.persona)}'s core job: ${code(change.from)} → ${code(change.to)}`),
+    ...diff.jobs.stepsChanged.map(change => change.steps.length
+      ? `- Steps of job ${job(change)}: ${change.steps.map(step => step.activity === undefined ? text(step.title) : `${text(step.title)} (${code(step.activity)})`).join(" → ")}`
+      : `- Removed the steps of job ${job(change)}`),
     ...diff.personaContexts.added.map(persona => `- Added context for persona ${story(persona)}`),
     ...diff.personaContexts.changed.map(persona => `- Changed the context of persona ${story(persona)}`),
     ...diff.personaContexts.confirmed.map(persona => `- Confirmed the drafted context of persona ${story(persona)}`),
