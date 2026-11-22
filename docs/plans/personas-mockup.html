@@ -51,7 +51,15 @@
   .esm-persona-row { display: flex; flex-wrap: wrap; gap: 6px; }
   .esm-persona-row .esm-persona-chip { min-height: 28px; }
   .esm-persona-head { display: flex; align-items: center; gap: 12px; }
-  .esm-goals { display: grid; gap: 6px; margin: 0; padding-left: 1.2em; line-height: 1.45; }
+  .esm-jobs { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+  .esm-job { display: grid; gap: 6px; }
+  .esm-job-statement { margin: 0; line-height: 1.45; }
+  .esm-job-statement b { font-weight: 650; }
+  .esm-job-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--esm-muted); font-size: .8125rem; }
+  .esm-job-meta .esm-bar { flex: 1 1 120px; }
+  .esm-job-gap { color: var(--esm-status-blocked); font-weight: 650; }
+  .esm-faint { color: var(--esm-faint); }
+  .esm-story-jobs { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; line-height: 1.4; }
   .esm-persona-releases { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
   .esm-persona-releases li { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
   .esm-bar { display: flex; height: 8px; overflow: hidden; border-radius: 4px; background: var(--esm-hover); }
@@ -124,7 +132,7 @@
             <div class="esm-cell" data-empty></div>
             <div class="esm-cell">
               <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-903</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span><span class="esm-avatar" data-persona="1">EN</span></span></span><span class="esm-card-title">Filter the board by persona</span><span class="esm-card-meta"><span class="esm-status">○ Planned</span></span></button>
-              <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-904</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span></span></span><span class="esm-card-title">Open a persona to see their goals and coverage</span><span class="esm-card-meta"><span class="esm-status">○ Planned</span></span></button>
+              <button class="esm-card"><span class="esm-card-head"><span class="esm-card-id">ESM-904</span><span class="esm-avatars"><span class="esm-avatar" data-persona="0">PM</span></span></span><span class="esm-card-title">Open a persona to see their jobs and coverage</span><span class="esm-card-meta"><span class="esm-status">○ Planned</span></span></button>
             </div>
           </div>
         </div>
@@ -154,6 +162,11 @@
             <a class="esm-persona-chip" href="#"><span class="esm-avatar" data-persona="1">EN</span>Engineer</a>
             <a class="esm-persona-chip" href="#"><span class="esm-avatar" data-persona="3">CU</span>Product customer</a>
           </dd>
+          <dt>Jobs<span class="mock-callout">7</span></dt>
+          <dd><ul class="esm-story-jobs">
+            <li>When someone asks what is in the next release, I want to open the map inside the product, so I can answer without asking engineering. <span class="esm-faint">· Product manager</span></li>
+            <li>When I review a change, I want to see the story it belongs to, so I know what the work is for. <span class="esm-faint">· Engineer</span></li>
+          </ul></dd>
           <dt>Activity</dt><dd>Explore the board</dd>
           <dt>Release</dt><dd>0.1.0: First release</dd>
         </dl>
@@ -167,14 +180,20 @@
           <button class="esm-close">✕</button>
         </div>
         <p class="esm-detail-summary">Owns the roadmap and decides what goes in each release. Reads the board weekly and in planning sessions.<span class="mock-callout">6</span></p>
-        <section class="esm-detail-section"><h4>Goals</h4>
-          <ul class="esm-goals"><li>Know which release each story is planned for</li><li>Agree release scope in a PR, not a separate tool</li><li>Show customers what is coming without leaking internals</li></ul>
-        </section>
-        <section class="esm-detail-section"><h4>Stories by release</h4>
-          <ul class="esm-persona-releases">
-            <li><span class="esm-release-label">0.1.0: First release<span class="esm-bar"><span style="width:100%;background:var(--esm-status-shipped)"></span></span></span><span>3 shipped</span></li>
-            <li><span class="esm-release-label">0.7.0: Export<span class="esm-bar"><span style="width:100%;background:var(--esm-status-shipped)"></span></span></span><span>2 shipped</span></li>
-            <li><span class="esm-release-label">0.7.2: Personas<span class="esm-bar"><span style="width:33%;background:var(--esm-status-in-progress)"></span><span style="width:67%;background:var(--esm-status-planned);opacity:.35"></span></span></span><span>1 of 3 started</span></li>
+        <section class="esm-detail-section"><h4>Jobs to be done</h4>
+          <ul class="esm-jobs">
+            <li class="esm-job">
+              <p class="esm-job-statement"><b>When</b> a release is being planned, <b>I want</b> to agree its scope in the PR that changes the map, <b>so</b> engineers and product start from the same list.</p>
+              <span class="esm-job-meta"><span class="esm-bar"><span style="width:75%;background:var(--esm-status-shipped)"></span><span style="width:25%;background:var(--esm-status-in-progress)"></span></span><span>4 stories: 3 shipped, 1 in progress</span><a href="#">Show stories</a></span>
+            </li>
+            <li class="esm-job">
+              <p class="esm-job-statement"><b>When</b> someone asks what is in the next release, <b>I want</b> to open the map inside the product, <b>so</b> I can answer without asking engineering.</p>
+              <span class="esm-job-meta"><span class="esm-bar"><span style="width:100%;background:var(--esm-status-shipped)"></span></span><span>3 stories shipped</span><a href="#">Show stories</a></span>
+            </li>
+            <li class="esm-job">
+              <p class="esm-job-statement"><b>When</b> customers ask what is coming, <b>I want</b> to show them approved stories only, <b>so</b> I can answer without leaking internal work. <span class="esm-draft">Draft</span></p>
+              <span class="esm-job-meta"><span class="esm-job-gap">No stories yet</span></span>
+            </li>
           </ul>
           <p class="esm-release-hidden"><a href="#">Show only this persona’s stories</a></p>
         </section>
@@ -183,9 +202,9 @@
   </div>
   <ol class="mock-legend">
     <li><span class="mock-callout">5</span><span><strong>“For” row</strong> in the story panel, first in the context list, linking to each persona.</span></li>
-    <li><span class="mock-callout">6</span><span><strong>Persona panel</strong> opens from a chip or avatar. Summary and goals come from the YAML. Coverage per release is derived, so it never goes stale.</span></li>
-    <li></li>
-    <li><span><strong>Customers</strong> see personas only when the persona has approved <code>customer</code> copy, as a “For” line in the panel. No avatars, no strip, no coverage.</span></li>
+    <li><span class="mock-callout">6</span><span><strong>Persona panel</strong> opens from a chip or avatar. It lists the persona’s jobs to be done as job statements, each with the stories that serve it, worked out from the map. A job with no stories stands out, and drafted jobs are labelled.</span></li>
+    <li><span class="mock-callout">7</span><span><strong>Jobs row</strong> in the story panel: the job statements the story serves, each with its persona.</span></li>
+    <li><span><strong>Customers</strong> see personas only when the persona has approved <code>customer</code> copy, as a “For” line in the panel. No avatars, no strip, no jobs.</span></li>
   </ol>
 </div>
 
