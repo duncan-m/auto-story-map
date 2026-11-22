@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: ESM-901 to ESM-909 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-910 is in progress and ESM-911 is planned for the same release. The release's notes and expected impact are in the map.
+Status: ESM-901 to ESM-909 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-910 is merged and ESM-911 is planned for the same release. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**, or **which need it meets**. Personas and their jobs to be done add that: the map file names the people the product serves and the jobs each of them is trying to get done, each story says which jobs it serves, and the board lets viewers read the map one persona at a time and see which jobs have no stories.
 

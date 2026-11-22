@@ -660,7 +660,7 @@ stories:
     title: Break a job into steps
     activity: explore
     release: v0-7-3
-    status: in-progress
+    status: merged
     jobs:
       - plan-release
     summary: Any job can list up to 6 workflow steps in order, each pointing to the activity where its stories live. A step's stories serve its job and sit in its activity, validate warns about steps with none, the persona panel counts the core job's gaps, and the view, JSON export and diff carry steps and their coverage.
