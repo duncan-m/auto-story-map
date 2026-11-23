@@ -1038,6 +1038,16 @@ stories:
     notes: Off by default, because it sends internal map content to another company. Long briefs are copied and the chat opens empty. A web chat cannot read the repository.
     sources:
       - docs/plans/agent-briefs.md#3-open-the-brief-in-a-web-agent
+  - id: ESM-129
+    title: Show a story's dependencies on its panel
+    activity: explore
+    release: v0-7-5
+    status: planned
+    jobs:
+      - triage-backlog
+      - get-oriented
+    summary: The story panel lists the stories this one depends on and the stories that depend on it, with their status, each linking to that story's panel, so a builder sees a workable build order without reading every story's notes.
+    notes: Dependencies are written in story notes today, such as Needs ESM-113, so the board never shows them and nothing links back from the story that is needed. Whether to record them in a new field or read IDs from notes is open. Internal view only.
   # Personas
   - id: ESM-901
     title: Define personas in the map file
