@@ -1783,6 +1783,7 @@ stories:
     activity: track
     release: v0-8-3
     status: planned
+    estimate: 5
     dependsOn:
       - ESM-130
     jobs:
@@ -1796,6 +1797,7 @@ stories:
     activity: track
     release: v0-8-3
     status: planned
+    estimate: 5
     dependsOn:
       - ESM-130
       - ESM-131
@@ -1810,6 +1812,7 @@ stories:
     activity: track
     release: v0-8-3
     status: planned
+    estimate: 8
     dependsOn:
       - ESM-130
       - ESM-131
