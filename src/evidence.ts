@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
+import { claimTime, listStoryClaims, type StoryClaim } from "./claims.js";
 import type { StoryMapHistory } from "./history.js";
 import { mergedBranch, pullRequestNumber } from "./history-git.js";
 import { closestIds, type MissingStory } from "./read.js";
@@ -44,6 +45,17 @@ export interface StoryEvidenceOptions {
    * suggests shipped without it.
    */
   shippedTags?: string;
+  /**
+   * Read claims too, from a Git remote (`{ remote: "origin" }`, the default
+   * when `{}` is given) or a claim store folder (`{ store }`). Off by default,
+   * because reading a remote needs the network.
+   */
+  claims?: { remote?: string; store?: string };
+}
+
+/** A claim on a story. `stale` is true when the story is already merged, shipped or cut, so the claim should be released. */
+export interface EvidenceClaim extends StoryClaim {
+  stale: boolean;
 }
 
 /** A local or remote branch whose name contains the story ID. */
@@ -111,6 +123,8 @@ export interface StoryEvidence {
   brokenSources: { source: string; message: string }[];
   /** With `shippedTags`, the earliest matching tag that holds the merged story's merging commit. */
   shippedIn?: EvidenceTag;
+  /** With `claims`, the claim on the story, if any. */
+  claim?: EvidenceClaim;
 }
 
 /** A release tag that holds a story's merging commit. */
@@ -125,7 +139,7 @@ export interface StoryEvidenceResult {
   /** The branch merged commits were read from, or absent when none was found. */
   defaultBranch?: string;
   /** Which signals were read. `git` is missing when the root is not a Git checkout. */
-  checked: ("git" | "tags" | "plans" | "tests" | "sources" | "history")[];
+  checked: ("git" | "tags" | "plans" | "tests" | "sources" | "history" | "claims")[];
   /** Problems reading a signal, such as a shallow clone or a plan folder with no Markdown. None of them stop the lookup. */
   notes: string[];
   stories: StoryEvidence[];
@@ -422,6 +436,17 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
     checked.push("history");
   }
 
+  const claimsById = new Map<string, StoryClaim>();
+  if (options.claims) {
+    try {
+      const { claims } = await listStoryClaims({ root, now: options.now, ...options.claims });
+      for (const claim of claims) claimsById.set(claim.id, claim);
+      checked.push("claims");
+    } catch (error) {
+      notes.push(`Claims were not read: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   const stories = targets.map(id => {
     const story = map.stories.find(item => item.id === id)!;
     const storyBranches = branches.get(id) ?? [];
@@ -436,6 +461,12 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
     const { suggestedStatus, reasons } = suggest(story.status, storyBranches, commits.get(id) ?? [], gitRead && !!defaultBranch, tagSignal);
     const stalled = stalledById.get(id);
     if (stalled) reasons.push(`In progress since ${stalled.since.slice(0, 10)}, longer than the ${stalled.afterWeeks} week stalled threshold.`);
+    const held = claimsById.get(id);
+    const claim = held ? { ...held, stale: story.status === "merged" || story.status === "shipped" || story.status === "cut" } : undefined;
+    if (claim?.problem) reasons.push(`A claim on the story cannot be read. ${claim.problem} Release it with story-map unclaim ${id}.`);
+    else if (claim?.stale) reasons.push(`${claim.agent} still claims the story, but it is ${story.status}, so the claim is stale. Release it with story-map unclaim ${id}.`);
+    else if (claim?.expired) reasons.push(`${claim.agent}'s claim on the story expired at ${claimTime(claim.expiresAt)}.`);
+    else if (claim) reasons.push(`${claim.agent} claims the story until ${claimTime(claim.expiresAt)}, so someone is on it.`);
     if (brokenSources.length) reasons.push(`${brokenSources.length === 1 ? "A source points" : `${brokenSources.length} sources point`} to something that no longer exists.`);
     const evidence: StoryEvidence = {
       id,
@@ -453,6 +484,7 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
       ...(moreTests ? { moreTests } : {}),
       brokenSources,
       ...(tagSignal?.shippedIn ? { shippedIn: tagSignal.shippedIn } : {}),
+      ...(claim ? { claim } : {}),
     };
     return evidence;
   });

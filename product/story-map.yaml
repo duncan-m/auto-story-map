@@ -1085,7 +1085,7 @@ stories:
     title: Claim stories so several agents do not clash
     activity: plan
     release: v0-7-5
-    status: planned
+    status: in-progress
     estimate: 5
     jobs:
       - update-the-map
@@ -1093,6 +1093,7 @@ stories:
     notes: Opt-in, for teams running several agents. Never written to the map file.
     sources:
       - docs/plans/native-cli.md#6-claim-stories
+      - docs/story-map.md#coordinate-several-agents
   - id: ESM-746
     title: Preview the map locally before adding the board
     activity: set-up
