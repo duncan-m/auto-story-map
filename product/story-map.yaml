@@ -1039,15 +1039,17 @@ stories:
     sources:
       - docs/plans/agent-briefs.md#3-open-the-brief-in-a-web-agent
   - id: ESM-129
-    title: Show a story's dependencies on its panel
+    title: Show a story's dependencies on its card and panel
     activity: explore
     release: v0-7-5
     status: planned
     jobs:
       - triage-backlog
       - get-oriented
-    summary: The story panel lists the stories this one depends on and the stories that depend on it, with their status, each linking to that story's panel, so a builder sees a workable build order without reading every story's notes.
+    summary: Cards show a small dependency icon and count to the right of the status, amber while a story it depends on is not merged yet. The story panel lists the stories it depends on and the stories that depend on it, with their status, each linking to that story's panel, so a builder sees a workable build order without reading every story's notes.
     notes: Dependencies are written in story notes today, such as Needs ESM-113, so the board never shows them and nothing links back from the story that is needed. Whether to record them in a new field or read IDs from notes is open. Internal view only.
+    sources:
+      - docs/plans/story-dependencies.md#ui-mockup
   # Personas
   - id: ESM-901
     title: Define personas in the map file
