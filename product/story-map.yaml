@@ -1165,7 +1165,7 @@ stories:
     title: Open story details in a panel from the right
     activity: explore
     release: v0-7-4
-    status: in-progress
+    status: merged
     jobs:
       - get-oriented
     summary: Story, release and persona details slide in as a full-height panel on the right, so the board stays in view beside them, instead of opening in a modal in the middle of the screen.
