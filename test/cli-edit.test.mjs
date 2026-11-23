@@ -79,7 +79,7 @@ test("ESM-744: leaving blocked or cut drops the reason, and removing the last so
 
 test("ESM-744: add gives the next free ID after the release's highest, and never reuses one", async () => {
   const map = parseStoryMap(ownMap);
-  assert.equal(nextStoryId(map.stories, "v0-7-5"), "ESM-748");
+  assert.equal(nextStoryId(map.stories, "v0-7-5"), "ESM-751");
   assert.equal(nextStoryId([{ id: "B-1", release: "a" }, { id: "B-3", release: "b" }, { id: "B-2", release: "a" }], "a"), "B-4", "B-3 is taken, even in another release");
   assert.equal(nextStoryId([{ id: "B-07", release: "a" }], "new"), "B-08", "keeps the number's width");
   assert.equal(nextStoryId([{ id: "7", release: "a" }, { id: "A9B-12", release: "a" }, { id: "x", release: "a" }], "a"), "8", "IDs without a prefix and without digits are handled");
@@ -88,10 +88,10 @@ test("ESM-744: add gives the next free ID after the release's highest, and never
   assert.ok(performance.now() - started < 200, "an ID of many digits with no trailing number is split in linear time");
 
   const result = await proposeStoryMapEdit(ownMap, [{ op: "add", title: "Check claims in CI", activity: "review", release: "v0-7-5" }]);
-  assert.deepEqual(result.addedIds, ["ESM-748"]);
-  assert.match(result.source, /- docs\/plans\/native-cli\.md#8-suggest-shipped-from-release-tags\n {2}- id: ESM-748\n {4}title: Check claims in CI\n {4}activity: review\n {4}release: v0-7-5\n {4}status: planned\n {2}# Personas\n/);
-  assert.equal(result.source.replace(/ {2}- id: ESM-748\n(?: {4}.*\n)+/, ""), ownMap, "only the new story's lines are added");
-  assert.ok(result.newIssues.some(issue => issue.itemId === "ESM-748" && /estimate/.test(issue.message)), "the missing estimate is a new warning");
+  assert.deepEqual(result.addedIds, ["ESM-751"]);
+  assert.match(result.source, /- docs\/plans\/native-cli\.md#8-suggest-shipped-from-release-tags\n {2}- id: ESM-751\n {4}title: Check claims in CI\n {4}activity: review\n {4}release: v0-7-5\n {4}status: planned\n {2}# Personas\n/);
+  assert.equal(result.source.replace(/ {2}- id: ESM-751\n(?: {4}.*\n)+/, ""), ownMap, "only the new story's lines are added");
+  assert.ok(result.newIssues.some(issue => issue.itemId === "ESM-751" && /estimate/.test(issue.message)), "the missing estimate is a new warning");
 
   await assert.rejects(proposeStoryMapEdit(ownMap, [{ op: "add", id: "ESM-701", title: "Again", activity: "review", release: "v0-7-5" }]), /already in the map. IDs are never reused/);
 });
@@ -178,11 +178,11 @@ test("ESM-744: story-map edit --from applies every edit or none", async t => {
   ] }));
   const applied = JSON.parse(run("edit", "--from", "edits.json", "--write", "--format", "json").stdout);
   assert.equal(applied.written, true);
-  assert.deepEqual(applied.addedIds, ["ESM-748"]);
-  assert.match(applied.lineDiff, /^\+ {2}- id: ESM-748$/m);
-  assert.deepEqual(applied.diff.stories.added.map(story => story.id), ["ESM-748"]);
+  assert.deepEqual(applied.addedIds, ["ESM-751"]);
+  assert.match(applied.lineDiff, /^\+ {2}- id: ESM-751$/m);
+  assert.deepEqual(applied.diff.stories.added.map(story => story.id), ["ESM-751"]);
   assert.deepEqual(applied.diff.stories.updated.map(story => story.id), ["ESM-744"]);
-  assert.match(await read(), /- id: ESM-748/);
+  assert.match(await read(), /- id: ESM-751/);
 
   assert.equal(run("edit", "--from", "edits.json", "ESM-744").status, 2);
   await writeFile(join(root, "bad.json"), "{");

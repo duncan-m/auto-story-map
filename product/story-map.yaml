@@ -9,117 +9,187 @@ customer:
   summary: What you can do with Auto Story Map today, and what is coming next.
 # Drafted with ESM-901 from the README, the guide and the stories below. Every job is a draft until a person confirms it.
 personas:
-  - id: pm
-    title: Product manager
-    summary: Owns the roadmap and decides what goes in each release.
+  - id: founder
+    title: Solo Builder
+    summary: Owns the product direction, chooses and builds the next release slice, and reviews changes made by coding agents in the repository.
     context:
-      success: Each release lands with the scope agreed when it was planned
-      usesToday: [GitHub pull requests, The board in the product, Asking engineers]
+      success: I can see what is in progress, what is next, and why it comes in that order. An agent can pick up the slice with the target customer, agreed scope, dependencies, and open decisions in a short brief.
+      usesToday:
+        - GitHub pull requests and diffs
+        - Coding agents
+        - Local story map preview
+        - Story map CLI
       constraints:
-        - Does not edit the YAML, so relies on engineers or agents to change the map
-        - Shares plans with customers only through approved customer copy
+        - Switches between product decisions, implementation, and review with limited time for administration.
+        - Needs the agent to use the actual target customer, their situation, and the intended outcome when making implementation and UX decisions.
+        - Wants material unknowns surfaced early. Low-impact, reversible decisions can proceed with the assumption recorded when it affects the work.
+        - Starts with a compact brief for the selected slice and opens supporting detail as needed to keep agent context and token use low.
+        - Needs a visual map that is easy to scan, navigate, and update while planning or reviewing delivery.
+        - Approves scope and release decisions through the normal Git workflow.
       draft: true
     jobs:
-      - id: plan-release
-        situation: a release is being planned and its scope is spread across chat threads, tickets and people's heads
-        motivation: to agree its scope in the PR that changes the map
-        outcome: engineers and product start from the same list, rather than finding out at the demo that they meant different things
+      - id: get-oriented
+        situation: I return to my project after a break or start a fresh coding agent session
+        motivation: to recover my current plan, see what is in progress or blocked, and decide where to pick up
+        outcome: I can resume work from a board that shows the current plan at a glance and lets me open the stories, dependencies, and evidence I need
         draft: true
         steps:
-          - title: Gather
-            summary: Collect the candidate stories and the evidence for each
+          - title: Open the map
+            summary: Open my project's map in the local preview or retrieve the current release slice through the CLI.
+            activity: set-up
+          - title: Find the next available work
+            summary: Read the current and next release slices, see what is blocked and why, and open delivery evidence when needed.
+            activity: track
+      - id: triage-backlog
+        situation: I need to decide what to build next or change the order of planned work
+        motivation: to see the next valuable customer outcome and the dependencies that determine a workable build order within and across release slices
+        outcome: the agent and I share an ordered plan. I can move a slice in the board, see affected prerequisites, and review a focused Git patch.
+        draft: true
+        steps:
+          - title: Choose the next slice
+            summary: Review the release rows, choose the next outcome, and see which work needs to land first.
             activity: plan
-          - title: Agree scope
-            summary: Settle what is in and out in the PR that changes the map
+          - title: Review the proposed move
+            summary: Check which dependencies the move affects, then inspect the Git diff before applying it.
             activity: review
-          - title: Check the plan on the board
-            summary: Read the release lane and its notes before the work starts
-            activity: explore
-      - id: answer-whats-next
-        situation: someone asks what is in the next release and the answer is spread across tickets and branches
-        motivation: to open the map inside the product and read it there
-        outcome: I can answer on the spot, without interrupting engineering or guessing
+      - id: ground-work-in-customer-needs
+        situation: I am shaping a slice or reviewing an agent proposal that affects the customer experience
+        motivation: to make sure the agent understands the actual target customer, what they are trying to do, and the constraints that affect their choices
+        outcome: I can see which customer need and evidence informed the proposal, and resolve any unknowns that could materially change the experience or scope
         draft: true
-      - id: track-progress
-        situation: a release is under way and stand-ups only say what each person is working on
-        motivation: to see what has shipped, what is stuck and what is left
-        outcome: I spot a slipping release while there is still time to cut scope, not on release day
+        steps:
+          - title: Connect the slice to a customer job
+            summary: Link the target persona, the job they are trying to do, the outcome the slice should support, and any relevant customer evidence.
+            activity: plan
+          - title: Resolve decisions that affect the outcome
+            summary: Review the agent's open questions about customer needs, UX, scope, or dependencies before it commits to an affected implementation.
+            activity: review
+      - id: plan-and-build
+        situation: I have chosen a release slice and am ready to build it with a coding agent
+        motivation: to hand the agent enough customer and delivery context to do the work with minimal prompt repetition
+        outcome: I can start the agent with a compact slice brief, then review the implementation and its delivery evidence in the repository
         draft: true
+        steps:
+          - title: Hand off the slice
+            summary: Pass the relevant story IDs, target customer and job, desired outcome, agreed scope, dependency order, and open decisions. Link supporting detail the agent can retrieve as needed.
+            activity: plan
+          - title: Review the implementation
+            summary: Review the implementation against the customer outcome and agreed scope, then check the map edits and delivery evidence beside the code.
+            activity: review
       - id: share-roadmap
-        situation: customers ask what is coming and most of the map is internal work or wording nobody has approved
-        motivation: to show them approved stories only
-        outcome: I can give a straight answer without leaking internal plans or promising work we have not agreed
+        situation: a collaborator needs delivery context or a customer asks what is coming
+        motivation: to share the relevant roadmap view with the intended audience
+        outcome: collaborators can review the working plan and customers can see approved updates on what is available or planned, using the same source map
         draft: true
-      - id: plan-in-other-tools
-        situation: we plan in a workshop or diagram tool and the map there would be a copy someone typed by hand
-        motivation: to bring the current map into it
-        outcome: the session starts from the agreed plan, rather than from a copy that is already out of date
-        draft: true
-  - id: engineer
-    title: Engineer
-    summary: Builds the product and keeps the map in step with the code.
+  - id: pm-inheriting-project
+    title: Product Manager Inheriting an Existing Project
+    summary: Takes product responsibility for a project that is already in use or being built, with limited documentation of its features, users, and prior decisions.
     context:
-      success: The map changes in the same pull request as the code, and CI passes
-      usesToday: [GitHub pull requests, CI checks, The story-map CLI]
+      success: I can show the team which journeys work today, who uses them, what is planned, and where we still have questions. We can agree on a credible next release from that shared view.
+      usesToday:
+        - The running product or a demo environment
+        - Tickets, release notes and repository evidence
+        - Customer conversations, support tickets, and usage data
+        - Walkthroughs with people who know the product
       constraints:
-        - Serves the board behind the product's own sign-in, with no separate service
+        - Starts with partial documentation, fragmented evidence, and decisions that may exist only in people's heads.
+        - May need engineering help to interpret repository evidence and confirm how a change reaches production.
+        - Needs the agent to show the source and confidence of claims about current behaviour, delivery status, and customer needs.
+        - Needs a board the wider team can read and review, with evidence available when a claim needs checking.
       draft: true
     jobs:
-      - id: review-in-context
-        situation: a pull request changes the map and the change is a wall of YAML
-        motivation: to see which stories moved or changed status, and why, next to the code
-        outcome: I review the scope with the change, rather than approving a plan change I did not notice
+      - id: reconstruct-current-product
+        situation: I take over a project with a running product or existing code and little documentation I can rely on
+        motivation: to reconstruct the key user journeys and understand what is live, partly implemented, or still planned
+        outcome: I have an initial story map that links claims to the evidence available and marks gaps or conflicting information for review
         draft: true
-      - id: set-up-host
-        situation: my product adopts the story map and I have no time to build or run another service
-        motivation: to add it in a few steps, with checks in CI
-        outcome: it works behind our sign-in without custom code, and a broken map fails the build, not the board
+        steps:
+          - title: Build the first view
+            summary: Combine product walkthroughs, existing tickets and release notes, and any repository evidence the team can provide.
+            activity: set-up
+          - title: Inspect the current journeys
+            summary: Follow each key journey, check the evidence for its delivery status, and identify the missing or conflicting pieces.
+            activity: explore
+      - id: recover-customer-context
+        situation: the information I inherited leaves the intended users, customer jobs, or reasons for past decisions unclear
+        motivation: to learn who relies on the product today, what they are trying to do, and where the experience causes friction
+        outcome: the map links the main journeys to customer jobs supported by available research, usage, or support evidence and records what I still need to validate with customers
         draft: true
-      - id: find-the-code
-        situation: I pick up or review a story and its plan, tests and code are in different places
-        motivation: to reach them all from the story
-        outcome: I start from what is already known, rather than rediscovering decisions or duplicating tests
+      - id: validate-inherited-map
+        situation: the first map draws on sources that are incomplete, out of date, or inconsistent
+        motivation: to use the map to ask focused questions and check which claims the team can confirm
+        outcome: engineering, support, and I can agree on the current product baseline. Open questions and their evidence are visible on the map.
         draft: true
+        steps:
+          - title: Review the uncertain parts
+            summary: Walk through disputed journeys, delivery claims, and inferred user needs with the people closest to the work.
+            activity: review
+      - id: agree-first-release-plan
+        situation: I understand the current product and the team needs to agree on what to deliver next
+        motivation: to weigh customer needs and inherited commitments alongside engineering dependencies
+        outcome: the team has an agreed next release slice, a sensible build order, and a shared view of what is planned or blocked
+        draft: true
+        steps:
+          - title: Agree the next slice
+            summary: Review current commitments, customer outcomes, and prerequisites with the team, then capture the agreed scope and sequence in the map.
+            activity: plan
+          - title: Follow the plan with the team
+            summary: Use the map in delivery discussions so the team can see changes to scope, dependencies, and delivery status.
+            activity: track
   - id: agent
-    title: Coding agent
-    summary: Plans and delivers changes in the repository, and keeps the map up to date as it goes.
+    title: Coding Agent
+    summary: Picks up an agreed release slice, uses the target customer's job to guide implementation, and records delivery evidence for review.
     context:
-      success: Its pull requests use the right story IDs and pass validation first time
-      usesToday: [The story-map CLI, AGENTS.md, The JSON export]
+      success: Can draft a map that makes its sources and gaps visible, or start from a compact slice brief and bring material uncertainties to the person responsible for product scope.
+      usesToday:
+        - AGENTS.md
+        - Repository code, docs, and pull requests
+        - Story map CLI
+        - JSON export
       constraints:
-        - Reads the map from the repository and the CLI, not the board
-        - Cannot confirm drafts, because only a person removes draft
+        - Starts with the selected slice and retrieves linked personas, stories, or evidence when the task needs more detail.
+        - Treats customer evidence, agreed decisions, and inferred assumptions as distinct inputs.
+        - Asks the builder or product manager when uncertainty could materially change the customer experience, scope, or dependency order. Records meaningful, reversible assumptions when it can proceed.
+        - Proposes scope changes and drafts through the project's review workflow, and leaves confirming drafts to a person.
       draft: true
     jobs:
+      - id: pick-up-work
+        situation: I start a new session or receive a request to work on a release slice
+        motivation: to retrieve the smallest useful brief for the slice, including the target customer and job, agreed scope, prerequisites, and open decisions
+        outcome: I can see what to work on now, what needs to land first, and which supporting detail to fetch when I need it
+        draft: true
+      - id: resolve-material-uncertainty
+        situation: the slice leaves an open question about the target customer, intended UX, scope, or build order
+        motivation: to establish which decisions are supported by evidence or already agreed and which depend on assumptions
+        outcome: I can flag the material decision with a focused question and keep independent work moving. Lower-impact assumptions are visible for review when they affect the implementation.
+        draft: true
       - id: update-the-map
-        situation: my change affects a story and a hand edit to the YAML could break the map or another story
-        motivation: to make the smallest valid edit to the map
-        outcome: reviewers see the map change with the code, and validation passes the first time
+        situation: a change I am delivering affects a story's implementation or delivery status
+        motivation: to make a focused, valid edit and link the evidence that supports it
+        outcome: reviewers can see what changed beside the code and distinguish merged work from work that has shipped
         draft: true
       - id: draft-first-map
-        situation: a product has no map yet and its plans are scattered across docs, issues and code
-        motivation: to draft one from the product's docs and code
-        outcome: the team corrects a draft, rather than facing a blank file and putting the map off
-        draft: true
-      - id: read-the-map
-        situation: I start a task and the map is too large to read in full
-        motivation: to find the stories it touches without reading the YAML by hand
-        outcome: my plan uses the right story IDs and does not duplicate a story that already exists
+        situation: a project has existing product behaviour or repository history and little reliable documentation
+        motivation: to draft journeys from the available sources and flag gaps or conflicts in customer context, dependencies, and delivery evidence
+        outcome: the product manager or builder can review each material claim with its source, see which parts are inferred, and decide what still needs to be checked.
         draft: true
   - id: customer
-    title: Product customer
-    summary: A signed-in user of the host product who sees the customer view.
+    title: Product Customer / Evaluator
+    summary: An existing or prospective user of the product represented by a published map.
     context:
-      success: Knows whether something they need is coming, without asking support
-      usesToday: [The customer view of the board, Asking support]
+      success: Can tell whether the product meets a need today and whether a planned capability is worth waiting for.
+      usesToday:
+        - Product changelog
+        - Published roadmap or in-app customer view
       constraints:
-        - Sees only approved customer copy, never internal stories
+        - Sees approved customer-facing scope and wording.
+        - Needs a clear distinction between available and planned work, with dates shown only when confirmed.
       draft: true
     jobs:
       - id: see-whats-coming
-        situation: I need something the product does not do yet and must decide whether to wait or work around it
-        motivation: to see the product's plans inside the product
-        outcome: I can plan around them, without waiting days on a support ticket for an answer
+        situation: I am evaluating the product or looking for a capability I need
+        motivation: to see what is available today and what is planned in a roadmap I can access
+        outcome: I can decide whether the product fits now or whether it makes sense to wait
         draft: true
 activities:
   - id: set-up
@@ -315,14 +385,36 @@ releases:
         draft: true
   - id: v0-7-6
     title: "0.7.6: PM improvements"
-    summary: Activities expand into steps, stories carry effort estimates with a total on each release, and a scheduled audit proposes map corrections from the code.
+    summary: Activities expand into steps, stories carry effort estimates with a total on each release, a scheduled audit proposes map corrections from the code, and people confirm drafts and triage stories without editing the YAML.
     impact:
       - metric: Map changes that are missing from feature PRs
         expected: Found by the weekly audit and proposed in a PR
         solves: The map drifting from the code when a PR forgets to update it
         draft: true
+      - metric: Drafts confirmed or stories moved by editing the YAML by hand
+        expected: Done with story-map confirm, or from the story panel in the local preview
+        solves: People working alone switching to the YAML or an agent to confirm a draft or move a story
+        draft: true
     customer:
       title: "0.7.6"
+  - id: v0-8-0
+    title: "0.8.0: Agents and adoption"
+    summary: Agents use the map through an MCP server or an installable skill, a repository that already has months of history gets a survey to draft its first map from, and a tag on a describe block covers every test inside it.
+    notes: |
+      Comes after 0.7.5, because the MCP server wraps the evidence and claim commands and the survey reuses their Git and tag reading.
+
+      Plan: docs/plans/0.8.0-agents-and-adoption.md
+    impact:
+      - metric: Agent sessions that load the story map rules
+        expected: Only sessions that work on the map, through the skill or the MCP server
+        solves: Every agent session reading the story map section of AGENTS.md
+        draft: true
+      - metric: Time to draft a first map for a repository with months of history
+        expected: One survey and one agent pass, citing the survey
+        solves: Agents piecing together tags, changelogs and docs by hand
+        draft: true
+    customer:
+      title: "0.8.0"
 stories:
   # 0.1.0
   - id: ESM-101
@@ -332,7 +424,7 @@ stories:
     status: shipped
     jobs:
       - update-the-map
-      - plan-release
+      - triage-backlog
     summary: One YAML file per product, with strict validation, size limits and stable story IDs.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#the-map-file
@@ -346,7 +438,7 @@ stories:
     status: shipped
     jobs:
       - update-the-map
-      - review-in-context
+      - plan-and-build
     sources:
       - docs/ENGINEERING-OVERVIEW.md#validate
     customer:
@@ -372,7 +464,7 @@ stories:
     release: v0-1
     status: shipped
     jobs:
-      - answer-whats-next
+      - get-oriented
       - see-whats-coming
     sources:
       - docs/ENGINEERING-OVERVIEW.md#the-react-board
@@ -386,7 +478,7 @@ stories:
     release: v0-2
     status: shipped
     jobs:
-      - find-the-code
+      - plan-and-build
     sources:
       - docs/story-map.md#link-an-engineering-overview
       - docs/ENGINEERING-OVERVIEW.md#engineering-links
@@ -400,6 +492,7 @@ stories:
     status: shipped
     jobs:
       - draft-first-map
+      - reconstruct-current-product
     sources:
       - docs/story-map.md#populate-the-first-map
     customer:
@@ -412,7 +505,7 @@ stories:
     release: v0-3
     status: shipped
     jobs:
-      - set-up-host
+      - get-oriented
     summary: Writes the starter map, the guide, an AGENTS.md section and a CI workflow, without overwriting anything.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#init
@@ -424,8 +517,6 @@ stories:
     activity: set-up
     release: v0-3
     status: shipped
-    jobs:
-      - set-up-host
     sources:
       - docs/releasing.md#release-a-version
     customer:
@@ -437,7 +528,7 @@ stories:
     release: v0-3
     status: shipped
     jobs:
-      - review-in-context
+      - plan-and-build
     sources:
       - docs/story-map.md#validate-a-change
   - id: ESM-304
@@ -446,8 +537,8 @@ stories:
     release: v0-3
     status: shipped
     jobs:
-      - review-in-context
-      - plan-release
+      - plan-and-build
+      - triage-backlog
     summary: story-map diff lists customer-facing changes first, then every story, activity and release change.
     sources:
       - docs/story-map.md#review-a-map-change
@@ -461,7 +552,7 @@ stories:
     release: v0-3
     status: shipped
     jobs:
-      - answer-whats-next
+      - get-oriented
     sources:
       - docs/ENGINEERING-OVERVIEW.md#search-and-filters
     customer:
@@ -473,8 +564,7 @@ stories:
     release: v0-3
     status: shipped
     jobs:
-      - answer-whats-next
-      - set-up-host
+      - get-oriented
     notes: Uses the HTML popover API. Keep the smoke test that checks every card targets a panel with both React versions.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#detail-panels-without-javascript
@@ -487,7 +577,7 @@ stories:
     release: v0-3
     status: shipped
     jobs:
-      - track-progress
+      - get-oriented
     sources:
       - docs/story-map.md#show-status-history
       - docs/ENGINEERING-OVERVIEW.md#status-history
@@ -501,7 +591,7 @@ stories:
     release: v0-4
     status: shipped
     jobs:
-      - review-in-context
+      - plan-and-build
     sources:
       - docs/plans/0.4.0-enhancements.md#1-groundwork-validator-warnings
     customer:
@@ -513,7 +603,7 @@ stories:
     release: v0-4
     status: shipped
     jobs:
-      - track-progress
+      - get-oriented
     sources:
       - docs/story-map.md#blocked-and-cut-stories
   - id: ESM-403
@@ -522,7 +612,8 @@ stories:
     release: v0-4
     status: shipped
     jobs:
-      - plan-release
+      - agree-first-release-plan
+      - triage-backlog
     sources:
       - docs/story-map.md#release-notes-and-impact
     customer:
@@ -535,7 +626,7 @@ stories:
     status: cut
     statusReason: The board stays read-only. Saving edits would need the map on a hosted service, so agents update notes and impact in pull requests instead.
     jobs:
-      - plan-release
+      - triage-backlog
     sources:
       - docs/plans/0.4.0-enhancements.md#not-editable-on-the-board
   - id: ESM-405
@@ -544,7 +635,7 @@ stories:
     release: v0-4
     status: shipped
     jobs:
-      - track-progress
+      - get-oriented
     sources:
       - docs/story-map.md#flag-stalled-stories
     customer:
@@ -556,7 +647,7 @@ stories:
     release: v0-4
     status: shipped
     jobs:
-      - track-progress
+      - get-oriented
     notes: Edits authored by bots are credited to whoever merged them.
     sources:
       - docs/plans/0.4.0-enhancements.md#5-last-updated-from-git
@@ -569,8 +660,7 @@ stories:
     release: v0-4
     status: shipped
     jobs:
-      - track-progress
-      - answer-whats-next
+      - get-oriented
     sources:
       - docs/story-map.md#merged-and-shipped
     customer:
@@ -583,7 +673,7 @@ stories:
     release: v0-4-1
     status: shipped
     jobs:
-      - answer-whats-next
+      - get-oriented
     summary: The optional board.js script submits the filter form when a select changes or Enter is pressed in search, hides Apply, and returns focus to the filter that was used.
     notes: Progressive enhancement only. Without the script, the form and its Apply button work as before.
     sources:
@@ -599,7 +689,7 @@ stories:
     release: v0-5
     status: shipped
     jobs:
-      - answer-whats-next
+      - get-oriented
     summary: A chevron in each release header collapses the lane to its title and story count. It works without JavaScript, and board.js remembers collapsed lanes across reloads.
     notes: CSS :has() does the collapsing. Browsers without :has() do not show the toggle, so every lane stays open.
     sources:
@@ -611,7 +701,7 @@ stories:
     release: v0-5
     status: shipped
     jobs:
-      - set-up-host
+      - get-oriented
     summary: A footer shows the library version, author and licence. Internal viewers also get links to the changelog, source code, licence and author.
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
@@ -623,7 +713,7 @@ stories:
     status: planned
     estimate: 8
     jobs:
-      - plan-release
+      - triage-backlog
     sources:
       - docs/plans/0.4.0-enhancements.md#6-expandable-steps-within-activities
     customer:
@@ -637,7 +727,7 @@ stories:
     estimate: 5
     jobs:
       - update-the-map
-      - track-progress
+      - get-oriented
     summary: A scheduled agent gathers evidence from branches, PRs and commits, and proposes corrections in a single PR.
     sources:
       - docs/plans/0.4.0-enhancements.md#7-scheduled-map-audit
@@ -650,20 +740,59 @@ stories:
     release: v0-7-6
     status: merged
     jobs:
-      - plan-release
-      - track-progress
+      - triage-backlog
+      - get-oriented
     summary: Each story can carry an effort estimate in story points, and each release lane shows its total, how much is merged and how much is left to do.
     notes: Internal only, so customers never see estimates. Cut stories leave the total. Merged points are counted apart and, like shipped ones, leave the remaining count. Points use 1, 2, 3, 5, 8 or 13.
     sources:
       - docs/plans/effort-estimates.md
       - docs/plans/effort-estimates.md#ui-mockup
+  - id: ESM-504
+    title: Confirm drafts from the command line
+    activity: review
+    release: v0-7-6
+    status: planned
+    estimate: 3
+    jobs:
+      - ground-work-in-customer-needs
+      - plan-and-build
+    summary: "story-map confirm shows a drafted job, persona context or impact item as the reader sees it and, after the person types its ID back on a terminal, removes draft: true."
+    notes: For people only. It refuses --write when standard input is not a terminal, so agents keep to dry runs (ESM-744).
+    sources:
+      - docs/plans/local-triage.md#1-confirm-drafts-from-the-command-line
+  - id: ESM-505
+    title: Show the edit command in the story panel
+    activity: explore
+    release: v0-7-6
+    status: planned
+    estimate: 3
+    jobs:
+      - triage-backlog
+      - get-oriented
+    summary: The internal story panel has status, reason and release pickers that build the matching story-map edit command, with a button to copy it.
+    sources:
+      - docs/plans/local-triage.md#2-change-status-and-release-from-the-story-panel
+  - id: ESM-506
+    title: Save status and release changes from the local preview
+    activity: explore
+    release: v0-7-6
+    status: planned
+    estimate: 5
+    jobs:
+      - triage-backlog
+      - get-oriented
+    summary: story-map preview --writable saves the story panel's status and release changes to the map file, with the same checks as story-map edit --write.
+    notes: Local only, on the loopback address, with an Origin check, a start-up token and a refusal when the file changed since the page loaded. The hosted board stays read-only (ESM-404).
+    sources:
+      - docs/plans/local-triage.md#3-save-changes-from-the-local-preview
   - id: ESM-910
     title: Break a job into steps
     activity: explore
     release: v0-7-3
     status: merged
     jobs:
-      - plan-release
+      - ground-work-in-customer-needs
+      - triage-backlog
     summary: Any job can list up to 6 workflow steps in order, each pointing to the activity where its stories live. A step's stories serve its job and sit in its activity, validate warns about steps with none, the persona panel counts the core job's gaps, and the view, JSON export and diff carry steps and their coverage.
     notes: Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format. The job lanes that show each step in order are drawn on the Personas tab, so they ship with ESM-911, as the full display of ESM-907 and ESM-908 does.
     sources:
@@ -680,8 +809,8 @@ stories:
     release: v0-7-3
     status: merged
     jobs:
-      - plan-release
-      - track-progress
+      - ground-work-in-customer-needs
+      - get-oriented
     summary: "A Personas tab beside the story map gives each persona a page: their context, then their jobs as lanes, each with its steps in order and gaps marked. The tab does not show the map's activities. The persona popover becomes a quick look that links to it."
     notes: "Internal viewers only. Moves the full display of ESM-907, ESM-908 and ESM-910 out of the popover, and draws ESM-910's job lanes: each step in order with its story count as a link, gaps dashed, and lanes that collapse like release lanes."
     sources:
@@ -699,7 +828,7 @@ stories:
     status: merged
     estimate: 3
     jobs:
-      - read-the-map
+      - pick-up-work
     summary: story-map story, stories and releases print stories and releases as text or JSON, with the board's filters and search, so agents stop reading the YAML by hand.
     sources:
       - docs/plans/native-cli.md#2-read-the-map
@@ -723,7 +852,8 @@ stories:
     status: planned
     estimate: 5
     jobs:
-      - read-the-map
+      - pick-up-work
+      - validate-inherited-map
     summary: story-map evidence reports the branches, default-branch commits, plans, tests and broken sources that mention each story, and suggests a status without changing anything.
     notes: The deterministic evidence step of the scheduled audit (ESM-502), built first so agents can use it on its own.
     sources:
@@ -760,7 +890,7 @@ stories:
     status: merged
     estimate: 2
     jobs:
-      - set-up-host
+      - get-oriented
       - draft-first-map
     summary: story-map preview serves the repository's own map as a board on loopback, with internal and customer views, so a team sees its first map before wiring up a host route.
     notes: Reuses the demo server, moved into the package. Loopback only, for one person checking a map, never for deploying.
@@ -774,7 +904,7 @@ stories:
     status: planned
     estimate: 2
     jobs:
-      - track-progress
+      - get-oriented
       - update-the-map
     summary: story-map evidence --shipped-tags suggests shipped for merged stories whose work is in a matching release tag, so stories stop waiting in merged after a release goes out.
     notes: Opt-in, because many products deploy without tags or ship behind feature flags. Suggests only, like the rest of evidence.
@@ -788,7 +918,7 @@ stories:
     status: merged
     estimate: 5
     jobs:
-      - plan-release
+      - ground-work-in-customer-needs
       - update-the-map
     summary: The map lists the people the product serves and their jobs to be done as structured job statements, and each story names the jobs it serves. Validate checks the references and warns about jobs with no stories, and diff reports persona and job changes.
     notes: Also adds --add-job, --remove-job, --add-persona and --remove-persona to story-map edit, and --job and --persona to story-map add (ESM-744), so agents can tag stories. This repository's personas and jobs are drafts until a person confirms them.
@@ -805,7 +935,8 @@ stories:
     status: merged
     estimate: 3
     jobs:
-      - answer-whats-next
+      - ground-work-in-customer-needs
+      - get-oriented
     summary: Cards and activities show persona avatars, and the story panel gains a For row and the job statements the story serves.
     sources:
       - docs/plans/personas.md#2-show-who-a-story-is-for
@@ -820,7 +951,8 @@ stories:
     status: merged
     estimate: 2
     jobs:
-      - answer-whats-next
+      - ground-work-in-customer-needs
+      - get-oriented
     summary: A persona menu, with every persona ticked by default, narrows the board to the stories for the personas left ticked, and links in the persona panel narrow it to one job, through repeated persona and job parameters.
     sources:
       - docs/plans/personas.md#3-filter-the-board-by-persona
@@ -835,7 +967,7 @@ stories:
     status: merged
     estimate: 3
     jobs:
-      - plan-release
+      - ground-work-in-customer-needs
     summary: A persona panel shows the persona's summary and jobs to be done, with the stories that serve each job and the jobs that have none.
     sources:
       - docs/plans/personas.md#4-open-a-persona-to-see-jobs-and-coverage
@@ -866,8 +998,8 @@ stories:
     status: merged
     estimate: 2
     jobs:
-      - read-the-map
-      - plan-in-other-tools
+      - pick-up-work
+      - share-roadmap
     summary: CSV, JSON and Visio exports carry each story's personas and jobs, and the JSON export lists the map's personas with their job statements.
     notes: story-map story and stories (ESM-741) use the same story shape, so they show personas and jobs too, and stories gains --persona and --job.
     sources:
@@ -882,8 +1014,9 @@ stories:
     release: v0-7-3
     status: merged
     jobs:
-      - plan-release
-      - read-the-map
+      - recover-customer-context
+      - ground-work-in-customer-needs
+      - pick-up-work
     summary: A persona can say what success means to them, what they use today and the constraints they work under, so stories are planned around them. The labels fit consumer and business products. Adds the fields to the format, validate, diff and the JSON export; the Personas tab (ESM-911) shows them. Internal only, and drafts are marked until a person confirms them.
     sources:
       - docs/plans/personas.md#7-describe-a-personas-context
@@ -899,7 +1032,7 @@ stories:
     release: v0-7-3
     status: merged
     jobs:
-      - plan-release
+      - ground-work-in-customer-needs
     summary: The first job in a persona's list is their core job. The persona popover labels it, validate warns when it has no stories, and diff reports when it changes. On the Personas tab (ESM-911) it is the first lane.
     sources:
       - docs/plans/personas.md#8-mark-a-personas-core-job
@@ -916,7 +1049,7 @@ stories:
     status: merged
     jobs:
       - draft-first-map
-      - plan-release
+      - ground-work-in-customer-needs
     summary: The guide and schema ask for a situation that names the trigger and what makes it hard, and an outcome that names what is at stake. This repository's drafted jobs are rewritten to match, keeping their IDs.
     notes: Guidance only. No validation rule, because one would flag good short statements.
     sources:
@@ -931,7 +1064,7 @@ stories:
     release: v0-7-0
     status: shipped
     jobs:
-      - find-the-code
+      - plan-and-build
     summary: Tests that name a story ID are indexed at build time, and internal viewers see them in the story panel, each linking to its line.
     notes: Tests point to stories, so the map is never edited to list them. A static scan, with no test code run. validate --tests flags tags for unknown stories. Pass and fail results are a possible follow-up.
     sources:
@@ -946,8 +1079,8 @@ stories:
     release: v0-7-0
     status: shipped
     jobs:
-      - find-the-code
-      - track-progress
+      - plan-and-build
+      - get-oriented
     summary: Internal cards show a flask and the number of tagged tests between the status and the last change, read as “7 tests”, so a column shows at a glance which stories are covered.
     notes: Counts listed tests and those the index left out. Nothing for stories without tests, or for customers. Chosen from four mocked-up options; a “No tests” flag on in-progress and merged stories was the runner-up.
     sources:
@@ -960,7 +1093,7 @@ stories:
     status: planned
     estimate: 3
     jobs:
-      - find-the-code
+      - plan-and-build
     summary: Each line in a story's History, and its last update, links to the pull request and commit that made the change, when the host passes its repository URL.
     sources:
       - docs/plans/story-changes.md#1-record-pull-requests-in-the-history
@@ -971,7 +1104,7 @@ stories:
     status: planned
     estimate: 8
     jobs:
-      - find-the-code
+      - plan-and-build
     summary: story-map history finds merged pull requests and commits whose title, message or branch names a story ID, and internal viewers see them in a Changes section of the story panel.
     notes: Changes point to stories, so the map is never edited to list them. Merged work only; open pull requests from the GitHub API are a possible follow-up.
     sources:
@@ -983,7 +1116,7 @@ stories:
     status: planned
     estimate: 3
     jobs:
-      - answer-whats-next
+      - get-oriented
     summary: Each story and release panel has a Copy link control, and following the link opens the board on that panel, even when the filters would hide the story.
     notes: Links use the story or release ID, which is already stable. Works without JavaScript by scrolling to the card; board.js opens the panel and copies the link. On customer boards, IDs outside the customer view are ignored.
     sources:
@@ -995,7 +1128,7 @@ stories:
     release: v0-6-1
     status: shipped
     jobs:
-      - track-progress
+      - get-oriented
     summary: story-map history truncates author and merger names to the history format's 120-character limit, so parseStoryMapHistory always accepts what it writes.
     sources:
       - docs/plans/0.6.0-review-fixes.md#2-history-names-that-fit-the-history-format
@@ -1005,8 +1138,8 @@ stories:
     release: v0-6-1
     status: shipped
     jobs:
-      - review-in-context
-      - track-progress
+      - plan-and-build
+      - get-oriented
     summary: Past versions of the map are read leniently with a migration step, history reports versions it skipped, and diff compares an older-format base instead of failing.
     sources:
       - docs/plans/0.6.0-review-fixes.md#3-history-and-diff-that-survive-format-changes
@@ -1028,7 +1161,7 @@ stories:
     status: cut
     statusReason: The library is set up mainly for internal use, so the default engineer and super-admin rule stays. The risk is documented in the engineering overview instead.
     jobs:
-      - set-up-host
+      - get-oriented
     summary: Would have warned when the default engineer and super-admin rule was used, then required canViewInternal.
     sources:
       - docs/plans/0.6.0-review-fixes.md#5-the-default-rule-for-who-sees-the-internal-map-out-of-scope
@@ -1039,7 +1172,7 @@ stories:
     release: v0-6-1
     status: shipped
     jobs:
-      - set-up-host
+      - get-oriented
     summary: getStoryMapPage projects for the viewer and then filters, and storyMapResponseHeaders gives the no-store headers, so the safe order is the easy one. Documents page sizes for large maps.
     sources:
       - docs/plans/0.6.0-review-fixes.md#6-one-call-that-projects-and-filters
@@ -1059,7 +1192,7 @@ stories:
     release: v0-6-1
     status: shipped
     jobs:
-      - review-in-context
+      - plan-and-build
     summary: The diff escapes @mentions and #references in map text, so pasting the summary into a PR does not notify people or link issues.
     sources:
       - docs/plans/0.6.0-review-fixes.md#8-diff-summaries-that-do-not-notify-people
@@ -1069,7 +1202,7 @@ stories:
     release: v0-6-1
     status: shipped
     jobs:
-      - set-up-host
+      - get-oriented
     summary: An unknown locale or time zone falls back to defaults instead of failing the render, and date formatters are built once per render.
     sources:
       - docs/plans/0.6.0-review-fixes.md#9-a-board-that-survives-bad-date-settings
@@ -1079,7 +1212,7 @@ stories:
     release: v0-6-1
     status: shipped
     jobs:
-      - answer-whats-next
+      - get-oriented
     summary: The internal board's header says when the map was last updated, by whom, and which releases most recent changes were in, instead of a fixed summary.
     sources:
       - docs/story-map.md#show-status-history
@@ -1089,7 +1222,7 @@ stories:
     release: v0-6-1
     status: shipped
     jobs:
-      - review-in-context
+      - plan-and-build
     summary: Heading anchors are read in linear time, and Markdown files over 5 MB are not read for anchors, so a crafted heading in a PR cannot stall CI.
     sources:
       - docs/plans/0.6.0-review-fixes.md#11-source-checks-that-stay-fast
@@ -1100,7 +1233,7 @@ stories:
     release: v0-7-0
     status: merged
     jobs:
-      - plan-in-other-tools
+      - share-roadmap
     summary: Import a hand-made Visio file and CSV into Miro, Lucidchart and LibreOffice before building the export, and record what survives.
     sources:
       - docs/plans/export-to-external-tools.md#1-check-that-miro-and-lucidchart-import-a-test-file
@@ -1110,7 +1243,7 @@ stories:
     release: v0-7-0
     status: shipped
     jobs:
-      - plan-in-other-tools
+      - share-roadmap
     summary: storyMapToVsdx writes the whole internal map as a .vsdx file, with collapsed lanes, release notes and impact, and at most 200 stories.
     notes: Hand-rolled stored zip, no new dependency. Refuses customer views. Includes the LibreOffice check in CI.
     sources:
@@ -1122,7 +1255,7 @@ stories:
     release: v0-7-0
     status: shipped
     jobs:
-      - plan-in-other-tools
+      - share-roadmap
     summary: story-map export writes a Visio or CSV file from the YAML file, optionally using history to choose the most recent stories.
     sources:
       - docs/plans/export-to-external-tools.md#3-export-from-the-command-line
@@ -1132,7 +1265,7 @@ stories:
     release: v0-7-0
     status: shipped
     jobs:
-      - plan-in-other-tools
+      - share-roadmap
     summary: Internal viewers get Export links on the board when the host sets exportHref, and lanes they collapsed stay collapsed in the file.
     sources:
       - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
@@ -1142,7 +1275,7 @@ stories:
     release: v0-7-0
     status: shipped
     jobs:
-      - plan-in-other-tools
+      - share-roadmap
     summary: One row per story with its activity, release, ID and title, safe to open in spreadsheets and importable into Miro and Lucidchart.
     sources:
       - docs/plans/export-to-external-tools.md#5-export-the-map-as-csv
@@ -1153,7 +1286,7 @@ stories:
     release: v0-7-1
     status: merged
     jobs:
-      - read-the-map
+      - pick-up-work
     summary: storyMapToJson writes every internal story with its notes, sources, history and tagged tests, plus notes on where the data came from and what is left out, so an agent can review stories and tests and suggest product work.
     notes: Every story and every release by default, unlike Visio and CSV, and collapsed lanes are ignored. Available from the CLI with --tests-index, from storyMapExportResponse and from the board's Export menu.
     sources:
@@ -1164,10 +1297,58 @@ stories:
     release: v0-7-0
     status: shipped
     jobs:
-      - answer-whats-next
-      - track-progress
+      - get-oriented
     summary: The status filter is a list of checkboxes with the active statuses ticked by default, so viewers can show any mix of statuses, including stalled stories, without an All option.
     notes: The URL repeats status once per choice, and status=all and single-status links still work. view.filter.status becomes an array, which is a breaking change for hosts that read it.
     sources:
       - docs/story-map.md#blocked-and-cut-stories
       - docs/ENGINEERING-OVERVIEW.md#filter-toolbar
+  - id: ESM-748
+    title: Serve the CLI over MCP
+    activity: plan
+    release: v0-8-0
+    status: planned
+    estimate: 5
+    jobs:
+      - pick-up-work
+      - update-the-map
+    summary: story-map mcp runs a local MCP server whose tools wrap the read, validate, evidence, edit and claim commands, with the same safeguards as the CLI.
+    notes: Edits stay dry runs unless the call asks to write, and there is no tool to confirm drafts. Whether to use the MCP SDK as a runtime dependency is open.
+    sources:
+      - docs/plans/0.8.0-agents-and-adoption.md#1-serve-the-cli-over-mcp
+  - id: ESM-749
+    title: Install a story map skill
+    activity: set-up
+    release: v0-8-0
+    status: planned
+    estimate: 2
+    jobs:
+      - pick-up-work
+      - update-the-map
+    summary: story-map init --skill writes a SKILL.md with the story map rules and common commands, from the same template as the AGENTS.md section.
+    sources:
+      - docs/plans/0.8.0-agents-and-adoption.md#2-install-a-story-map-skill
+  - id: ESM-750
+    title: Survey a repository for its first map
+    activity: set-up
+    release: v0-8-0
+    status: planned
+    estimate: 5
+    jobs:
+      - draft-first-map
+      - reconstruct-current-product
+    summary: story-map survey lists a repository's release tags, changelog versions, docs and open plans and TODOs as JSON, for an agent drafting the first map.
+    notes: Reads and suggests only. The agent still drafts the stories, following the first-run workflow (ESM-202).
+    sources:
+      - docs/plans/0.8.0-agents-and-adoption.md#3-survey-a-repository-for-its-first-map
+  - id: ESM-806
+    title: Tag a describe block for all its tests
+    activity: explore
+    release: v0-8-0
+    status: planned
+    estimate: 3
+    jobs:
+      - plan-and-build
+    summary: A story ID in a describe or suite name covers every test inside it, so renaming a test does not unlink it from its story.
+    sources:
+      - docs/plans/0.8.0-agents-and-adoption.md#4-tag-a-describe-block-for-all-its-tests

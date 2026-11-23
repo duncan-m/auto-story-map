@@ -262,7 +262,7 @@ Validation fails on a duplicate persona ID, a job ID used twice anywhere in the 
 - a drafted job that a shipped story serves, as for [drafted impact](#release-notes-and-impact);
 - more than half the active stories saying nothing about who they are for.
 
-Untagged stories are allowed, so an existing map stays valid. Agents can draft personas and jobs from the product's docs, issues and research, mark each job `draft: true`, and say so in the PR. A person confirms a job by removing `draft`. Tag stories with `story-map edit <ID> --add-job <job ID>` or `--add-persona <persona ID>`, and new stories with `story-map add --job <job ID>`.
+Untagged stories are allowed, so an existing map stays valid. Chore, infrastructure and security stories that serve no user's job can stay untagged: there is no warning for a single untagged story, so do not invent a persona or job to cover them. Agents can draft personas and jobs from the product's docs, issues and research, mark each job `draft: true`, and say so in the PR. A person confirms a job by removing `draft`. Tag stories with `story-map edit <ID> --add-job <job ID>` or `--add-persona <persona ID>`, and new stories with `story-map add --job <job ID>`.
 
 ### Mark a core job
 
@@ -330,7 +330,7 @@ personas:
 
 Context is internal. Customers never see it, even for a persona with approved customer copy. Internal views and the JSON export carry it, search does not match it, and `story-map diff` reports added, changed, confirmed and removed context under **Personas and jobs**. Agents may draft context from the product's docs and research, mark it `draft: true`, and leave out what no source supports. A person confirms it by removing `draft`, and validate warns about drafted context on a persona that a shipped story is for.
 
-`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs and changes of [core job](#mark-a-core-job), under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Personas are internal unless their customer copy is [approved](#share-personas-with-customers), and customers never see jobs.
+`story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs and changes of [core job](#mark-a-core-job), under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Added and reworded jobs show their full statement, so reviewers can check the wording without reading the YAML, such as “Added job `share-roadmap` (Product manager): When customers ask what is coming …, I want to show them approved stories only, so that I can give a straight answer ….” A person confirming a draft shows as “Confirmed drafted job `share-roadmap` (Product manager)”. Personas are internal unless their customer copy is [approved](#share-personas-with-customers), and customers never see jobs.
 
 On the internal board, each card shows the avatars of the personas it is for beside its ID: the persona's initials on its colour, up to three, then “+1” and so on. Each activity shows the avatars of the personas its active stories are for, so you can see who each step of the journey serves. Screen readers hear the titles, such as “For Product manager and Coding agent”, not the initials. The story panel starts its details with a **For** row, listing the story's personas, and a **Jobs** row with the statement of each job it serves, its persona, a **Core job** label on a persona's core job and a **Draft** label on drafts. Colours come from each persona's place in the list, six in all, so reordering personas changes them, and the seventh persona starts again from the first colour. Hosts can restyle them with `--esm-persona-0` to `--esm-persona-5` and their `-bg` pairs. A map without personas looks exactly as before.
 
@@ -428,7 +428,7 @@ Each problem is reported as `file:line:column` with the item it belongs to, for 
 product/story-map.yaml:74:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'.
 ```
 
-The checks cover YAML syntax, duplicate keys and IDs, missing and unknown fields, invalid statuses, broken references and missing customer-facing labels. All problems are reported in one run.
+The checks cover YAML syntax, duplicate keys and IDs, missing and unknown fields, invalid statuses, broken references and missing customer-facing copy. Customer copy is optional, and internal stories never need it, but three cases are errors: an `all-users` map with no map-level `customer` copy, and a story with customer copy whose activity or release has none. All problems are reported in one run.
 
 Some problems are warnings rather than errors, such as a blocked or cut story with no `statusReason`, or a release with active stories but no [impact](#release-notes-and-impact). Warnings are printed with `warning:` after the position, but the map is still valid and the command exits successfully. Add `--strict` to treat warnings as errors.
 
@@ -531,7 +531,7 @@ npx --no-install story-map edit ESM-744 --status in-progress
 npx --no-install story-map edit ESM-745 --status blocked --reason "Waiting on the host's Git provider to accept custom refs"
 npx --no-install story-map edit ESM-743 --release v0-7-5 --activity review
 npx --no-install story-map edit ESM-741 --add-source docs/story-map.md#read-the-map-from-the-command-line
-npx --no-install story-map edit ESM-902 --add-job answer-whats-next
+npx --no-install story-map edit ESM-902 --add-job get-oriented
 npx --no-install story-map add --activity review --release v0-7-5 --title "Check claims in CI"
 npx --no-install story-map release-impact v0-7-5 --metric "Agents starting the same story" --expected "None, for teams that use claims"
 ```
