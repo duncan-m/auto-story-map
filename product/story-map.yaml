@@ -1005,7 +1005,7 @@ stories:
     title: Write a handoff brief for a story or release
     activity: plan
     release: v0-7-5
-    status: in-progress
+    status: merged
     estimate: 5
     jobs:
       - plan-and-build
