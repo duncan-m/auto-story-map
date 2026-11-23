@@ -4,6 +4,16 @@ Status: proposed. Planning only; no implementation in this PR. Work is split int
 - **0.8.2: Delivery visibility** — ESM-130 through ESM-134.
 - **0.8.3: Delivery intelligence** — ESM-135 through ESM-138.
 
+1. [Reconstruct delivery events from Git](#1-reconstruct-delivery-events-from-git) (ESM-130)
+2. [Calculate historical scope and completion](#2-calculate-historical-scope-and-completion) (ESM-131)
+3. [Show burn-up and burn-down in Analytics](#3-show-burn-up-and-burn-down-in-analytics) (ESM-132)
+4. [Report throughput and velocity](#4-report-throughput-and-velocity) (ESM-133)
+5. [Summarise delivery on each release lane](#5-summarise-delivery-on-each-release-lane) (ESM-134)
+6. [Measure cycle and lead time](#6-measure-cycle-and-lead-time) (ESM-135)
+7. [Baseline releases and expose scope changes](#7-baseline-releases-and-expose-scope-changes) (ESM-136)
+8. [Forecast likely release completion](#8-forecast-likely-release-completion) (ESM-137)
+9. [Display cumulative flow and bottlenecks](#9-display-cumulative-flow-and-bottlenecks) (ESM-138)
+
 No story-point estimates are assigned here. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
 
 ## Why and product outcome
@@ -14,7 +24,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 ## Measurement contract (applies to every story)
 
-- **Completion:** choose `shipped` (customer availability) or `merged` (engineering completion); do not silently combine them. A story moved from `merged` to `shipped` is not counted twice. Interpret `shipped` as past the `merged` milestone for a merged-based view.
+- **Completion:** every view names its milestone, `merged` (engineering completion) or `shipped` (customer availability). The merged view counts stories that are `merged` or `shipped`, since shipping comes after merging; the shipped view counts `shipped` only. A story that moves from `merged` to `shipped` is counted once in each view.
 - **Scope:** a release's active scope excludes `cut` stories; show cuts and additions as explicit scope-change events, not as completed work. Historical scope and point totals use values *at the time*, not today's estimates.
 - **Units:** stories always supported; story-point charts only use stories with agreed estimates. Label the fraction missing an estimate and never treat missing estimates as zero. No invented estimates.
 - **Timing:** derive transitions from Git commits that changed the map, not PR creation dates or file modification time. Treat history before the first observable revision as unknown. Shallow clones, squashed history, rewritten commits and backfilled stories may reduce fidelity: display coverage/limitations.
@@ -25,7 +35,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 ## Release 0.8.2 — Delivery visibility
 
-### 1. Reconstruct delivery events from Git (ESM-130)
+### 1. Reconstruct delivery events from Git
 
 **User story:** As a Solo Builder or PM inheriting a project, I want the map to reconstruct historical status, estimate and release changes so that trends reflect what was known at each point in time.
 
@@ -35,7 +45,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Dependency:** existing Git history reader.
 
-### 2. Calculate historical scope and completion (ESM-131)
+### 2. Calculate historical scope and completion
 
 **User story:** As a PM, I want daily snapshots of total scope, delivered and remaining work for each release so that burn charts reflect changes rather than hiding them.
 
@@ -45,7 +55,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Depends on:** ESM-130.
 
-### 3. Show burn-up and burn-down in Analytics (ESM-132)
+### 3. Show burn-up and burn-down in Analytics
 
 **User story:** As a Solo Builder, I want a clear burn-up or burn-down chart by release so that I can see what is changing and whether work remains.
 
@@ -55,7 +65,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Depends on:** ESM-131.
 
-### 4. Report throughput and velocity (ESM-133)
+### 4. Report throughput and velocity
 
 **User story:** As a Solo Builder, I want weekly delivered stories and estimated points so that I can understand my actual delivery cadence without sprints.
 
@@ -65,7 +75,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Depends on:** ESM-131.
 
-### 5. Summarise delivery on each release lane (ESM-134)
+### 5. Summarise delivery on each release lane
 
 **User story:** As a Solo Builder, I want release progress shown next to the existing stories so that I can choose the next slice without leaving the map.
 
@@ -77,7 +87,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 ## Release 0.8.3 — Delivery intelligence
 
-### 6. Measure cycle and lead time (ESM-135)
+### 6. Measure cycle and lead time
 
 **User story:** As a Solo Builder, I want to know how long stories take to reach merged and shipped so that I can distinguish build time from release delay.
 
@@ -87,7 +97,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Depends on:** ESM-130.
 
-### 7. Baseline releases and expose scope changes (ESM-136)
+### 7. Baseline releases and expose scope changes
 
 **User story:** As a PM, I want a release's agreed baseline and subsequent changes visible so that I can distinguish evolving scope from slow delivery.
 
@@ -97,7 +107,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Depends on:** ESM-130 and ESM-131.
 
-### 8. Forecast likely release completion (ESM-137)
+### 8. Forecast likely release completion
 
 **User story:** As a Solo Builder, I want a credible range for when the current scope may finish so that I can decide whether to reduce or rearrange a release.
 
@@ -107,7 +117,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Depends on:** ESM-133 and ESM-136.
 
-### 9. Display cumulative flow and bottlenecks (ESM-138)
+### 9. Display cumulative flow and bottlenecks
 
 **User story:** As a PM, I want status inventory and ageing trends so that I can find blocked work and excessive work in progress.
 
@@ -138,7 +148,7 @@ Sprint creation, timesheets, manual daily updates, agent leaderboards, cost-per-
 
 ## Delivery checklist
 
-- All 9 stories and both releases remain `planned` until implementation begins.
+- All 9 stories remain `planned` until implementation begins.
 - No estimates are assigned without team agreement.
 - Validate map/schema; add linked tests at implementation time.
 - Keep generated analytics data out of customer-facing projections.
