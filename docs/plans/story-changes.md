@@ -1,6 +1,6 @@
 # Plan: link stories to their code, and to each other
 
-Status: proposed. The work is ESM-120, ESM-121 and ESM-122, all in the **0.7.4: Links to code and stories** release of the map.
+Status: in progress. ESM-120 (items 1 and 2) is merged. The work is ESM-120, ESM-121 and ESM-122, all in the **0.7.4: Links to code and stories** release of the map.
 
 Internal viewers open a story and can follow its work to the code: each line in its **History** links to the pull request and commit that made the change, and a new **Changes** section lists the pull requests and commits that delivered the story. As with tests, changes point to stories, not the other way round: a commit message, pull request title or branch name names the story ID, and the history build collects them. Nobody edits the map to list them.
 

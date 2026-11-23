@@ -1007,6 +1007,114 @@ test("the board shows when each story changed and its history to internal viewer
   assert.doesNotMatch(noHistory, /name="changed"|esm-changed|>History</);
 });
 
+test("ESM-120: reads the pull request number from merge, squash and GitLab commit messages", async () => {
+  const { pullRequestNumber } = await import("../dist/history-git.js");
+  assert.equal(pullRequestNumber("Merge pull request #70 from duncan-m/feat/esm-706-json-export", "Export the map as JSON"), 70);
+  assert.equal(pullRequestNumber("Export the map as JSON for agents (#68)"), 68);
+  assert.equal(pullRequestNumber("  Mark the 0.7.0 stories as shipped (#67)  "), 67);
+  assert.equal(pullRequestNumber("Merge branch 'feature' into 'main'", "Add totals\n\nSee merge request group/sub/project!12\n"), 12);
+  // A direct commit, a number in the middle of the subject and a zero are not pull requests.
+  assert.equal(pullRequestNumber("Fix the typo"), undefined);
+  assert.equal(pullRequestNumber("Revert (#12) and retry"), undefined);
+  assert.equal(pullRequestNumber("Merge pull request #0 from a/b"), undefined);
+  assert.equal(pullRequestNumber("Tidy up (#0)"), undefined);
+  assert.equal(pullRequestNumber("Merge branch 'feature'", "It mentions See merge request a/b!3 in passing"), undefined);
+  assert.equal(pullRequestNumber(`Huge (#${"9".repeat(30)})`), undefined);
+});
+
+test("ESM-120: history records the pull request behind each change", async t => {
+  const { root, git, build } = await historyRepo(t);
+  const writeMap = edit => writeFile(join(root, "product/story-map.yaml"), stringify(edit(parseStoryMap(git(["show", "HEAD:product/story-map.yaml"])))));
+  const story = (document, id) => document.stories.find(story => story.id === id);
+  const branchEdit = async (branch, edit, author, date) => {
+    git(["checkout", "-q", "-b", branch]);
+    await writeMap(document => (edit(document), document));
+    git(["commit", "-q", "-am", `Edit on ${branch}`], { author, date });
+    git(["checkout", "-q", "main"]);
+  };
+
+  // A GitHub merge commit.
+  await branchEdit("feat/checks", document => { story(document, "BUILDER-103").status = "in-progress"; }, "Sam", "2026-11-19T09:00:00Z");
+  git(["merge", "-q", "--no-ff", "-m", "Merge pull request #70 from acme/feat/checks\n\nStart the checks", "feat/checks"], { author: "Carol", date: "2026-11-19T10:00:00Z" });
+  // A GitLab merge commit.
+  await branchEdit("approvals", document => { story(document, "FINANCE-201").status = "in-progress"; }, "Sam", "2026-11-19T11:00:00Z");
+  git(["merge", "-q", "--no-ff", "-m", "Merge branch 'approvals' into 'main'\n\nStart approvals\n\nSee merge request acme/product!12", "approvals"], { author: "Carol", date: "2026-11-19T12:00:00Z" });
+  // A direct commit that mentions a number mid-subject.
+  await writeMap(document => (story(document, "BUILDER-103").notes = "Check totals.", document));
+  git(["commit", "-q", "-am", "Note (#99) for checks"], { author: "Dan", date: "2026-11-19T13:00:00Z" });
+
+  const history = await build();
+  const pulls = Object.fromEntries(history.events.filter(event => event.at >= "2026-11-12").map(event => [`${event.storyId} ${event.to}`, event.pullRequest]));
+  assert.deepEqual(pulls, {
+    "BUILDER-101 shipped": undefined,
+    "BUILDER-102 in-progress": undefined,
+    "BUILDER-104 planned": 7,
+    "BUILDER-103 in-progress": 70,
+    "FINANCE-201 in-progress": 12,
+  });
+  const edits = Object.fromEntries(history.lastEdits.map(edit => [edit.storyId, edit.pullRequest]));
+  assert.equal(edits["BUILDER-103"], undefined, "the direct commit is the last edit");
+  assert.equal(edits["FINANCE-201"], 12);
+  assert.equal(edits["BUILDER-104"], 7);
+  assert.equal(Object.hasOwn(history.lastEdits.find(edit => edit.storyId === "BUILDER-103"), "pullRequest"), false);
+
+  // History files written before 0.7.4 have no pull requests, and still load. Bad numbers do not.
+  const old = { version: 1, generatedAt: "2026-11-20T12:00:00.000Z", complete: true, events: [{ storyId: "X-1", type: "added", to: "planned", at: "2026-11-01T10:00:00.000Z", commit: "abcdef1" }] };
+  assert.deepEqual(parseStoryMapHistory(old), old);
+  for (const pullRequest of [0, -1, 1.5, "7"]) {
+    assert.throws(() => parseStoryMapHistory({ ...old, events: [{ ...old.events[0], pullRequest }] }), /Invalid story map history/);
+  }
+});
+
+test("ESM-120: history lines link to their pull request and commit when the board has a repository URL", () => {
+  const commit = "8078905d3909bf3924bcc2403b8de972b2cef522";
+  const direct = "c0ffee1d3909bf3924bcc2403b8de972b2cef522";
+  const history = {
+    version: 1, generatedAt: "2026-11-20T12:00:00.000Z", complete: true,
+    events: [
+      { storyId: "BUILDER-101", type: "added", to: "in-progress", at: "2026-11-01T10:00:00.000Z", by: "Alice", commit: direct },
+      { storyId: "BUILDER-101", type: "status", from: "in-progress", to: "shipped", at: "2026-11-12T15:30:00.000Z", by: "Sam Patel", mergedBy: "Duncan Malcolm", commit, pullRequest: 70 },
+    ],
+    lastEdits: [
+      { storyId: "BUILDER-101", at: "2026-11-12T15:30:00.000Z", by: "Sam Patel", commit, pullRequest: 70 },
+      { storyId: "BUILDER-102", at: "2026-11-01T10:00:00.000Z", by: "Alice", commit: direct },
+    ],
+  };
+  const now = new Date("2026-11-20T12:00:00Z");
+  const view = getStoryMapForViewer(map, engineer, { history });
+  const render = props => renderToStaticMarkup(createElement(StoryMapBoard, { map: view, now, timeZone: "UTC", ...props }));
+
+  const github = render({ repositoryUrl: "https://github.com/acme/product/" });
+  const shipped = panelFor(github, "Draft an estimate against a project");
+  assert.match(shipped, /15:30<\/time> · by Sam Patel, merged by Duncan Malcolm · <a class="esm-history-link" href="https:\/\/github\.com\/acme\/product\/pull\/70" target="_blank" rel="noopener noreferrer"><span class="esm-visually-hidden">Pull request <\/span>#70/);
+  assert.match(shipped, new RegExp(`href="https://github\\.com/acme/product/commit/${commit}" title="${commit}"[^>]*><span class="esm-visually-hidden">Commit </span><code class="esm-commit-hash">8078905</code>`));
+  // A direct commit has no pull request, so only its commit is linked.
+  assert.match(shipped, new RegExp(`by Alice · <a class="esm-history-link" href="https://github\\.com/acme/product/commit/${direct}"`));
+  // The last update links to the pull request, or to the commit when there is none.
+  assert.match(shipped, /Last updated <a class="esm-history-link" href="https:\/\/github\.com\/acme\/product\/pull\/70"[^>]*><time [^>]*>7 days ago<\/time><span class="esm-visually-hidden">, Pull request 70<\/span>/);
+  assert.match(panelFor(github, "Look up prices in the material catalogue"), new RegExp(`Last updated <a class="esm-history-link" href="https://github\\.com/acme/product/commit/${direct}"[^>]*><time [^>]*>[^<]+</time><span class="esm-visually-hidden">, Commit c0ffee1</span>`));
+
+  const gitlab = render({
+    repositoryUrl: "https://github.com/ignored/repo",
+    repositoryLinks: { commit: "https://gitlab.example/g/p/-/commit/{commit}", pullRequest: "https://gitlab.example/g/p/-/merge_requests/{number}" },
+  });
+  assert.match(gitlab, /href="https:\/\/gitlab\.example\/g\/p\/-\/merge_requests\/70"/);
+  assert.match(gitlab, new RegExp(`href="https://gitlab\\.example/g/p/-/commit/${commit}"`));
+  assert.doesNotMatch(gitlab, /github\.com\/ignored/);
+
+  // Unsafe templates and URLs make no link, and without a repository URL nothing new is shown.
+  const unsafe = render({ repositoryUrl: "javascript:alert(1)", repositoryLinks: { pullRequest: "javascript:alert({number})" } });
+  const plain = render({});
+  for (const html of [unsafe, plain]) {
+    assert.doesNotMatch(html, /esm-history-link|esm-commit-hash|#70|8078905/);
+    assert.match(panelFor(html, "Draft an estimate against a project"), /15:30<\/time> · by Sam Patel, merged by Duncan Malcolm<\/span>/);
+  }
+
+  // Customer boards never show hashes or numbers.
+  const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, regular, { history }), repositoryUrl: "https://github.com/acme/product" }));
+  assert.doesNotMatch(customer, /esm-history-link|esm-commit-hash|8078905|c0ffee1|\/pull\/70/);
+});
+
 // The demo map before FINANCE-202 was cut, so tests can watch stories become blocked or cut.
 const planningMap = editedSample(document => {
   const story = document.stories.find(story => story.id === "FINANCE-202");

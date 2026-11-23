@@ -18,6 +18,8 @@ export interface StoryHistoryEvent {
   mergedBy?: string;
   /** Commit that brought the change onto the branch. */
   commit: string;
+  /** Number of the pull request or merge request that commit came from, when its message records one. Absent in files written before 0.7.4. */
+  pullRequest?: number;
 }
 
 /** The latest commit that changed any of a story’s fields, including moving it. */
@@ -28,6 +30,8 @@ export interface StoryLastEdit {
   /** Who to credit: the story’s `updatedBy` when that edit set it, otherwise the commit author, or the merger when the author is a bot. */
   by?: string;
   commit: string;
+  /** Number of the pull request or merge request the commit came from, when its message records one. Absent in files written before 0.7.4. */
+  pullRequest?: number;
 }
 
 /** A version of the map that history could not read, so its changes are missing. */
@@ -82,6 +86,7 @@ const reason = z.string()
   .refine(withinCodePoints(historyReasonMaxLength), `Use at most ${historyReasonMaxLength} characters.`);
 const at = z.iso.datetime({ offset: true });
 const commit = z.string().regex(/^[0-9a-f]{7,64}$/);
+const pullRequest = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
 export const storyMapHistorySchema = z.object({
   version: z.literal(1),
@@ -97,12 +102,14 @@ export const storyMapHistorySchema = z.object({
     by: name.optional(),
     mergedBy: name.optional(),
     commit,
+    pullRequest: pullRequest.optional(),
   })).max(100_000),
   lastEdits: z.array(z.object({
     storyId: z.string().min(1).max(64),
     at,
     by: name.optional(),
     commit,
+    pullRequest: pullRequest.optional(),
   })).max(100_000).optional(),
   skipped: z.array(z.object({
     commit,

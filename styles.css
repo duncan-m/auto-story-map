@@ -448,6 +448,9 @@
 .esm-history li { display: grid; gap: 3px; }
 .esm-history-change { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--esm-muted); }
 .esm-history-meta { color: var(--esm-muted); font-size: .8125rem; overflow-wrap: anywhere; }
+.esm-history-link { color: var(--esm-muted); text-decoration: underline; text-decoration-color: var(--esm-faint); text-underline-offset: 2px; }
+.esm-history-link:hover { color: var(--esm-accent-ink); text-decoration-color: currentColor; }
+.esm-commit-hash { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; }
 .esm-history-reason { font-size: .875rem; line-height: 1.4; overflow-wrap: anywhere; }
 .esm-tests-file + .esm-tests-file { margin-top: 12px; }
 .esm-tests-path { margin: 0; color: var(--esm-muted); }

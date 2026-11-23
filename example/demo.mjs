@@ -26,6 +26,8 @@ const mapFile = new URL("../product/story-map.yaml", import.meta.url);
 // A file path, not URL.pathname, which keeps %20 for spaces and gives /C:/… on Windows.
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const sourceBaseUrl = "https://github.com/duncan-m/auto-story-map/blob/main/";
+// Links history lines to the pull request and commit behind each change.
+const repositoryUrl = "https://github.com/duncan-m/auto-story-map";
 // This product also gives product managers the internal view.
 const internalRoles = new Set(["engineer", "super-admin", "product-manager"]);
 const canViewInternal = viewer => viewer.roles.some(role => internalRoles.has(role));
@@ -91,6 +93,7 @@ const server = createServer(async (request, response) => {
     const result = makeStoryMapResponse(url, map, viewer, {
       navigation,
       sourceBaseUrl,
+      repositoryUrl,
       canViewInternal,
       history,
       tests,
