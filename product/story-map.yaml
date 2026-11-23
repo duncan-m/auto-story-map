@@ -461,7 +461,7 @@ releases:
     title: "0.8.2: Delivery visibility"
     summary: Git-native burn-up, burn-down, throughput, velocity and release progress without maintaining sprints.
     notes: |
-      Planning proposal only. Uses Git history and generated analytics snapshots; metrics remain internal.
+      Planning proposal only. Calculated from the map and the history file from story-map history, with no new generated file; metrics remain internal.
       Plan: docs/plans/delivery-metrics.md
     impact:
       - metric: Time to understand progress and scope change for a release
@@ -470,13 +470,13 @@ releases:
         draft: true
   - id: v0-8-3
     title: "0.8.3: Delivery intelligence"
-    summary: Cycle/lead time, release baselines, probabilistic forecasts and cumulative flow to find bottlenecks.
+    summary: Lead time, release baselines and cumulative flow to find bottlenecks.
     notes: |
-      Builds on 0.8.2's event reconstruction and daily series. No mandatory estimates or new database.
+      Builds on 0.8.2's history events and daily series. No mandatory estimates or new database.
       Plan: docs/plans/delivery-metrics.md
     impact:
       - metric: Effort to assess release predictability and bottlenecks
-        expected: Review observed flow and a qualified forecast in one place
+        expected: Review lead time, scope change since baseline and observed flow in one place
         solves: Guessing delivery dates from recent commits or individual stories
         draft: true
 stories:
@@ -1634,9 +1634,6 @@ stories:
     activity: track
     release: v0-8-2
     status: planned
-    dependsOn:
-      - ESM-131
-      - ESM-132
     jobs:
       - get-oriented
       - triage-backlog
@@ -1644,7 +1641,7 @@ stories:
     sources:
       - docs/plans/delivery-metrics.md#5-summarise-delivery-on-each-release-lane
   - id: ESM-135
-    title: Measure cycle and lead time
+    title: Measure lead time
     activity: track
     release: v0-8-3
     status: planned
@@ -1653,9 +1650,9 @@ stories:
     jobs:
       - get-oriented
       - agree-first-release-plan
-    summary: Show observed cycle time, lead time and merged-to-shipped delay, distinguishing unknown dates from zero durations.
+    summary: Show observed lead time from entering the map to merged or shipped, and merged-to-shipped delay, distinguishing unknown dates from zero durations.
     sources:
-      - docs/plans/delivery-metrics.md#6-measure-cycle-and-lead-time
+      - docs/plans/delivery-metrics.md#6-measure-lead-time
   - id: ESM-136
     title: Baseline releases and expose scope changes
     activity: track
@@ -1670,20 +1667,6 @@ stories:
     summary: Add optional approved release baseline/target dates and display additions, cuts, moves and estimate changes since baseline.
     sources:
       - docs/plans/delivery-metrics.md#7-baseline-releases-and-expose-scope-changes
-  - id: ESM-137
-    title: Forecast likely release completion
-    activity: track
-    release: v0-8-3
-    status: planned
-    dependsOn:
-      - ESM-133
-      - ESM-136
-    jobs:
-      - triage-backlog
-      - agree-first-release-plan
-    summary: Use observed throughput to show reproducible probabilistic completion windows, with insufficient-data guardrails.
-    sources:
-      - docs/plans/delivery-metrics.md#8-forecast-likely-release-completion
   - id: ESM-138
     title: Display cumulative flow and bottlenecks
     activity: track
@@ -1697,4 +1680,4 @@ stories:
       - agree-first-release-plan
     summary: Show cumulative status inventory, WIP and blocked ageing to identify delivery bottlenecks.
     sources:
-      - docs/plans/delivery-metrics.md#9-display-cumulative-flow-and-bottlenecks
+      - docs/plans/delivery-metrics.md#8-display-cumulative-flow-and-bottlenecks
