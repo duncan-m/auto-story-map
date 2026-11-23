@@ -89,6 +89,8 @@ function storyText(view: Extract<StoryMapView, { audience: "internal" }>, story:
   field(lines, "Release", labelled(view, "releases", story.release));
   field(lines, "Activity", labelled(view, "activities", story.activity));
   if (story.estimate) field(lines, "Estimate", `${story.estimate} pts`);
+  if (story.tokens !== undefined) field(lines, "Tokens used", story.tokens.toLocaleString("en-US"));
+  if (story.estimatedCostUsd !== undefined) field(lines, "Est. cost", `$${story.estimatedCostUsd.toFixed(2)}`);
   if (story.dependsOn?.length) field(lines, "Depends on", dependencyList(story.dependsOn));
   if (story.dependents?.length) field(lines, "Waiting for it", dependencyList(story.dependents));
   if (story.personas?.length) field(lines, "For", story.personas.map(id => labelled(view, "personas", id)).join(", "));

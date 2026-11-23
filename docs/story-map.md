@@ -213,6 +213,37 @@ Set dependencies with `story-map edit <ID> --add-dependency <ID>` and `--remove-
 
 Dependencies are internal only. Customers never see them, on the board or in the JSON.
 
+## Record the tokens used on a story
+
+When a coding agent delivers a story, record the model tokens it used in the story's `tokens`, and their estimated cost in US dollars in `estimatedCostUsd`, in the pull request that finishes the story, the one that marks it `merged`:
+
+```yaml
+- id: BUILDER-102
+  title: Look up prices in the material catalogue
+  status: merged
+  estimate: 3
+  tokens: 4348638
+  estimatedCostUsd: 2.11
+```
+
+For work done in Claude Code, count them from its session logs on the machine that ran the agent:
+
+```sh
+npx story-map tokens BUILDER-102
+npx story-map edit BUILDER-102 --tokens 4348638 --estimated-cost 2.11 --write
+npx story-map tokens --format markdown BUILDER-102
+```
+
+- **What counts.** A response counts when it was made on a branch whose name contains the story ID, such as `feat/builder-102-price-lookup`. Add `--branch <name>` for a branch named before the ID was known, such as a generated one, and `--session <ID>` for a whole session. Subagents count too.
+- **The total** adds input, output, cache-write and cache-read tokens, each response once. The command prints the breakdown, and `--format markdown` prints a **Tokens used** section for the pull request description.
+- **The estimated cost** prices each response by the model it names, at Anthropic's API list prices built into the package and dated, such as “$2.11 at API list prices as of 2026-11-03”. Cache writes are priced by their duration, 5 minutes or 1 hour, and fast mode at twice the price. It is not what was billed: a Claude subscription, a discount or another provider changes that. Prices change, so pass `--prices <file>` with your own, in US dollars per million tokens, such as `{"claude-opus-5-5": {"input": 4, "output": 20, "cacheRead": 0.2}}`. Tokens from a model with no price are left out of the cost and named, and when none of them has a price, no cost is suggested.
+- **Nothing found** exits 1 instead of reporting 0. The logs are read from `$CLAUDE_CONFIG_DIR/projects` or `~/.claude/projects`, or `--logs <path>`, with no network calls.
+- **Other agents** record the count and cost their own tool reports with `story-map edit <ID> --tokens <n> --estimated-cost <usd>`. When several machines or agents worked on a story, add up their counts.
+
+The story panel lists them as **Tokens used** and **Estimated cost**, after the estimate. `story-map diff` shows a change as “Tokens used: none → 4,348,638” and “Estimated cost: none → $2.11”, `story-map story` prints them and the JSON export carries each story's `tokens` and `estimatedCostUsd`.
+
+Token counts and costs are internal only. Customers never see them, on the board or in the JSON. They are a record of what the work used, not an estimate, so they do not replace `estimate`.
+
 ## Personas and jobs to be done
 
 The map can name the people the product serves, as personas, and the jobs each of them is trying to get done. Each story then says which jobs it serves, so the team agrees who a story is for in the PR that adds it, and can see which needs have no stories.

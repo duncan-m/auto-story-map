@@ -387,7 +387,9 @@ releases:
 
       Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief and local launch in 0.8.1. Open in Claude Code (ESM-144) follows ESM-125, so a brief can start a Claude Code session on the web in the repository, not only a web chat. Its mockup is docs/plans/open-in-claude-code-mockup.html.
 
-      Plans: docs/plans/native-cli.md and docs/plans/agent-briefs.md
+      Token counts (ESM-145) record the tokens used to deliver each story, in the pull request that finishes it. Mockup: docs/plans/token-usage.md#ui-mockup
+
+      Plans: docs/plans/native-cli.md, docs/plans/agent-briefs.md and docs/plans/token-usage.md
     impact:
       - metric: Agents starting the same story at the same time
         expected: None, for teams that use claims
@@ -404,6 +406,10 @@ releases:
       - metric: Steps to start building a story in Claude Code on the web
         expected: One link from its panel opens a session in the repository with the brief filled in, instead of opening Claude Code, picking the repository and pasting the brief
         solves: A web chat that can plan a story from its brief but cannot read or build in the repository
+        draft: true
+      - metric: Stories merged with the tokens used to deliver them
+        expected: Every story an agent finishes in Claude Code, from the pull request that marks it merged
+        solves: Not knowing what agent work on a story used
         draft: true
   - id: v0-7-6
     title: "0.7.6: Update the map from the board"
@@ -1187,6 +1193,21 @@ stories:
       - docs/plans/agent-briefs.md#open-the-brief-in-claude-code-on-the-web
       - docs/plans/agent-briefs.md#claude-code-mockup
       - docs/story-map.md#open-a-brief-in-a-web-agent
+  - id: ESM-145
+    title: Record the tokens used to deliver a story
+    activity: review
+    release: v0-7-5
+    status: merged
+    tokens: 20293097
+    estimatedCostUsd: 7.71
+    jobs:
+      - plan-and-build
+    summary: story-map tokens counts the model tokens Claude Code used on a story from its session logs, by branch or session, estimates their cost at API list prices, and prints a Tokens used section for the pull request that finishes it. story-map edit --tokens and --estimated-cost record both on the story, shown in the internal story panel.
+    notes: Reads the logs on the machine that runs it, with no network calls. Other agents record a count and cost by hand. Internal only. The cost is an estimate at dated, built-in list prices that --prices can replace, not what was billed. No dashboards or comparisons between agents, which the delivery metrics plan leaves out.
+    sources:
+      - docs/plans/token-usage.md#plan-record-the-tokens-used-to-deliver-a-story
+      - docs/plans/token-usage.md#ui-mockup
+      - docs/story-map.md#record-the-tokens-used-on-a-story
   # Personas
   - id: ESM-901
     title: Define personas in the map file

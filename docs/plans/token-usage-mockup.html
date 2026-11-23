@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tokens used mockup</title>
+<!-- Static mockup for ESM-145 in docs/plans/token-usage.md. The story panel is the real board rendered from this
+     product's map, with ESM-145 marked merged and its tokens and estimated cost recorded, as the pull request that finishes it would leave it.
+     The terminal output and the pull request section are what story-map tokens prints for this session. -->
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 32px 40px 48px; background: #f4f5fa; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: #19223a; }
+  .mock-label { margin: 0 0 10px; color: #5046d5; font: 700 .75rem/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  .mock-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .mock-grid .esm-detail { position: static; display: block; width: auto; height: auto; max-height: none; margin: 0; overflow: visible; transform: none; transition: none; border: 1px solid var(--esm-line); border-radius: 15px; box-shadow: 0 8px 28px rgb(25 34 58 / .1); }
+  .mock-callout { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; background: #e2366d; color: #fff; font: 700 .7rem/1 system-ui, sans-serif; vertical-align: middle; flex: none; }
+  .mock-terminal { margin: 0; padding: 16px 18px; border-radius: 12px; background: #19223a; color: #e8ebf5; font: .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; overflow-x: auto; }
+  .mock-pr { margin-top: 20px; padding: 16px 20px; border: 1px solid #d0d7de; border-radius: 12px; background: #fff; font-size: .875rem; line-height: 1.5; }
+  .mock-pr h2 { margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid #d8dee4; font-size: 1.125rem; }
+  .mock-pr p { margin: 0 0 8px; }
+  .mock-pr code { padding: 1px 5px; border-radius: 6px; background: #eff1f3; font-size: .8125rem; }
+  .mock-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 24px; margin: 18px 0 0; padding: 0; list-style: none; font-size: .8125rem; line-height: 1.45; }
+  .mock-legend li { display: flex; gap: 6px; }
+  .mock-legend .mock-callout { margin: 0; }
+  @media (max-width: 900px) { body { padding: 20px 16px; } .mock-grid, .mock-legend { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="mock-grid">
+  <div>
+    <p class="mock-label">Story panel, internal view</p>
+    <div class="esm-board" data-theme="light"><div class="esm-detail" id="_R_0_-story-47" popover="auto" role="dialog" aria-labelledby="_R_0_-story-47-title"><div class="esm-detail-head"><div><p class="esm-card-id">ESM-145</p><h3 id="_R_0_-story-47-title">Record the tokens used to deliver a story</h3></div><div class="esm-detail-actions"><a class="esm-copy-link" href="?story=ESM-145#esm-story-ESM-145" data-esm-copy-link="" title="Link to this story"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.8 9.2a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-.7.7M9.2 6.8a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l.7-.7"></path></svg><span data-esm-copy-label="">Copy link</span><span class="esm-visually-hidden"> to this story</span></a><button type="button" class="esm-close" aria-label="Close" autofocus="" popovertarget="_R_0_-story-47" popovertargetaction="hide"><svg class="esm-icon" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"></path></svg></button></div></div><span class="esm-status" data-status="merged"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 8V4.2A3.8 3.8 0 1 1 4.2 8Z" fill="currentColor" stroke="none"></path></svg>Merged</span><p class="esm-detail-summary">story-map tokens counts the model tokens Claude Code used on a story from its session logs, by branch or session, estimates their cost at API list prices, and prints a Tokens used section for the pull request that finishes it. story-map edit --tokens and --estimated-cost record both on the story, shown in the internal story panel.</p><dl class="esm-detail-context"><dt>For</dt><dd class="esm-persona-row"><button type="button" class="esm-persona-chip" aria-haspopup="dialog" popovertarget="_R_0_-persona-0"><span class="esm-avatar" data-persona="0" aria-hidden="true">SB</span>Solo Builder</button></dd><dt>Jobs</dt><dd><ul class="esm-story-jobs"><li><span class="esm-job-line"><b>When</b> I have chosen a release slice and am ready to build it with a coding agent,</span><span class="esm-job-line"><b>I want</b> to hand the agent enough customer and delivery context to do the work with minimal prompt repetition,</span><b>so that</b> I can start the agent with a compact slice brief, then review the implementation and its delivery evidence in the repository. <span class="esm-story-job-persona">· Solo Builder</span> <span class="esm-draft" title="Drafted by an agent and not yet confirmed">Draft</span></li></ul></dd><dt>Activity</dt><dd>Review changes</dd><dt>Release</dt><dd>0.7.5: Evidence and claims for agents</dd><dt>Tokens used</dt><dd>12,413,036</dd><dt>Estimated cost</dt><dd>$5.70<span class="mock-callout">1</span></dd></dl><section class="esm-detail-section" aria-labelledby="_R_0_-story-47-engineering"><h4 id="_R_0_-story-47-engineering">Engineering</h4><p class="esm-notes">Reads the logs on the machine that runs it, with no network calls. Other agents record a count and cost by hand. Internal only. The cost is an estimate at dated, built-in list prices that --prices can replace, not what was billed. No dashboards or comparisons between agents, which the delivery metrics plan leaves out.</p><ul class="esm-sources" aria-label="Sources"><li><code>docs/plans/token-usage.md#plan-record-the-tokens-used-to-deliver-a-story</code></li><li><code>docs/plans/token-usage.md#ui-mockup</code></li><li><code>docs/story-map.md#record-the-tokens-used-on-a-story</code></li></ul></section></div></div>
+  </div>
+  <div>
+    <p class="mock-label">The pull request that finishes the story <span class="mock-callout">2</span></p>
+    <pre class="mock-terminal">$ npx story-map tokens ESM-145
+ESM-145  12,413,036 tokens in 66 responses across 1 session
+  Input:         125
+  Output:        67,798
+  Cache writes:  240,529
+  Cache reads:   12,104,584
+  Est. cost:     $5.70 at API list prices as of 2026-11-03
+    claude-opus-5-5: 12,413,036 tokens, $5.70
+  Branches:      feat/esm-145-record-tokens-used
+
+Record it in the pull request that finishes the story:
+  story-map edit ESM-145 --tokens 12413036 --estimated-cost 5.70 --write</pre>
+    <div class="mock-pr">
+      <h2>Tokens used <span class="mock-callout">3</span></h2>
+      <p>ESM-145: <strong>12,413,036 tokens</strong> in 1 Claude Code session (input 125 · output 67,798 · cache writes 240,529 · cache reads 12,104,584).</p>
+      <p>Estimated cost: <strong>$5.70</strong> at API list prices as of 2026-11-03. Not what was billed: a subscription or discount changes that.</p>
+      <p>Branches: <code>feat/esm-145-record-tokens-used</code></p>
+    </div>
+  </div>
+</div>
+<ol class="mock-legend">
+  <li><span class="mock-callout">1</span><span><b>Tokens used</b> and <b>Estimated cost</b> after Estimate in the panel's details, in the internal view only. Absent until they are recorded.</span></li>
+  <li><span class="mock-callout">2</span><span><b>story-map tokens</b> counts the story's Claude Code responses from the logs on this machine, each once, prices them by model and prints the edit that records both.</span></li>
+  <li><span class="mock-callout">3</span><span><b>--format markdown</b> prints this section for the pull request description, with the breakdown the map does not keep.</span></li>
+</ol>
+</body>
+</html>

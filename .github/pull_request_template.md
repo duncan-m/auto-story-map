@@ -19,6 +19,10 @@ such as "ESM-601: Limit author names in the history file".
 
 <!-- Anything customers will see, or "None". -->
 
+## Tokens used
+
+<!-- In the PR that finishes a story, paste the output of: npx story-map tokens --format markdown <ID>, and record it with story-map edit <ID> --tokens <n> --estimated-cost <usd>. Otherwise say why there is no count, or "Not the final PR". -->
+
 ## Tests
 
 <!-- What you ran, such as npm run validate and npm test. -->

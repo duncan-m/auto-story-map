@@ -859,6 +859,8 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         <dt>Release</dt>
         <dd>{releaseTitle}</dd>
         {internal && story.estimate !== undefined && <><dt>Estimate</dt><dd>{points(story.estimate)}</dd></>}
+        {internal && story.tokens !== undefined && <><dt>Tokens used</dt><dd>{story.tokens.toLocaleString("en-US")}</dd></>}
+        {internal && story.estimatedCostUsd !== undefined && <><dt>Estimated cost</dt><dd>{`$${story.estimatedCostUsd.toFixed(2)}`}</dd></>}
       </dl>
       {internal && (!!story.dependsOn?.length || !!story.dependents?.length) && (
         <DependenciesSection story={story} panelId={panelId} storyPanelIds={storyPanelIds} releaseTitles={releaseTitles} />

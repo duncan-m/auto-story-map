@@ -147,6 +147,10 @@ export interface InternalStoryCard extends StoryCard {
   statusReason?: string;
   /** Effort estimate in story points. */
   estimate?: EstimatePoints;
+  /** Model tokens used to deliver the story, recorded in the pull request that finished it. */
+  tokens?: number;
+  /** Estimated cost of those tokens in US dollars at API list prices. */
+  estimatedCostUsd?: number;
   /** The stories this one depends on, in the order its `dependsOn` lists them. Absent when it has none. */
   dependsOn?: StoryDependency[];
   /** The stories whose `dependsOn` names this one, in map order. Absent when none do. */
@@ -485,6 +489,8 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           status: story.status,
           statusReason: story.statusReason,
           ...(story.estimate !== undefined ? { estimate: story.estimate } : {}),
+          ...(story.tokens !== undefined ? { tokens: story.tokens } : {}),
+          ...(story.estimatedCostUsd !== undefined ? { estimatedCostUsd: story.estimatedCostUsd } : {}),
           ...dependencies(story),
           ...personaFields(resolvePersonas(story), story.jobs),
           updatedBy: story.updatedBy,

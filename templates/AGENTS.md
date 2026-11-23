@@ -21,6 +21,8 @@ Tag each story you add or change with the jobs to be done it serves, using the e
 
 A story's `estimate` is the team's agreed size in story points, following [Estimate effort](docs/story-map.md#estimate-effort). Do not set or change an estimate unless the team has agreed it. When a planned or in-progress story has none, flag it in the PR instead.
 
+When you open the pull request that finishes a story, the one that marks it `merged`, record the tokens used to deliver it and their estimated cost, following [Record the tokens used on a story](docs/story-map.md#record-the-tokens-used-on-a-story). In Claude Code, run `npx --no-install story-map tokens <ID>`, adding `--branch` for a branch your session started on before you renamed it, record them with `npx --no-install story-map edit <ID> --tokens <n> --estimated-cost <usd>`, and paste the output of `npx --no-install story-map tokens --format markdown <ID>` into the PR's **Tokens used** section. Other agents record the count and cost their own tool reports. When you cannot count them, say so in that section instead of guessing.
+
 When you add or change a test that covers a story, put the story ID at the start of the test's name, followed by a colon, such as `test("BILLING-204: refunds a cancelled order", …)`. See [Link tests to stories](docs/story-map.md#link-tests-to-stories).
 
 Run `npx --no-install story-map validate --check-sources product/story-map.yaml` after every map change. It also checks that each repository-relative source exists and that each `#heading` matches. Add `--plans <folder>` to check story IDs mentioned in delivery plans, and `--tests <folder>` to check the story IDs in test names. In CI, add `--format github` so problems appear on the PR diff.
