@@ -7,6 +7,14 @@ Export the map as JSON and an agent can review your stories and tests and sugges
 
 [Try the live demo](https://autostorymap.com/demo), which shows this library's own story map.
 
+## Code checks
+
+[![Dependency Scan](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml) - [![CodeQL](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml) - [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/duncan-m/auto-story-map/badge)](https://scorecard.dev/viewer/?uri=github.com/duncan-m/auto-story-map)
+
+## Screenshot
+
+![This library's own story map in the demo, as a super admin sees it. Under the title, a line says when the map was last updated, by whom, and which releases recent changes focused on. Story map and Personas tabs sit above the search, status, persona and time filters and an Export menu. Activities from setting up to tracking delivery run across the top, each with avatars for the personas it serves, with a lane for each release and its expected impact, and story cards showing each story's ID, title, status and persona avatars.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
+
 ## Features
 
 **Map and board**
@@ -55,14 +63,6 @@ Planned:
 - **Delivery metrics**: burn-up, throughput, velocity, lead time and cumulative flow from Git history, with no sprints to maintain.
 
 The full plan, story by story, is in [this library's own map][example-map]. Plans can change, and [the changelog][changelog] records what shipped.
-
-## Code checks
-
-[![Dependency Scan](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml) - [![CodeQL](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml) - [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/duncan-m/auto-story-map/badge)](https://scorecard.dev/viewer/?uri=github.com/duncan-m/auto-story-map)
-
-## Screenshot
-
-![This library's own story map in the demo, as a super admin sees it. Under the title, a line says when the map was last updated, by whom, and which releases recent changes focused on. Story map and Personas tabs sit above the search, status, persona and time filters and an Export menu. Activities from setting up to tracking delivery run across the top, each with avatars for the personas it serves, with a lane for each release and its expected impact, and story cards showing each story's ID, title, status and persona avatars.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
 
 ## Try the demo
 
