@@ -1,20 +1,21 @@
 # Plan: an Actions tab for outstanding work on the map
 
-Status: proposed. The work is ESM-128 to ESM-132 in the **0.7.6: PM improvements** release of the map. None of the estimates are agreed yet.
+Status: proposed. The work is one story, ESM-128, in the **0.7.6: PM improvements** release of the map. Its estimate is not agreed yet.
 
 Before this plan, `npm run validate` on this repository printed 44 warnings. Most of them ask a person to do something: confirm a drafted job or impact item, agree an estimate, tag a test. Only people who run the CLI, or read CI logs, ever see them. The people most of them are for, product managers and founders reading the board in the product, never do.
 
 This plan adds a third tab to the internal board, next to **Story map** and **Personas**: **Actions**, a list of what the map is waiting for, grouped by kind, each with a link to the item and a way to fix it.
 
-Items are numbered in the order they should be built:
+The story has four parts, in the order they should be built:
 
-1. [Give each warning a kind](#1-give-each-warning-a-kind) (ESM-128)
-2. [Show outstanding actions on an Actions tab](#2-show-outstanding-actions-on-an-actions-tab) (ESM-129)
-3. [Show an item's actions in its panel](#3-show-an-items-actions-in-its-panel) (ESM-130)
-4. [Include the file checks](#4-include-the-file-checks) (ESM-131)
-5. [List actions from the command line](#5-list-actions-from-the-command-line) (ESM-132)
+1. [Give each warning a kind](#1-give-each-warning-a-kind)
+2. [Show outstanding actions on an Actions tab](#2-show-outstanding-actions-on-an-actions-tab)
+3. [Show an item's actions in its panel](#3-show-an-items-actions-in-its-panel)
+4. [List actions from the command line](#4-list-actions-from-the-command-line)
 
-All stories are internal. The customer view does not change, and actions never appear on it.
+Checks that need the repository's files are left for later, in [Later: file checks](#later-file-checks).
+
+The story is internal. The customer view does not change, and actions never appear on it.
 
 ## Why
 
@@ -36,11 +37,11 @@ Three quarters of them can only be done by a person, and those are the ones nobo
 | --- | --- | --- |
 | A. Where actions live | A third tab, **Actions**, with a count, after **Personas** | A banner on the story map. Too small for 44 items, and pushes the map down. A panel per story only: misses map-wide actions such as untagged stories |
 | B. Who sees it | Internal viewers only, like the Personas tab | Also customers. No: every action is about internal fields |
-| C. What it lists | Warnings only. An invalid map does not render at all, so its errors can never reach the board. File-check errors (item 4) are the exception, and are listed first | Also suggestions that are not warnings today, such as stories with no summary. Each new suggestion should be a validate warning first, so the CLI and the tab never disagree |
-| D. Grouping | By kind, in the order: problems in files, gaps, drafts to confirm, estimates, tests, other. Within a group, by release in map order, then by position | One flat list in file order, like validate. Fine for CI, hard to work through |
+| C. What it lists | Warnings only. An invalid map does not render at all, so its errors can never reach the board. Errors from file checks could join later (see [Later: file checks](#later-file-checks)) | Also suggestions that are not warnings today, such as stories with no summary. Each new suggestion should be a validate warning first, so the CLI and the tab never disagree |
+| D. Grouping | By kind, in the order: gaps, drafts to confirm, estimates, tests, other. Within a group, by release in map order, then by position | One flat list in file order, like validate. Fine for CI, hard to work through |
 | E. How a person fixes one | Each action links to its item (story or release permalink, persona page) and shows the change to make. Where a command exists, it shows it with **Copy**: `story-map confirm` (ESM-110) for drafts, `story-map edit` for the rest. With `sourceBaseUrl`, it also links to the line in the map file | Fix in place from the tab. Only possible in the writable local preview (ESM-112), so it can follow there |
 | F. Dismissing | No dismiss. An action goes away when the map changes. A warning that is wrong for a map is a bug in the warning | Dismiss per viewer in browser storage. Hides work from the rest of the team, and the list drifts from validate |
-| G. Who does it | Each kind says whether it needs a person, and the tab can be filtered to **Needs a person** | Leave it out. But it is the main reason the tab exists, and agents read the same data (item 5) |
+| G. Who does it | Each kind says whether it needs a person, and the tab can be filtered to **Needs a person** | Leave it out. But it is the main reason the tab exists, and agents read the same data (part 4) |
 | H. Release | 0.7.6, next to the draft confirmation and triage work it points to | A release of its own after 0.7.6. Cleaner if 0.7.6 needs to stay small |
 
 ### Assumptions to confirm
@@ -50,27 +51,19 @@ Three quarters of them can only be done by a person, and those are the ones nobo
 - **An empty tab says so.** “Nothing is waiting on the map” with the time the map was checked, so people know it ran.
 - **No new rights.** Copying a command changes nothing, as in ESM-111.
 
-## Suggested order
+## Delivery
 
-| Item | Name | Size | Depends on |
-| --- | --- | --- | --- |
-| 1 | Give each warning a kind | S | — |
-| 2 | Show outstanding actions on an Actions tab | M | 1 |
-| 3 | Show an item's actions in its panel | S | 2 |
-| 4 | Include the file checks | S | 2 |
-| 5 | List actions from the command line | S | 1 |
-
-Items 1 and 5 can share a PR. Every PR follows the repository's rules: update `product/story-map.yaml` in the same PR, run `npm run validate` and `npm test`, add a `## Unreleased` entry to `CHANGELOG.md`, and include the `story-map diff origin/main` summary in the PR description. Tag new tests with the story ID, such as `test("ESM-128: gives every warning a kind", …)`.
+The four parts share one function, `getStoryMapActions`, so they fit in one PR, or two if the tab grows large: parts 1 and 4 first, with ESM-128 set to `in-progress`, then parts 2 and 3, which set it to `merged`. Every PR follows the repository's rules: update `product/story-map.yaml` in the same PR, run `npm run validate` and `npm test`, add a `## Unreleased` entry to `CHANGELOG.md`, and include the `story-map diff origin/main` summary in the PR description. Tag new tests with the story ID, such as `test("ESM-128: gives every warning a kind", …)`.
 
 ---
 
 ## 1. Give each warning a kind
 
-**Change.** Add a `kind` to each `StoryMapIssue` that `storyMapWarnings` and the file checks return, so the tab can group and explain actions without reading the message text.
+**Change.** Add a `kind` to each `StoryMapIssue` that `storyMapWarnings` and `validate --tests` return, so the tab can group and explain actions without reading the message text.
 
-- Kinds: `confirm-draft-impact`, `confirm-draft-job`, `confirm-draft-context`, `missing-impact`, `missing-estimate`, `missing-status-reason`, `job-without-stories`, `step-without-stories`, `persona-without-stories`, `stories-without-personas`, `persona-without-job`, `story-without-tests`, `missing-source`, `missing-heading`, `unknown-story-id`.
+- Kinds: `confirm-draft-impact`, `confirm-draft-job`, `confirm-draft-context`, `missing-impact`, `missing-estimate`, `missing-status-reason`, `job-without-stories`, `step-without-stories`, `persona-without-stories`, `stories-without-personas`, `persona-without-job` and `story-without-tests`.
 - Add `needsPerson: true` for the confirm kinds and `missing-estimate`, and a short `title` per kind, such as “Confirm a drafted job”, in one table in a new `src/actions.ts`.
-- Add `getStoryMapActions(loaded, { checks?, tests? })`, which returns the actions grouped and ordered as in decision D, each with its kind, item ID, item type, map path, line, message and, where one exists, the command that fixes it.
+- Add `getStoryMapActions(loaded, { tests? })`, which returns the actions grouped and ordered as in decision D, each with its kind, item ID, item type, map path, line, message and, where one exists, the command that fixes it.
 - `validate --format json` includes `kind`. Text and GitHub output do not change.
 
 **Tests.** Every warning `storyMapWarnings` can return has a kind (a test fails when a new warning is added without one). Grouping and order on a fixture map.
@@ -93,26 +86,17 @@ Items 1 and 5 can share a PR. Every PR follows the repository's rules: update `p
 
 **Tests.** A story with a missing estimate shows it in its panel. A story with none shows no row.
 
-## 4. Include the file checks
-
-Missing sources, broken `#heading` links and unknown IDs in plans and tests need the repository's files, which the board does not have.
-
-**Change.**
-
-- `story-map validate --out <file>` writes the JSON result as well as printing the usual output, so CI can build the file in the same step.
-- The host passes it to the view as `checks`, on the server, like the history and tests index. The view adds its issues to the actions, marked with the time they were checked.
-- The tests index the host already passes is enough for `story-without-tests`, so that kind needs no checks file.
-- The example host and `story-map preview` run the checks at start-up.
-
-**Tests.** A checks file adds its issues to the tab, first. A stale checks file for another map version is ignored with a note. `parseStoryMapChecks` rejects files over its limits.
-
-## 5. List actions from the command line
+## 4. List actions from the command line
 
 **Change.** `story-map actions [--format text|json] [--kind <kind>] [--release <ID>] [--needs-person] [--map <path>]` prints the same grouped list as the tab, so agents and people at a terminal see what a PM sees on the board. Agents can pick up actions that do not need a person, and leave the rest.
 
 `AGENTS.md`, `templates/AGENTS.md` and the guide say agents may act on actions without `needsPerson`, and must not act on the others.
 
 **Tests.** Output matches the tab's order. `--needs-person` keeps only drafts and estimates.
+
+## Later: file checks
+
+Missing sources, broken `#heading` links and unknown IDs in plans and tests need the repository's files, which the board does not have. This map has none of these problems today, and listing them needs a new CI step in each host, so they are left out of ESM-128. A follow-up story could add `story-map validate --out <file>` to write the JSON result in CI, and have the host pass it to the view as `checks`, on the server, like the history and tests index. The tab would list those issues first, with the time they were checked. The tests index the host already passes is enough for `story-without-tests`, so that kind is in ESM-128.
 
 ## Not now
 
