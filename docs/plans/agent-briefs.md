@@ -2,7 +2,7 @@
 
 Status: proposed. The work is split across two releases of the map. Copying a brief and opening it in a web agent come first, to test how briefs work in practice. The command-line brief and starting a local agent follow once the format has settled.
 
-- **0.7.5: Evidence and claims for agents**: ESM-123, ESM-124 and ESM-125
+- **0.7.5: Evidence and claims for agents**: ESM-123, ESM-124, ESM-125 and ESM-144
 - **0.8.1: Agent briefs**: ESM-126 and ESM-127
 
 The estimates below are agreed.
@@ -11,7 +11,7 @@ Items are numbered in the order they should be built:
 
 1. [Write a handoff brief for a story or release](#1-write-a-handoff-brief-for-a-story-or-release) (ESM-123)
 2. [Copy the brief from the panel](#2-copy-the-brief-from-the-panel) (ESM-124)
-3. [Open the brief in a web agent](#3-open-the-brief-in-a-web-agent) (ESM-125)
+3. [Open the brief in a web agent](#3-open-the-brief-in-a-web-agent) (ESM-125), and [in Claude Code on the web](#open-the-brief-in-claude-code-on-the-web) (ESM-144)
 4. [Write briefs from the command line](#4-write-briefs-from-the-command-line) (ESM-126)
 5. [Start a local agent from the preview](#5-start-a-local-agent-from-the-preview) (ESM-127)
 
@@ -151,6 +151,24 @@ Estimate: 2 points, agreed before the Share menu. Moving Copy link and Copy brie
 
 The mockup, made before the build, is [panel-actions-mockup.html](panel-actions-mockup.html), built on the real `styles.css` and the board's real markup, rendered from this product's map with briefs turned on and no status history. The Open links carry the real encoded briefs. The Share menu, the brief section without its Copy brief button, and their styles at the top of the file are proposed. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-125 links to this section from its `sources`.
 
+### Open the brief in Claude Code on the web
+
+ESM-144 adds **Open in Claude Code** to the Share menu. It builds on ESM-125, which a web chat cannot build from because it cannot read the repository. Claude Code on the web runs in a checkout of the repository, so it can do the work the brief describes.
+
+- **The address.** `https://claude.ai/code?repo=<owner>/<name>&q=<brief>` starts a new Claude Code session in that repository with the brief filled in. These parameters are not documented. They were tried by hand on 23 November 2026: the short prompt and the full ESM-111 brief, at about 3,900 encoded characters, both filled in; `repo` picked the named repository for two repositories the owner had not used recently; and a repository that does not exist opened a session with no repository picked. The documented `claude-cli://open` link, which opens the terminal app, was not chosen because it needs Claude Code installed and set up on the viewer's computer.
+- **The repository comes from `repositoryUrl`.** When the board's `repositoryUrl` is a GitHub address, the link adds `repo=<owner>/<name>`, such as `duncan-m/auto-story-map`. For other hosts, or without `repositoryUrl`, it leaves `repo` out and the viewer picks the repository. A full GitHub address in `repo` also worked, but `owner/name` is the form to rely on.
+- **Off by default, like the others.** A host turns it on with `webAgents={["claude-code"]}`. The hint names the repository and the company, such as "New session in duncan-m/auto-story-map with the brief, sent to Anthropic", and the link has a code icon rather than the chat icon.
+- **Long briefs** work as for the other agents: past 8,000 characters the link opens an empty session in the repository, and board.js copies the brief first.
+- **If the parameters change**, the link still opens Claude Code, just without the prompt or repository. **Open in Claude** stays as its own option.
+
+Estimate: 1 point, agreed. It reuses the Share menu, the long-brief fallback and board.js from ESM-125.
+
+### Claude Code mockup
+
+![Mockup of the ESM-144 story panel with the Share menu open, showing Open in Claude Code with its repository hint between Open in Claude and Open in ChatGPT](open-in-claude-code-mockup.png)
+
+The mockup is [open-in-claude-code-mockup.html](open-in-claude-code-mockup.html), rendered with the real board and `styles.css` from this product's map, with briefs, `repositoryUrl` and all three web agents turned on. ESM-144 is shown as in progress, because merged stories have no brief. To refresh it, render the panel again and take a full-page screenshot at 760 px wide. ESM-144 links to this section from its `sources`.
+
 ## 4. Write briefs from the command line
 
 `story-map brief` prints the same brief for agents and scripts, and adds the scopes that are too long for a panel:
@@ -221,6 +239,7 @@ These are proposals. Each is easy to change during review.
 | ESM-123: Write a handoff brief for a story or release | 0.7.5 | 5, agreed |
 | ESM-124: Copy an agent brief from the story and release panels | 0.7.5 | 2, agreed |
 | ESM-125: Open an agent brief in Claude or ChatGPT | 0.7.5 | 2, agreed |
+| ESM-144: Open an agent brief in Claude Code on the web | 0.7.5 | 1, agreed |
 | ESM-126: Write agent briefs from the command line | 0.8.1 | 3, agreed |
 | ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.8.1 | 5, agreed |
 

@@ -182,7 +182,7 @@ tokens
   Counts the model tokens Claude Code used on a story, from its session logs
   on this machine, for the pull request that finishes the story. A response
   counts when it was made on a branch whose name contains the story ID, such
-  as feat/esm-144-tokens, or on a branch or in a session named below. Input,
+  as feat/esm-145-tokens, or on a branch or in a session named below. Input,
   output and cache tokens are all counted, each response once, and priced by
   the model each response names at API list prices, built in and dated, to
   estimate the cost. It reads the logs only and changes nothing: record the

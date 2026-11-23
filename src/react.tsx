@@ -21,13 +21,30 @@ export interface StoryMapRepositoryLinks {
   pullRequest?: string;
 }
 
-/** A web chat that can open with an agent brief filled in, from the panel's **Share** menu. */
-export type StoryMapWebAgent = "claude" | "chatgpt";
+/** A web agent that can open with an agent brief filled in, from the panel's **Share** menu. */
+export type StoryMapWebAgent = "claude" | "claude-code" | "chatgpt";
 
-/** The web agents the board can open, in menu order, with the address that takes the brief as `q`. */
-export const storyMapWebAgents: Readonly<Record<StoryMapWebAgent, { name: string; company: string; url: string }>> = {
-  claude: { name: "Claude", company: "Anthropic", url: "https://claude.ai/new" },
-  chatgpt: { name: "ChatGPT", company: "OpenAI", url: "https://chatgpt.com/" },
+/** What a web agent opens, and whether it can start in the host's repository. */
+export interface StoryMapWebAgentInfo {
+  name: string;
+  /** The company the brief is sent to. */
+  company: string;
+  /** The address that takes the brief as `q`. */
+  url: string;
+  /** What the link opens, as the menu names it, such as "chat" or "session". */
+  opens: string;
+  /** True when the address also takes the repository as `repo=<owner>/<name>`. */
+  repository?: boolean;
+}
+
+/**
+ * The web agents the board can open, with the address that takes the brief as `q`.
+ * Claude Code also takes `repo`, which the board fills in from a GitHub `repositoryUrl`.
+ */
+export const storyMapWebAgents: Readonly<Record<StoryMapWebAgent, StoryMapWebAgentInfo>> = {
+  claude: { name: "Claude", company: "Anthropic", url: "https://claude.ai/new", opens: "chat" },
+  "claude-code": { name: "Claude Code", company: "Anthropic", url: "https://claude.ai/code", opens: "session", repository: true },
+  chatgpt: { name: "ChatGPT", company: "OpenAI", url: "https://chatgpt.com/", opens: "chat" },
 };
 
 /**
@@ -77,8 +94,9 @@ export interface StoryMapBoardProps {
   exportHref?: string;
   /**
    * Web agents to offer in the **Share** menu of internal panels with an agent brief,
-   * such as `["claude", "chatgpt"]`. Each opens a new chat with the brief filled in, so
-   * it sends internal map content to that company. None by default.
+   * such as `["claude", "claude-code", "chatgpt"]`. Each opens a new chat or session with
+   * the brief filled in, so it sends internal map content to that company. Claude Code
+   * starts in the repository from `repositoryUrl` when that is a GitHub address. None by default.
    */
   webAgents?: readonly StoryMapWebAgent[];
 }
@@ -241,6 +259,22 @@ function webLink(href: string) {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The `owner/name` of a GitHub `repositoryUrl`, such as `org/repo` for
+ * `https://github.com/org/repo`, for Claude Code's `repo` parameter. Undefined for
+ * other hosts and addresses that do not name a repository.
+ */
+function githubRepository(repositoryUrl?: string): string | undefined {
+  const link = repositoryUrl && webLink(repositoryUrl);
+  if (!link) return undefined;
+  const url = new URL(link);
+  if (url.hostname !== "github.com" && url.hostname !== "www.github.com") return undefined;
+  const [owner, name] = url.pathname.split("/").filter(Boolean);
+  const repo = name?.replace(/\.git$/, "");
+  const part = /^[A-Za-z0-9._-]+$/;
+  return owner && repo && part.test(owner) && part.test(repo) ? `${owner}/${repo}` : undefined;
 }
 
 /**
@@ -716,9 +750,10 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles, webAgents }: {
+function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles, webAgents, repository }: {
   story: InternalStoryCard;
   webAgents?: readonly StoryMapWebAgent[];
+  repository?: string;
   /** Each placed story's panel, by story ID, so the Dependencies section can open it. */
   storyPanelIds: ReadonlyMap<string, string>;
   releaseTitles: ReadonlyMap<string, string>;
@@ -763,6 +798,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
             briefId={`${panelId}-brief`}
             copied={`Copied brief: ${story.id}`}
             webAgents={webAgents}
+            repository={repository}
           />
           <CloseButton panelId={panelId} />
         </div>
@@ -967,13 +1003,14 @@ function CopyLink({ href, label }: { href?: string; label: string }) {
  * opens an empty chat instead and stays hidden until board.js can copy the brief first.
  * `copied` is what board.js says once it has copied the brief, such as “Copied brief: ESM-111”.
  */
-function PanelActions({ href, label, brief, briefId, copied, webAgents = [] }: {
+function PanelActions({ href, label, brief, briefId, copied, webAgents = [], repository }: {
   href?: string;
   label: string;
   brief?: string;
   briefId: string;
   copied: string;
   webAgents?: readonly StoryMapWebAgent[];
+  repository?: string;
 }) {
   if (!brief) return <CopyLink href={href} label={label} />;
   const agents = [...new Set(webAgents)].filter(id => Object.hasOwn(storyMapWebAgents, id));
@@ -1002,23 +1039,27 @@ function PanelActions({ href, label, brief, briefId, copied, webAgents = [] }: {
         </li>
         {agents.map(id => {
           const agent = storyMapWebAgents[id];
-          const full = `${agent.url}?q=${query}`;
+          const repo = agent.repository ? repository : undefined;
+          const start = repo ? `${agent.url}?repo=${encodeURIComponent(repo)}` : agent.url;
+          const full = `${start}${repo ? "&" : "?"}q=${query}`;
           const long = full.length > webAgentLinkMaxLength;
           return (
             <li key={id} className="esm-menu-agent" hidden={long || undefined}>
               <a
                 className="esm-menu-item"
-                href={long ? agent.url : full}
+                href={long ? start : full}
                 target="_blank"
                 rel="noopener noreferrer"
                 data-esm-web-agent={id}
                 {...(long ? { "data-esm-brief-copy": briefId } : {})}
               >
-                <ChatIcon />
+                {agent.repository ? <CodeIcon /> : <ChatIcon />}
                 <span className="esm-menu-item-text">
                   <span>Open in {agent.name}<NewTabHint /></span>
                   <span className="esm-menu-item-hint">
-                    {long ? "Copies the brief, then opens a new chat" : `New chat with the brief, sent to ${agent.company}`}
+                    {long
+                      ? `Copies the brief, then opens a new ${agent.opens}${repo ? ` in ${repo}` : ""}`
+                      : `New ${agent.opens}${repo ? ` in ${repo}` : ""} with the brief, sent to ${agent.company}`}
                   </span>
                 </span>
               </a>
@@ -1042,6 +1083,14 @@ function BriefIcon() {
   return (
     <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M5 2h6v2H5zM4 3h-.5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H12M5.5 7.5h5M5.5 10h3.5" />
+    </svg>
+  );
+}
+
+function CodeIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5M9 3 7 13" />
     </svg>
   );
 }
@@ -1122,9 +1171,10 @@ function paragraphs(text: string) {
   return text.split(/\n[ \t]*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
 }
 
-function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, filtered, webAgents }: {
+function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, filtered, webAgents, repository }: {
   release: InternalReleaseLabel;
   webAgents?: readonly StoryMapWebAgent[];
+  repository?: string;
   panelId: string;
   permalink?: string;
   /** The release’s stories that are on the board. */
@@ -1155,6 +1205,7 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
             briefId={`${panelId}-brief`}
             copied={`Copied brief: ${releaseShortName(release.title)}, ${plural(release.storyCounts.planned + release.storyCounts["in-progress"], "story", "stories")}`}
             webAgents={webAgents}
+            repository={repository}
           />
           <CloseButton panelId={panelId} />
         </div>
@@ -1857,6 +1908,7 @@ export function StoryMapBoard({
   const filtering = isFiltering(map.filter);
   const settings = dateFormatters(locale, timeZone, now ?? new Date());
   const links = repositoryLinker(repositoryUrl, repositoryLinks);
+  const repository = githubRepository(repositoryUrl);
   const permalink = (target: { story: string } | { release: string }) => storyMapPermalink(target, { base: permalinkBase, preservedParams });
 
   const activityTitles = new Map(map.activities.map(activity => [activity.id, activity.title]));
@@ -2057,6 +2109,7 @@ export function StoryMapBoard({
           storyPanelIds={panelIdsByStory}
           releaseTitles={releaseTitles}
           webAgents={webAgents}
+          repository={repository}
         />
       ))}
       {!personasTab && personaList.map(persona => (
@@ -2079,6 +2132,7 @@ export function StoryMapBoard({
           storyPanelIds={panelIds}
           filtered={!!map.filter}
           webAgents={webAgents}
+          repository={repository}
         />
       ))}
     </section>
