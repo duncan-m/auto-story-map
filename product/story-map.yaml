@@ -497,6 +497,40 @@ releases:
         expected: Review lead time, scope change since baseline and observed flow in one place
         solves: Guessing delivery dates from recent commits or individual stories
         draft: true
+  - id: v0-8-4
+    title: "0.8.4: Dependency planning"
+    summary: See which stories can start, a dependency-respecting build order and dependency risks, in the panels, CLI and agent briefs, without maintaining another planning system.
+    notes: |
+      Planning proposal only, built on the existing dependsOn links from ESM-129. First readiness on the story panel, CLI and JSON (ESM-139), then a suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). The internal Dependencies tab and its focus views (ESM-140, ESM-141) follow in 0.8.5. No new dependency storage.
+
+      Plan: docs/plans/visual-dependency-map.md
+      Mockup: docs/plans/visual-dependency-map.md#ui-mockup
+    impact:
+      - metric: Time to identify unfinished prerequisites for a story
+        expected: Shown on the story panel and from the CLI instead of opening each related story
+        solves: Unclear build order across dependent stories
+        draft: true
+      - metric: Time to find a feasible sequence for a release
+        expected: A ready set and dependency-respecting order in the release panel and CLI
+        solves: Repeated manual tracing of story links
+        draft: true
+      - metric: Release-order conflicts identified before implementation
+        expected: Warnings for prerequisites that are cut, blocked or in later releases
+        solves: Hidden cross-release, cut and blocked prerequisites
+        draft: true
+  - id: v0-8-5
+    title: "0.8.5: Dependency graph"
+    summary: Explore a release's or a story's dependency chain as an internal, read-only graph, with the suggested order and risks from 0.8.4 beside it.
+    notes: |
+      Planning proposal only. An internal Dependencies tab with a server-rendered graph and list (ESM-140), then release and story focus with a full-chain option (ESM-141). Reuses the readiness and order from 0.8.4. No editable graph or new dependency storage.
+
+      Plan: docs/plans/visual-dependency-map.md
+      Mockup: docs/plans/visual-dependency-map.md#ui-mockup
+    impact:
+      - metric: Time to see why a release cannot start
+        expected: One view of the release and its prerequisites from other releases, instead of following links story by story
+        solves: Long prerequisite chains that span several releases
+        draft: true
 stories:
   # 0.1.0
   - id: ESM-101
@@ -1724,3 +1758,74 @@ stories:
     summary: Show cumulative status inventory, WIP and blocked ageing to identify delivery bottlenecks.
     sources:
       - docs/plans/delivery-metrics.md#8-display-cumulative-flow-and-bottlenecks
+
+  # Proposed visual dependency map (planning only)
+  - id: ESM-139
+    title: Understand which stories are ready to start
+    activity: track
+    release: v0-8-4
+    status: planned
+    jobs:
+      - triage-backlog
+      - plan-and-build
+      - pick-up-work
+    summary: Work out ready, waiting and at-risk states from the existing dependsOn links, and show them with the blocking prerequisites on the story panel, from story-map story and stories --readiness, and in the JSON export, without changing story statuses.
+    sources:
+      - docs/plans/visual-dependency-map.md#1-work-out-readiness-and-dependency-risks
+      - docs/plans/visual-dependency-map.md#ui-mockup
+  - id: ESM-140
+    title: Explore dependencies as a visual graph
+    activity: explore
+    release: v0-8-5
+    status: planned
+    dependsOn:
+      - ESM-142
+    jobs:
+      - triage-backlog
+      - plan-and-build
+    summary: Add an internal, read-only Dependencies tab with a server-rendered graph and list, arrows from prerequisites to dependents, and the release's suggested order beside it, with nodes opening existing story details.
+    sources:
+      - docs/plans/visual-dependency-map.md#4-explore-dependencies-as-a-graph
+      - docs/plans/visual-dependency-map.md#ui-mockup
+  - id: ESM-141
+    title: Focus dependency views on a release or story
+    activity: explore
+    release: v0-8-5
+    status: planned
+    dependsOn:
+      - ESM-140
+    jobs:
+      - agree-first-release-plan
+      - triage-backlog
+    summary: Filter the graph to a release or story and expand its dependency chain, keeping relevant prerequisites from other releases visible and sharing the selected view by URL.
+    sources:
+      - docs/plans/visual-dependency-map.md#5-focus-on-a-release-or-story
+      - docs/plans/visual-dependency-map.md#ui-mockup
+  - id: ESM-142
+    title: Suggest a delivery order for a release and highlight dependency risks
+    activity: track
+    release: v0-8-4
+    status: planned
+    dependsOn:
+      - ESM-139
+    jobs:
+      - plan-and-build
+      - agree-first-release-plan
+      - pick-up-work
+    summary: Show a release's unfinished work and its prerequisites from other releases as ordered steps, with cut, blocked and later-release risks, in the release panel and from story-map releases, without implying business priority.
+    sources:
+      - docs/plans/visual-dependency-map.md#2-suggest-a-delivery-order-for-a-release
+      - docs/plans/visual-dependency-map.md#ui-mockup
+  - id: ESM-143
+    title: List prerequisites and readiness in agent briefs
+    activity: plan
+    release: v0-8-4
+    status: planned
+    dependsOn:
+      - ESM-139
+    jobs:
+      - pick-up-work
+      - plan-and-build
+    summary: Add each target's prerequisites and readiness to the handoff brief, put waiting and at-risk targets in its open decisions, and list a release brief's targets in suggested order.
+    sources:
+      - docs/plans/visual-dependency-map.md#3-list-prerequisites-in-agent-briefs
