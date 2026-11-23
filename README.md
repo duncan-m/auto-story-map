@@ -169,10 +169,11 @@ Agents and people can read the map without opening the YAML file. Each command p
 npx story-map stories --query "export" --status all
 npx story-map story ESM-741
 npx story-map releases
+npx story-map evidence ESM-105
 npx story-map validate --format json product/story-map.yaml
 ```
 
-`stories` takes the board's filters, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
+`stories` takes the board's filters, `evidence` reports the branches, merged commits, plans, tests and broken sources that mention a story and suggests a status, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
 
 Change it the same way. Each edit is a dry run that prints the YAML diff, the PR summary and any problems it causes, until you add `--write`. Comments and untouched lines stay exactly as they were:
 

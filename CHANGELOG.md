@@ -4,6 +4,11 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
+### Evidence for a story
+
+- New `story-map evidence [<ID> ...]` reports, for each story or every active story, the branches whose names contain its ID, the commits on the default branch that mention it, the Markdown lines that mention it, its tagged tests, its broken sources and, with `--history`, whether it is stalled. It suggests a status with its reasons and changes nothing. A commit suggests `merged` only when its title names the story and it changes more than Markdown, the map and files under `--plans`. It never suggests moving a story back from merged or shipped, never changes a cut story and never suggests shipped. Takes `--format json`, `--default-branch`, `--plans`, `--tests`, `--history`, `--map` and `--root`. See [Look up the evidence for a story](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#look-up-the-evidence-for-a-story).
+- New export `gatherStoryEvidence(source, options)`, which takes the map's source text and throws `StoryMapValidationError` for an invalid map, with `StoryEvidenceError`, `evidenceItemsMaxItems`, `evidenceTextMaxLength` and types `StoryEvidence`, `StoryEvidenceOptions`, `StoryEvidenceResult`, `EvidenceBranch`, `EvidenceCommit`, `EvidenceMention` and `EvidenceTest`.
+
 ### Agent brief on the board
 
 - New `brief` option for `getStoryMapForViewer` and `getStoryMapPage`. Pass `true`, or the options of `storyMapBrief`, and each planned, in-progress or blocked story, and each release with planned or in-progress stories, gets its agent brief as `brief` on the internal view. Briefs are written before the filters, so a search does not change them. Off by default, and never on customer views. The JSON export and the CLI's read commands leave `brief` out, and `StoryMapJsonStory` and `StoryMapJsonRelease` no longer include it.

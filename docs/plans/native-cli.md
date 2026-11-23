@@ -1,6 +1,6 @@
 # Plan: a native CLI for agents
 
-Status: in progress. Items 1, 2, 3, 5 and 7, the 0.7.2 release, are built. The stories are in two releases of the map:
+Status: in progress. Items 1, 2, 3, 5 and 7, the 0.7.2 release, are built, and item 4 is being built. The stories are in two releases of the map:
 
 - **0.7.2: CLI to read, edit and preview the map**: ESM-741, ESM-742, ESM-744 and ESM-746. It comes before personas, so agents can tag the existing stories with `story-map edit` instead of editing the YAML by hand.
 - **0.7.5: Evidence and claims for agents**: ESM-105, ESM-106 and ESM-107. It comes before the scheduled audit (ESM-109), which depends on ESM-105.

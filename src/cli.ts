@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import diff from "./commands/diff.js";
 import { add, edit, releaseImpact } from "./commands/edit.js";
+import evidence from "./commands/evidence.js";
 import exportMap from "./commands/export.js";
 import history from "./commands/history.js";
 import init from "./commands/init.js";
@@ -21,6 +22,7 @@ const usage = `Usage:
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
+  story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [<ID> ...]
   story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
@@ -149,6 +151,31 @@ releases
   notes and expected impact. Impact items drafted by an agent are marked
   [draft]. Takes the same options as story.
 
+evidence
+  Reports what has already happened on each story, or on every active story
+  when no ID is given, and suggests a status without changing anything:
+  branches whose names contain the ID, commits on the default branch that
+  mention it, Markdown files that mention it, tagged tests and sources that no
+  longer exist. A commit suggests merged only when it changes more than
+  Markdown, the map and files under --plans. It never suggests moving a story
+  back from merged or shipped, never changes a cut story and never suggests
+  shipped. It reads the checkout only, with no network calls. An ID that is
+  not in the map exits 1.
+
+  --format json      Print the evidence as JSON, for agents and scripts.
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --root <path>      Repository root. Defaults to the current directory.
+  --default-branch <name>
+                     Branch to read merged commits from. Defaults to
+                     origin/HEAD, then origin/main, main, origin/master and
+                     master.
+  --plans <path>     Where to look for Markdown that mentions the story.
+                     Repeat for several. Defaults to docs, or the whole root
+                     when there is no docs folder.
+  --tests <path>     Where to look for tagged tests. Repeat for several.
+                     Defaults to the whole root.
+  --history <file>   History from story-map history, to flag stalled stories.
+
 edit
   Changes a story with named edits instead of editing the YAML by hand. By
   default it is a dry run: it prints the line diff of the YAML, the story-map
@@ -228,7 +255,7 @@ preview
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, preview, edit, add, "release-impact": releaseImpact };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, preview, edit, add, "release-impact": releaseImpact };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {

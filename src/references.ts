@@ -287,16 +287,33 @@ export async function repositoryFiles(realRoot: string, path: string, filter: Fi
 
 const markdownFilter: FileFilter = { include: (_, name) => markdownExtensions.has(extname(name).toLowerCase()) };
 
+/** The map's story ID prefixes, such as BUILDER in BUILDER-102, escaped for a regular expression. */
+function storyIdPrefixes(loaded: Pick<LoadedStoryMap, "map">): string | undefined {
+  const prefixes = new Set(loaded.map.stories.flatMap(story => /^([A-Za-z][A-Za-z0-9]*)-\d+$/.exec(story.id)?.[1] ?? []));
+  if (!prefixes.size) return undefined;
+  return `(?:${[...prefixes].map(prefix => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`;
+}
+
 /**
  * Matches story IDs that use a prefix already in the map, such as BUILDER- in
  * BUILDER-102, as whole words, so text like UTF-8 or BUILDER-1x is ignored.
  * Returns undefined when no story ID has a prefix.
  */
 export function storyIdPattern(loaded: Pick<LoadedStoryMap, "map">): RegExp | undefined {
-  const prefixes = new Set(loaded.map.stories.flatMap(story => /^([A-Za-z][A-Za-z0-9]*)-\d+$/.exec(story.id)?.[1] ?? []));
-  if (!prefixes.size) return undefined;
-  const escaped = [...prefixes].map(prefix => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  return new RegExp(`(?<![A-Za-z0-9_-])(?:${escaped.join("|")})-\\d+(?![A-Za-z0-9_-])`, "g");
+  const prefixes = storyIdPrefixes(loaded);
+  return prefixes ? new RegExp(`(?<![A-Za-z0-9_-])${prefixes}-\\d+(?![A-Za-z0-9_-])`, "g") : undefined;
+}
+
+/**
+ * Matches story IDs in Git branch names, such as ESM-105 in
+ * `feat/esm-105-look-up-evidence`. Branch names are usually lower case and
+ * carry words after the ID, so this ignores case and allows a hyphen after
+ * the number. A longer number or a letter after it still does not match, so
+ * ESM-10 is never found in ESM-105. Returns undefined when no story ID has a prefix.
+ */
+export function branchIdPattern(loaded: Pick<LoadedStoryMap, "map">): RegExp | undefined {
+  const prefixes = storyIdPrefixes(loaded);
+  return prefixes ? new RegExp(`(?<![A-Za-z0-9])${prefixes}-\\d+(?![A-Za-z0-9_])`, "gi") : undefined;
 }
 
 /** The outcome of checking that a path passed on the command line stays inside the root. */
@@ -318,20 +335,33 @@ export async function resolveRootedPath(root: string, realRoot: string, path: st
 export const outsideLinkIssue = (file: string): ReferenceIssue =>
   ({ severity: "error", path: [], file, message: "Points outside the repository through a symbolic link, so it was not read." });
 
+/** A story ID mentioned in a Markdown file. */
+export interface StoryMention {
+  id: string;
+  /** Path relative to the repository root, with `/` separators. */
+  file: string;
+  line: number;
+  column: number;
+  /** The whole line, as written. */
+  text: string;
+}
+
 /**
- * Finds story IDs mentioned in delivery plans that are not in the map. Only IDs
- * that use a prefix already in the map are checked (see `storyIdPattern`).
+ * Lists the story IDs mentioned in Markdown files under `paths`, whether or
+ * not they are in the map, with paths that could not be read in `issues`. Only
+ * IDs that use a prefix already in the map are found (see `storyIdPattern`).
  */
-export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, planPaths: string[]): Promise<ReferenceIssue[]> {
-  const ids = new Set(loaded.map.stories.map(story => story.id));
+export async function findStoryMentions(loaded: LoadedStoryMap, root: string, paths: string[]): Promise<{ mentions: StoryMention[]; issues: ReferenceIssue[] }> {
   const pattern = storyIdPattern(loaded);
+  const mentions: StoryMention[] = [];
   const issues: ReferenceIssue[] = [];
-  if (!pattern) return issues;
+  if (!pattern) return { mentions, issues };
 
   const realRoot = await realpath(root);
   const shown = (file: string) => relative(realRoot, file).split(sep).join("/");
+  const read = new Set<string>();
 
-  for (const planPath of planPaths) {
+  for (const planPath of paths) {
     const resolved = await resolveRootedPath(root, realRoot, planPath);
     if (resolved.kind === "issue") {
       issues.push(resolved.issue);
@@ -345,19 +375,39 @@ export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, 
       continue;
     }
     for (const file of files) {
+      if (read.has(file)) continue;
+      read.add(file);
       const lines = (await readFile(file, "utf8")).split(/\r?\n/);
-      lines.forEach((line, index) => {
-        for (const match of line.matchAll(pattern)) {
-          if (ids.has(match[0])) continue;
-          issues.push({
-            severity: "error",
-            path: [],
-            file: shown(file),
-            line: index + 1,
-            column: match.index + 1,
-            message: `Unknown story ID '${match[0]}'. Add it to the map or correct the reference.`,
-          });
+      lines.forEach((text, index) => {
+        for (const match of text.matchAll(pattern)) {
+          mentions.push({ id: match[0], file: shown(file), line: index + 1, column: match.index + 1, text });
         }
+      });
+    }
+  }
+  return { mentions, issues };
+}
+
+/**
+ * Finds story IDs mentioned in delivery plans that are not in the map. Only IDs
+ * that use a prefix already in the map are checked (see `storyIdPattern`).
+ */
+export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, planPaths: string[]): Promise<ReferenceIssue[]> {
+  const ids = new Set(loaded.map.stories.map(story => story.id));
+  const issues: ReferenceIssue[] = [];
+  // One path at a time, so each path's problems come in the order the paths were given.
+  for (const planPath of planPaths) {
+    const found = await findStoryMentions(loaded, root, [planPath]);
+    issues.push(...found.issues);
+    for (const mention of found.mentions) {
+      if (ids.has(mention.id)) continue;
+      issues.push({
+        severity: "error",
+        path: [],
+        file: mention.file,
+        line: mention.line,
+        column: mention.column,
+        message: `Unknown story ID '${mention.id}'. Add it to the map or correct the reference.`,
       });
     }
   }
