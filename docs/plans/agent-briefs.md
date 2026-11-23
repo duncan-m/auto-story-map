@@ -9,7 +9,7 @@ None of the estimates below are agreed yet.
 
 Items are numbered in the order they should be built:
 
-1. [Build a brief for a story or release](#1-build-a-brief-for-a-story-or-release) (ESM-123)
+1. [Write a handoff brief for a story or release](#1-write-a-handoff-brief-for-a-story-or-release) (ESM-123)
 2. [Copy the brief from the panel](#2-copy-the-brief-from-the-panel) (ESM-124)
 3. [Open the brief in a web agent](#3-open-the-brief-in-a-web-agent) (ESM-125)
 4. [Write briefs from the command line](#4-write-briefs-from-the-command-line) (ESM-126)
@@ -37,6 +37,7 @@ Every field comes from the map. Nothing is invented: stories have no acceptance 
 | `<rules>` | Follow `AGENTS.md`. Set each story to `in-progress` with `story-map edit` when work on it starts. The branch name. Name the story ID in commits, the PR title and test names. Build only the target. Do not set estimates or remove `draft` | Fixed text, with the branch name worked out from the target |
 | `<target>` | Each story to build: ID, title, status, release, activity, estimate, summary, sources, personas and jobs, and the `story-map story <ID>` command for the rest | The stories |
 | `<context>` | Documents to read first, the stories already built nearby to reuse, and the stories nearby not to build yet | The engineering overview link, and the neighbouring stories |
+| `<in_flight>` | Work that has already started on a target: tagged tests, and pull requests or commits that name it. Left out when there is none | The tests index (ESM-801) and the changes in the history file (ESM-121), on the board. `story-map evidence` (ESM-105), on the command line |
 | `<open_decisions>` | Draft jobs, a missing estimate or plan link, and blocked stories in the same release with their reason | The stories and their jobs |
 | `<done_when>` | The plan is met, with tagged tests, `npm run validate` and the tests pass, and the PR has the `story-map diff` summary | Fixed text, using the validation command for this repository or a host |
 
@@ -93,7 +94,7 @@ Not yet. Do not build these:
 </brief>
 ```
 
-## 1. Build a brief for a story or release
+## 1. Write a handoff brief for a story or release
 
 `storyMapBrief(view, { story })` and `storyMapBrief(view, { release })`, in a new `src/brief.ts` and exported from the root entry point, return the brief as a string. They take the internal projection and refuse a customer view, as the exports do, because a brief carries internal notes, estimates and draft jobs.
 
@@ -107,6 +108,8 @@ Not yet. Do not build these:
 Cut stories are left out. A blocked story in the same release is listed under open decisions with its `statusReason`, not as a target. For a release, the rules say to set each story to `in-progress` when work on it starts, not all at once, so the board does not show work as started before it is.
 
 **Branch name.** Worked out in code, so the naming rule in `AGENTS.md` is applied once and tested: `feat/<story ID>-<first words of the title>` for a story, such as `feat/esm-111-show-edit-command`, and `feat/<release ID>-<first words of the title>` for a release. Lower case, letters, digits and hyphens only, and at most 50 characters. The brief names the branch and the agent creates it. Nothing here touches Git.
+
+**In flight.** A brief that sends an agent to start a story someone has already started causes duplicate work. So the brief lists what the board already knows about each target: the tests tagged with its ID, and the merged pull requests and commits that name it. This uses data the host already passes to the board, with no Git reads, because the board renders on the host's server without a checkout. The command line adds branches and claims in item 4.
 
 **Safe text.** Story text is written through pull requests, but a title or note could still contain `</target>` or a line that looks like a rule. Text from the map is put on its own indented lines, with `<` and `>` escaped, so it cannot close a section or add one.
 
@@ -152,9 +155,10 @@ npx story-map brief --activity explore
 - `--activity <ID>` targets the activity's planned and in-progress stories, ordered by release from top to bottom, with its merged and shipped stories as "Already built".
 - `--full` includes each target's notes, persona context and tagged tests inline, for agents that cannot run commands.
 - `--format json` prints the same sections as JSON.
+- **In flight from Git.** The `<in_flight>` section adds what `story-map evidence` (ESM-105) finds for each target: branches that name it, commits on the default branch, claims (ESM-106) and broken sources. The brief calls the evidence code rather than reading Git a second time, so the two stay consistent.
 - When the MCP server from ESM-116 exists, it gets a `get_brief` tool that wraps this command.
 
-This is why this item is in 0.8.1: it comes after the MCP server in 0.8.0, and after the brief format has been tested from the panel in 0.7.5.
+This is why this item is in 0.8.1: it comes after evidence and claims in 0.7.5, after the MCP server in 0.8.0, and after the brief format has been tested from the panel in 0.7.5.
 
 Estimate: not agreed. Suggested 3 points.
 
@@ -168,6 +172,20 @@ In `story-map preview --writable` (ESM-112), the panel's brief section gets a **
 - **No Git changes.** The brief names the branch, and the agent creates it.
 
 Estimate: not agreed. Suggested 5 points. It depends on ESM-112 in 0.7.6.
+
+## Briefs and evidence
+
+`story-map evidence` (ESM-105) and the brief both gather facts about a story for an agent, but they answer different questions:
+
+| | Evidence (ESM-105) | Brief (ESM-123) |
+| --- | --- | --- |
+| Question | What has already happened on this story? | What should the agent do next, and within what limits? |
+| Reads | Git branches and commits, plans, tests, broken sources and claims | The map: the story, its neighbours, jobs and sources |
+| Output | Facts, with a suggested status | A prompt with rules, scope, what to reuse and what not to build |
+| Used by | The scheduled audit (ESM-109), reviewers and the MCP server | The panel's Copy and Open links, `story-map brief` and Build |
+| Runs | On the command line, in a checkout | On the board too, without Git |
+
+The brief uses evidence where it can, in its `<in_flight>` section, and never repeats evidence's Git reads. The handoff serves the Coding Agent's `pick-up-work` job. Evidence serves the audit and the Product Manager's `validate-inherited-map` job.
 
 ## Decisions to make
 
@@ -190,10 +208,10 @@ These are proposals. Each is easy to change during review.
 
 | Story | Release | Points |
 | --- | --- | --- |
-| ESM-123: Build a brief for a story or release | 0.7.5 | Not agreed (suggested 5) |
+| ESM-123: Write a handoff brief for a story or release | 0.7.5 | Not agreed (suggested 5) |
 | ESM-124: Copy an agent brief from the story and release panels | 0.7.5 | Not agreed (suggested 2) |
 | ESM-125: Open an agent brief in Claude or ChatGPT | 0.7.5 | Not agreed (suggested 2) |
 | ESM-126: Write agent briefs from the command line | 0.8.1 | Not agreed (suggested 3) |
 | ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.8.1 | Not agreed (suggested 5) |
 
-ESM-123 to ESM-125 depend on nothing else in 0.7.5, so they can be built before or alongside the evidence and claim work.
+ESM-123 to ESM-125 depend on nothing else in 0.7.5, so they can be built before or alongside the evidence and claim work. ESM-126 uses the evidence code from ESM-105.
