@@ -19,6 +19,7 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("summary"), id: storyId, summary: text }).strict(),
   z.object({ op: z.literal("notes"), id: storyId, notes: text }).strict(),
   z.object({ op: z.literal("tokens"), id: storyId, tokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) }).strict(),
+  z.object({ op: z.literal("estimated-cost"), id: storyId, usd: z.number().min(0).max(1_000_000_000) }).strict(),
   z.object({ op: z.literal("add-source"), id: storyId, source: text }).strict(),
   z.object({ op: z.literal("remove-source"), id: storyId, source: text }).strict(),
   z.object({ op: z.literal("add-job"), id: storyId, job: text }).strict(),
@@ -93,7 +94,7 @@ export class StoryMapEditError extends Error {
 }
 
 /** The order fields are written in when an edit adds one, following the guide's examples. */
-const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "tokens", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
+const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "tokens", "estimatedCostUsd", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 
 type Raw = Record<string, unknown>;
@@ -344,6 +345,10 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       case "notes":
       case "tokens":
         set(operation.op, operation[operation.op as keyof typeof operation]);
+        break;
+      case "estimated-cost":
+        // Kept to the cent, as the PR shows it.
+        set("estimatedCostUsd", Math.round(operation.usd * 100) / 100);
         break;
       case "add-source":
       case "add-job":

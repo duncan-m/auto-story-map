@@ -482,6 +482,12 @@
             "minimum": 0,
             "maximum": 9007199254740991
           },
+          "estimatedCostUsd": {
+            "description": "Optional. Estimated cost of those tokens in US dollars at API list prices, such as from `story-map tokens`. Internal only. It is not what was billed: a subscription, discount or another provider changes that.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000
+          },
           "updatedBy": {
             "description": "Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise.",
             "type": "string",

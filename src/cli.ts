@@ -24,8 +24,8 @@ const usage = `Usage:
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
   story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [<ID> ...]
-  story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] <ID>
-  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--tokens <n>] [common edit options]
+  story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] [--prices <file>] <ID>
+  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--tokens <n>] [--estimated-cost <usd>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
@@ -183,10 +183,11 @@ tokens
   on this machine, for the pull request that finishes the story. A response
   counts when it was made on a branch whose name contains the story ID, such
   as feat/esm-144-tokens, or on a branch or in a session named below. Input,
-  output and cache tokens are all counted, each response once. It reads the
-  logs only and changes nothing: record the total with
-  story-map edit <ID> --tokens <n>. Exits 1 when nothing was found, rather
-  than reporting 0.
+  output and cache tokens are all counted, each response once, and priced by
+  the model each response names at API list prices, built in and dated, to
+  estimate the cost. It reads the logs only and changes nothing: record the
+  results with story-map edit <ID> --tokens <n> --estimated-cost <usd>.
+  Exits 1 when nothing was found, rather than reporting 0.
 
   --format markdown  Print the Tokens used section for the pull request.
   --format json      Print the counts as JSON, for agents and scripts.
@@ -196,6 +197,10 @@ tokens
   --branch <name>    Also count this branch, such as one named before the
                      story ID was known. Repeat for several.
   --session <ID>     Also count this whole session. Repeat for several.
+  --prices <file>    JSON of prices to use instead, in US dollars per million
+                     tokens, such as {"claude-opus-5-5": {"input": 4,
+                     "output": 20, "cacheRead": 0.2}}. cacheWrite5m and
+                     cacheWrite1h default to 1.25 and 2 times input.
 
 edit
   Changes a story with named edits instead of editing the YAML by hand. By
@@ -223,10 +228,14 @@ edit
   --tokens <n>       Record the model tokens used to deliver the story, in
                      the pull request that finishes it. story-map tokens
                      counts them from Claude Code's logs.
+  --estimated-cost <usd>
+                     Record their estimated cost in US dollars, such as
+                     14.27, from story-map tokens.
   --from <file>      A JSON list of edits, such as
                      [{"op": "status", "id": "ESM-744", "status": "merged"}],
                      applied all or none. The ops are status, release,
-                     activity, title, summary, notes, tokens, add-source,
+                     activity, title, summary, notes, tokens,
+                     estimated-cost, add-source,
                      remove-source, add-job, remove-job, add-persona,
                      remove-persona, add-dependency, remove-dependency,
                      customer-title, customer-summary, add and

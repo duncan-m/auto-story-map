@@ -8,9 +8,10 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 - Stories can record the model tokens used to deliver them in a new optional `tokens`, a whole number, set in the pull request that finishes the story. The internal story panel lists it as **Tokens used**, `story-map story` prints it, the JSON export carries it, and `story-map diff` shows a change as “Tokens used: none → 4,348,638”. Customers never see it. See [Record the tokens used on a story](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#record-the-tokens-used-on-a-story).
 - New `story-map tokens <ID>` counts the tokens Claude Code used on a story from its session logs on this machine: every response on a branch whose name contains the story ID, or on a `--branch` or in a `--session` given, each response once, subagents included. It prints input, output, cache-write and cache-read tokens and their total, and the edit that records it. `--format markdown` prints a **Tokens used** section for the pull request, and `--format json` the counts. It changes nothing, makes no network calls and exits 1 when it finds nothing. `--logs` reads another folder than `$CLAUDE_CONFIG_DIR/projects` or `~/.claude/projects`.
-- `story-map edit` takes `--tokens <n>`, and `--from` takes the `tokens` op.
-- New exports `countStoryTokens`, `branchNamesStory` and `defaultClaudeLogs`, and types `StoryTokenOptions`, `StoryTokenUsage` and `TokenCounts`.
-- The agent instructions from `story-map init` ask agents to record the tokens in the pull request that finishes a story.
+- Stories can also record `estimatedCostUsd`, the estimated cost of those tokens in US dollars, shown as **Estimated cost** in the internal story panel and in `story-map story`, the JSON export and `story-map diff`. `story-map tokens` works it out per response from the model the log names, at API list prices built in and dated in `defaultTokenPricesDate`, with cache writes priced by duration and fast mode at twice the price. `--prices <file>` replaces the built-in prices. Tokens from models with no price are named and left out of the cost.
+- `story-map edit` takes `--tokens <n>` and `--estimated-cost <usd>`, and `--from` takes the `tokens` and `estimated-cost` ops.
+- New exports `countStoryTokens`, `branchNamesStory`, `defaultClaudeLogs`, `defaultTokenPrices` and `defaultTokenPricesDate`, and types `StoryTokenOptions`, `StoryTokenUsage`, `TokenCounts`, `TokenCost`, `TokenPrice` and `TokenPrices`.
+- The agent instructions from `story-map init` ask agents to record the tokens and estimated cost in the pull request that finishes a story.
 
 ### Evidence for a story
 

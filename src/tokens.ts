@@ -15,6 +15,67 @@ export interface StoryTokenOptions {
   branches?: readonly string[];
   /** Session IDs to count in full, whatever branch they were on. */
   sessions?: readonly string[];
+  /** Prices to estimate the cost with, by model ID. Defaults to `defaultTokenPrices`. Models not listed are reported as unpriced. */
+  prices?: TokenPrices;
+}
+
+/** One model's API list prices, in US dollars per million tokens. */
+export interface TokenPrice {
+  input: number;
+  output: number;
+  cacheRead: number;
+  /** Writes to the 5-minute cache. Defaults to 1.25 times `input`. */
+  cacheWrite5m?: number;
+  /** Writes to the 1-hour cache. Defaults to 2 times `input`. */
+  cacheWrite1h?: number;
+  /** Prompts longer than `above` tokens, counting input and cache tokens, are priced at `price` instead. */
+  longPrompt?: { above: number; price: Omit<TokenPrice, "longPrompt"> };
+}
+
+export type TokenPrices = Readonly<Record<string, TokenPrice>>;
+
+/** When `defaultTokenPrices` was last checked against Anthropic's pricing page. */
+export const defaultTokenPricesDate = "2026-11-03";
+
+const fable52: TokenPrice = { input: 8, output: 40, cacheRead: 0.2, cacheWrite5m: 10, cacheWrite1h: 16 };
+const fable51: TokenPrice = { input: 10, output: 50, cacheRead: 0.25 };
+const fable5: TokenPrice = { input: 10, output: 50, cacheRead: 1 };
+const opus: TokenPrice = { input: 5, output: 25, cacheRead: 0.5 };
+
+/**
+ * Anthropic's first-party API list prices for Claude models, in US dollars per
+ * million tokens, as of `defaultTokenPricesDate`. Fast mode costs twice these.
+ * Prices change, so pass your own with `prices` or `--prices` when they do.
+ */
+export const defaultTokenPrices: TokenPrices = {
+  "claude-fable-5-2": fable52,
+  "claude-mythos-5-2": fable52,
+  "claude-fable-5-1": fable51,
+  "claude-mythos-5-1": fable51,
+  "claude-fable-5": fable5,
+  "claude-mythos-5": fable5,
+  "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.2 },
+  "claude-opus-5": opus,
+  "claude-opus-4-8": opus,
+  "claude-opus-4-7": opus,
+  "claude-opus-4-6": opus,
+  "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.1 },
+  "claude-sonnet-5": { input: 2, output: 10, cacheRead: 0.2 },
+  "claude-sonnet-4-6": { input: 3, output: 15, cacheRead: 0.3 },
+  "claude-haiku-5-5": { input: 0.1, output: 0.5, cacheRead: 0.01, longPrompt: { above: 100_000, price: { input: 0.5, output: 2.5, cacheRead: 0.05 } } },
+  "claude-haiku-4-5": { input: 1, output: 5, cacheRead: 0.1 },
+};
+
+/** The estimated cost of the counted responses. */
+export interface TokenCost {
+  /** US dollars at the prices used, rounded to the cent. Leaves out `unpricedTokens`. */
+  usd: number;
+  /** Tokens from models with no price, so not in `usd`. */
+  unpricedTokens: number;
+  /** Those models, sorted. */
+  unpricedModels: string[];
+  /** Tokens and cost by model, most expensive first. */
+  models: { model: string; total: number; usd?: number; fast?: boolean }[];
 }
 
 /** Tokens by kind. `total` is the sum of the other four. */
@@ -39,6 +100,8 @@ export interface StoryTokenUsage extends TokenCounts {
   sessions: string[];
   /** Branches the counted responses were made on, sorted. */
   branches: string[];
+  /** The estimated cost at API list prices. */
+  cost: TokenCost;
   /** The first and last counted response. Absent when nothing was counted. */
   firstAt?: string;
   lastAt?: string;
@@ -61,6 +124,26 @@ interface Usage {
   output_tokens?: unknown;
   cache_creation_input_tokens?: unknown;
   cache_read_input_tokens?: unknown;
+  cache_creation?: { ephemeral_1h_input_tokens?: unknown };
+  speed?: unknown;
+}
+
+/** `claude-opus-5-5[1m]` and `claude-haiku-4-5-20251001` are priced as `claude-opus-5-5` and `claude-haiku-4-5`. */
+function priceFor(model: string, prices: TokenPrices): TokenPrice | undefined {
+  const bare = model.replace(/\[.*\]$/, "");
+  return prices[bare] ?? prices[bare.replace(/-\d{8}$/, "")];
+}
+
+type Counts = Omit<TokenCounts, "total"> & { cacheWrite1h: number };
+
+function responseCost(counts: Counts, price: TokenPrice, fast: boolean): number {
+  const prompt = counts.input + counts.cacheRead + counts.cacheWrite;
+  const rate = price.longPrompt && prompt > price.longPrompt.above ? price.longPrompt.price : price;
+  const cacheWrite5m = rate.cacheWrite5m ?? rate.input * 1.25;
+  const cacheWrite1h = rate.cacheWrite1h ?? rate.input * 2;
+  const dollars = counts.input * rate.input + counts.output * rate.output + counts.cacheRead * rate.cacheRead
+    + (counts.cacheWrite - counts.cacheWrite1h) * cacheWrite5m + counts.cacheWrite1h * cacheWrite1h;
+  return (dollars / 1_000_000) * (fast ? 2 : 1);
 }
 
 const tokens = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
@@ -78,14 +161,15 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
   const logs = options.logs ?? defaultClaudeLogs();
   const branches = new Set(options.branches ?? []);
   const sessions = new Set(options.sessions ?? []);
-  const responses = new Map<string, { counts: Omit<TokenCounts, "total">; session?: string; branch?: string; at?: string }>();
+  const prices = options.prices ?? defaultTokenPrices;
+  const responses = new Map<string, { counts: Counts; model?: string; fast: boolean; session?: string; branch?: string; at?: string }>();
 
   const files = await logFiles(logs);
   for (const file of files) {
     const lines = createInterface({ input: createReadStream(file, "utf8"), crlfDelay: Infinity });
     for await (const line of lines) {
       if (!line.includes('"usage"')) continue;
-      let entry: { type?: unknown; sessionId?: unknown; gitBranch?: unknown; timestamp?: unknown; uuid?: unknown; requestId?: unknown; message?: { id?: unknown; usage?: Usage } };
+      let entry: { type?: unknown; sessionId?: unknown; gitBranch?: unknown; timestamp?: unknown; uuid?: unknown; requestId?: unknown; message?: { id?: unknown; model?: unknown; usage?: Usage } };
       try {
         entry = JSON.parse(line);
       } catch {
@@ -103,7 +187,11 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
         output: tokens(usage.output_tokens),
         cacheWrite: tokens(usage.cache_creation_input_tokens),
         cacheRead: tokens(usage.cache_read_input_tokens),
+        cacheWrite1h: 0,
       };
+      counts.cacheWrite1h = Math.min(counts.cacheWrite, tokens(usage.cache_creation?.ephemeral_1h_input_tokens));
+      const model = typeof entry.message?.model === "string" && !entry.message.model.startsWith("<") ? entry.message.model : undefined;
+      const fast = usage.speed === "fast";
       const at = typeof entry.timestamp === "string" ? entry.timestamp : undefined;
       const seen = responses.get(key);
       if (seen) {
@@ -111,11 +199,16 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
         for (const kind of Object.keys(counts) as (keyof typeof counts)[]) seen.counts[kind] = Math.max(seen.counts[kind], counts[kind]);
         continue;
       }
-      responses.set(key, { counts, session, branch, at });
+      responses.set(key, { counts, model, fast, session, branch, at });
     }
   }
 
-  const result: StoryTokenUsage = { id, logs, files: files.length, total: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0, messages: responses.size, sessions: [], branches: [] };
+  const result: StoryTokenUsage = {
+    id, logs, files: files.length, total: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0, messages: responses.size, sessions: [], branches: [],
+    cost: { usd: 0, unpricedTokens: 0, unpricedModels: [], models: [] },
+  };
+  const byModel = new Map<string, { model: string; total: number; usd?: number; fast?: boolean }>();
+  let usd = 0;
   const sessionIds = new Set<string>();
   const branchNames = new Set<string>();
   const times: string[] = [];
@@ -124,7 +217,27 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
     if (response.session) sessionIds.add(response.session);
     if (response.branch) branchNames.add(response.branch);
     if (response.at) times.push(response.at);
+    const total = response.counts.input + response.counts.output + response.counts.cacheWrite + response.counts.cacheRead;
+    if (!total) continue;
+    const model = response.model ?? "unknown";
+    const key = `${model}${response.fast ? " (fast)" : ""}`;
+    const price = response.model ? priceFor(response.model, prices) : undefined;
+    const row = byModel.get(key) ?? { model, total: 0, ...(price ? { usd: 0 } : {}), ...(response.fast ? { fast: true } : {}) };
+    byModel.set(key, row);
+    row.total += total;
+    if (price) {
+      const cost = responseCost(response.counts, price, response.fast);
+      row.usd! += cost;
+      usd += cost;
+    } else {
+      result.cost.unpricedTokens += total;
+    }
   }
+  const cents = (value: number) => Math.round(value * 100) / 100;
+  result.cost.usd = cents(usd);
+  result.cost.models = [...byModel.values()].map(row => (row.usd === undefined ? row : { ...row, usd: cents(row.usd) }))
+    .sort((a, b) => (b.usd ?? -1) - (a.usd ?? -1) || b.total - a.total);
+  result.cost.unpricedModels = [...new Set(result.cost.models.filter(row => row.usd === undefined).map(row => row.model))].sort();
   result.total = result.input + result.output + result.cacheWrite + result.cacheRead;
   result.sessions = [...sessionIds].sort();
   result.branches = [...branchNames].sort();

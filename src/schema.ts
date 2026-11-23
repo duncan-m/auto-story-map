@@ -152,6 +152,8 @@ function formatSchemas(strict: boolean) {
       .describe(`Optional effort estimate in story points: ${estimatePoints.join(", ")}. Internal only. A story above 13 should be split.`),
     tokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional()
       .describe("Optional. Model tokens used to deliver the story, counting input, output and cache tokens, recorded in the pull request that finishes it, such as from `story-map tokens`. Internal only."),
+    estimatedCostUsd: z.number().min(0).max(1_000_000_000).optional()
+      .describe("Optional. Estimated cost of those tokens in US dollars at API list prices, such as from `story-map tokens`. Internal only. It is not what was billed: a subscription, discount or another provider changes that."),
     updatedBy: z.string().trim().min(1).max(120).optional().describe("Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise."),
     notes: z.string().trim().max(4000).optional().describe("Internal engineering notes."),
     sources: z.array(z.string().trim().min(1).max(250)).max(20).optional()

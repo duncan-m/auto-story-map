@@ -11,10 +11,13 @@ const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const ownMap = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
 
 /** One assistant log line as Claude Code writes it, one per content block. */
-function response({ id, session = "s1", branch, input = 0, output = 0, cacheWrite = 0, cacheRead = 0, at = "2026-11-20T10:00:00.000Z" }) {
+function response({ id, session = "s1", branch, model, speed, input = 0, output = 0, cacheWrite = 0, cacheWrite1h, cacheRead = 0, at = "2026-11-20T10:00:00.000Z" }) {
+  const usage = { input_tokens: input, output_tokens: output, cache_creation_input_tokens: cacheWrite, cache_read_input_tokens: cacheRead };
+  if (cacheWrite1h !== undefined) usage.cache_creation = { ephemeral_5m_input_tokens: cacheWrite - cacheWrite1h, ephemeral_1h_input_tokens: cacheWrite1h };
+  if (speed) usage.speed = speed;
   return JSON.stringify({
     type: "assistant", sessionId: session, gitBranch: branch, timestamp: at, requestId: `req-${id}`, uuid: `${id}-${Math.random()}`,
-    message: { id, role: "assistant", usage: { input_tokens: input, output_tokens: output, cache_creation_input_tokens: cacheWrite, cache_read_input_tokens: cacheRead } },
+    message: { id, role: "assistant", ...(model ? { model } : {}), usage },
   });
 }
 
@@ -86,7 +89,9 @@ test("ESM-144: story-map tokens prints the count, the PR section and JSON, and f
   const text = run("tokens", "--logs", logs, "ESM-144");
   assert.equal(text.status, 0, text.stderr);
   assert.match(text.stdout, /^ESM-144 {2}1,001,234 tokens in 1 response across 1 session/);
+  // The log names no model, so there is no cost to record.
   assert.match(text.stderr, /story-map edit ESM-144 --tokens 1001234 --write/);
+  assert.match(text.stdout, /Est\. cost: +unknown: unknown has no price/);
 
   const markdown = run("tokens", "--format", "markdown", "--logs", logs, "ESM-144");
   assert.match(markdown.stdout, /^## Tokens used\n\nESM-144: \*\*1,001,234 tokens\*\* in 1 Claude Code session/);
@@ -126,4 +131,67 @@ test("ESM-144: edit --tokens records the count, shown in the internal view and t
   const bad = run("edit", "ESM-105", "--tokens", "lots");
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /--tokens must be a whole number/);
+});
+
+test("ESM-144: estimates the cost per response from its model, cache duration and speed", async t => {
+  const M = 1_000_000;
+  const { logs } = await scratch(t, {
+    "-repo/a.jsonl": [
+      // Opus 5.5: $4 in, $20 out, $0.20 cache reads, 5-minute writes 1.25 times input, 1-hour writes 2 times.
+      response({ id: "m1", branch: "feat/esm-144", model: "claude-opus-5-5", input: M, output: M, cacheRead: M, cacheWrite: 2 * M, cacheWrite1h: M }),
+      // The context-window suffix is ignored, and fast mode doubles the price.
+      response({ id: "m2", branch: "feat/esm-144", model: "claude-opus-5-5[1m]", speed: "fast", output: M }),
+      // Haiku 5.5 costs more once the prompt is over 100K tokens.
+      response({ id: "m3", branch: "feat/esm-144", model: "claude-haiku-5-5", input: 200_000, output: M }),
+      response({ id: "m4", branch: "feat/esm-144", model: "claude-new-model", output: 500 }),
+      response({ id: "m5", branch: "feat/esm-144", model: "<synthetic>" }),
+    ],
+  });
+  const usage = await countStoryTokens("ESM-144", { logs });
+  const opus = 4 + 20 + 0.2 + 5 + 8;
+  const fast = 40;
+  const haiku = 0.2 * 0.5 + 2.5;
+  assert.equal(usage.cost.usd, Math.round((opus + fast + haiku) * 100) / 100);
+  assert.equal(usage.cost.unpricedTokens, 500);
+  assert.deepEqual(usage.cost.unpricedModels, ["claude-new-model"]);
+  assert.deepEqual(usage.cost.models.map(row => [row.model, row.fast ?? false, row.usd]), [
+    ["claude-opus-5-5[1m]", true, 40],
+    ["claude-opus-5-5", false, 37.2],
+    ["claude-haiku-5-5", false, 2.6],
+    ["claude-new-model", false, undefined],
+  ]);
+  const custom = await countStoryTokens("ESM-144", { logs, prices: { "claude-new-model": { input: 0, output: 2000, cacheRead: 0 } } });
+  assert.equal(custom.cost.usd, 1);
+  assert.deepEqual(custom.cost.unpricedModels, ["claude-haiku-5-5", "claude-opus-5-5", "claude-opus-5-5[1m]"]);
+});
+
+test("ESM-144: story-map tokens prints the cost and --prices replaces the built-in prices", async t => {
+  const { root, logs, run } = await scratch(t, { "-repo/a.jsonl": [response({ id: "m1", branch: "feat/esm-144", model: "claude-sonnet-5-5", output: 1_000_000 })] });
+  const text = run("tokens", "--logs", logs, "ESM-144");
+  assert.match(text.stdout, /Est\. cost: +\$10\.00 at API list prices as of \d{4}-\d{2}-\d{2}/);
+  assert.match(text.stderr, /--tokens 1000000 --estimated-cost 10\.00 --write/);
+  assert.match(run("tokens", "--format", "markdown", "--logs", logs, "ESM-144").stdout, /Estimated cost: \*\*\$10\.00\*\* at API list prices/);
+  await writeFile(join(root, "prices.json"), JSON.stringify({ "claude-sonnet-5-5": { input: 1, output: 5, cacheRead: 0.1 } }));
+  const json = JSON.parse(run("tokens", "--format", "json", "--prices", "prices.json", "--logs", logs, "ESM-144").stdout);
+  assert.equal(json.cost.usd, 5);
+  assert.equal(json.prices, "prices.json");
+  await writeFile(join(root, "bad.json"), JSON.stringify({ "claude-sonnet-5-5": { input: "cheap" } }));
+  const bad = run("tokens", "--prices", "bad.json", "--logs", logs, "ESM-144");
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /input must be a price/);
+});
+
+test("ESM-144: edit --estimated-cost records dollars to the cent, internal only", async t => {
+  const result = await proposeStoryMapEdit(ownMap, [{ op: "estimated-cost", id: "ESM-105", usd: 14.274 }]);
+  assert.equal(result.valid, true);
+  assert.match(result.lineDiff, /\n\+ {4}estimatedCostUsd: 14\.27\n/);
+  assert.match(result.summary, /Estimated cost: none → \$14\.27/);
+  const map = parseStoryMap(result.source);
+  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === "ESM-105").estimatedCostUsd, 14.27);
+  assert.equal(JSON.stringify(getStoryMapForViewer(map, { id: "c", roles: [] })).includes("14.27"), false);
+  const { run } = await scratch(t, {});
+  assert.equal(run("edit", "ESM-105", "--estimated-cost", "$1,204.50").status, 0);
+  const bad = run("edit", "ESM-105", "--estimated-cost", "about ten");
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /--estimated-cost must be an amount in US dollars/);
 });

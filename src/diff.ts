@@ -37,6 +37,8 @@ export interface StoryUpdate extends StoryDiffRef {
   estimate?: { from?: number; to?: number };
   /** Tokens used to deliver the story, before and after. Absent on one side when none were recorded. */
   tokens?: { from?: number; to?: number };
+  /** Estimated cost in US dollars, before and after. */
+  estimatedCostUsd?: { from?: number; to?: number };
   /** Other fields that changed, such as `summary`, `notes` or `sources`. */
   details: string[];
 }
@@ -320,13 +322,19 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
         ...(story.tokens !== undefined ? { to: story.tokens } : {}),
       };
     }
+    if (previous.estimatedCostUsd !== story.estimatedCostUsd) {
+      update.estimatedCostUsd = {
+        ...(previous.estimatedCostUsd !== undefined ? { from: previous.estimatedCostUsd } : {}),
+        ...(story.estimatedCostUsd !== undefined ? { to: story.estimatedCostUsd } : {}),
+      };
+    }
     for (const field of ["dependsOn", "jobs", "personas"] as const) {
       if (!same(previous[field] ?? [], story[field] ?? [])) update[field] = { from: previous[field] ?? [], to: story[field] ?? [] };
     }
     for (const field of ["summary", "statusReason", "notes", "sources", "customer", "updatedBy"] as const) {
       if (!same(previous[field], story[field])) update.details.push(field);
     }
-    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.tokens || update.dependsOn || update.jobs || update.personas || update.details.length) {
+    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.tokens || update.estimatedCostUsd || update.dependsOn || update.jobs || update.personas || update.details.length) {
       updated.push(update);
     }
   }
@@ -486,6 +494,7 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     if (update.titleChange) changes.push(`Renamed from “${text(update.titleChange.from)}”`);
     if (update.estimate) changes.push(`Estimate: ${update.estimate.from ?? "none"} → ${update.estimate.to ?? "none"}`);
     if (update.tokens) changes.push(`Tokens used: ${formatTokens(update.tokens.from)} → ${formatTokens(update.tokens.to)}`);
+    if (update.estimatedCostUsd) changes.push(`Estimated cost: ${formatUsd(update.estimatedCostUsd.from)} → ${formatUsd(update.estimatedCostUsd.to)}`);
     const ids = (list: string[]) => list.map(code).join(", ") || "none";
     if (update.dependsOn) changes.push(`Depends on: ${ids(update.dependsOn.from)} → ${ids(update.dependsOn.to)}`);
     if (update.jobs) changes.push(`Jobs: ${ids(update.jobs.from)} → ${ids(update.jobs.to)}`);
@@ -559,3 +568,6 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
 
 /** “1,843,920”, or “none” when no count was recorded. */
 const formatTokens = (tokens: number | undefined) => (tokens === undefined ? "none" : tokens.toLocaleString("en-US"));
+
+/** “$14.27”, or “none”. */
+const formatUsd = (usd: number | undefined) => (usd === undefined ? "none" : `$${usd.toFixed(2)}`);

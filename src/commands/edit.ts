@@ -110,7 +110,7 @@ const escapeDiff = (diff: string) => diff.split("\n").map(escapeText).join("\n")
 
 export const edit = defineCommand({
   parse(rest: string[]) {
-    const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from" | "tokens", string>> = {};
+    const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from" | "tokens" | "estimatedCost", string>> = {};
     const lists: [option: string, op: string, key: string][] = [
       ["--add-source", "add-source", "source"], ["--remove-source", "remove-source", "source"],
       ["--add-job", "add-job", "job"], ["--remove-job", "remove-job", "job"],
@@ -122,7 +122,7 @@ export const edit = defineCommand({
     const names: Record<string, keyof typeof fields> = {
       "--status": "status", "--reason": "reason", "--release": "release", "--activity": "activity", "--title": "title",
       "--summary": "summary", "--notes": "notes", "--customer-title": "customerTitle", "--customer-summary": "customerSummary", "--from": "from",
-      "--tokens": "tokens",
+      "--tokens": "tokens", "--estimated-cost": "estimatedCost",
     };
     const common = parseEditArgs(rest, (name, value) => {
       const list = lists.find(([option]) => option === name);
@@ -148,6 +148,11 @@ export const edit = defineCommand({
       const tokens = fields.tokens.replace(/[,_]/g, "");
       if (!/^\d+$/.test(tokens) || !Number.isSafeInteger(Number(tokens))) throw new ArgumentError(`--tokens must be a whole number, such as 1843920, not ${fields.tokens}`);
       operations.push({ op: "tokens", id, tokens: Number(tokens) });
+    }
+    if (fields.estimatedCost) {
+      const usd = fields.estimatedCost.replace(/^\$/, "").replace(/,/g, "");
+      if (!/^\d+(\.\d+)?$/.test(usd)) throw new ArgumentError(`--estimated-cost must be an amount in US dollars, such as 14.27, not ${fields.estimatedCost}`);
+      operations.push({ op: "estimated-cost", id, usd: Number(usd) });
     }
     for (const listEdit of listEdits) operations.push({ ...(listEdit as object), id });
     if (fields.customerTitle) operations.push({ op: "customer-title", id, title: fields.customerTitle });
