@@ -1067,7 +1067,7 @@ stories:
     title: Open an agent brief in Claude or ChatGPT
     activity: plan
     release: v0-7-5
-    status: in-progress
+    status: merged
     estimate: 2
     dependsOn:
       - ESM-124
