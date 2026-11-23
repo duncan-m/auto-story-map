@@ -31,7 +31,7 @@ The internal story panel gets a **Change** section with a status picker, a reaso
 - The command is built from the same options `story-map edit` takes, with each value quoted for the shell, so a reason with quotes or spaces pastes safely. A test checks the quoting against `story-map edit`'s parser.
 - No backend and no new rights: copying a command changes nothing.
 
-This is the UI that item 3 saves from, so it is built first and item 3 adds only the save. Suggested estimate: 3 points.
+It uses the story permalinks from ESM-805, in 0.7.4. This is the UI that item 3 saves from, so it is built first and item 3 adds only the save. Suggested estimate: 3 points.
 
 ## 3. Save changes from the local preview
 

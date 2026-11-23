@@ -531,7 +531,7 @@ npx --no-install story-map edit ESM-744 --status in-progress
 npx --no-install story-map edit ESM-745 --status blocked --reason "Waiting on the host's Git provider to accept custom refs"
 npx --no-install story-map edit ESM-743 --release v0-7-5 --activity review
 npx --no-install story-map edit ESM-741 --add-source docs/story-map.md#read-the-map-from-the-command-line
-npx --no-install story-map edit ESM-902 --add-job answer-whats-next
+npx --no-install story-map edit ESM-902 --add-job get-oriented
 npx --no-install story-map add --activity review --release v0-7-5 --title "Check claims in CI"
 npx --no-install story-map release-impact v0-7-5 --metric "Agents starting the same story" --expected "None, for teams that use claims"
 ```

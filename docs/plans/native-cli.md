@@ -219,11 +219,11 @@ npx --no-install story-map evidence --shipped-tags 'v*'
 
 ## Not now
 
-- **An MCP server.** A thin wrapper over the same functions once the commands settle.
+- **An MCP server.** A thin wrapper over the same functions once the commands settle. Now planned as ESM-748 in 0.8.0, after this plan's commands ship. See [the 0.8.0 plan](0.8.0-agents-and-adoption.md#1-serve-the-cli-over-mcp).
 - **Open PRs as evidence.** Needs a token and each host's API. The audit agent (ESM-502) can look them up itself.
 - **Claims on the board.** Showing “claimed by audit-bot” on a card needs the board to reach the remote at request time.
 - **Editing releases and activities** beyond release impact.
-- **Proposing an edit from the board.** A story panel could copy a `story-map edit` command, such as moving the story to another release, for a person or agent to run. It keeps the board read-only, as ESM-404 decided, and needs ESM-744 and the permalinks in ESM-805 first. A pre-filled pull request is not possible without a token and the host's API.
+- **Proposing an edit from the board.** A story panel could copy a `story-map edit` command, such as moving the story to another release, for a person or agent to run. It keeps the board read-only, as ESM-404 decided, and needs ESM-744 and the permalinks in ESM-805 first. A pre-filled pull request is not possible without a token and the host's API. Now planned as ESM-505 and ESM-506 in 0.7.6. See [Confirm drafts and triage from the local preview](local-triage.md#2-change-status-and-release-from-the-story-panel).
 
 ## Questions for review
 
