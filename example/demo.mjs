@@ -105,7 +105,7 @@ const server = createServer(async (request, response) => {
         validateCommand: "npm run validate",
       },
       // Offers Open in Claude and Open in ChatGPT in each panel's Share menu. They send the brief to those companies.
-      webAgents: ["claude", "chatgpt"],
+      webAgents: ["claude", "claude-code", "chatgpt"],
       sourceBaseUrl,
       repositoryUrl,
       canViewInternal,

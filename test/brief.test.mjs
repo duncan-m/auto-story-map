@@ -464,6 +464,49 @@ test("ESM-125: a brief too long for a link opens an empty chat, hidden until boa
   assert.doesNotMatch(menu, /\?q=/);
 });
 
+test("ESM-144: Open in Claude Code starts a session in the GitHub repository with the brief", () => {
+  const view = getStoryMapForViewer(shopMap(), engineer, { brief: true });
+  const brief = view.stories.find(card => card.id === "SHOP-3").brief;
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, {
+    map: view,
+    repositoryUrl: "https://github.com/acme/shop.git",
+    webAgents: ["claude", "claude-code", "chatgpt"],
+  }));
+  const [menu] = html.match(/<details class="esm-menu esm-panel-menu">[\s\S]*?<\/details>/g).filter(item => item.includes("Copied brief: SHOP-3"));
+  const decode = href => href.replaceAll("&#x27;", "'").replaceAll("&amp;", "&");
+  const links = [...menu.matchAll(/<a class="esm-menu-item" href="([^"]+)" target="_blank" rel="noopener noreferrer" data-esm-web-agent="([\w-]+)">/g)];
+  assert.deepEqual(links.map(link => link[2]), ["claude", "claude-code", "chatgpt"]);
+  assert.equal(decode(links[1][1]), `https://claude.ai/code?repo=acme%2Fshop&q=${encodeURIComponent(brief)}`);
+  // Only Claude Code takes the repository.
+  assert.equal(decode(links[0][1]), `https://claude.ai/new?q=${encodeURIComponent(brief)}`);
+  assert.match(menu, /Open in Claude Code<svg[\s\S]*?New session in acme\/shop with the brief, sent to Anthropic/);
+  assert.match(menu, /Open in Claude<svg[\s\S]*?New chat with the brief, sent to Anthropic/);
+});
+
+test("ESM-144: Open in Claude Code leaves the repository out when repositoryUrl is not a GitHub repository", () => {
+  const view = getStoryMapForViewer(shopMap(), engineer, { brief: true });
+  const brief = view.stories.find(card => card.id === "SHOP-3").brief;
+  for (const repositoryUrl of [undefined, "https://gitlab.com/acme/shop", "https://github.com/acme", "javascript:alert(1)"]) {
+    const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, repositoryUrl, webAgents: ["claude-code"] }));
+    const [menu] = html.match(/<details class="esm-menu esm-panel-menu">[\s\S]*?<\/details>/g).filter(item => item.includes("Copied brief: SHOP-3"));
+    const href = menu.match(/href="([^"]+)" target="_blank" rel="noopener noreferrer" data-esm-web-agent="claude-code"/)[1];
+    assert.equal(href.replaceAll("&#x27;", "'").replaceAll("&amp;", "&"), `https://claude.ai/code?q=${encodeURIComponent(brief)}`, String(repositoryUrl));
+    assert.match(menu, /New session with the brief, sent to Anthropic/);
+  }
+});
+
+test("ESM-144: a brief too long for a link opens an empty Claude Code session in the repository", () => {
+  const long = { estimate: 3, summary: "é".repeat(500), sources: ["docs/plans/shop.md#3"] };
+  const map = shopMap([story("SHOP-3", "browse", "r2", "planned", long), story("SHOP-4", "buy", "r2", "planned", long)]);
+  const view = getStoryMapForViewer(map, engineer, { brief: true });
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, repositoryUrl: "https://github.com/acme/shop", webAgents: ["claude-code"] }));
+  const menu = html.match(/<details class="esm-menu esm-panel-menu">(?:(?!<\/details>)[\s\S])*?Copied brief: 1\.1, 2 stories[\s\S]*?<\/details>/)[0];
+  const briefId = menu.match(/data-esm-copy-brief="([^"]+)"/)[1];
+  assert.match(menu, new RegExp(`<li class="esm-menu-agent" hidden=""><a class="esm-menu-item" href="https://claude.ai/code\\?repo=acme%2Fshop" target="_blank" rel="noopener noreferrer" data-esm-web-agent="claude-code" data-esm-brief-copy="${briefId}">`));
+  assert.match(menu, /Copies the brief, then opens a new session in acme\/shop/);
+  assert.doesNotMatch(menu, /q=/);
+});
+
 test("ESM-125: board.js shows the long-brief links and copies the brief as the chat opens", async t => {
   const written = [];
   const status = { textContent: "" };
