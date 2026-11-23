@@ -5,7 +5,7 @@ Status: proposed. The work is split across two releases of the map. Copying a br
 - **0.7.5: Evidence and claims for agents**: ESM-123, ESM-124, ESM-125 and ESM-144
 - **0.8.1: Agent briefs**: ESM-126 and ESM-127
 
-The estimates below are agreed, except for ESM-144, which has none yet.
+The estimates below are agreed.
 
 Items are numbered in the order they should be built:
 
@@ -161,7 +161,7 @@ ESM-144 adds **Open in Claude Code** to the Share menu. It builds on ESM-125, wh
 - **Long briefs** work as for the other agents: past 8,000 characters the link opens an empty session in the repository, and board.js copies the brief first.
 - **If the parameters change**, the link still opens Claude Code, just without the prompt or repository. **Open in Claude** stays as its own option.
 
-Estimate: none agreed yet.
+Estimate: 1 point, agreed. It reuses the Share menu, the long-brief fallback and board.js from ESM-125.
 
 ### Claude Code mockup
 
@@ -239,7 +239,7 @@ These are proposals. Each is easy to change during review.
 | ESM-123: Write a handoff brief for a story or release | 0.7.5 | 5, agreed |
 | ESM-124: Copy an agent brief from the story and release panels | 0.7.5 | 2, agreed |
 | ESM-125: Open an agent brief in Claude or ChatGPT | 0.7.5 | 2, agreed |
-| ESM-144: Open an agent brief in Claude Code on the web | 0.7.5 | Not agreed |
+| ESM-144: Open an agent brief in Claude Code on the web | 0.7.5 | 1, agreed |
 | ESM-126: Write agent briefs from the command line | 0.8.1 | 3, agreed |
 | ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.8.1 | 5, agreed |
 
