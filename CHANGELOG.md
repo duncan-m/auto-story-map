@@ -4,6 +4,14 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
+### Story dependencies
+
+- Stories can list the stories they depend on in a new optional `dependsOn`, up to 10 story IDs. Validation rejects unknown, repeated and self dependencies and cycles, and warns when a story depends on a cut story. See [Record dependencies](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#record-dependencies).
+- Internal cards show how many stories they depend on, to the right of the status. The story panel shows the same count and a Dependencies section listing the stories it depends on and the stories waiting for it, with their status and release, each opening its panel. Customers never see dependencies.
+- Internal views give each story `dependsOn` and `dependents`, each a list of `StoryDependency` with the story's ID, title, status and release, so they stay complete when a filter hides those stories. The JSON export and `story-map story` include them. New export `storyDependsOnMaxItems`.
+- `story-map edit` takes `--add-dependency` and `--remove-dependency`, `story-map add` takes `--dependency`, and `--from` takes the `add-dependency` and `remove-dependency` ops and `dependsOn` on `add`. `story-map diff` shows dependencies added and removed.
+- `story-map story` leaves a space after labels as long as the label column, such as “Updated by:”.
+
 ### Agent briefs
 
 - New `storyMapBrief(view, { story })` and `storyMapBrief(view, { release })` write a handoff brief for a coding agent from the internal map: a compact Markdown prompt with `<rules>`, `<target>`, `<context>`, `<in_flight>`, `<open_decisions>` and `<done_when>` sections. It lists the targets with their plan, personas and jobs, the delivered stories nearby to reuse, the planned stories nearby not to build yet, the tagged tests and changes that already name each target, draft jobs, missing estimates and plans, and blocked stories, and names the branch to create. Options `mapPath`, `readFirst`, `validateCommand`, `testCommand` and `baseBranch` fit it to the repository. Text from the map is escaped so it cannot close or add a section. A story brief stays under 4 KB and a release brief under 16 KB. Throws a `TypeError` for a customer or filtered view. New exports `storyMapBriefBranch`, `storyBriefMaxBytes`, `releaseBriefMaxBytes`, `briefBranchMaxLength` and `briefBuiltNearbyMaxItems`, and types `StoryMapBriefRequest`, `StoryMapBriefOptions` and `StoryMapBriefDocument`. See [Write a brief for an agent](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#write-a-brief-for-an-agent).

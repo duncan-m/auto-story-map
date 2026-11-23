@@ -6,7 +6,7 @@ import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryDependency, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -403,6 +403,70 @@ function CardTests({ story }: { story: InternalStoryCard }) {
   );
 }
 
+function DependencyIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="4" cy="4" r="1.9" /><circle cx="12" cy="12" r="1.9" /><path d="M4 5.9v2.6A3.5 3.5 0 0 0 7.5 12h2.6" />
+    </svg>
+  );
+}
+
+/** How many stories this one depends on, beside its status, read as “Depends on 2 stories: ESM-105, ESM-116”. Nothing when it has none. */
+function DependencyCount({ story }: { story: InternalStoryCard }) {
+  const count = story.dependsOn?.length ?? 0;
+  if (!count) return null;
+  const label = `Depends on ${storyCount(count)}: ${story.dependsOn!.map(dependency => dependency.id).join(", ")}`;
+  return (
+    <span className="esm-dependency-count" title={label}>
+      <DependencyIcon />
+      <span aria-hidden="true">{count}</span>
+      <span className="esm-visually-hidden">{label}</span>
+    </span>
+  );
+}
+
+/**
+ * The stories a story depends on and the stories waiting for it. A story on the board
+ * opens its panel. One a filter hides is still listed, as text.
+ */
+function DependenciesSection({ story, panelId, storyPanelIds, releaseTitles }: {
+  story: InternalStoryCard;
+  panelId: string;
+  storyPanelIds: ReadonlyMap<string, string>;
+  releaseTitles: ReadonlyMap<string, string>;
+}) {
+  const headingId = `${panelId}-dependencies`;
+  const list = (dependencies: StoryDependency[], suffix: string, title: string) => (
+    <>
+      <h5 className="esm-dependencies-heading" id={`${headingId}-${suffix}`}>{title}</h5>
+      <ul className="esm-dependencies" aria-labelledby={`${headingId}-${suffix}`}>
+        {dependencies.map(dependency => {
+          const target = storyPanelIds.get(dependency.id);
+          const name = <><span className="esm-card-id">{dependency.id}</span><span className="esm-dependency-title">{dependency.title}</span></>;
+          return (
+            <li key={dependency.id}>
+              {target
+                ? <button type="button" className="esm-dependency-link" aria-haspopup="dialog" {...popoverTarget(target)}>{name}</button>
+                : <span className="esm-dependency-link">{name}</span>}
+              <span className="esm-dependency-meta">
+                <Status status={dependency.status} />
+                <span className="esm-dependency-release">{releaseTitles.get(dependency.release) ?? dependency.release}</span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+  return (
+    <section className="esm-detail-section" aria-labelledby={headingId}>
+      <h4 id={headingId}>Dependencies</h4>
+      {!!story.dependsOn?.length && list(story.dependsOn, "on", "Depends on")}
+      {!!story.dependents?.length && list(story.dependents, "waiting", "Waiting for this story")}
+    </section>
+  );
+}
+
 function PullRequestIcon() {
   return (
     <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -631,8 +695,11 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds }: {
+function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles }: {
   story: InternalStoryCard;
+  /** Each placed story's panel, by story ID, so the Dependencies section can open it. */
+  storyPanelIds: ReadonlyMap<string, string>;
+  releaseTitles: ReadonlyMap<string, string>;
   links: RepositoryLinker;
   permalink?: string;
   lookup: PersonaLookup;
@@ -672,6 +739,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         </div>
       </div>
       <Status status={story.status} />
+      {internal && <DependencyCount story={story} />}
       {internal && story.statusReason && <p className="esm-status-reason">{story.statusReason}</p>}
       {internal && story.inProgressSince && (
         <p className="esm-progress-since">
@@ -727,6 +795,9 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         <dd>{releaseTitle}</dd>
         {internal && story.estimate !== undefined && <><dt>Estimate</dt><dd>{points(story.estimate)}</dd></>}
       </dl>
+      {internal && (!!story.dependsOn?.length || !!story.dependents?.length) && (
+        <DependenciesSection story={story} panelId={panelId} storyPanelIds={storyPanelIds} releaseTitles={releaseTitles} />
+      )}
       {internal && !!story.history?.length && (
         <section className="esm-detail-section">
           <h4 id={`${panelId}-history`}>History</h4>
@@ -1626,6 +1697,7 @@ export function StoryMapBoard({
     activityTitles.has(story.activity) && releaseTitles.has(story.release)
   );
   const panelIds = new Map(placed.map((story, index) => [story, `${baseId}-story-${index}`]));
+  const panelIdsByStory = new Map(placed.map(story => [story.id, panelIds.get(story)!]));
   const internalReleases = map.audience === "internal" ? new Map(map.releases.map(release => [release.id, release])) : undefined;
   const lookup = personaLookup(map);
   const personaPanelIds = new Map([...lookup.personas.keys()].map((id, index) => [id, `${baseId}-persona-${index}`]));
@@ -1779,6 +1851,7 @@ export function StoryMapBoard({
                             <span className="esm-card-title">{story.title}</span>
                             <span className="esm-card-meta">
                               <Status status={story.status} />
+                              {internal && <DependencyCount story={story} />}
                               {internal && <CardTests story={story} />}
                               {internal && (story.stalled && story.inProgressSince
                                 ? <StalledLabel since={story.inProgressSince} settings={settings} />
@@ -1813,6 +1886,8 @@ export function StoryMapBoard({
           changesIndexed={changesIndexed}
           lookup={lookup}
           personaPanelIds={personaPanelIds}
+          storyPanelIds={panelIdsByStory}
+          releaseTitles={releaseTitles}
         />
       ))}
       {!personasTab && personaList.map(persona => (

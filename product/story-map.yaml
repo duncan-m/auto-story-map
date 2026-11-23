@@ -767,6 +767,8 @@ stories:
     release: v0-7-6
     status: planned
     estimate: 5
+    dependsOn:
+      - ESM-105
     jobs:
       - update-the-map
       - get-oriented
@@ -808,6 +810,8 @@ stories:
     release: v0-7-6
     status: planned
     estimate: 3
+    dependsOn:
+      - ESM-122
     jobs:
       - triage-backlog
       - get-oriented
@@ -820,6 +824,8 @@ stories:
     release: v0-7-6
     status: planned
     estimate: 5
+    dependsOn:
+      - ESM-111
     jobs:
       - triage-backlog
       - get-oriented
@@ -857,11 +863,14 @@ stories:
     release: v0-7-6
     status: planned
     estimate: 8
+    dependsOn:
+      - ESM-113
+      - ESM-114
     jobs:
       - agree-first-release-plan
       - share-roadmap
     summary: The internal board's Version picker shows the map as it was at each named version, from snapshots in the history file, with a banner and a summary of what changed since.
-    notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size. Needs ESM-113 and ESM-114.
+    notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size.
     sources:
       - docs/plans/map-versions.md#3-switch-the-board-to-an-earlier-version
   - id: ESM-128
@@ -1043,7 +1052,7 @@ stories:
     title: Show a story's dependencies on its card and panel
     activity: explore
     release: v0-7-5
-    status: planned
+    status: merged
     estimate: 8
     jobs:
       - triage-backlog
@@ -1052,6 +1061,7 @@ stories:
     notes: Dependencies are written in story notes today, such as Needs ESM-113, so the board never shows them. dependsOn is added to the schema. Validate checks its IDs, rejects cycles and warns when a story depends on a cut story. edit and add get options to add and remove dependencies. The stories waiting for a story are worked out from the other stories' lists, not recorded. Internal view only.
     sources:
       - docs/plans/story-dependencies.md#ui-mockup
+      - docs/story-map.md#record-dependencies
   # Personas
   - id: ESM-901
     title: Define personas in the map file
@@ -1508,6 +1518,9 @@ stories:
     release: v0-8-1
     status: planned
     estimate: 3
+    dependsOn:
+      - ESM-105
+      - ESM-116
     jobs:
       - pick-up-work
       - plan-and-build
@@ -1521,6 +1534,8 @@ stories:
     release: v0-8-1
     status: planned
     estimate: 5
+    dependsOn:
+      - ESM-112
     jobs:
       - plan-and-build
     summary: The writable local preview has a Build button that starts Claude Code or Codex in the repository with the story's or release's brief as its first message.

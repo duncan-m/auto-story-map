@@ -124,11 +124,24 @@ export type StoryHistoryEntry = Omit<StoryHistoryEvent, "storyId">;
 /** A pull request or direct commit that names a story, as internal viewers see it. */
 export type StoryChangeEntry = Omit<StoryChange, "storyIds">;
 
+/** Another story as a story's panel lists it under its dependencies. */
+export interface StoryDependency {
+  id: string;
+  title: string;
+  status: StoryStatus;
+  /** The story's release ID. */
+  release: string;
+}
+
 export interface InternalStoryCard extends StoryCard {
   /** Why the story is blocked or cut. */
   statusReason?: string;
   /** Effort estimate in story points. */
   estimate?: EstimatePoints;
+  /** The stories this one depends on, in the order its `dependsOn` lists them. Absent when it has none. */
+  dependsOn?: StoryDependency[];
+  /** The stories whose `dependsOn` names this one, in map order. Absent when none do. */
+  dependents?: StoryDependency[];
   /** IDs of the jobs to be done the story serves, most important first. Absent when it names none. */
   jobs?: string[];
   updatedBy?: string;
@@ -252,6 +265,32 @@ function projectLabel(item: StoryMapLabel): StoryMapLabel {
   return { id: item.id, title: item.title, summary: item.summary };
 }
 
+/**
+ * Each story's dependencies and the stories waiting for it, with what a panel
+ * shows of them, so they stay complete when a filter hides those stories.
+ */
+function storyDependencies(map: StoryMapDocument) {
+  const byId = new Map(map.stories.map(story => [story.id, story]));
+  const summary = (story: StoryMapDocument["stories"][number]): StoryDependency =>
+    ({ id: story.id, title: story.title, status: story.status, release: story.release });
+  const dependents = new Map<string, StoryDependency[]>();
+  for (const story of map.stories) {
+    for (const id of new Set(story.dependsOn ?? [])) {
+      if (id === story.id || !byId.has(id)) continue;
+      const list = dependents.get(id);
+      if (list) list.push(summary(story));
+      else dependents.set(id, [summary(story)]);
+    }
+  }
+  return (story: StoryMapDocument["stories"][number]): { dependsOn?: StoryDependency[]; dependents?: StoryDependency[] } => {
+    const dependsOn = (story.dependsOn ?? []).flatMap(id => byId.get(id) ?? []).map(summary);
+    return {
+      ...(dependsOn.length ? { dependsOn } : {}),
+      ...(dependents.has(story.id) ? { dependents: dependents.get(story.id)! } : {}),
+    };
+  };
+}
+
 /** Leaves the totals out when nothing in the release is estimated, so “no estimates” differs from “0 points”. */
 function releaseEstimates(totals: (ReleaseEstimates & { estimated: number }) | undefined): { estimates?: ReleaseEstimates } {
   if (!totals?.estimated) return {};
@@ -357,6 +396,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       if (story.status === "merged") totals.merged += story.estimate;
       else if (story.status !== "shipped") totals.left += story.estimate;
     }
+    const dependencies = storyDependencies(map);
     // Stalled needs to know when the story became in progress, so it only works with history.
     const stalledAfterWeeks = history ? stalledThreshold(map, options.stalledAfterWeeks) : 0;
     const stalledBefore = (options.now ?? new Date()).getTime() - stalledAfterWeeks * weekMs;
@@ -418,6 +458,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           status: story.status,
           statusReason: story.statusReason,
           ...(story.estimate !== undefined ? { estimate: story.estimate } : {}),
+          ...dependencies(story),
           ...personaFields(resolvePersonas(story), story.jobs),
           updatedBy: story.updatedBy,
           notes: story.notes,

@@ -367,6 +367,10 @@
 .esm-card-tests { display: inline-flex; align-items: center; gap: 4px; color: var(--esm-muted); font-size: .75rem; }
 .esm-card-tests::before { content: "·"; margin-right: 4px; color: var(--esm-faint); }
 .esm-card-tests .esm-icon { color: var(--esm-faint); }
+.esm-dependency-count { display: inline-flex; align-items: center; gap: 4px; color: var(--esm-muted); font-size: .75rem; }
+.esm-card-meta .esm-dependency-count::before { content: "·"; margin-right: 4px; color: var(--esm-faint); }
+.esm-dependency-count .esm-icon { color: var(--esm-faint); }
+.esm-detail > .esm-dependency-count { margin-left: 10px; vertical-align: middle; }
 .esm-changed { color: var(--esm-faint); font-size: .75rem; }
 .esm-changed::before { content: "·"; margin-right: 8px; }
 .esm-stalled { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 4px; background: var(--esm-stalled-bg); color: var(--esm-stalled); font-size: .75rem; font-weight: 650; }
@@ -507,6 +511,17 @@
 }
 .esm-release-story:hover { border-color: var(--esm-card-hover); }
 .esm-release-story .esm-card-id { flex: 0 0 auto; }
+.esm-dependencies-heading { margin: 12px 0 6px; color: var(--esm-muted); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.esm-dependencies-heading:first-of-type { margin-top: 0; }
+.esm-dependencies { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.esm-dependencies li { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--esm-card-line); border-radius: 10px; background: var(--esm-paper); }
+.esm-dependencies li:has(button:hover) { border-color: var(--esm-card-hover); }
+.esm-dependency-link { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 0; border: 0; background: none; color: var(--esm-ink); font: inherit; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
+button.esm-dependency-link { color: var(--esm-accent-ink); cursor: pointer; }
+button.esm-dependency-link:hover .esm-dependency-title { text-decoration: underline; }
+.esm-dependency-link .esm-card-id { flex: 0 0 auto; }
+.esm-dependency-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.esm-dependency-release { color: var(--esm-faint); font-size: .75rem; }
 .esm-release-hidden { margin: 10px 0 0; color: var(--esm-muted); }
 .esm-updater { margin: 18px 0 0; color: var(--esm-muted); font-size: .875rem; }
 

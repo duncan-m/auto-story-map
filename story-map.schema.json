@@ -455,6 +455,15 @@
               "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
             }
           },
+          "dependsOn": {
+            "description": "Optional. Up to 10 IDs of stories that must land before this one, most important first. Internal only. The stories waiting for a story are worked out from these lists, so list each dependency once, on the story that waits.",
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+            }
+          },
           "estimate": {
             "description": "Optional effort estimate in story points: 1, 2, 3, 5, 8, 13. Internal only. A story above 13 should be split.",
             "type": "number",

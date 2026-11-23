@@ -4,7 +4,7 @@ import { changedWithinOptions, type ChangedWithinDays } from "../filter.js";
 import { jobStatement } from "../personas.js";
 import { findStories, getStories } from "../read.js";
 import { storyStatuses, storyStatusLabels, type StoryStatusFilter } from "../status.js";
-import { getStoryMapForViewer, type InternalReleaseLabel, type StoryMapView } from "../view.js";
+import { getStoryMapForViewer, type InternalReleaseLabel, type StoryDependency, type StoryMapView } from "../view.js";
 import {
   ArgumentError,
   count,
@@ -74,9 +74,13 @@ function labelled(view: { releases: Titled; activities: Titled; personas?: Title
 function field(lines: string[], label: string, value: string | undefined) {
   if (!value) return;
   const [first, ...more] = escapeLines(value);
-  lines.push(`  ${`${label}:`.padEnd(11)}${first}`);
+  // Labels longer than the column, such as “Updated by:”, still get a space before the value.
+  lines.push(`  ${`${label}:`.padEnd(10)} ${first}`);
   for (const line of more) lines.push(line ? `             ${line}` : "");
 }
+
+/** “ESM-105 (planned), ESM-116 (planned)”. */
+const dependencyList = (stories: readonly StoryDependency[]) => stories.map(story => `${story.id} (${story.status})`).join(", ");
 
 function storyText(view: Extract<StoryMapView, { audience: "internal" }>, story: StoryMapJsonStory): string {
   const lines = [`${escapeText(story.id)}  ${escapeText(story.title)}`];
@@ -85,6 +89,8 @@ function storyText(view: Extract<StoryMapView, { audience: "internal" }>, story:
   field(lines, "Release", labelled(view, "releases", story.release));
   field(lines, "Activity", labelled(view, "activities", story.activity));
   if (story.estimate) field(lines, "Estimate", `${story.estimate} pts`);
+  if (story.dependsOn?.length) field(lines, "Depends on", dependencyList(story.dependsOn));
+  if (story.dependents?.length) field(lines, "Waiting for it", dependencyList(story.dependents));
   if (story.personas?.length) field(lines, "For", story.personas.map(id => labelled(view, "personas", id)).join(", "));
   if (story.jobs?.length) {
     const jobs = new Map((view.personas ?? []).flatMap(persona => persona.jobs.map(job => [job.id, { job, persona }] as const)));

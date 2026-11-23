@@ -25,6 +25,8 @@ export const personasMaxItems = 12;
 export const personaJobsMaxItems = 8;
 /** Most jobs or personas on one story. */
 export const storyPersonasMaxItems = 4;
+/** Most stories one story can depend on. */
+export const storyDependsOnMaxItems = 10;
 /** Most workflow steps on one job. */
 export const jobStepsMaxItems = 6;
 /** Longest job step title, in characters. */
@@ -144,6 +146,8 @@ function formatSchemas(strict: boolean) {
       .describe("Why the story is blocked or cut. Internal only."),
     jobs: storyRefs("job", "The story's personas include the persona that owns each job."),
     personas: storyRefs("persona", "For a persona the story helps without serving one of their jobs. Personas from jobs need not be repeated."),
+    dependsOn: z.array(id).max(storyDependsOnMaxItems).optional()
+      .describe(`Optional. Up to ${storyDependsOnMaxItems} IDs of stories that must land before this one, most important first. Internal only. The stories waiting for a story are worked out from these lists, so list each dependency once, on the story that waits.`),
     estimate: z.literal(estimatePoints, { error: `Use one of ${estimatePoints.join(", ")} story points.` }).optional()
       .describe(`Optional effort estimate in story points: ${estimatePoints.join(", ")}. Internal only. A story above 13 should be split.`),
     updatedBy: z.string().trim().min(1).max(120).optional().describe("Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise."),
@@ -180,7 +184,7 @@ const strictSchemas = formatSchemas(true);
 const lenientSchemas = formatSchemas(false);
 
 type Path = (string | number)[];
-type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown; jobs?: unknown; personas?: unknown; context?: unknown; steps?: unknown };
+type Item = { id?: unknown; activity?: unknown; release?: unknown; customer?: unknown; jobs?: unknown; personas?: unknown; dependsOn?: unknown; context?: unknown; steps?: unknown };
 
 function items(value: unknown): Item[] {
   return Array.isArray(value) ? value.map(item => item && typeof item === "object" ? item as Item : {}) : [];
@@ -233,6 +237,8 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
   const activities = new Map(items(map.activities).map(activity => [activity.id, activity]));
   const releases = new Map(items(map.releases).map(release => [release.id, release]));
 
+  const storyIds = new Set(items(map.stories).map(story => story.id).filter(storyId => typeof storyId === "string"));
+
   items(map.stories).forEach((story, index) => {
     const activity = activities.get(story.activity);
     const release = releases.get(story.release);
@@ -247,6 +253,14 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
         else if (!known.has(ref)) issue(["stories", index, field, refIndex], `Unknown ${kind} '${ref}'.`);
       });
     }
+    const dependsOn = Array.isArray(story.dependsOn) ? story.dependsOn as unknown[] : [];
+    dependsOn.forEach((ref, refIndex) => {
+      if (typeof ref !== "string") return;
+      const path = ["stories", index, "dependsOn", refIndex];
+      if (dependsOn.indexOf(ref) !== refIndex) issue(path, `Story '${ref}' is listed twice.`);
+      else if (ref === story.id) issue(path, "A story cannot depend on itself.");
+      else if (!storyIds.has(ref)) issue(path, `Unknown story '${ref}'.`);
+    });
     if (story.customer && activity && !activity.customer) {
       issue(["stories", index, "activity"], "A customer-facing story requires customer-facing copy for its activity.");
     }
@@ -254,6 +268,59 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
       issue(["stories", index, "release"], "A customer-facing story requires customer-facing copy for its release.");
     }
   });
+  issues.push(...dependencyCycleIssues(items(map.stories)));
+  return issues;
+}
+
+/**
+ * Finds each dependency cycle once, such as A → B → A, and reports it on the
+ * `dependsOn` entry that closes it. Self-dependencies, duplicates and unknown
+ * IDs are reported elsewhere, so they are skipped here.
+ */
+function dependencyCycleIssues(stories: Item[]): { path: Path; message: string }[] {
+  const index = new Map<string, number>();
+  stories.forEach((story, storyIndex) => {
+    if (typeof story.id === "string" && !index.has(story.id)) index.set(story.id, storyIndex);
+  });
+  const edges = (storyIndex: number) => {
+    const story = stories[storyIndex];
+    const listed = Array.isArray(story.dependsOn) ? story.dependsOn as unknown[] : [];
+    return listed.flatMap((ref, refIndex) => typeof ref === "string" && ref !== story.id && index.has(ref) && listed.indexOf(ref) === refIndex
+      ? [{ to: index.get(ref)!, refIndex }] : []);
+  };
+  const issues: { path: Path; message: string }[] = [];
+  // 0: not visited, 1: on the current path, 2: done.
+  const state = new Array<number>(stories.length).fill(0);
+  for (let start = 0; start < stories.length; start++) {
+    if (state[start] || typeof stories[start].id !== "string" || index.get(stories[start].id as string) !== start) continue;
+    // Iterative depth-first search, so a long chain cannot overflow the stack.
+    const path: number[] = [start];
+    const next: number[] = [0];
+    const children: { to: number; refIndex: number }[][] = [edges(start)];
+    state[start] = 1;
+    while (path.length) {
+      const depth = path.length - 1;
+      const edge = children[depth][next[depth]++];
+      if (!edge) {
+        state[path.pop()!] = 2;
+        next.pop();
+        children.pop();
+        continue;
+      }
+      if (state[edge.to] === 1) {
+        const loop = path.slice(path.indexOf(edge.to)).map(storyIndex => stories[storyIndex].id as string);
+        issues.push({
+          path: ["stories", path[depth], "dependsOn", edge.refIndex],
+          message: `Dependency cycle: ${[...loop, loop[0]].join(" → ")}. Remove one of these dependencies.`,
+        });
+      } else if (state[edge.to] === 0) {
+        state[edge.to] = 1;
+        path.push(edge.to);
+        next.push(0);
+        children.push(edges(edge.to));
+      }
+    }
+  }
   return issues;
 }
 
@@ -403,6 +470,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
       });
     });
   });
+  const cutStories = new Set(map.stories.filter(story => story.status === "cut").map(story => story.id));
   const releasesWithEstimates = new Map<string, number>();
   for (const story of map.stories) {
     if (story.estimate !== undefined) releasesWithEstimates.set(story.release, (releasesWithEstimates.get(story.release) ?? 0) + 1);
@@ -415,6 +483,17 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
         path: ["stories", index],
         message: "Add an estimate: other stories in this release have one, so the release total leaves this story out.",
         itemId: story.id,
+      });
+    }
+    if (story.status !== "cut") {
+      story.dependsOn?.forEach((ref, refIndex) => {
+        if (!cutStories.has(ref)) return;
+        warnings.push({
+          severity: "warning",
+          path: ["stories", index, "dependsOn", refIndex],
+          message: `Depends on ${ref}, which is cut, so that work will not land. Remove the dependency, or cut or replan this story.`,
+          itemId: story.id,
+        });
       });
     }
     if ((story.status === "blocked" || story.status === "cut") && !story.statusReason) {

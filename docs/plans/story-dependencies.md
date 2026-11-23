@@ -1,6 +1,6 @@
 # Plan: show story dependencies
 
-Status: planned. The work is ESM-129 in the **0.7.5: Evidence and claims for agents** release of the map.
+Status: built. The work is ESM-129 in the **0.7.5: Evidence and claims for agents** release of the map.
 
 Stories already say what they need in their notes and plans, such as “Needs ESM-113 and ESM-114”, but the board never shows it. A builder has to read every story to find a workable build order, and nothing on the story that is needed says what is waiting for it.
 
@@ -10,7 +10,7 @@ Dependencies are internal only. The customer view does not change.
 
 ![Mockup of story cards with a dependency icon to the right of the status, and two story panels with a Dependencies section](story-dependencies-mockup.png)
 
-The mockup is [story-dependencies-mockup.html](story-dependencies-mockup.html), built on the real `styles.css` and the board's real markup, rendered from this product's map, status history and tests index. The dependencies are real ones from the stories' notes and plans. The panels leave out their Changes, Tests and Engineering sections. The dependency markup and its styles at the top of the file are proposed. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-129 links to this section from its `sources`.
+The mockup, made before the build, is [story-dependencies-mockup.html](story-dependencies-mockup.html), built on the real `styles.css` and the board's real markup, rendered from this product's map, status history and tests index. The dependencies are real ones from the stories' notes and plans. The panels leave out their Changes, Tests and Engineering sections. The dependency markup and its styles at the top of the file are proposed. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-129 links to this section from its `sources`.
 
 What it shows:
 
@@ -41,3 +41,9 @@ Validate rejects an ID that is not in the map, a story that depends on itself an
 ## Estimate
 
 8 points: the schema field and its checks, the edit and add options, the diff line, the card count, the panel's Dependencies section, moving the existing notes into `dependsOn`, the docs and tests.
+
+## What was built
+
+The guide describes the feature in [Record dependencies](../story-map.md#record-dependencies). The dependencies already written in this map's notes and plans moved into `dependsOn`: ESM-109 and ESM-126 depend on ESM-105, ESM-126 also on ESM-116, ESM-111 on ESM-122, ESM-112 on ESM-111, ESM-115 on ESM-113 and ESM-114, and ESM-127 on ESM-112.
+
+The handoff brief from ESM-123 does not list dependencies yet. Adding them to its `<target>` section is a follow-up.

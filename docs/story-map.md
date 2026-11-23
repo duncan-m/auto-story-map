@@ -64,6 +64,7 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 | What a release is for | Edit the release’s `notes` and `impact`. See [Release notes and impact](#release-notes-and-impact). |
 | Work that stopped or was dropped | Set `status` to `blocked` or `cut` and explain why in `statusReason`. See [Blocked and cut stories](#blocked-and-cut-stories). |
 | How big a story is | Set its `estimate` in story points, once the team has agreed it. See [Estimate effort](#estimate-effort). |
+| What must land first | List the stories it depends on in its `dependsOn`. See [Record dependencies](#record-dependencies). |
 | Who a story is for | List the jobs to be done it serves in its `jobs`, or a persona in its `personas`. Add or reword personas and jobs in the map's `personas`. See [Personas and jobs to be done](#personas-and-jobs-to-be-done). |
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
@@ -186,6 +187,31 @@ On the internal board, a card shows its estimate at the top right, such as “5 
 `story-map diff` shows a change as “Estimate: 3 → 5”. The Visio file adds the estimate to each card, such as “BUILDER-102 · 3 pts”, and to its shape data, and shows each release's total in its header. The CSV has an `Estimate` column, and the JSON export carries each story's `estimate` and each release's `estimates`.
 
 Estimates are internal only. Customers never see them, on the board or in the JSON. Agents should not set or change an estimate unless the team has agreed it, and should flag a missing one in the PR instead.
+
+## Record dependencies
+
+When a story cannot be built until other stories land, list them in its `dependsOn`, most important first:
+
+```yaml
+- id: BUILDER-103
+  title: Submit the estimate to finance
+  activity: submit
+  release: builder-mvp
+  status: planned
+  dependsOn:
+    - BUILDER-101
+    - BUILDER-102
+```
+
+- **List each dependency once, on the story that waits.** The board works out the stories waiting for each story from the other stories' lists, so nothing is recorded twice. Do not write “Needs BUILDER-101” in the notes instead: the board cannot show that.
+- **Validation** rejects an ID that is not in the map, one listed twice, a story that depends on itself and a cycle, such as `BUILDER-101 → BUILDER-102 → BUILDER-101`, which it reports once, on the entry that closes the loop. It warns when a story that is not cut depends on a cut story, because that work will not land. A story can depend on up to 10 others.
+- **Any release.** A story can depend on a story in an earlier, the same or a later release. A dependency on a later release usually means one of the two is in the wrong release.
+
+On the internal board, a card shows how many stories it depends on to the right of its status, such as “2” beside a small dependency icon, read as “Depends on 2 stories: BUILDER-101, BUILDER-102”. A card with none shows nothing. The story panel shows the same count, and a **Dependencies** section with **Depends on** and **Waiting for this story**, each story with its status and release. A story on the board opens its panel. One the filters hide is listed as text.
+
+Set dependencies with `story-map edit <ID> --add-dependency <ID>` and `--remove-dependency <ID>`, and on a new story with `story-map add --dependency <ID>`, repeated for each one. `story-map diff` shows a change as “Depends on: `BUILDER-101` → `BUILDER-101`, `BUILDER-102`”. `story-map story` lists both directions, and the JSON export carries each story's `dependsOn` and `dependents`, each with its ID, title, status and release.
+
+Dependencies are internal only. Customers never see them, on the board or in the JSON.
 
 ## Personas and jobs to be done
 
@@ -532,6 +558,7 @@ npx --no-install story-map edit ESM-106 --status blocked --reason "Waiting on th
 npx --no-install story-map edit ESM-105 --release v0-7-5 --activity review
 npx --no-install story-map edit ESM-741 --add-source docs/story-map.md#read-the-map-from-the-command-line
 npx --no-install story-map edit ESM-902 --add-job get-oriented
+npx --no-install story-map edit ESM-109 --add-dependency ESM-105
 npx --no-install story-map add --activity review --release v0-7-5 --title "Check claims in CI"
 npx --no-install story-map release-impact v0-7-5 --metric "Agents starting the same story" --expected "None, for teams that use claims"
 ```
@@ -857,7 +884,7 @@ return new Response(storyMapToJson(view), {
 ```
 
 - `format` is `"auto-story-map.export"` and `version` is `1`. The type is `StoryMapJsonExport`.
-- `activities` and `releases` are as on the internal board, with each release's notes, impact, `storyCounts` and, when it has estimated stories, `estimates`. When the map has personas, `personas` lists them in map order, each with its `activeStories`, its `context` when it has one, and its `jobs`, and each job with its fields, its `storyCounts` by status, its `statement`, such as “When a release is being planned, I want …, so that ….”, `core: true` on each persona's [core job](#mark-a-core-job), and its `activeStories`, counted across the whole map, so `0` is a job no planned or delivered work meets. An agent can use them to find jobs with no stories, and stories that serve no job, and suggest work. `stories` are in map order, each with its summary, status, `statusReason`, `estimate`, `personas` and `jobs`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
+- `activities` and `releases` are as on the internal board, with each release's notes, impact, `storyCounts` and, when it has estimated stories, `estimates`. When the map has personas, `personas` lists them in map order, each with its `activeStories`, its `context` when it has one, and its `jobs`, and each job with its fields, its `storyCounts` by status, its `statement`, such as “When a release is being planned, I want …, so that ….”, `core: true` on each persona's [core job](#mark-a-core-job), and its `activeStories`, counted across the whole map, so `0` is a job no planned or delivered work meets. An agent can use them to find jobs with no stories, and stories that serve no job, and suggest work. `stories` are in map order, each with its summary, status, `statusReason`, `estimate`, `dependsOn` and `dependents`, `personas` and `jobs`, notes, sources, history, last edit and tagged tests. With a tests index, each story also has `testCount`, which includes tests the index left out over its limits, so `0` means no tagged tests. Without one, `testCount` is absent, because coverage is unknown.
 - `statuses` says what each status means, such as that `merged` work is on the default branch but not yet available to its users.
 - `provenance` names the library version and commit that wrote the file, and when the history and tests index were generated. `completeness` counts the stories in the map, in the file and over the limit, and says whether history and tests were supplied. Both have `notes`: plain sentences for the agent, such as that statuses are recorded in PRs and can lag behind the code, that tests come from a static scan of tagged names without results, or that a shallow history is missing earlier changes. Ask the agent to read them before drawing conclusions.
 - Unlike the other formats, every story is included unless you pass `maxStories`, and collapsed lanes are ignored, so the file always covers every release. The board's JSON link and `storyMapExportResponse` ignore `collapsed` for this format, and `story-map export` warns that `--collapsed` is ignored.
