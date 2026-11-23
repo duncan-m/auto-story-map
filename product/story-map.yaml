@@ -909,28 +909,24 @@ stories:
     sources:
       - docs/plans/actions-tab.md
   - id: ESM-137
-    title: Explain how to export the map to other tools
+    title: Add export support for Spreo
     activity: explore
     release: v0-7-6
     status: planned
     jobs:
       - share-roadmap
-    summary: Internal viewers can find destination-specific export instructions from the board's Export menu, including a Spreo guide covering ChatGPT, Claude and Claude Code.
+    summary: Internal viewers choose Spreo from the board's Export menu and get a guide to creating an interactive story board in Spreo from ChatGPT, Claude or Claude Code.
     notes: |-
+      Spreo's MCP integration has been tested and creates an accurate, interactive story board from the map.
       Scope:
-      - Add docs/integrations.md covering Spreo, Miro, Lucidchart, Visio, spreadsheets and agent workflows.
-      - Add a README link to the integration guide.
-      - Extend the existing Export menu with a Spreo option that opens instructions, plus an All integration guides help link. Keep the existing JSON, CSV and Visio downloads working.
-      - Spreo instructions cover ChatGPT, Claude and Claude Code, distinguish supported connector-based board creation from preparing a specification when a connector is unavailable, and explain that exports are one-way snapshots.
-      - Include copyable destination-specific prompts on the integration guide (P2, if feasible in the same slice); prompts specify the YAML source, planned-only filtering, source order, release swimlanes, story IDs and estimates.
-      - Make clear that the Spreo entry opens a guide, not a native JSON import or an automated sync. Do not claim Spreo supports JSON import without verifying it.
+      - Add a Spreo item to the board's existing Export menu, next to the Visio, CSV and JSON downloads, so people who click Export see the tool by name. It links to the Spreo section of docs/integrations.md on the public GitHub repo and opens in a new tab.
+      - Add docs/integrations.md with a Spreo section: how to create the board through Spreo's MCP integration from ChatGPT, Claude and Claude Code, with a copyable prompt for each that names the YAML source, release swimlanes, story IDs and estimates.
+      - Explain in the guide that the board is a one-way snapshot, and that the prompt sends the internal map, including estimates and notes, to the AI tool and to Spreo.
       Acceptance criteria:
-      - Internal Export menu displays Spreo and an integrations-help link; customer views do not expose these options or internal exports.
-      - Spreo link opens the documented ChatGPT, Claude and Claude Code workflows.
-      - Documentation covers current downloads, supported tool destinations, privacy, lack of write-back and limitations.
-      - Copyable prompts are supplied for the three Spreo-assisted workflows and avoid claiming that a board was created unless the connected tool confirms it.
-      - Existing export paths and non-JavaScript board behaviour continue to work, with coverage added for the menu links.
-      - The implementation remains documentation and UI only; no Spreo API integration or import format is added.
+      - Internal viewers see Spreo in the Export menu; customer views never show the Export menu, as now.
+      - The Spreo link opens the guide's Spreo section in a new tab, with rel="noopener", and works without JavaScript.
+      - The Visio, CSV and JSON downloads keep working, and tests cover the new link for internal and customer views.
+      - No Spreo API integration or import format is added to the library.
     sources:
       - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
   - id: ESM-910
