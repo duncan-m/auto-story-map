@@ -267,3 +267,102 @@ test("ESM-105: escapes control characters from commit subjects in text output", 
   assert.doesNotMatch(result.stdout, /\u001b/);
   assert.match(result.stdout, /ESM-3: Fix \\u001b\[31mred\\u001b\[0m text/);
 });
+
+/**
+ * The scratch repository with ESM-2 merged too, then: tag v1.0.0 on ESM-2's
+ * work, a later release v0.9.9 on main that also holds it, named so it sorts
+ * first by name but not by date, an ESM-3 commit after both, and a tag that
+ * does not match `v*` on ESM-3. Tags are dated a day apart.
+ */
+const releasedMap = map.replace("title: Has merged code\n    activity: build\n    release: now\n    status: in-progress", "title: Has merged code\n    activity: build\n    release: now\n    status: merged");
+
+async function releasedRepository(t) {
+  const { root, git } = await repository(t);
+  const at = days => ({ ...env, GIT_COMMITTER_DATE: new Date(Date.UTC(2030, 0, 1) + days * day).toISOString() });
+  const dated = (days, ...args) => execFileSync("git", args, { cwd: root, env: at(days), encoding: "utf8" });
+  const two = git("log", "--format=%H", "-1", "--grep=^ESM-2:").trim();
+  dated(0, "tag", "-a", "-m", "First release", "v1.0.0", two);
+  dated(1, "tag", "-a", "-m", "Second release", "v0.9.9");
+  await writeFile(join(root, "src/three.js"), "export const three = 3;\n");
+  git("add", "-A");
+  dated(2, "commit", "-q", "-m", "ESM-3: Finish the merged story");
+  const three = git("rev-parse", "HEAD").trim();
+  dated(3, "tag", "-a", "-m", "Nightly", "nightly-1", three);
+  return { root, git, two, three };
+}
+
+test("ESM-107: suggests shipped for a merged story whose merging commit is in a matching tag", async t => {
+  const { root, two, three } = await releasedRepository(t);
+  const result = await gatherStoryEvidence(releasedMap, { root, ids: ["ESM-2", "ESM-3"], shippedTags: "v*" });
+  assert.ok(result.checked.includes("tags"));
+  const stories = byId(result);
+
+  const shipped = stories.get("ESM-2");
+  assert.equal(shipped.suggestedStatus, "shipped", "merged before a matching tag");
+  assert.deepEqual(shipped.shippedIn, { tag: "v1.0.0", commit: two }, "the earliest matching tag that holds it");
+  assert.match(shipped.reasons[0], /^Commit [0-9a-f]{7} is in tag v1\.0\.0, which matches v\*/);
+
+  const waiting = stories.get("ESM-3");
+  assert.equal(waiting.commits[0].commit, three);
+  assert.equal(waiting.suggestedStatus, "merged", "merged after the last matching tag, and only in a tag that does not match");
+  assert.equal(waiting.shippedIn, undefined);
+  assert.match(waiting.reasons[0], /is not in any tag that matches v\* yet/);
+
+  const nightly = byId(await gatherStoryEvidence(releasedMap, { root, ids: ["ESM-3"], shippedTags: "nightly-*" })).get("ESM-3");
+  assert.equal(nightly.suggestedStatus, "shipped", "the pattern decides which tags count");
+  assert.equal(nightly.shippedIn.tag, "nightly-1");
+});
+
+test("ESM-107: never suggests shipped without --shipped-tags, or for stories that are not merged", async t => {
+  const { root } = await releasedRepository(t);
+  const without = byId(await gatherStoryEvidence(releasedMap, { root, ids: ["ESM-2", "ESM-3"] }));
+  for (const story of without.values()) {
+    assert.equal(story.suggestedStatus, "merged");
+    assert.equal(story.shippedIn, undefined);
+  }
+  const result = await gatherStoryEvidence(load(), { root, ids: ["ESM-2", "ESM-4"], shippedTags: "v*" });
+  const stories = byId(result);
+  assert.equal(stories.get("ESM-2").suggestedStatus, "merged", "an in-progress story in a tag moves only to merged");
+  assert.equal(stories.get("ESM-4").suggestedStatus, "cut");
+});
+
+test("ESM-107: notes when no tag matches, and keeps a merged story with no merging commit as merged", async t => {
+  const { root } = await repository(t);
+  const result = await gatherStoryEvidence(releasedMap, { root, ids: ["ESM-2", "ESM-3"], shippedTags: "release-*" });
+  assert.ok(result.notes.some(note => /No tag matches --shipped-tags release-\*/.test(note)));
+  const stories = byId(result);
+  assert.equal(stories.get("ESM-2").suggestedStatus, "merged");
+  assert.match(stories.get("ESM-2").reasons[0], /no tag matches release-\*/);
+  assert.equal(stories.get("ESM-3").suggestedStatus, "merged");
+  assert.match(stories.get("ESM-3").reasons[0], /no commit on the default branch names it in its title and changes code/);
+});
+
+test("ESM-107: the evidence command takes --shipped-tags, passes it to Git as an argument and refuses an empty one", async t => {
+  const { root, git } = await releasedRepository(t);
+  await writeFile(join(root, "product/story-map.yaml"), releasedMap);
+  git("commit", "-q", "-am", "Mark ESM-2 merged");
+  const run = (...args) => spawnSync(process.execPath, [cli, "evidence", ...args], { cwd: root, encoding: "utf8", env });
+
+  const text = run("--shipped-tags", "v*", "ESM-2");
+  assert.equal(text.status, 0, text.stderr);
+  assert.match(text.stdout, /^ {2}Status: {4}merged, suggests shipped$/m);
+  assert.match(text.stdout, /^ {2}Shipped in: v1\.0\.0 \([0-9a-f]{7}\)$/m);
+
+  const json = JSON.parse(run("--format", "json", "--shipped-tags=v*", "ESM-2").stdout);
+  assert.equal(json.stories[0].suggestedStatus, "shipped");
+  assert.equal(json.stories[0].shippedIn.tag, "v1.0.0");
+
+  const plain = run("ESM-2");
+  assert.match(plain.stdout, /^ {2}Status: {4}merged, no change suggested$/m);
+  assert.doesNotMatch(plain.stdout, /Shipped in/);
+
+  const option = run("--shipped-tags=--contains", "ESM-2");
+  assert.equal(option.status, 0, "a pattern that looks like an option is only a pattern");
+  assert.match(option.stderr, /No tag matches --shipped-tags --contains/);
+  assert.match(option.stdout, /merged, no change suggested/);
+
+  const empty = run("--shipped-tags=", "ESM-2");
+  assert.equal(empty.status, 2);
+  assert.match(empty.stderr, /--shipped-tags needs a value/);
+  await assert.rejects(gatherStoryEvidence(releasedMap, { root, shippedTags: " " }), /--shipped-tags needs a tag pattern/);
+});

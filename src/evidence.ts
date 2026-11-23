@@ -37,6 +37,13 @@ export interface StoryEvidenceOptions {
   stalledAfterWeeks?: number;
   /** Time to judge stalled stories against. Defaults to now. */
   now?: Date;
+  /**
+   * A `git tag --list` pattern, such as `v*`, for the tags that mark a release
+   * going out. When given, a merged story whose merging commit is in a
+   * matching tag is suggested as shipped. Off by default, so evidence never
+   * suggests shipped without it.
+   */
+  shippedTags?: string;
 }
 
 /** A local or remote branch whose name contains the story ID. */
@@ -102,6 +109,15 @@ export interface StoryEvidence {
   moreTests?: number;
   /** Sources that point to a file or heading that does not exist. */
   brokenSources: { source: string; message: string }[];
+  /** With `shippedTags`, the earliest matching tag that holds the merged story's merging commit. */
+  shippedIn?: EvidenceTag;
+}
+
+/** A release tag that holds a story's merging commit. */
+export interface EvidenceTag {
+  tag: string;
+  /** The merging commit the tag holds. */
+  commit: string;
 }
 
 /** The outcome of `gatherStoryEvidence`. */
@@ -109,7 +125,7 @@ export interface StoryEvidenceResult {
   /** The branch merged commits were read from, or absent when none was found. */
   defaultBranch?: string;
   /** Which signals were read. `git` is missing when the root is not a Git checkout. */
-  checked: ("git" | "plans" | "tests" | "sources" | "history")[];
+  checked: ("git" | "tags" | "plans" | "tests" | "sources" | "history")[];
   /** Problems reading a signal, such as a shallow clone or a plan folder with no Markdown. None of them stop the lookup. */
   notes: string[];
   stories: StoryEvidence[];
@@ -239,6 +255,25 @@ async function readCommits(
   return byStory;
 }
 
+/** Tags that match the pattern, oldest first. The pattern is passed after `--`, so Git never reads it as an option. */
+async function matchingTags(root: string, pattern: string, commit?: string) {
+  const output = await git(root, ["tag", "--list", "--sort=creatordate", ...(commit ? ["--contains", commit] : []), "--", pattern]);
+  return output.split("\n").map(line => line.trim()).filter(Boolean);
+}
+
+/** The newest commit that counts as merged work for a story: its title names the story and it changes more than plans. */
+const mergingCommit = (commits: EvidenceCommit[]) => commits.find(commit => commit.changes === "code" && commit.named === "title");
+
+const commitRef = (commit: EvidenceCommit) => commit.pullRequest ? `Pull request #${commit.pullRequest}` : `Commit ${commit.commit.slice(0, 7)}`;
+
+/** What release tags say about a merged story, when `shippedTags` is given. */
+interface TagSignal {
+  pattern: string;
+  /** False when no tag matches the pattern at all. */
+  anyMatch: boolean;
+  shippedIn?: EvidenceTag;
+}
+
 function capped<T>(items: T[]): [T[], number | undefined] {
   return items.length > evidenceItemsMaxItems ? [items.slice(0, evidenceItemsMaxItems), items.length - evidenceItemsMaxItems] : [items, undefined];
 }
@@ -250,17 +285,27 @@ function capped<T>(items: T[]): [T[], number | undefined] {
  * counts as merged work only when its title names the story and it changes
  * more than plans and the map.
  */
-function suggest(status: StoryStatus, branches: EvidenceBranch[], commits: EvidenceCommit[], gitRead: boolean): { suggestedStatus: StoryStatus; reasons: string[] } {
+function suggest(status: StoryStatus, branches: EvidenceBranch[], commits: EvidenceCommit[], gitRead: boolean, tags?: TagSignal): { suggestedStatus: StoryStatus; reasons: string[] } {
   if (status === "cut") return { suggestedStatus: status, reasons: ["The story is cut, so evidence never changes its status."] };
   if (status === "shipped") return { suggestedStatus: status, reasons: ["The story is shipped, so evidence never moves it back."] };
   if (status === "merged") {
-    return { suggestedStatus: status, reasons: ["The story is merged. Only a person or a release says it is shipped, so evidence does not suggest it."] };
+    if (!tags || !gitRead) {
+      return { suggestedStatus: status, reasons: ["The story is merged. Only a person or a release says it is shipped, so evidence does not suggest it."] };
+    }
+    const code = mergingCommit(commits);
+    if (!code) {
+      return { suggestedStatus: status, reasons: ["The story is merged, but no commit on the default branch names it in its title and changes code, so release tags cannot say it is shipped."] };
+    }
+    if (tags.shippedIn) {
+      return { suggestedStatus: "shipped", reasons: [`${commitRef(code)} is in tag ${tags.shippedIn.tag}, which matches ${tags.pattern}, so the release has gone out.`] };
+    }
+    const why = tags.anyMatch ? `is not in any tag that matches ${tags.pattern} yet` : `is not in a release tag, because no tag matches ${tags.pattern}`;
+    return { suggestedStatus: status, reasons: [`The story is merged. ${commitRef(code)} ${why}, so evidence does not suggest shipped.`] };
   }
   if (!gitRead) return { suggestedStatus: status, reasons: ["Git was not read, so there is no evidence for another status."] };
-  const code = commits.find(commit => commit.changes === "code" && commit.named === "title");
+  const code = mergingCommit(commits);
   if (code) {
-    const ref = code.pullRequest ? `Pull request #${code.pullRequest}` : `Commit ${code.commit.slice(0, 7)}`;
-    return { suggestedStatus: "merged", reasons: [`${ref} on the default branch names the story in its title and changes more than plans and the map.`] };
+    return { suggestedStatus: "merged", reasons: [`${commitRef(code)} on the default branch names the story in its title and changes more than plans and the map.`] };
   }
   const reasons: string[] = [];
   if (commits.length) {
@@ -292,6 +337,8 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
   const loaded = typeof source === "string" ? loadStoryMap(source) : source;
   const root = resolve(options.root ?? ".");
   const { map } = loaded;
+  const shippedTags = options.shippedTags;
+  if (shippedTags !== undefined && !shippedTags.trim()) throw new StoryEvidenceError("--shipped-tags needs a tag pattern, such as 'v*'.");
   const known = new Set(map.stories.map(story => story.id));
   const lookup = idLookup(known);
   const missing: MissingStory[] = [];
@@ -335,6 +382,22 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
     checked.push("git");
   }
 
+  // Release tags, only when asked for and only for merged stories with a merging commit.
+  const tagSignals = new Map<string, TagSignal>();
+  if (shippedTags !== undefined && gitRead && defaultBranch) {
+    const anyMatch = (await matchingTags(root, shippedTags)).length > 0;
+    if (!anyMatch) notes.push(`No tag matches --shipped-tags ${shippedTags}, so no story is suggested as shipped. In CI, fetch tags with the history.`);
+    for (const id of targets) {
+      if (map.stories.find(story => story.id === id)?.status !== "merged") continue;
+      const code = mergingCommit(commits.get(id) ?? []);
+      const [tag] = anyMatch && code ? await matchingTags(root, shippedTags, code.commit) : [];
+      tagSignals.set(id, { pattern: shippedTags, anyMatch, ...(tag && code ? { shippedIn: { tag, commit: code.commit } } : {}) });
+    }
+    checked.push("tags");
+  } else if (shippedTags !== undefined) {
+    notes.push("--shipped-tags needs Git and a default branch, so release tags were not read.");
+  }
+
   const issueText = (issue: ReferenceIssue) => `${issue.file ? `${issue.file}: ` : ""}${issue.message}`;
   const mentions = await findStoryMentions(loaded, root, plans);
   notes.push(...mentions.issues.map(issueText));
@@ -369,7 +432,8 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
     const brokenSources = sourceIssues
       .filter(issue => issue.itemId === id && issue.path[0] === "stories" && issue.path[2] === "sources")
       .map(issue => ({ source: story.sources?.[issue.path[3] as number] ?? "", message: issue.message }));
-    const { suggestedStatus, reasons } = suggest(story.status, storyBranches, commits.get(id) ?? [], gitRead && !!defaultBranch);
+    const tagSignal = tagSignals.get(id);
+    const { suggestedStatus, reasons } = suggest(story.status, storyBranches, commits.get(id) ?? [], gitRead && !!defaultBranch, tagSignal);
     const stalled = stalledById.get(id);
     if (stalled) reasons.push(`In progress since ${stalled.since.slice(0, 10)}, longer than the ${stalled.afterWeeks} week stalled threshold.`);
     if (brokenSources.length) reasons.push(`${brokenSources.length === 1 ? "A source points" : `${brokenSources.length} sources point`} to something that no longer exists.`);
@@ -388,6 +452,7 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
       tests: storyTests,
       ...(moreTests ? { moreTests } : {}),
       brokenSources,
+      ...(tagSignal?.shippedIn ? { shippedIn: tagSignal.shippedIn } : {}),
     };
     return evidence;
   });

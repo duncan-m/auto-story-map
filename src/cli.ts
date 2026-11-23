@@ -23,7 +23,7 @@ const usage = `Usage:
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
-  story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [<ID> ...]
+  story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [<ID> ...]
   story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] [--prices <file>] <ID>
   story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--tokens <n>] [--estimated-cost <usd>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
@@ -161,8 +161,8 @@ evidence
   longer exist. A commit suggests merged only when it changes more than
   Markdown, the map and files under --plans. It never suggests moving a story
   back from merged or shipped, never changes a cut story and never suggests
-  shipped. It reads the checkout only, with no network calls. An ID that is
-  not in the map exits 1.
+  shipped unless --shipped-tags is given. It reads the checkout only, with no
+  network calls. An ID that is not in the map exits 1.
 
   --format json      Print the evidence as JSON, for agents and scripts.
   --map <path>       Map to read. Defaults to product/story-map.yaml.
@@ -177,6 +177,10 @@ evidence
   --tests <path>     Where to look for tagged tests. Repeat for several.
                      Defaults to the whole root.
   --history <file>   History from story-map history, to flag stalled stories.
+  --shipped-tags <pattern>
+                     Tags that mark a release going out, such as 'v*'. A
+                     merged story whose merging commit is in a matching tag
+                     is suggested as shipped, with the tag as evidence.
 
 tokens
   Counts the model tokens Claude Code used on a story, from its session logs
