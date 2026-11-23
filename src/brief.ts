@@ -50,9 +50,11 @@ const branchWords = 3;
  * "0.7.5:", is dropped because the release ID already has it.
  */
 export function storyMapBriefBranch(id: string, title: string): string {
-  const slug = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  let branch = `feat/${slug(id) || "work"}`.slice(0, briefBranchMaxLength).replace(/-+$/, "");
-  const words = slug(title.replace(/^\s*v?\d+(?:\.\d+)*\s*:\s*/i, "")).split("-").filter(word => word && !branchStopWords.has(word));
+  // Splitting on runs of other characters, rather than trimming hyphens with a regex, stays linear on any input.
+  const slugWords = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  let branch = `feat/${slugWords(id).join("-") || "work"}`.slice(0, briefBranchMaxLength);
+  while (branch.endsWith("-")) branch = branch.slice(0, -1);
+  const words = slugWords(title.replace(/^\s*v?\d+(?:\.\d+)*\s*:\s*/i, "")).filter(word => !branchStopWords.has(word));
   for (const word of words.slice(0, branchWords)) {
     if (branch.length + 1 + word.length > briefBranchMaxLength) break;
     branch += `-${word}`;
