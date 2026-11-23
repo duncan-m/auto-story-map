@@ -734,7 +734,7 @@ The preview is for one person checking a map. It listens on `127.0.0.1` only, an
 
 ## Link to a story
 
-Each story panel, and each release panel on internal boards, has a **Copy link** button in its header. The link opens the board on that panel, to paste into a pull request, a chat or a ticket:
+Each story panel, and each release panel on internal boards, has a **Copy link** button in its header, or in its **Share** menu when the panel has an [agent brief](#copy-a-brief-from-the-board). The link opens the board on that panel, to paste into a pull request, a chat or a ticket:
 
 - `?story=ESM-801#esm-story-ESM-801` for a story
 - `?release=v0-7-4#esm-release-v0-7-4` for a release
@@ -792,11 +792,26 @@ const map = getStoryMapPage(document, viewer, {
 
 - **Which panels.** Stories that are planned, in progress or blocked, and releases with planned or in-progress stories. Merged, shipped and cut work has nothing left to hand to an agent, so its panels have no brief.
 - **Filters do not change it.** The briefs are written before the search and filters, so a brief lists the same stories around its target whatever the viewer is looking at. Each is on the view as `brief`, on the story or release.
-- **Without JavaScript**, the brief is in a closed **Show the brief** block, to select and copy by hand. With [board.js](#integrate-with-a-product), a **Copy brief** button copies it and says what it copied, such as “Copied brief: ESM-111” or “Copied brief: 0.7.5, 5 stories”. Without clipboard access, the button stays hidden.
+- **A Share menu.** A panel with a brief has a **Share** menu at the top right, in place of **Copy link**. It holds **Copy link**, **Copy brief** and any [web agents](#open-a-brief-in-a-web-agent) the host turns on. Panels without a brief keep the plain **Copy link**.
+- **Without JavaScript**, the brief is in a closed **Show the brief** block, to select and copy by hand, and the menu still opens with **Copy link**. With [board.js](#integrate-with-a-product), **Copy brief** copies the brief, the menu's button says “Copied”, and the board says what it copied, such as “Copied brief: ESM-111” or “Copied brief: 0.7.5, 5 stories”. Without clipboard access, **Copy brief** stays hidden.
 - **Internal only.** Customer views never have briefs, even when `brief` is passed.
 - **Page size.** Each brief is about 2 to 4 KB. On this repository's map, briefs for its 28 open stories and 6 open releases add 140 KB to the internal page, or 19 KB gzipped. Leave `brief` out of the JSON endpoint, as the [example host](https://github.com/duncan-m/auto-story-map/blob/main/example/host.mjs) does, unless something reads them there. The JSON export never includes them.
 
 `story-map preview` turns briefs on, naming the map by its path from where you run it.
+
+### Open a brief in a web agent
+
+Pass `webAgents` to the board, and each **Share** menu gets an **Open in Claude** or **Open in ChatGPT** link that starts a new web chat with the brief filled in:
+
+```tsx
+<StoryMapBoard map={view} webAgents={["claude", "chatgpt"]} />
+```
+
+- **Off by default.** Opening one sends internal map content, from the brief, to Anthropic or OpenAI, so it is the host's choice. Each link says which company the brief goes to. The [example host](https://github.com/duncan-m/auto-story-map/blob/main/example/demo.mjs) turns both on, and `story-map preview` does not.
+- **Plain links.** Each opens `https://claude.ai/new?q=` or `https://chatgpt.com/?q=` with the brief in a new tab, so it works without JavaScript.
+- **Long briefs.** When the link would be longer than 8,000 characters (`webAgentLinkMaxLength`), it opens an empty chat instead, and board.js copies the brief first and says “Brief copied. Paste it into the chat.” Without JavaScript or clipboard access, those links are left out, and the brief can still be copied by hand. A story brief usually fits, and a release brief often does not.
+- **A web chat cannot read the repository.** The brief points to files rather than including them, so a web agent can plan, review and answer questions about a story, but not build it.
+- The list is fixed in the library, as `storyMapWebAgents`. Others can be added once someone has checked that their prompt parameter works.
 
 ## Integrate with a product
 

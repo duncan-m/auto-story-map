@@ -21,6 +21,21 @@ export interface StoryMapRepositoryLinks {
   pullRequest?: string;
 }
 
+/** A web chat that can open with an agent brief filled in, from the panel's **Share** menu. */
+export type StoryMapWebAgent = "claude" | "chatgpt";
+
+/** The web agents the board can open, in menu order, with the address that takes the brief as `q`. */
+export const storyMapWebAgents: Readonly<Record<StoryMapWebAgent, { name: string; company: string; url: string }>> = {
+  claude: { name: "Claude", company: "Anthropic", url: "https://claude.ai/new" },
+  chatgpt: { name: "ChatGPT", company: "OpenAI", url: "https://chatgpt.com/" },
+};
+
+/**
+ * The longest **Open in** link that carries the brief. Past it, the link opens an empty
+ * chat and board.js copies the brief first, because long addresses can fail to load.
+ */
+export const webAgentLinkMaxLength = 8000;
+
 export interface StoryMapBoardProps {
   map: StoryMapView;
   /** Base URL for repository-relative sources, such as `https://github.com/org/repo/blob/main/`. */
@@ -60,6 +75,12 @@ export interface StoryMapBoardProps {
    * the lanes the viewer collapsed as `collapsed`. Never shown to customers.
    */
   exportHref?: string;
+  /**
+   * Web agents to offer in the **Share** menu of internal panels with an agent brief,
+   * such as `["claude", "chatgpt"]`. Each opens a new chat with the brief filled in, so
+   * it sends internal map content to that company. None by default.
+   */
+  webAgents?: readonly StoryMapWebAgent[];
 }
 
 interface DateSettings {
@@ -695,8 +716,9 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles }: {
+function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles, webAgents }: {
   story: InternalStoryCard;
+  webAgents?: readonly StoryMapWebAgent[];
   /** Each placed story's panel, by story ID, so the Dependencies section can open it. */
   storyPanelIds: ReadonlyMap<string, string>;
   releaseTitles: ReadonlyMap<string, string>;
@@ -734,7 +756,14 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
           <h3 id={titleId}>{story.title}</h3>
         </div>
         <div className="esm-detail-actions">
-          <CopyLink href={permalink} label="this story" />
+          <PanelActions
+            href={permalink}
+            label="this story"
+            brief={internal ? story.brief : undefined}
+            briefId={`${panelId}-brief`}
+            copied={`Copied brief: ${story.id}`}
+            webAgents={webAgents}
+          />
           <CloseButton panelId={panelId} />
         </div>
       </div>
@@ -833,7 +862,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         </section>
       )}
       {internal && story.brief && (
-        <AgentBrief brief={story.brief} panelId={panelId} copied={`Copied brief: ${story.id}`} />
+        <AgentBrief brief={story.brief} panelId={panelId} />
       )}
       {internal && (story.lastEdit
         ? (
@@ -926,19 +955,114 @@ function CopyLink({ href, label }: { href?: string; label: string }) {
 }
 
 /**
- * The panel's agent brief from `getStoryMapForViewer({ brief })`: a closed `<details>` with
- * the brief in a `<pre>` to select and copy by hand, and a **Copy brief** button that board.js
- * shows and wires up. `copied` is what board.js says once it has copied, such as “Copied brief: ESM-111”.
+ * The panel's actions, top right. A panel with an agent brief gets a **Share** menu with
+ * **Copy link**, **Copy brief** and an **Open in** link for each of `webAgents`. Any other
+ * panel keeps the plain **Copy link**, rather than a menu with one item.
+ *
+ * The menu is a `<details>`, so it opens without JavaScript. **Copy brief** needs the
+ * clipboard, so it stays hidden until board.js shows it. An **Open in** link carries the
+ * brief in its address. When that would be longer than `webAgentLinkMaxLength`, the link
+ * opens an empty chat instead and stays hidden until board.js can copy the brief first.
+ * `copied` is what board.js says once it has copied the brief, such as “Copied brief: ESM-111”.
  */
-function AgentBrief({ brief, panelId, copied }: { brief: string; panelId: string; copied: string }) {
+function PanelActions({ href, label, brief, briefId, copied, webAgents = [] }: {
+  href?: string;
+  label: string;
+  brief?: string;
+  briefId: string;
+  copied: string;
+  webAgents?: readonly StoryMapWebAgent[];
+}) {
+  if (!brief) return <CopyLink href={href} label={label} />;
+  const agents = [...new Set(webAgents)].filter(id => Object.hasOwn(storyMapWebAgents, id));
+  const query = encodeURIComponent(brief);
+  return (
+    <details className="esm-menu esm-panel-menu">
+      <summary className="esm-copy-link esm-menu-button">
+        <ShareIcon /><span data-esm-copy-label="">Share</span><span className="esm-visually-hidden"> {label}</span>
+        <svg className="esm-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m3 5 4 4 4-4" />
+        </svg>
+      </summary>
+      <ul className="esm-menu-panel">
+        {href && (
+          <li>
+            <a className="esm-menu-item" href={href} data-esm-copy-link="">
+              <LinkIcon /><span className="esm-menu-item-text"><span>Copy link<span className="esm-visually-hidden"> to {label}</span></span></span>
+            </a>
+          </li>
+        )}
+        <li>
+          <button type="button" className="esm-menu-item" data-esm-copy-brief={briefId} data-esm-copied={copied} hidden>
+            <BriefIcon />
+            <span className="esm-menu-item-text"><span>Copy brief</span><span className="esm-menu-item-hint">A prompt for a coding agent</span></span>
+          </button>
+        </li>
+        {agents.map(id => {
+          const agent = storyMapWebAgents[id];
+          const full = `${agent.url}?q=${query}`;
+          const long = full.length > webAgentLinkMaxLength;
+          return (
+            <li key={id} className="esm-menu-agent" hidden={long || undefined}>
+              <a
+                className="esm-menu-item"
+                href={long ? agent.url : full}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-esm-web-agent={id}
+                {...(long ? { "data-esm-brief-copy": briefId } : {})}
+              >
+                <ChatIcon />
+                <span className="esm-menu-item-text">
+                  <span>Open in {agent.name}<NewTabHint /></span>
+                  <span className="esm-menu-item-hint">
+                    {long ? "Copies the brief, then opens a new chat" : `New chat with the brief, sent to ${agent.company}`}
+                  </span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </details>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 10V2.5M5 5.2 8 2.3l3 2.9M3.5 8.5v4a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-4" />
+    </svg>
+  );
+}
+
+function BriefIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 2h6v2H5zM4 3h-.5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H12M5.5 7.5h5M5.5 10h3.5" />
+    </svg>
+  );
+}
+
+function ChatIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.5 4A1.5 1.5 0 0 1 4 2.5h8A1.5 1.5 0 0 1 13.5 4v5.5A1.5 1.5 0 0 1 12 11H7l-3 2.5V11a1.5 1.5 0 0 1-1.5-1.5z" />
+    </svg>
+  );
+}
+
+/**
+ * The panel's agent brief from `getStoryMapForViewer({ brief })`: a closed `<details>` with
+ * the brief in a `<pre>`, to read before sending it anywhere and to copy by hand. The panel's
+ * **Share** menu copies it, or opens it in a web agent.
+ */
+function AgentBrief({ brief, panelId }: { brief: string; panelId: string }) {
   const briefId = `${panelId}-brief`;
   return (
     <section className="esm-detail-section esm-brief" aria-labelledby={`${panelId}-brief-heading`}>
       <h4 id={`${panelId}-brief-heading`}>Agent brief</h4>
-      <p className="esm-brief-intro">A prompt to start a coding agent on this work, with the plan, scope and the repository's rules.</p>
-      <button type="button" className="esm-copy-brief" data-esm-copy-brief={briefId} data-esm-copied={copied} hidden>
-        <span data-esm-copy-label="">Copy brief</span>
-      </button>
+      <p className="esm-brief-intro">A prompt to start a coding agent on this work, with the plan, scope and the repository's rules. Copy it from <b>Share</b> at the top of this panel.</p>
       <details className="esm-brief-details">
         <summary>Show the brief</summary>
         <pre className="esm-brief-text" id={briefId} tabIndex={0}>{brief}</pre>
@@ -996,8 +1120,9 @@ function paragraphs(text: string) {
   return text.split(/\n[ \t]*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
 }
 
-function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, filtered }: {
+function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, filtered, webAgents }: {
   release: InternalReleaseLabel;
+  webAgents?: readonly StoryMapWebAgent[];
   panelId: string;
   permalink?: string;
   /** The release’s stories that are on the board. */
@@ -1021,7 +1146,14 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
           <h3 id={titleId}>{release.title}</h3>
         </div>
         <div className="esm-detail-actions">
-          <CopyLink href={permalink} label="this release" />
+          <PanelActions
+            href={permalink}
+            label="this release"
+            brief={release.brief}
+            briefId={`${panelId}-brief`}
+            copied={`Copied brief: ${releaseShortName(release.title)}, ${plural(release.storyCounts.planned + release.storyCounts["in-progress"], "story", "stories")}`}
+            webAgents={webAgents}
+          />
           <CloseButton panelId={panelId} />
         </div>
       </div>
@@ -1072,11 +1204,7 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
         {filtered && hidden > 0 && <p className="esm-release-hidden">{`${hidden} more hidden by the current filters.`}</p>}
       </section>
       {release.brief && (
-        <AgentBrief
-          brief={release.brief}
-          panelId={panelId}
-          copied={`Copied brief: ${releaseShortName(release.title)}, ${plural(release.storyCounts.planned + release.storyCounts["in-progress"], "story", "stories")}`}
-        />
+        <AgentBrief brief={release.brief} panelId={panelId} />
       )}
     </div>
   );
@@ -1716,6 +1844,7 @@ export function StoryMapBoard({
   now,
   showVersion = true,
   exportHref,
+  webAgents,
 }: StoryMapBoardProps) {
   const baseId = useId();
   const headingId = `${baseId}-heading`;
@@ -1925,6 +2054,7 @@ export function StoryMapBoard({
           personaPanelIds={personaPanelIds}
           storyPanelIds={panelIdsByStory}
           releaseTitles={releaseTitles}
+          webAgents={webAgents}
         />
       ))}
       {!personasTab && personaList.map(persona => (
@@ -1946,6 +2076,7 @@ export function StoryMapBoard({
           stories={placed.filter(story => story.release === release.id)}
           storyPanelIds={panelIds}
           filtered={!!map.filter}
+          webAgents={webAgents}
         />
       ))}
     </section>

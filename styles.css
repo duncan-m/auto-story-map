@@ -443,10 +443,19 @@
 .esm-copy-link:hover { background: var(--esm-hover); color: var(--esm-accent-ink); }
 .esm-copy-link[data-copied] { color: var(--esm-accent-ink); }
 .esm-brief-intro { margin: 0; color: var(--esm-muted); line-height: 1.5; }
-.esm-copy-brief { display: inline-flex; align-items: center; min-height: 32px; margin-top: 10px; padding: 0 12px; border: 1px solid var(--esm-line); border-radius: 6px; background: transparent; color: var(--esm-accent-ink); font: inherit; font-weight: 650; cursor: pointer; }
-.esm-copy-brief[hidden] { display: none; }
-.esm-copy-brief:hover { background: var(--esm-hover); }
-.esm-copy-brief[data-copied] { border-color: var(--esm-accent); }
+.esm-brief-intro b { color: var(--esm-ink); font-weight: 650; }
+.esm-panel-menu > summary.esm-copy-link { cursor: pointer; }
+.esm-panel-menu > summary.esm-copy-link[data-copied], .esm-panel-menu[open] > summary.esm-copy-link { color: var(--esm-accent-ink); }
+.esm-panel-menu[open] > summary.esm-copy-link { background: var(--esm-hover); }
+.esm-panel-menu .esm-menu-panel { width: min(18rem, calc(100vw - 40px)); min-width: 0; }
+.esm-menu-panel .esm-menu-item { display: flex; width: 100%; align-items: flex-start; gap: 10px; padding: 8px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--esm-ink); font: inherit; font-size: .875rem; line-height: 1.4; text-align: left; text-decoration: none; cursor: pointer; }
+.esm-menu-panel .esm-menu-item[hidden] { display: none; }
+.esm-menu-panel .esm-menu-item:hover, .esm-menu-panel .esm-menu-item:focus-visible { background: var(--esm-hover); color: var(--esm-ink); }
+.esm-menu-item > .esm-icon { flex: none; margin-top: 3px; color: var(--esm-muted); }
+.esm-menu-item-text { display: grid; gap: 2px; min-width: 0; }
+.esm-menu-item-text .esm-external { margin-left: 5px; color: var(--esm-faint); vertical-align: -1px; }
+.esm-menu-item-hint { color: var(--esm-muted); font-size: .75rem; line-height: 1.35; }
+.esm-menu-panel > li:not(.esm-menu-agent) + .esm-menu-agent:not([hidden]) { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--esm-line); }
 .esm-brief-details { margin-top: 10px; }
 .esm-brief-details > summary { width: max-content; color: var(--esm-accent-ink); font-weight: 650; cursor: pointer; }
 .esm-brief-text { max-height: 24rem; margin: 8px 0 0; padding: 10px 12px; overflow: auto; border: 1px solid var(--esm-line); border-radius: 6px; background: var(--esm-hover); font-size: .75rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
