@@ -1085,14 +1085,17 @@ stories:
     title: Claim stories so several agents do not clash
     activity: plan
     release: v0-7-5
-    status: planned
+    status: merged
     estimate: 5
+    tokens: 5497279
+    estimatedCostUsd: 3.46
     jobs:
       - update-the-map
     summary: story-map claim records that an agent is on a story as a Git ref on the remote, so a second agent is told before it starts the same work.
     notes: Opt-in, for teams running several agents. Never written to the map file.
     sources:
       - docs/plans/native-cli.md#6-claim-stories
+      - docs/story-map.md#coordinate-several-agents
   - id: ESM-746
     title: Preview the map locally before adding the board
     activity: set-up
@@ -1780,6 +1783,7 @@ stories:
     activity: track
     release: v0-8-3
     status: planned
+    estimate: 5
     dependsOn:
       - ESM-130
     jobs:
@@ -1793,6 +1797,7 @@ stories:
     activity: track
     release: v0-8-3
     status: planned
+    estimate: 5
     dependsOn:
       - ESM-130
       - ESM-131
@@ -1807,6 +1812,7 @@ stories:
     activity: track
     release: v0-8-3
     status: planned
+    estimate: 8
     dependsOn:
       - ESM-130
       - ESM-131
@@ -1823,6 +1829,7 @@ stories:
     activity: track
     release: v0-8-4
     status: planned
+    estimate: 5
     jobs:
       - triage-backlog
       - plan-and-build
@@ -1866,6 +1873,7 @@ stories:
     activity: track
     release: v0-8-4
     status: planned
+    estimate: 5
     dependsOn:
       - ESM-139
     jobs:
@@ -1881,6 +1889,7 @@ stories:
     activity: plan
     release: v0-8-4
     status: planned
+    estimate: 3
     dependsOn:
       - ESM-139
     jobs:

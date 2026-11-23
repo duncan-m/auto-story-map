@@ -4,6 +4,16 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
+### Claims for several agents
+
+- New `story-map claim <ID> --agent <name>` records that an agent is on a story, before any branch or pull request exists, so a second agent is told before it starts the same work. Each claim is a Git ref, `refs/story-map/claims/<ID>`, on `origin` or `--remote <name>`, pointing at a parentless commit whose message is the claim as JSON. The push only succeeds when the ref does not exist, so of two agents claiming at once exactly one wins, and the other exits 3 and is told who holds the claim, on which branch and until when. Claims last 4 hours, or `--ttl`, such as `30m` or `2d`, up to 30 days. `--renew` extends your own claim and `--take-over` replaces an expired one, both leasing against the claim that was read. Stories that are not in the map, or are merged, shipped or cut, cannot be claimed. The map is never changed. See [Coordinate several agents](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#coordinate-several-agents).
+- New `story-map claims` lists claims, marking expired ones, and `story-map unclaim <ID>` releases one, refusing another agent's claim when `--agent` is given. All three take `--format json`.
+- `--store <dir>` keeps claims as files in a folder inside the repository instead, using exclusive file creation for the same guarantee, for agents on one machine that cannot push refs.
+- `story-map evidence --claims` adds each story's claim to its evidence and reports a claim on a merged, shipped or cut story as stale. `--claims-remote` and `--claims-store` read them from elsewhere. New option `claims` for `gatherStoryEvidence`, type `EvidenceClaim`, and `claims` in `checked`.
+- Claims hold an agent name, never a person: the commit is credited to `story-map`, and an agent name that looks like an email address is refused.
+- New exports `claimStory`, `listStoryClaims`, `releaseStoryClaim`, `parseClaimTtl`, `describeClaim`, `claimTime`, `StoryClaimError`, `StoryClaimHeldError`, `claimRefPrefix`, `defaultClaimTtlMs`, `claimTtlMaxMs`, `claimAgentMaxLength` and `claimBranchMaxLength`, and types `StoryClaim`, `StoryClaimOptions`, `StoryClaimSource`, `ClaimStoryOptions` and `ClaimStoryResult`.
+- The agent instructions from `story-map init` ask agents to claim a story before they start it when their team uses claims.
+
 ### Tokens used to deliver a story
 
 - Stories can record the model tokens used to deliver them in a new optional `tokens`, a whole number, set in the pull request that finishes the story. The internal story panel lists it as **Tokens used**, `story-map story` prints it, the JSON export carries it, and `story-map diff` shows a change as “Tokens used: none → 4,348,638”. Customers never see it. See [Record the tokens used on a story](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#record-the-tokens-used-on-a-story).

@@ -11,6 +11,7 @@ interface EvidenceOptions {
   defaultBranch?: string;
   history?: string;
   shippedTags?: string;
+  claims?: { remote?: string; store?: string };
   plans: string[];
   tests: string[];
   ids: string[];
@@ -22,6 +23,12 @@ function storyText(story: StoryEvidence, defaultBranch: string | undefined): str
   lines.push(`  Status:    ${story.status}${story.stalled ? " (stalled)" : ""}, ${suggestion}`);
   for (const reason of story.reasons) lines.push(`    ${escapeText(reason)}`);
   if (story.shippedIn) lines.push(`  Shipped in: ${escapeText(story.shippedIn.tag)} (${escapeText(story.shippedIn.commit.slice(0, 7))})`);
+  if (story.claim) {
+    const claim = story.claim;
+    const state = claim.problem ? `unreadable: ${escapeText(claim.problem)}`
+      : `${escapeText(claim.agent)}${claim.branch ? ` on ${escapeText(claim.branch)}` : ""}, ${claim.expired ? "expired" : "expires"} ${escapeText(claim.expiresAt.slice(0, 16))}${claim.stale ? ", stale" : ""}`;
+    lines.push(`  Claim:     ${state}`);
+  }
   if (story.branches.length) {
     lines.push("  Branches:");
     for (const branch of story.branches) {
@@ -57,7 +64,7 @@ export default defineCommand({
     for (let index = 0; index < rest.length; index++) {
       const arg = rest[index];
       const name = arg.split("=")[0];
-      if (["--format", "--map", "--root", "--default-branch", "--history", "--shipped-tags", "--plans", "--tests"].includes(name)) {
+      if (["--format", "--map", "--root", "--default-branch", "--history", "--shipped-tags", "--plans", "--tests", "--claims-remote", "--claims-store"].includes(name)) {
         const [value, next] = optionValue(rest, index, name);
         index = next;
         if (name === "--format") options.format = readFormat(value, formats);
@@ -66,8 +73,12 @@ export default defineCommand({
         else if (name === "--default-branch") options.defaultBranch = value;
         else if (name === "--history") options.history = value;
         else if (name === "--shipped-tags") options.shippedTags = value;
+        else if (name === "--claims-remote") options.claims = { ...options.claims, remote: value };
+        else if (name === "--claims-store") options.claims = { ...options.claims, store: value };
         else if (name === "--plans") options.plans.push(value);
         else options.tests.push(value);
+      } else if (arg === "--claims") {
+        options.claims = { ...options.claims };
       } else if (arg.startsWith("-")) {
         return null;
       } else {
@@ -93,6 +104,7 @@ export default defineCommand({
         tests: options.tests.length ? options.tests : undefined,
         history: inputs.history,
         shippedTags: options.shippedTags,
+        claims: options.claims,
       });
     } catch (error) {
       console.error(`story-map: ${escapeText(error instanceof Error ? error.message : String(error))}`);

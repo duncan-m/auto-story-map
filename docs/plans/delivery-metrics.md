@@ -13,7 +13,7 @@ Status: proposed. Planning only; no implementation in this PR. Work is split int
 7. [Baseline releases and expose scope changes](#7-baseline-releases-and-expose-scope-changes) (ESM-136)
 8. [Display cumulative flow and bottlenecks](#8-display-cumulative-flow-and-bottlenecks) (ESM-138)
 
-The team agreed estimates for 0.8.2 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
+The team agreed estimates for 0.8.2 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. For 0.8.3 (18 points): ESM-135 5, ESM-136 5 and ESM-138 8. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
 
 ## Why and product outcome
 
@@ -96,6 +96,8 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Depends on:** ESM-130.
 
+**Estimate:** 5 points, agreed. The calculations are pure functions of the history events from ESM-130, but the distribution statistics and the documented policy for re-openings, blocked periods and unknown prehistory need their own fixtures.
+
 ### 7. Baseline releases and expose scope changes
 
 **User story:** As a PM, I want a release's agreed baseline and subsequent changes visible so that I can distinguish evolving scope from slow delivery.
@@ -106,6 +108,8 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Depends on:** ESM-130 and ESM-131.
 
+**Estimate:** 5 points, agreed. A small schema field with validation and docs, plus scope-change counts built on the ESM-131 series.
+
 ### 8. Display cumulative flow and bottlenecks
 
 **User story:** As a PM, I want status inventory and ageing trends so that I can find blocked work and excessive work in progress.
@@ -115,6 +119,8 @@ Success: a user can open a release, see delivered versus changing scope, through
 **Acceptance:** every story belongs to only one status at each snapshot; statuses sum to observed inventory; unknown prehistory is labelled; historical reclassifications are handled consistently.
 
 **Depends on:** ESM-130 and ESM-131.
+
+**Estimate:** 8 points, agreed. A new accessible cumulative-flow chart with a table fallback, ageing views and release filters, the most new UI in the release.
 
 ## Implementation guidance
 
@@ -137,7 +143,7 @@ Sprint creation, timesheets, manual daily updates, agent leaderboards, cost-per-
 ## Delivery checklist
 
 - All 8 stories remain `planned` until implementation begins.
-- No estimates are assigned without team agreement. The 0.8.2 estimates are agreed; 0.8.3 has none yet.
+- No estimates are assigned without team agreement. The 0.8.2 and 0.8.3 estimates are agreed.
 - Validate map/schema; add linked tests at implementation time.
 - Keep delivery metrics out of customer-facing projections.
 - Review usability with a Solo Builder and an inheriting PM before considering the feature shipped.
