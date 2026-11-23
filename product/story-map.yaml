@@ -867,6 +867,8 @@ stories:
     activity: plan
     release: v0-7-4
     status: shipped
+    tokens: 24795822
+    estimatedCostUsd: 8.5
     jobs:
       - triage-backlog
       - get-oriented
@@ -1058,6 +1060,8 @@ stories:
     release: v0-7-5
     status: merged
     estimate: 5
+    tokens: 9365533
+    estimatedCostUsd: 4.16
     jobs:
       - validate-inherited-map
     summary: story-map evidence reports the branches, default-branch commits, plans, tests and broken sources that mention each story, and suggests a status without changing anything.
@@ -1153,6 +1157,8 @@ stories:
     release: v0-7-5
     status: merged
     estimate: 2
+    tokens: 16995603
+    estimatedCostUsd: 6.23
     dependsOn:
       - ESM-124
     jobs:
@@ -1424,6 +1430,8 @@ stories:
     activity: explore
     release: v0-7-4
     status: shipped
+    tokens: 5093738
+    estimatedCostUsd: 1.83
     jobs:
       - get-oriented
     summary: Story, release and persona details slide in as a full-height panel on the right, so the board stays in view beside them, instead of opening in a modal in the middle of the screen.

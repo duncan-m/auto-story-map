@@ -56,3 +56,38 @@ Record it in the pull request that finishes the story, the one that marks it `me
 ## Estimate
 
 None agreed yet. The PR flags it.
+
+## Backfill for 0.7.4 and 0.7.5
+
+On 2026-11-23, the merged and shipped stories in 0.7.4 and 0.7.5 were given the tokens used by the Claude Code cloud sessions that delivered them. Those sessions ran in containers that no longer exist, so `story-map tokens` had no local logs to read. Their transcripts were read instead, and only sessions that worked on a single story were counted. ESM-145 already had its own figures and was left alone.
+
+| Story | Sessions | Tokens | Estimated cost | How it was matched | Confidence | Date |
+| --- | --- | --- | --- | --- | --- | --- |
+| ESM-503 | `session_01Lq2MQU99JsHs8WT98gMqve`, `session_01Lq2MQT7QcCo4zhHh8imhmH` | 24,795,822 | $8.50 | `Claude-Session` trailers on every commit of #81, which built it, and #100, which fixed its release totals. The sessions' titles and summaries name ESM-503. | High. Leaves out the 0.7.4 release session, which marked it shipped. | 2026-11-23 |
+| ESM-912 | `session_01Lq2MQTjxnbNYK5sfnxTjmp` | 5,093,738 | $1.83 | `Claude-Session` trailers on #103. | High. Includes the session's work on #104, the story numbering rule in `AGENTS.md`, which names no story. Leaves out the 0.7.4 release session. | 2026-11-23 |
+| ESM-105 | `session_01Lq2MQUJvRox8E7Z4rTDkt8` | 9,365,533 | $4.16 | `Claude-Session` trailers on #128. The session's title and summary name ESM-105. | High | 2026-11-23 |
+| ESM-125 | `session_01Lq2MQQqvsokysby4WnvvTB` | 16,995,603 | $6.23 | `Claude-Session` trailers on #125. The session's title and summary name ESM-125. | High | 2026-11-23 |
+| ESM-120, ESM-121, ESM-122 | `session_01Lq2MQS7FtrkhPd28uFPGpr` | Not recorded | Not recorded | Trailers on #105, #106, #108 and #110 | The session delivered all three, wrote the 0.7.4 release notes (#109) and marked 0.7.4 shipped (#110), so it is not split. | 2026-11-23 |
+| ESM-123, ESM-124 | `session_01Lq2MQRZqHQuWxxjXbSDnwX` | Not recorded | Not recorded | Trailers on #118 and #123 | The session delivered both, so it is not split. | 2026-11-23 |
+| ESM-129 | `session_01Lq2MQRwBfoYbPH2uyBWXu4` | Not recorded | Not recorded | Trailers on #119 | The same session's #120 records dependencies on seven other stories, so it is not counted as a single-story session. | 2026-11-23 |
+| ESM-144 | `session_01Lq2MQRA8kzFC9YuM975vmC` | Not recorded | Not recorded | Trailers on #129 | The same session later worked on ESM-145 (#131), so it is not split. | 2026-11-23 |
+
+### How the figures were counted
+
+Each count is the session's own final total, from the `modelUsage` of the last `result` event in its transcript. It sums input, output, cache writes and cache reads, and the cost is that event's `costUSD`, summed for ESM-503's two sessions. These sessions used only `claude-opus-5-5`. Claude Code prices it at API list prices, the same as `defaultTokenPrices`.
+
+`story-map tokens` was run as a cross-check on the transcripts' assistant events, written out as log lines. It matched the input and cache counts, exactly for ESM-105 and ESM-125. It undercounted output, because each assistant event keeps the usage counted when the response started streaming, not the final count. On those figures, output came to 2% to 10% of the session totals and the cost was 20% to 25% low:
+
+| Story | `story-map tokens` from the assistant events | Session totals, recorded |
+| --- | --- | --- |
+| ESM-503 | 23,260,156 tokens, output 4,319, $6.77 | 24,795,822 tokens, output 73,774, $8.50 |
+| ESM-912 | 4,585,941 tokens, output 1,374, $1.45 | 5,093,738 tokens, output 14,451, $1.83 |
+| ESM-105 | 9,312,467 tokens, output 1,148, $3.10 | 9,365,533 tokens, output 54,214, $4.16 |
+| ESM-125 | 16,927,498 tokens, output 2,443, $4.86 | 16,995,603 tokens, output 70,548, $6.23 |
+
+Sessions that only planned, estimated or renumbered these stories are not counted. That covers the planning of ESM-120 to ESM-122 before they were renumbered, the ESM-123 plans in #111 and #114, and the estimates in #82 and #116.
+
+### Limits
+
+- **The figures are a lower bound.** They leave out sessions run on a person's own computer, deleted sessions, work outside Claude Code, and the shares of the multi-story sessions above.
+- **The costs are estimates at API list prices** as of `defaultTokenPricesDate`, 2026-11-03. They are not what was billed: a Claude subscription is not billed per token, and discounts differ.
