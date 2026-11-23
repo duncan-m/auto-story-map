@@ -1073,10 +1073,11 @@ stories:
       - ESM-124
     jobs:
       - plan-and-build
-    summary: Hosts can turn on Open in Claude and Open in ChatGPT links in the brief section, which start a new web chat with the brief filled in.
-    notes: Off by default, because it sends internal map content to another company. Long briefs are copied and the chat opens empty. A web chat cannot read the repository.
+    summary: Internal story and release panels have a Share menu where Copy link is today, with Copy link, Copy brief and, when the host turns them on, Open in Claude and Open in ChatGPT, which start a new web chat with the brief filled in.
+    notes: Off by default, because it sends internal map content to another company. Panels with nothing but a link keep the plain Copy link. The brief section keeps Show the brief but loses its Copy brief button. Long briefs are copied and the chat opens empty. A web chat cannot read the repository. The estimate was agreed before the Share menu and needs agreeing again.
     sources:
       - docs/plans/agent-briefs.md#3-open-the-brief-in-a-web-agent
+      - docs/plans/agent-briefs.md#ui-mockup
   - id: ESM-129
     title: Show a story's dependencies on its card and panel
     activity: explore

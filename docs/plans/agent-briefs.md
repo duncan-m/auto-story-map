@@ -131,15 +131,25 @@ Estimate: 2 points, agreed.
 
 ## 3. Open the brief in a web agent
 
-Next to **Copy brief**, the panel can show **Open in Claude** and **Open in ChatGPT** links. They open a new chat with the brief filled in, using `https://claude.ai/new?q=` and `https://chatgpt.com/?q=`. Both were tried by hand on 23 November 2026 with the ESM-111 example above, at about 3,500 encoded characters, and filled in the prompt.
+The panel's actions move into one **Share** menu, where **Copy link** is today, at the top right next to Close. It holds **Copy link**, **Copy brief**, and, when the host turns them on, **Open in Claude** and **Open in ChatGPT**. The Open links start a new chat with the brief filled in, using `https://claude.ai/new?q=` and `https://chatgpt.com/?q=`. Both were tried by hand on 23 November 2026 with the ESM-111 example above, at about 3,500 encoded characters, and filled in the prompt.
 
-- **Off by default.** A host turns them on with a `webAgents` board prop, such as `webAgents={["claude", "chatgpt"]}`. Opening one sends internal map content to another company, so it is the host's choice. The demo turns both on.
+- **Why a menu.** The brief section is at the bottom of the panel, under the notes and sources, so its buttons are out of sight when the panel opens. Copy link is already a hand-off action at the top. One menu keeps them together and adds one control to the header, not three.
+- **Only when there is more than one action.** Customer panels, and internal merged, shipped and cut stories, have no brief. They keep the plain **Copy link** they have today, rather than a menu with one item.
+- **The brief stays in the panel.** The **Agent brief** section keeps **Show the brief**, so people can read what they are about to send, and copy it by hand without JavaScript. Its **Copy brief** button moves into the menu.
+- **Built on the board's menus.** The menu is a `details.esm-menu`, like Export, so it opens without JavaScript. `enhanceStoryMapMenus` closes it on Escape, a click elsewhere or a choice, buttons included. After a copy, the menu button says **Copied** for 2 seconds, and the live region says what was copied, such as "Copied brief: ESM-125".
+- **Off by default.** A host turns the Open links on with a `webAgents` board prop, such as `webAgents={["claude", "chatgpt"]}`. Opening one sends internal map content to another company, so it is the host's choice, and each link says which company it goes to. The demo turns both on.
 - **Plain links.** Each is an `<a target="_blank" rel="noopener noreferrer">` with the brief encoded in its `href`, so it works without JavaScript.
-- **Long briefs.** When the encoded link would be longer than 8,000 characters, the link opens a new chat with no prompt and `board.js` copies the brief first, saying "Brief copied. Paste it into the chat." Without JavaScript, the link is left out and the brief can still be copied by hand.
+- **Long briefs.** When the encoded link would be longer than 8,000 characters, the link opens a new chat with no prompt and `board.js` copies the brief first, saying "Brief copied. Paste it into the chat." Without JavaScript, the link is left out and the brief can still be copied by hand. On this map, the 0.7.5 release brief encodes to about 7,200 characters, so release panels usually keep the full link.
 - **A web chat cannot read the repository.** The brief points to files rather than including them, so a web agent can plan, review and ask questions about a story but not build it. Item 5 covers building.
 - The list of agents is fixed in the library. Other web agents can be added once someone has checked that their prompt parameter works.
 
-Estimate: 2 points, agreed.
+Estimate: 2 points, agreed before the Share menu. Moving Copy link and Copy brief into the menu changes the merged work from ESM-122 and ESM-124, so the estimate needs agreeing again.
+
+### UI mockup
+
+![Mockup of the ESM-125 story panel and the 0.7.5 release panel with an open Share menu at the top right, and the states of its button](panel-actions-mockup.png)
+
+The mockup, made before the build, is [panel-actions-mockup.html](panel-actions-mockup.html), built on the real `styles.css` and the board's real markup, rendered from this product's map with briefs turned on and no status history. The Open links carry the real encoded briefs. The Share menu, the brief section without its Copy brief button, and their styles at the top of the file are proposed. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-125 links to this section from its `sources`.
 
 ## 4. Write briefs from the command line
 
@@ -182,7 +192,7 @@ Estimate: 5 points, agreed. It depends on ESM-112 in 0.7.6.
 | Question | What has already happened on this story? | What should the agent do next, and within what limits? |
 | Reads | Git branches and commits, plans, tests, broken sources and claims | The map: the story, its neighbours, jobs and sources |
 | Output | Facts, with a suggested status | A prompt with rules, scope, what to reuse and what not to build |
-| Used by | The scheduled audit (ESM-109), reviewers and the MCP server | The panel's Copy and Open links, `story-map brief` and Build |
+| Used by | The scheduled audit (ESM-109), reviewers and the MCP server | The panel's Share menu, `story-map brief` and Build |
 | Runs | On the command line, in a checkout | On the board too, without Git |
 
 The brief uses evidence where it can, in its `<in_flight>` section, and never repeats evidence's Git reads. The handoff serves the Coding Agent's `pick-up-work` job. Evidence serves the audit and the Product Manager's `validate-inherited-map` job.
