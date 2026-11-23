@@ -1664,7 +1664,7 @@ stories:
     jobs:
       - triage-backlog
       - agree-first-release-plan
-    summary: Add optional approved release baseline/target dates and display additions, cuts, moves and estimate changes since baseline.
+    summary: Add an optional approved release baseline date and display additions, cuts, moves and estimate changes since baseline.
     sources:
       - docs/plans/delivery-metrics.md#7-baseline-releases-and-expose-scope-changes
   - id: ESM-138

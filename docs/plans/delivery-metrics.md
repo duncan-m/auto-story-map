@@ -100,9 +100,9 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **User story:** As a PM, I want a release's agreed baseline and subsequent changes visible so that I can distinguish evolving scope from slow delivery.
 
-**Scope:** optional release `baselineDate` and `targetDate` schema fields, with validation and documented UTC date semantics. Count stories and points added, moved, cut and re-estimated after baseline; no automatic baseline inferred as an approved commitment.
+**Scope:** an optional release `baselineDate` schema field, with validation and documented UTC date semantics. Count stories and points added, moved, cut and re-estimated after baseline; no automatic baseline inferred as an approved commitment.
 
-**Acceptance:** no dates are mandatory; release moves are attributed to both affected releases; historical data limitations stay visible; no generated baseline overwrites an agreed one.
+**Acceptance:** the baseline date is optional; release moves are attributed to both affected releases; historical data limitations stay visible; no generated baseline overwrites an agreed one.
 
 **Depends on:** ESM-130 and ESM-131.
 
