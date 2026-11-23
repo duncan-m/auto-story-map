@@ -93,6 +93,7 @@ The tests and the demo import the package by its own name (`import … from "aut
 | `src/check.ts` | `checkStoryMap`: the checks behind `validate`, returning every issue as data for the text, GitHub and JSON formats |
 | `src/preview.tsx` | `createStoryMapPreviewServer`, behind `story-map preview`. Not exported from the root entry point, because it imports `react-dom/server`. The CLI loads it with a dynamic `import()`, so the other commands work without React |
 | `src/edit.ts` | `proposeStoryMapEdit`, behind `story-map edit`, `add` and `release-impact`: applies named edits as line splices, checks the result, and renders the line diff |
+| `src/brief.ts` | `storyMapBrief`: writes a handoff brief for a story or release from the internal view, with neighbours, open decisions and in-flight work, escaped and cut to size. `storyMapBriefBranch` names the branch |
 | `src/read.ts` | `findStories` and `getStories`, behind `story-map stories` and `story`, built on `filterStoryMapView` and the JSON export's story shape |
 | `src/board.ts` | The optional browser script, `enhanceStoryMapFilters`. The only code that runs in the browser. |
 | `src/react.tsx` | `StoryMapBoard`: grid, cards, popover panels, filter toolbar, history list and date formatting |

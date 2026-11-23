@@ -208,10 +208,10 @@ These are proposals. Each is easy to change during review.
 
 | Story | Release | Points |
 | --- | --- | --- |
-| ESM-123: Write a handoff brief for a story or release | 0.7.5 | Not agreed (suggested 5) |
-| ESM-124: Copy an agent brief from the story and release panels | 0.7.5 | Not agreed (suggested 2) |
-| ESM-125: Open an agent brief in Claude or ChatGPT | 0.7.5 | Not agreed (suggested 2) |
-| ESM-126: Write agent briefs from the command line | 0.8.1 | Not agreed (suggested 3) |
-| ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.8.1 | Not agreed (suggested 5) |
+| ESM-123: Write a handoff brief for a story or release | 0.7.5 | 5, agreed |
+| ESM-124: Copy an agent brief from the story and release panels | 0.7.5 | 2, agreed |
+| ESM-125: Open an agent brief in Claude or ChatGPT | 0.7.5 | 2, agreed |
+| ESM-126: Write agent briefs from the command line | 0.8.1 | 3, agreed |
+| ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.8.1 | 5, agreed |
 
 ESM-123 to ESM-125 depend on nothing else in 0.7.5, so they can be built before or alongside the evidence and claim work. ESM-126 uses the evidence code from ESM-105.

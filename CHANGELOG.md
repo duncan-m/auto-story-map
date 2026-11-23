@@ -2,6 +2,12 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+### Agent briefs
+
+- New `storyMapBrief(view, { story })` and `storyMapBrief(view, { release })` write a handoff brief for a coding agent from the internal map: a compact Markdown prompt with `<rules>`, `<target>`, `<context>`, `<in_flight>`, `<open_decisions>` and `<done_when>` sections. It lists the targets with their plan, personas and jobs, the delivered stories nearby to reuse, the planned stories nearby not to build yet, the tagged tests and changes that already name each target, draft jobs, missing estimates and plans, and blocked stories, and names the branch to create. Options `mapPath`, `readFirst`, `validateCommand`, `testCommand` and `baseBranch` fit it to the repository. Text from the map is escaped so it cannot close or add a section. A story brief stays under 4 KB and a release brief under 16 KB. Throws a `TypeError` for a customer or filtered view. New exports `storyMapBriefBranch`, `storyBriefMaxBytes`, `releaseBriefMaxBytes`, `briefBranchMaxLength` and `briefBuiltNearbyMaxItems`, and types `StoryMapBriefRequest`, `StoryMapBriefOptions` and `StoryMapBriefDocument`. See [Write a brief for an agent](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#write-a-brief-for-an-agent).
+
 ## 0.7.4
 
 There are no 0.7.2 or 0.7.3 releases. 0.7.4 follows 0.7.1 and brings together the work planned as 0.7.2 to 0.7.4: commands to read, change and preview the map (0.7.2), personas and jobs to be done (0.7.3), and links from each story to its code, with permalinks to stories and releases (0.7.4). It also includes effort estimates in story points, planned for 0.7.6.
