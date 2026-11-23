@@ -381,9 +381,13 @@ releases:
         draft: true
   - id: v0-7-5
     title: "0.7.5: Evidence and claims for agents"
-    summary: Agents look up the evidence for each story, including release tags that show merged work has shipped, and can claim stories when several agents work at once.
+    summary: Agents look up the evidence for each story, including release tags that show merged work has shipped, and can claim stories when several agents work at once. Internal viewers copy an agent brief for a story or release from its panel, or open it in Claude or ChatGPT.
     notes: |
       The second half of the native CLI plan. It comes before the scheduled audit (ESM-109), which uses the evidence from ESM-105.
+
+      Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief and local launch in 0.8.1.
+
+      Plans: docs/plans/native-cli.md and docs/plans/agent-briefs.md
     impact:
       - metric: Agents starting the same story at the same time
         expected: None, for teams that use claims
@@ -392,6 +396,10 @@ releases:
       - metric: Stories left in merged after their release goes out
         expected: Suggested as shipped by story-map evidence, for products that tag their releases
         solves: The map showing released work as not yet available
+        draft: true
+      - metric: Time to hand a story or release to a coding agent
+        expected: One copy from its panel, instead of writing the prompt by hand
+        solves: Agents starting work without the plan, the work already built nearby or the repository's rules
         draft: true
   - id: v0-7-6
     title: "0.7.6: PM improvements"
@@ -431,6 +439,18 @@ releases:
         draft: true
     customer:
       title: "0.8.0"
+  - id: v0-8-1
+    title: "0.8.1: Agent briefs"
+    summary: Agents and scripts print a brief for a story, release or activity with story-map brief, and the local preview starts Claude Code or Codex on a brief in the repository.
+    notes: |
+      Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.8.0, which gets a get_brief tool. Starting an agent needs the writable preview from 0.7.6 (ESM-112).
+
+      Plan: docs/plans/agent-briefs.md
+    impact:
+      - metric: Steps to start a local agent on a story
+        expected: One click in the local preview, or one story-map brief command
+        solves: Copying a brief from the board and pasting it into a terminal
+        draft: true
 stories:
   # 0.1.0
   - id: ESM-101
@@ -960,6 +980,40 @@ stories:
     notes: Opt-in, because many products deploy without tags or ship behind feature flags. Suggests only, like the rest of evidence.
     sources:
       - docs/plans/native-cli.md#8-suggest-shipped-from-release-tags
+  - id: ESM-123
+    title: Build a brief for a story or release
+    activity: plan
+    release: v0-7-5
+    status: planned
+    jobs:
+      - plan-and-build
+      - pick-up-work
+    summary: "storyMapBrief writes a compact Markdown brief for a story or release from the internal map: the targets, the work already built nearby, what not to build yet, open decisions, the branch name and the repository's rules, linking files instead of copying them."
+    notes: Internal view only. Text from the map is escaped so it cannot close or add a section.
+    sources:
+      - docs/plans/agent-briefs.md#1-build-a-brief-for-a-story-or-release
+  - id: ESM-124
+    title: Copy an agent brief from the story and release panels
+    activity: plan
+    release: v0-7-5
+    status: planned
+    jobs:
+      - plan-and-build
+    summary: Internal story and release panels have an Agent brief section with the brief to read, and a Copy brief button that says what it copied.
+    notes: Works without JavaScript as a closed details block. Never shown in the customer view.
+    sources:
+      - docs/plans/agent-briefs.md#2-copy-the-brief-from-the-panel
+  - id: ESM-125
+    title: Open an agent brief in Claude or ChatGPT
+    activity: plan
+    release: v0-7-5
+    status: planned
+    jobs:
+      - plan-and-build
+    summary: Hosts can turn on Open in Claude and Open in ChatGPT links in the brief section, which start a new web chat with the brief filled in.
+    notes: Off by default, because it sends internal map content to another company. Long briefs are copied and the chat opens empty. A web chat cannot read the repository.
+    sources:
+      - docs/plans/agent-briefs.md#3-open-the-brief-in-a-web-agent
   # Personas
   - id: ESM-901
     title: Define personas in the map file
@@ -1410,3 +1464,26 @@ stories:
     summary: A story ID in a describe or suite name covers every test inside it, so renaming a test does not unlink it from its story.
     sources:
       - docs/plans/0.8.0-agents-and-adoption.md#4-tag-a-describe-block-for-all-its-tests
+  - id: ESM-126
+    title: Write agent briefs from the command line
+    activity: plan
+    release: v0-8-1
+    status: planned
+    jobs:
+      - pick-up-work
+      - plan-and-build
+    summary: story-map brief prints the brief for stories, a release or an activity, with --full to include notes, persona context and tests inline, and --format json.
+    notes: Adds a get_brief tool to the MCP server from ESM-116.
+    sources:
+      - docs/plans/agent-briefs.md#4-write-briefs-from-the-command-line
+  - id: ESM-127
+    title: Start Claude Code or Codex on a brief from the local preview
+    activity: plan
+    release: v0-8-1
+    status: planned
+    jobs:
+      - plan-and-build
+    summary: The writable local preview has a Build button that starts Claude Code or Codex in the repository with the story's or release's brief as its first message.
+    notes: "The page sends only the scope, ID and agent name, and the preview builds the brief from the map on disk. Same Origin and token checks as ESM-112. No Git changes: the brief names the branch."
+    sources:
+      - docs/plans/agent-briefs.md#5-start-a-local-agent-from-the-preview
