@@ -1714,6 +1714,7 @@ stories:
     activity: track
     release: v0-8-2
     status: planned
+    estimate: 5
     jobs:
       - get-oriented
       - agree-first-release-plan
@@ -1725,6 +1726,7 @@ stories:
     activity: track
     release: v0-8-2
     status: planned
+    estimate: 8
     dependsOn:
       - ESM-130
     jobs:
@@ -1738,6 +1740,7 @@ stories:
     activity: track
     release: v0-8-2
     status: planned
+    estimate: 8
     dependsOn:
       - ESM-131
     jobs:
@@ -1751,6 +1754,7 @@ stories:
     activity: track
     release: v0-8-2
     status: planned
+    estimate: 3
     dependsOn:
       - ESM-131
     jobs:
@@ -1764,6 +1768,7 @@ stories:
     activity: track
     release: v0-8-2
     status: planned
+    estimate: 3
     jobs:
       - get-oriented
       - triage-backlog
