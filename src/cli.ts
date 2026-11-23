@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { claim, claims, unclaim } from "./commands/claim.js";
 import diff from "./commands/diff.js";
 import { add, edit, releaseImpact } from "./commands/edit.js";
 import evidence from "./commands/evidence.js";
@@ -23,7 +24,10 @@ const usage = `Usage:
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
-  story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [<ID> ...]
+  story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [<ID> ...]
+  story-map claim [--format text|json] [--map <path>] [--remote <name>] [--store <dir>] --agent <name> [--ttl <duration>] [--branch <name>] [--renew | --take-over] <ID>
+  story-map claims [--format text|json] [--remote <name>] [--store <dir>]
+  story-map unclaim [--format text|json] [--remote <name>] [--store <dir>] [--agent <name>] <ID>
   story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] [--prices <file>] <ID>
   story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--tokens <n>] [--estimated-cost <usd>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
@@ -162,7 +166,7 @@ evidence
   Markdown, the map and files under --plans. It never suggests moving a story
   back from merged or shipped, never changes a cut story and never suggests
   shipped unless --shipped-tags is given. It reads the checkout only, with no
-  network calls. An ID that is not in the map exits 1.
+  network calls unless --claims is given. An ID that is not in the map exits 1.
 
   --format json      Print the evidence as JSON, for agents and scripts.
   --map <path>       Map to read. Defaults to product/story-map.yaml.
@@ -181,6 +185,51 @@ evidence
                      Tags that mark a release going out, such as 'v*'. A
                      merged story whose merging commit is in a matching tag
                      is suggested as shipped, with the tag as evidence.
+  --claims           Also read claims from origin, which needs the network.
+                     A claim on a merged, shipped or cut story is reported as
+                     stale. Claims never change the suggested status.
+  --claims-remote <name>, --claims-store <dir>
+                     Read claims from this remote or claim store instead.
+
+claim
+  Records that an agent is on a story, before any branch or pull request
+  exists, so a second agent is told before it starts the same work. Opt-in,
+  for teams running several agents on one map. Each claim is a Git ref,
+  refs/story-map/claims/<ID>, on the remote, pointing at a commit with no
+  parents whose message is the claim as JSON: agent, branch, when it was
+  claimed and when it expires. The push only succeeds if the ref does not
+  exist yet, so of two agents claiming at once exactly one wins. The other
+  exits 3 and is told who holds the claim. The map is never changed.
+
+  --agent <name>     Required. Who is claiming, such as audit-bot. Never an
+                     email address: everyone who can read the remote sees it.
+  --ttl <duration>   How long the claim lasts, such as 30m, 4h or 2d. Defaults
+                     to 4h, and is at most 30d.
+  --branch <name>    The branch the work is on. Defaults to the current branch.
+  --renew            Extend your own claim, from now.
+  --take-over        Replace a claim that has expired.
+  --remote <name>    The remote that holds claims. Defaults to origin.
+  --store <dir>      Keep claims as files in this folder inside the
+                     repository instead, using exclusive file creation for
+                     the same guarantee, for agents on one machine that
+                     cannot push refs.
+  --map <path>       Map to read. Defaults to product/story-map.yaml. A story
+                     that is not in it, or is merged, shipped or cut, cannot
+                     be claimed.
+  --format json      Print the claim as JSON.
+
+  Exit codes: 0 claimed, 1 an unknown or finished story or a Git failure,
+  2 a usage error, 3 someone else holds the claim.
+
+claims
+  Lists the claims on the remote, or in --store, marking expired ones. Takes
+  --remote, --store and --format json.
+
+unclaim
+  Releases a claim by deleting its ref or file. Opening the story's pull
+  request does not release it: release it once the work merges, or let it
+  expire. With --agent, it refuses, with exit 3, a claim another agent holds.
+  Takes --remote, --store and --format json.
 
 tokens
   Counts the model tokens Claude Code used on a story, from its session logs
@@ -292,7 +341,7 @@ preview
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, tokens, preview, edit, add, "release-impact": releaseImpact };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, claim, claims, unclaim, tokens, preview, edit, add, "release-impact": releaseImpact };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {

@@ -13,7 +13,7 @@ Status: proposed. Planning only; no implementation in this PR. Work is split int
 7. [Baseline releases and expose scope changes](#7-baseline-releases-and-expose-scope-changes) (ESM-136)
 8. [Display cumulative flow and bottlenecks](#8-display-cumulative-flow-and-bottlenecks) (ESM-138)
 
-No story-point estimates are assigned here. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
+The team agreed estimates for 0.8.2 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. For 0.8.3 (18 points): ESM-135 5, ESM-136 5 and ESM-138 8. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
 
 ## Why and product outcome
 
@@ -143,7 +143,7 @@ Sprint creation, timesheets, manual daily updates, agent leaderboards, cost-per-
 ## Delivery checklist
 
 - All 8 stories remain `planned` until implementation begins.
-- No estimates are assigned without team agreement. The 0.8.3 estimates (ESM-135, ESM-136 and ESM-138) are agreed; the 0.8.2 ones are not yet.
+- No estimates are assigned without team agreement. The 0.8.2 and 0.8.3 estimates are agreed.
 - Validate map/schema; add linked tests at implementation time.
 - Keep delivery metrics out of customer-facing projections.
 - Review usability with a Solo Builder and an inheriting PM before considering the feature shipped.
