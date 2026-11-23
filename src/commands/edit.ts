@@ -110,7 +110,7 @@ const escapeDiff = (diff: string) => diff.split("\n").map(escapeText).join("\n")
 
 export const edit = defineCommand({
   parse(rest: string[]) {
-    const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from", string>> = {};
+    const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from" | "tokens", string>> = {};
     const lists: [option: string, op: string, key: string][] = [
       ["--add-source", "add-source", "source"], ["--remove-source", "remove-source", "source"],
       ["--add-job", "add-job", "job"], ["--remove-job", "remove-job", "job"],
@@ -122,6 +122,7 @@ export const edit = defineCommand({
     const names: Record<string, keyof typeof fields> = {
       "--status": "status", "--reason": "reason", "--release": "release", "--activity": "activity", "--title": "title",
       "--summary": "summary", "--notes": "notes", "--customer-title": "customerTitle", "--customer-summary": "customerSummary", "--from": "from",
+      "--tokens": "tokens",
     };
     const common = parseEditArgs(rest, (name, value) => {
       const list = lists.find(([option]) => option === name);
@@ -142,6 +143,11 @@ export const edit = defineCommand({
     if (fields.status) operations.push({ op: "status", id, status: fields.status, ...(fields.reason ? { reason: fields.reason } : {}) });
     for (const key of ["release", "activity", "title", "summary", "notes"] as const) {
       if (fields[key]) operations.push({ op: key, id, [key]: fields[key] });
+    }
+    if (fields.tokens) {
+      const tokens = fields.tokens.replace(/[,_]/g, "");
+      if (!/^\d+$/.test(tokens) || !Number.isSafeInteger(Number(tokens))) throw new ArgumentError(`--tokens must be a whole number, such as 1843920, not ${fields.tokens}`);
+      operations.push({ op: "tokens", id, tokens: Number(tokens) });
     }
     for (const listEdit of listEdits) operations.push({ ...(listEdit as object), id });
     if (fields.customerTitle) operations.push({ op: "customer-title", id, title: fields.customerTitle });

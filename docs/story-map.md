@@ -213,6 +213,35 @@ Set dependencies with `story-map edit <ID> --add-dependency <ID>` and `--remove-
 
 Dependencies are internal only. Customers never see them, on the board or in the JSON.
 
+## Record the tokens used on a story
+
+When a coding agent delivers a story, record the model tokens it used in the story's `tokens`, in the pull request that finishes the story, the one that marks it `merged`:
+
+```yaml
+- id: BUILDER-102
+  title: Look up prices in the material catalogue
+  status: merged
+  estimate: 3
+  tokens: 4348638
+```
+
+For work done in Claude Code, count them from its session logs on the machine that ran the agent:
+
+```sh
+npx story-map tokens BUILDER-102
+npx story-map edit BUILDER-102 --tokens 4348638 --write
+npx story-map tokens --format markdown BUILDER-102
+```
+
+- **What counts.** A response counts when it was made on a branch whose name contains the story ID, such as `feat/builder-102-price-lookup`. Add `--branch <name>` for a branch named before the ID was known, such as a generated one, and `--session <ID>` for a whole session. Subagents count too.
+- **The total** adds input, output, cache-write and cache-read tokens, each response once. The command prints the breakdown, and `--format markdown` prints a **Tokens used** section for the pull request description.
+- **Nothing found** exits 1 instead of reporting 0. The logs are read from `$CLAUDE_CONFIG_DIR/projects` or `~/.claude/projects`, or `--logs <path>`, with no network calls.
+- **Other agents** record the count their own tool reports with `story-map edit <ID> --tokens <n>`. When several machines or agents worked on a story, add up their counts.
+
+The story panel lists the count as **Tokens used**, after the estimate. `story-map diff` shows a change as “Tokens used: none → 4,348,638”, `story-map story` prints it and the JSON export carries each story's `tokens`.
+
+Token counts are internal only. Customers never see them, on the board or in the JSON. They are a record of what the work used, not an estimate, so they do not replace `estimate`.
+
 ## Personas and jobs to be done
 
 The map can name the people the product serves, as personas, and the jobs each of them is trying to get done. Each story then says which jobs it serves, so the team agrees who a story is for in the PR that adds it, and can see which needs have no stories.

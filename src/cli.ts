@@ -9,6 +9,7 @@ import preview from "./commands/preview.js";
 import { releases, stories, story } from "./commands/read.js";
 import { ArgumentError, type Command } from "./commands/shared.js";
 import tests from "./commands/tests.js";
+import tokens from "./commands/tokens.js";
 import validate from "./commands/validate.js";
 import { defaultExportMaxStories } from "./export.js";
 
@@ -23,7 +24,8 @@ const usage = `Usage:
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
   story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [<ID> ...]
-  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [common edit options]
+  story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] <ID>
+  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--tokens <n>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
@@ -176,6 +178,25 @@ evidence
                      Defaults to the whole root.
   --history <file>   History from story-map history, to flag stalled stories.
 
+tokens
+  Counts the model tokens Claude Code used on a story, from its session logs
+  on this machine, for the pull request that finishes the story. A response
+  counts when it was made on a branch whose name contains the story ID, such
+  as feat/esm-144-tokens, or on a branch or in a session named below. Input,
+  output and cache tokens are all counted, each response once. It reads the
+  logs only and changes nothing: record the total with
+  story-map edit <ID> --tokens <n>. Exits 1 when nothing was found, rather
+  than reporting 0.
+
+  --format markdown  Print the Tokens used section for the pull request.
+  --format json      Print the counts as JSON, for agents and scripts.
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --logs <path>      Folder of session logs. Defaults to
+                     $CLAUDE_CONFIG_DIR/projects or ~/.claude/projects.
+  --branch <name>    Also count this branch, such as one named before the
+                     story ID was known. Repeat for several.
+  --session <ID>     Also count this whole session. Repeat for several.
+
 edit
   Changes a story with named edits instead of editing the YAML by hand. By
   default it is a dry run: it prints the line diff of the YAML, the story-map
@@ -199,10 +220,13 @@ edit
                      Repeat for several.
   --customer-title, --customer-summary <text>
                      Customer-facing copy. Needs --customer.
+  --tokens <n>       Record the model tokens used to deliver the story, in
+                     the pull request that finishes it. story-map tokens
+                     counts them from Claude Code's logs.
   --from <file>      A JSON list of edits, such as
                      [{"op": "status", "id": "ESM-744", "status": "merged"}],
                      applied all or none. The ops are status, release,
-                     activity, title, summary, notes, add-source,
+                     activity, title, summary, notes, tokens, add-source,
                      remove-source, add-job, remove-job, add-persona,
                      remove-persona, add-dependency, remove-dependency,
                      customer-title, customer-summary, add and
@@ -255,7 +279,7 @@ preview
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, preview, edit, add, "release-impact": releaseImpact };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, tokens, preview, edit, add, "release-impact": releaseImpact };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {

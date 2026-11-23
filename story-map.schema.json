@@ -476,6 +476,12 @@
               13
             ]
           },
+          "tokens": {
+            "description": "Optional. Model tokens used to deliver the story, counting input, output and cache tokens, recorded in the pull request that finishes it, such as from `story-map tokens`. Internal only.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
           "updatedBy": {
             "description": "Optional. Display name of the person to credit for this edit, when it is not the commit author. The status history credits Git otherwise.",
             "type": "string",

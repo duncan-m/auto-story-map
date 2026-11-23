@@ -387,7 +387,9 @@ releases:
 
       Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief and local launch in 0.8.1.
 
-      Plans: docs/plans/native-cli.md and docs/plans/agent-briefs.md
+      Token counts (ESM-144) record the tokens used to deliver each story, in the pull request that finishes it. Mockup: docs/plans/token-usage.md#ui-mockup
+
+      Plans: docs/plans/native-cli.md, docs/plans/agent-briefs.md and docs/plans/token-usage.md
     impact:
       - metric: Agents starting the same story at the same time
         expected: None, for teams that use claims
@@ -400,6 +402,10 @@ releases:
       - metric: Time to hand a story or release to a coding agent
         expected: One copy from its panel, instead of writing the prompt by hand
         solves: Agents starting work without the plan, the work already built nearby or the repository's rules
+        draft: true
+      - metric: Stories merged with the tokens used to deliver them
+        expected: Every story an agent finishes in Claude Code, from the pull request that marks it merged
+        solves: Not knowing what agent work on a story used
         draft: true
   - id: v0-7-6
     title: "0.7.6: Update the map from the board"
@@ -1167,6 +1173,20 @@ stories:
     sources:
       - docs/plans/story-dependencies.md#ui-mockup
       - docs/story-map.md#record-dependencies
+  - id: ESM-144
+    title: Record the tokens used to deliver a story
+    activity: review
+    release: v0-7-5
+    status: merged
+    tokens: 6628576
+    jobs:
+      - plan-and-build
+    summary: story-map tokens counts the model tokens Claude Code used on a story from its session logs, by branch or session, and prints a Tokens used section for the pull request that finishes it. story-map edit --tokens records the total on the story, shown in the internal story panel.
+    notes: "Reads the logs on the machine that runs it, with no network calls. Other agents record a count by hand with edit --tokens. Internal only. A count, not a cost: no dashboards or comparisons between agents, which the delivery metrics plan leaves out."
+    sources:
+      - docs/plans/token-usage.md#plan-record-the-tokens-used-to-deliver-a-story
+      - docs/plans/token-usage.md#ui-mockup
+      - docs/story-map.md#record-the-tokens-used-on-a-story
   # Personas
   - id: ESM-901
     title: Define personas in the map file
