@@ -3,7 +3,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { stringify } from "yaml";
-import { StoryMapBoard } from "auto-story-map/react";
+import { StoryMapBoard, webAgentLinkMaxLength } from "auto-story-map/react";
 import {
   briefBranchMaxLength,
   filterStoryMapView,
@@ -304,17 +304,16 @@ test("ESM-124: internal story and release panels show the brief, and customer bo
 
   const sections = html.match(/<section class="esm-detail-section esm-brief"[\s\S]*?<\/section>/g);
   assert.equal(sections.length, 3, "SHOP-3, SHOP-4 and release r2");
-  const [story3] = sections.filter(section => section.includes("Copied brief: SHOP-3"));
+  const [story3] = sections.filter(section => section.includes("Build story SHOP-3 "));
   assert.match(story3, /<h4 id="[^"]+-brief-heading">Agent brief<\/h4>/);
-  // Without board.js, the button stays hidden and the brief is in a closed details block.
-  assert.match(story3, /<button type="button" class="esm-copy-brief" data-esm-copy-brief="([^"]+)" data-esm-copied="Copied brief: SHOP-3" hidden="">/);
-  const briefId = story3.match(/data-esm-copy-brief="([^"]+)"/)[1];
+  // Without board.js, the Copy brief button in the Share menu stays hidden and the brief is in a closed details block.
+  const [, briefId] = html.match(/<button type="button" class="esm-menu-item" data-esm-copy-brief="([^"]+)" data-esm-copied="Copied brief: SHOP-3" hidden="">/);
   assert.match(story3, new RegExp(`<details class="esm-brief-details"><summary>Show the brief</summary><pre class="esm-brief-text" id="${briefId}" tabindex="0">Build story SHOP-3 `));
   assert.doesNotMatch(story3, /<details[^>]* open/);
   // The brief escapes map text itself, and React escapes it again for HTML.
   assert.match(story3, /SHOP-3  Search &amp;lt;items&amp;gt;/);
-  assert.ok(sections.some(section => section.includes('data-esm-copied="Copied brief: 1.1, 2 stories"')));
-  assert.ok(!sections.some(section => section.includes("Copied brief: SHOP-1")), "shipped stories have no brief");
+  assert.match(html, /data-esm-copied="Copied brief: 1\.1, 2 stories"/);
+  assert.doesNotMatch(html, /Copied brief: SHOP-1/, "shipped stories have no brief");
 
   // No briefs unless the view asked for them, and never for customers.
   assert.doesNotMatch(renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) })), /esm-brief|Agent brief/);
@@ -322,15 +321,20 @@ test("ESM-124: internal story and release panels show the brief, and customer bo
   assert.equal(customer.audience, "all-users");
   assert.ok(customer.stories.length > 0);
   assert.doesNotMatch(JSON.stringify(customer), /brief/i);
-  assert.doesNotMatch(renderToStaticMarkup(createElement(StoryMapBoard, { map: customer })), /esm-brief|Agent brief|Copy brief/);
+  assert.doesNotMatch(renderToStaticMarkup(createElement(StoryMapBoard, { map: customer })), /esm-brief|Agent brief|Copy brief|esm-panel-menu/);
 });
 
 test("ESM-124: board.js shows Copy brief, copies the brief and says what it copied", async t => {
   const written = [];
   const status = { textContent: "" };
-  const label = { textContent: "Copy brief" };
+  const label = { textContent: "Share", dataset: {} };
+  const summary = { dataset: {}, querySelector: () => label };
   const pre = { textContent: "Build story SHOP-3 from the Shop story map." };
-  const button = { hidden: true, dataset: { esmCopyBrief: "p-3-brief", esmCopied: "Copied brief: SHOP-3" }, querySelector: () => label };
+  const button = {
+    hidden: true,
+    dataset: { esmCopyBrief: "p-3-brief", esmCopied: "Copied brief: SHOP-3" },
+    closest: selector => selector === "details.esm-panel-menu" ? { querySelector: () => summary } : null,
+  };
   class FakeElement { closest(selector) { return selector === "button[data-esm-copy-brief]" ? button : null; } }
   let click;
   const board = {
@@ -362,9 +366,10 @@ test("ESM-124: board.js shows Copy brief, copies the brief and says what it copi
   click({ target: new FakeElement() });
   await new Promise(resolve => setTimeout(resolve, 80));
   assert.deepEqual(written, ["Build story SHOP-3 from the Shop story map."], "copies once, though enhanced twice");
+  // The Share menu closes after a choice, so its button says Copied.
   assert.equal(label.textContent, "Copied");
   assert.equal(status.textContent, "Copied brief: SHOP-3");
-  assert.ok("copied" in button.dataset);
+  assert.ok("copied" in summary.dataset);
 
   // A failed copy says how to copy by hand.
   clipboard = { writeText: async () => { throw new Error("denied"); } };
@@ -382,4 +387,164 @@ test("ESM-124: without clipboard access, Copy brief stays hidden", async t => {
   const { enhanceStoryMapBriefs } = await import("auto-story-map/board.js");
   enhanceStoryMapBriefs({ querySelectorAll: () => [board] });
   assert.equal(button.hidden, true);
+});
+
+/** Installs fake browser globals for board.js, restoring the real ones after the test. */
+function fakeGlobals(t, globals) {
+  const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  t.after(() => {
+    for (const [key, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  });
+}
+
+test("ESM-125: panels with a brief have a Share menu with Copy link, Copy brief and the web agents the host turns on", () => {
+  const map = shopMap();
+  const view = getStoryMapForViewer(map, engineer, { brief: true });
+  const brief = view.stories.find(card => card.id === "SHOP-3").brief;
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, webAgents: ["claude", "chatgpt", "claude", "gemini"] }));
+
+  const menus = html.match(/<details class="esm-menu esm-panel-menu">[\s\S]*?<\/details>/g);
+  assert.equal(menus.length, 7, "SHOP-3, SHOP-4, SHOP-5, SHOP-6 and SHOP-8, and releases r2 and r3");
+  const [menu] = menus.filter(item => item.includes("Copied brief: SHOP-3"));
+  assert.match(menu, /<summary class="esm-copy-link esm-menu-button">.*<span data-esm-copy-label="">Share<\/span><span class="esm-visually-hidden"> this story<\/span>/);
+  assert.match(menu, /<a class="esm-menu-item" href="\?story=SHOP-3#esm-story-SHOP-3" data-esm-copy-link="">/);
+  assert.match(menu, /<button type="button" class="esm-menu-item" data-esm-copy-brief="[^"]+" data-esm-copied="Copied brief: SHOP-3" hidden="">/);
+
+  // One link per known agent, in the library's order, with the whole brief in the address.
+  const links = [...menu.matchAll(/<li class="esm-menu-agent"><a class="esm-menu-item" href="([^"]+)" target="_blank" rel="noopener noreferrer" data-esm-web-agent="(\w+)">/g)];
+  assert.deepEqual(links.map(link => link[2]), ["claude", "chatgpt"]);
+  const decode = href => href.replaceAll("&#x27;", "'").replaceAll("&amp;", "&");
+  assert.equal(decode(links[0][1]), `https://claude.ai/new?q=${encodeURIComponent(brief)}`);
+  assert.equal(decode(links[1][1]), `https://chatgpt.com/?q=${encodeURIComponent(brief)}`);
+  assert.match(menu, /Open in Claude<svg[^>]*esm-external[\s\S]*?New chat with the brief, sent to Anthropic/);
+  assert.match(menu, /Open in ChatGPT<svg[\s\S]*?New chat with the brief, sent to OpenAI/);
+  assert.doesNotMatch(menu, /data-esm-brief-copy/);
+  assert.match(html, /<span data-esm-copy-label="">Share<\/span><span class="esm-visually-hidden"> this release<\/span>/);
+
+  // The brief section keeps the brief to read, and no longer has its own button.
+  const section = html.match(/<section class="esm-detail-section esm-brief"[\s\S]*?<\/section>/)[0];
+  assert.match(section, /Copy it from <b>Share<\/b> at the top of this panel\./);
+  assert.doesNotMatch(section, /<button/);
+
+  // Panels with nothing else to share keep the plain Copy link.
+  assert.match(html, /<a class="esm-copy-link" href="\?story=SHOP-1#esm-story-SHOP-1" data-esm-copy-link="" title="Link to this story">/);
+  assert.match(html, /<a class="esm-copy-link" href="\?release=r1#esm-release-r1" data-esm-copy-link="" title="Link to this release">/);
+});
+
+test("ESM-125: web agents are off by default and never shown to customers", () => {
+  const map = shopMap([
+    story("SHOP-1", "browse", "r1", "shipped", { customer: { title: "Find gifts" } }),
+    story("SHOP-3", "browse", "r2", "planned", { estimate: 3, customer: { title: "Search" }, sources: ["docs/plans/shop.md#3"] }),
+  ]);
+  const internal = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer, { brief: true }) }));
+  assert.match(internal, /esm-panel-menu/);
+  assert.doesNotMatch(internal, /esm-menu-agent|claude\.ai|chatgpt\.com/);
+
+  const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, { roles: [] }, { brief: true }), webAgents: ["claude", "chatgpt"] }));
+  assert.doesNotMatch(customer, /esm-panel-menu|esm-menu-agent|claude\.ai|chatgpt\.com|Copy brief/);
+  assert.match(customer, /<a class="esm-copy-link"/);
+});
+
+test("ESM-125: a brief too long for a link opens an empty chat, hidden until board.js can copy the brief", () => {
+  const long = { estimate: 3, summary: "é".repeat(500), sources: ["docs/plans/shop.md#3"] };
+  const map = shopMap([story("SHOP-3", "browse", "r2", "planned", long), story("SHOP-4", "buy", "r2", "planned", long)]);
+  const view = getStoryMapForViewer(map, engineer, { brief: true });
+  const release = view.releases.find(item => item.id === "r2");
+  assert.ok(encodeURIComponent(release.brief).length > webAgentLinkMaxLength);
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view, webAgents: ["claude", "chatgpt"] }));
+  const menu = html.match(/<details class="esm-menu esm-panel-menu">(?:(?!<\/details>)[\s\S])*?Copied brief: 1\.1, 2 stories[\s\S]*?<\/details>/)[0];
+  const briefId = menu.match(/data-esm-copy-brief="([^"]+)"/)[1];
+  assert.match(menu, new RegExp(`<li class="esm-menu-agent" hidden=""><a class="esm-menu-item" href="https://claude.ai/new" target="_blank" rel="noopener noreferrer" data-esm-web-agent="claude" data-esm-brief-copy="${briefId}">`));
+  assert.match(menu, new RegExp(`<li class="esm-menu-agent" hidden=""><a class="esm-menu-item" href="https://chatgpt.com/" [^>]*data-esm-brief-copy="${briefId}">`));
+  assert.match(menu, /Copies the brief, then opens a new chat/);
+  assert.doesNotMatch(menu, /\?q=/);
+});
+
+test("ESM-125: board.js shows the long-brief links and copies the brief as the chat opens", async t => {
+  const written = [];
+  const status = { textContent: "" };
+  const pre = { textContent: "Build story SHOP-3 from the Shop story map." };
+  const item = { hidden: true };
+  const link = { dataset: { esmBriefCopy: "p-3-brief" }, closest: () => item };
+  class FakeElement { closest(selector) { return selector === "a[data-esm-brief-copy]" ? link : null; } }
+  let click;
+  const board = {
+    contains: node => node === pre,
+    querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
+    querySelectorAll: selector => selector === "a[data-esm-brief-copy]" ? [link] : [],
+    addEventListener: (type, handler) => { click = handler; },
+  };
+  fakeGlobals(t, {
+    Element: FakeElement,
+    navigator: { clipboard: { writeText: async text => { written.push(text); } } },
+    document: { readyState: "complete", querySelectorAll: () => [], getElementById: id => id === "p-3-brief" ? pre : null },
+  });
+  const { enhanceStoryMapBriefs } = await import("auto-story-map/board.js");
+  enhanceStoryMapBriefs({ querySelectorAll: () => [board] });
+  assert.equal(item.hidden, false, "shows the link");
+
+  let prevented = false;
+  click({ target: new FakeElement(), preventDefault: () => { prevented = true; } });
+  await new Promise(resolve => setTimeout(resolve, 80));
+  assert.equal(prevented, false, "the link still opens the chat");
+  assert.deepEqual(written, ["Build story SHOP-3 from the Shop story map."]);
+  assert.equal(status.textContent, "Brief copied. Paste it into the chat.");
+});
+
+test("ESM-125: the Share menu closes after a choice and its button says Copied when a link is copied", async t => {
+  const status = { textContent: "" };
+  const label = { textContent: "Share", dataset: {} };
+  const summary = { dataset: {}, querySelector: () => label, focus() {} };
+  const listeners = {};
+  const menu = {
+    open: true,
+    closest: () => null,
+    contains: () => true,
+    querySelector: selector => selector === "summary" ? summary : null,
+    addEventListener: (type, handler) => { listeners[type] = handler; },
+  };
+  const link = {
+    dataset: {},
+    getAttribute: () => "?story=SHOP-3#esm-story-SHOP-3",
+    closest: selector => selector === "details.esm-panel-menu" ? menu : null,
+  };
+  class FakeElement { closest(selector) { return selector === "a, .esm-menu-item" || selector === "a[data-esm-copy-link]" ? link : null; } }
+  let click;
+  const board = {
+    dataset: {},
+    querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
+    addEventListener: (type, handler) => { click = handler; },
+  };
+  const written = [];
+  fakeGlobals(t, {
+    Element: FakeElement,
+    location: { href: "https://example.com/story-map" },
+    navigator: { clipboard: { writeText: async text => { written.push(text); } } },
+    document: { readyState: "complete", querySelectorAll: () => [], addEventListener: () => {} },
+  });
+  const { enhanceStoryMapMenus, enhanceStoryMapPermalinks } = await import("auto-story-map/board.js");
+  enhanceStoryMapMenus({ querySelectorAll: () => [menu] });
+  enhanceStoryMapPermalinks({ querySelectorAll: () => [board] });
+
+  const event = { target: new FakeElement(), button: 0, preventDefault() {} };
+  click(event);
+  listeners.click(event);
+  await new Promise(resolve => setTimeout(resolve, 80));
+  assert.equal(menu.open, false, "closes the menu");
+  assert.deepEqual(written, ["https://example.com/story-map?story=SHOP-3#esm-story-SHOP-3"]);
+  assert.equal(label.textContent, "Copied", "the menu button says Copied, not the hidden item");
+  assert.ok("copied" in summary.dataset);
+  assert.equal(status.textContent, "Link copied");
+
+  // Escape closes the open menu and stops there, so the panel around it stays open.
+  menu.open = true;
+  let prevented = false;
+  listeners.keydown({ key: "Escape", preventDefault: () => { prevented = true; } });
+  assert.equal(menu.open, false);
+  assert.ok(prevented);
+  listeners.keydown({ key: "Escape", preventDefault: () => assert.fail("a closed menu leaves Escape to the panel") });
 });

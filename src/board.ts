@@ -151,7 +151,7 @@ export function enhanceStoryMapReleases(root: ParentNode = document) {
 const enhancedMenus = new WeakSet<Element>();
 
 /**
- * Closes the board's menus (the status and persona filters, and Export) on Escape
+ * Closes the board's menus (the status and persona filters, Export and each panel's Share) on Escape
  * or a click elsewhere, and the Export menu after a choice. When a filter menu
  * closes with a changed choice, it submits the filter form. Safe to call more than once.
  */
@@ -165,10 +165,13 @@ export function enhanceStoryMapMenus(root: ParentNode = document) {
       if (focus) menu.querySelector<HTMLElement>("summary")?.focus();
     };
     menu.addEventListener("keydown", event => {
-      if (event.key === "Escape") close(true);
+      if (event.key !== "Escape" || !menu.open) return;
+      // Inside a panel, Escape closes only the menu, not the panel around it.
+      event.preventDefault();
+      close(true);
     });
     menu.addEventListener("click", event => {
-      if (event.target instanceof Element && event.target.closest("a")) close(false);
+      if (event.target instanceof Element && event.target.closest("a, .esm-menu-item")) close(false);
     });
     document.addEventListener("click", event => {
       if (!(event.target instanceof Node) || !menu.contains(event.target)) close(false);
@@ -202,10 +205,33 @@ function announce(board: Element, message: string) {
 }
 
 /**
+ * Shows that `control` copied something, for 2 seconds. Inside a panel's **Share** menu,
+ * which closes after a choice, the menu's button says “Copied” instead of the item.
+ */
+function showCopied(control: HTMLElement, copiedText: string) {
+  const target = control.closest<HTMLElement>("details.esm-panel-menu")?.querySelector<HTMLElement>("summary") ?? control;
+  const label = target.querySelector<HTMLElement>("[data-esm-copy-label]");
+  if (label) {
+    label.dataset.esmLabel ??= label.textContent ?? "";
+    label.textContent = target === control ? copiedText : "Copied";
+  }
+  target.dataset.copied = "";
+  const timers = copiedTimers.get(target);
+  if (timers) clearTimeout(timers);
+  copiedTimers.set(target, setTimeout(() => {
+    if (label) label.textContent = label.dataset.esmLabel ?? "";
+    delete target.dataset.copied;
+  }, copiedMs));
+}
+
+const copiedTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
+
+/**
  * Opens the story or release panel a permalink names, from the board's `data-esm-open`,
  * expanding its lane if the viewer had collapsed it, without changing what is remembered.
- * Turns each panel's **Copy link** into a button that copies the permalink and says
- * “Link copied”. Without clipboard access, it stays a plain link. Safe to call more than once.
+ * Turns each panel's **Copy link**, on its own or in the **Share** menu, into a button that
+ * copies the permalink and says “Link copied”. Without clipboard access, it stays a plain
+ * link. Safe to call more than once.
  */
 export function enhanceStoryMapPermalinks(root: ParentNode = document) {
   for (const board of root.querySelectorAll<HTMLElement>(".esm-board")) {
@@ -233,14 +259,8 @@ export function enhanceStoryMapPermalinks(root: ParentNode = document) {
       event.preventDefault();
       const url = new URL(link.getAttribute("href") ?? "", location.href).href;
       navigator.clipboard.writeText(url).then(() => {
-        const label = link.querySelector("[data-esm-copy-label]");
-        if (label) label.textContent = "Link copied";
-        link.dataset.copied = "";
+        showCopied(link, "Link copied");
         announce(board, "Link copied");
-        setTimeout(() => {
-          if (label) label.textContent = "Copy link";
-          delete link.dataset.copied;
-        }, copiedMs);
       }, () => announce(board, "Could not copy the link. Open the link's menu to copy it."));
     });
   }
@@ -249,9 +269,11 @@ export function enhanceStoryMapPermalinks(root: ParentNode = document) {
 const enhancedBriefs = new WeakSet<Element>();
 
 /**
- * Shows each panel's **Copy brief** button and makes it copy the agent brief, saying what it
- * copied, such as “Copied brief: ESM-111”. Without clipboard access the button stays hidden,
- * and the brief can still be selected in its details block. Safe to call more than once.
+ * Shows **Copy brief** in each panel's **Share** menu and makes it copy the agent brief,
+ * saying what it copied, such as “Copied brief: ESM-111”. Also shows the **Open in** links
+ * for briefs too long to put in a link, and copies the brief as one opens an empty chat,
+ * saying “Brief copied. Paste it into the chat.” Without clipboard access, both stay
+ * hidden, and the brief can still be selected in its details block. Safe to call more than once.
  */
 export function enhanceStoryMapBriefs(root: ParentNode = document) {
   if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) return;
@@ -259,22 +281,35 @@ export function enhanceStoryMapBriefs(root: ParentNode = document) {
     if (enhancedBriefs.has(board)) continue;
     enhancedBriefs.add(board);
     for (const button of board.querySelectorAll<HTMLButtonElement>("button[data-esm-copy-brief]")) button.hidden = false;
+    for (const link of board.querySelectorAll<HTMLAnchorElement>("a[data-esm-brief-copy]")) {
+      const item = link.closest<HTMLElement>("li");
+      if (item) item.hidden = false;
+    }
+    const briefText = (id: string | undefined) => {
+      const text = document.getElementById(id ?? "");
+      return text && board.contains(text) ? text.textContent ?? "" : null;
+    };
     board.addEventListener("click", event => {
-      const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button[data-esm-copy-brief]") : null;
-      if (!button) return;
-      const text = document.getElementById(button.dataset.esmCopyBrief ?? "");
-      if (!text || !board.contains(text)) return;
-      navigator.clipboard.writeText(text.textContent ?? "").then(() => {
-        const label = button.querySelector("[data-esm-copy-label]");
-        const copied = button.dataset.esmCopied || "Copied brief";
-        if (label) label.textContent = "Copied";
-        button.dataset.copied = "";
-        announce(board, copied);
-        setTimeout(() => {
-          if (label) label.textContent = "Copy brief";
-          delete button.dataset.copied;
-        }, copiedMs);
-      }, () => announce(board, "Could not copy the brief. Open Show the brief and select it to copy it."));
+      const target = event.target instanceof Element ? event.target : null;
+      const button = target?.closest<HTMLButtonElement>("button[data-esm-copy-brief]");
+      if (button) {
+        const text = briefText(button.dataset.esmCopyBrief);
+        if (text === null) return;
+        navigator.clipboard.writeText(text).then(() => {
+          showCopied(button, "Copied");
+          announce(board, button.dataset.esmCopied || "Copied brief");
+        }, () => announce(board, "Could not copy the brief. Open Show the brief and select it to copy it."));
+        return;
+      }
+      // The link still opens the chat. The copy starts first, while the click allows it.
+      const link = target?.closest<HTMLAnchorElement>("a[data-esm-brief-copy]");
+      if (!link) return;
+      const text = briefText(link.dataset.esmBriefCopy);
+      if (text === null) return;
+      navigator.clipboard.writeText(text).then(
+        () => announce(board, "Brief copied. Paste it into the chat."),
+        () => announce(board, "Could not copy the brief. Open Show the brief and select it to copy it."),
+      );
     });
   }
 }
