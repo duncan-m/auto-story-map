@@ -705,6 +705,21 @@ Open the address it prints, `http://127.0.0.1:4173/story-map`. **Internal** show
 
 The preview is for one person checking a map. It listens on `127.0.0.1` only, answers only requests addressed to `127.0.0.1` or `localhost`, and has no sign-in, so never deploy it or expose its port. To show the map to your users, [integrate it with your product](#integrate-with-a-product).
 
+## Link to a story
+
+Each story panel, and each release panel on internal boards, has a **Copy link** button in its header. The link opens the board on that panel, to paste into a pull request, a chat or a ticket:
+
+- `?story=ESM-801#esm-story-ESM-801` for a story
+- `?release=v0-7-4#esm-release-v0-7-4` for a release
+
+Story and release IDs are already stable and unique, so they are the link. The link keeps the host's `preservedParams` but not the viewer's filters, so it opens the same board for whoever follows it. A linked story is shown even when the filters would hide it, such as a blocked or cut story, with the other filters at their defaults. With [board.js](#integrate-with-a-product), the button copies the link and says “Link copied”, and the board opens the linked panel on load, expanding the story's lane if the viewer had collapsed it. Without board.js, **Copy link** is a plain link to copy or open, and following one scrolls to the card or lane and highlights it, and one click opens the panel.
+
+The host reads `story` and `release` with the other filters, through `getStoryMapPage` or `readStoryMapFilters`, so nothing else is needed. An ID only counts when the story or release is in the viewer's view: on a customer board, an internal-only story is treated exactly like one that does not exist, so a permalink reveals nothing. Customers link by their own public IDs, such as `?story=story-2`, and have no release panels, so a release link scrolls to the lane.
+
+Links are relative to the page. Pass `permalinkBase` to `StoryMapBoard`, such as `https://example.com/story-map`, when the board renders behind a proxy or on another path. Pass the same option to `storyMapToJson` to give each story and release in the JSON export a `permalink`, so an agent can link to the board. `storyMapPermalink` builds the same links on the server.
+
+Cards and lanes get the IDs `esm-story-<story ID>` and `esm-release-<release ID>`. Only render one board per page with permalinks: a second board would share these IDs, and only the first gets the scroll.
+
 ## Integrate with a product
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.

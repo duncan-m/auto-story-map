@@ -31,6 +31,8 @@ import {
   jsonContentType,
   storyMapExportResponse,
   storyMapToCsv,
+  storyMapAnchorId,
+  storyMapPermalink,
   storyMapToJson,
   storyMapToVsdx,
   vsdxContentType,
@@ -140,7 +142,9 @@ test("card faces show only the ID, title and status", async () => {
 
   const customer = await makeStoryMapResponse("/story-map", map, regular).text();
   const customerCard = cardsIn(customer).find(card => card.includes("Draft a project estimate"));
-  assert.doesNotMatch(customerCard, /List materials and quantities|story-1/);
+  // The card's anchor uses the customer's public ID, which never shows as text.
+  assert.match(customerCard, /^<button type="button" class="esm-card" id="esm-story-story-1"/);
+  assert.doesNotMatch(customerCard.replace(' id="esm-story-story-1"', ""), /List materials and quantities|story-1/);
 });
 
 test("each card opens its own detail panel through the popover API", async () => {
@@ -187,7 +191,7 @@ test("renders one Markdown overview link and lists the other sources", async () 
   assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}source/lib/ap/controls.ts" target="_blank" rel="noopener noreferrer"><code>source/lib/ap/controls.ts</code><svg[^>]*esm-external[\\s\\S]*?<span class="esm-visually-hidden"> \\(opens in a new tab\\)</span></a>`));
   assert.match(html, /<a class="esm-overview-link" href="[^"]+" aria-label="Engineering overview for [^"]+ \(opens in a new tab\)" target="_blank" rel="noopener noreferrer">/);
   // Every engineering link opens in a new tab without giving the new page access to the board.
-  const engineeringLinks = panel.match(/<a [^>]*>/g);
+  const engineeringLinks = panel.match(/<a [^>]*>/g).filter(link => !link.includes("esm-copy-link"));
   assert.ok(engineeringLinks.length >= 3);
   for (const link of engineeringLinks) assert.match(link, /target="_blank" rel="noopener noreferrer"/);
   assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}docs/another-overview.md#decisions" target="_blank" rel="noopener noreferrer">`));
@@ -1237,6 +1241,135 @@ test("ESM-121: more changes link to a pull request search on GitHub, and the JSO
   assert.deepEqual(exported.stories.find(story => story.id === "BUILDER-101").changes, story.changes);
   assert.ok(exported.provenance.notes.some(note => /Open pull requests and work merged without the ID are missing/.test(note)));
   assert.ok(!JSON.parse(storyMapToJson(getStoryMapForViewer(map, engineer))).provenance.notes.some(note => /Open pull requests/.test(note)));
+});
+
+test("ESM-122: a story permalink keeps the story on the board whatever the filters say", () => {
+  assert.deepEqual(readStoryMapFilters(new URLSearchParams("story=FINANCE-202&release=finance-follow-up")), { query: undefined, status: undefined, story: "FINANCE-202", release: "finance-follow-up" });
+  assert.deepEqual(readStoryMapFilters(new URLSearchParams("story=<script>&release=../x")), { query: undefined, status: undefined });
+
+  const page = (viewer, query) => getStoryMapPage(map, viewer, { searchParams: new URLSearchParams(query) });
+  // FINANCE-202 is cut, so the default status filter hides it, and the search does not match it.
+  const linked = page(engineer, "story=FINANCE-202&q=prices");
+  assert.deepEqual(linked.stories.map(story => story.id), ["BUILDER-102", "FINANCE-202"]);
+  assert.equal(linked.filter.story, "FINANCE-202");
+  assert.equal(linked.filter.hidden, undefined, "the linked story is not counted as hidden");
+  assert.equal(page(engineer, "release=finance-follow-up").filter.release, "finance-follow-up");
+
+  // An unknown ID, a badly formed one and an internal-only story on a customer board are all ignored the same way.
+  const plainCustomer = page(regular, "");
+  for (const query of ["story=NOPE-1", "story=<b>", "story=BUILDER-101", "story=FINANCE-202", "release=builder-mvp"]) {
+    assert.deepEqual(page(regular, query), plainCustomer, query);
+  }
+  assert.deepEqual(page(engineer, "story=NOPE-1&release=nope"), page(engineer, ""));
+  // Customers link by their public IDs.
+  assert.equal(page(regular, "story=story-2").filter.story, "story-2");
+  assert.equal(page(regular, "release=release-2").filter.release, "release-2");
+});
+
+test("ESM-122: story and release panels offer a permalink, and the board names the panel to open", () => {
+  const render = (viewer, query, props = {}) => renderToStaticMarkup(createElement(StoryMapBoard, {
+    map: getStoryMapPage(map, viewer, { searchParams: new URLSearchParams(query) }), preservedParams: { as: "engineer" }, ...props,
+  }));
+
+  const html = render(engineer, "q=estimate&status=planned&status=cut&story=BUILDER-103");
+  // Cards and lanes have stable IDs for the fragment to scroll to.
+  assert.match(html, /<button type="button" class="esm-card" id="esm-story-BUILDER-103"/);
+  assert.match(html, /<div class="esm-row esm-lane" role="row" id="esm-release-builder-mvp"/);
+  assert.equal(render(engineer, "q=estimate&story=BUILDER-103").match(/id="esm-story-BUILDER-103"/g).length, 1);
+  // The link keeps the host's parameters and drops the viewer's filters.
+  const panel = panelFor(html, "Submit the estimate to finance");
+  assert.match(panel, /<div class="esm-detail-actions"><a class="esm-copy-link" href="\?as=engineer&amp;story=BUILDER-103#esm-story-BUILDER-103" data-esm-copy-link="" title="Link to this story"><svg[^>]*>[\s\S]*?<\/svg><span data-esm-copy-label="">Copy link<\/span><span class="esm-visually-hidden"> to this story<\/span><\/a><button type="button" class="esm-close"/);
+  const panelId = /<div class="esm-detail" id="([^"]+)"[^>]*>(?:(?!<div class="esm-detail").)*Submit the estimate to finance/s.exec(html)[1];
+  assert.match(html, new RegExp(`<section class="esm-board" data-theme="light" data-esm-open="${panelId}"`));
+  assert.match(html, /<p class="esm-visually-hidden" role="status" data-esm-copy-status=""><\/p>/);
+
+  // A release permalink opens the release panel, which has its own link.
+  const release = render(engineer, "release=finance-follow-up");
+  const opened = /data-esm-open="([^"]+)"/.exec(release)[1];
+  assert.match(release, new RegExp(`<div class="esm-detail esm-release-detail" id="${opened}"[^>]*><div class="esm-detail-head"><div><p class="esm-card-id">Release</p><h3 [^>]*>Finance follow-up`));
+  assert.match(release, /href="\?as=engineer&amp;release=finance-follow-up#esm-release-finance-follow-up"/);
+
+  // permalinkBase makes absolute links; an unsafe one makes none. No permalink opens nothing.
+  assert.match(render(engineer, "", { permalinkBase: "https://example.test/app/story-map?tab=1" }), /href="https:\/\/example\.test\/app\/story-map\?tab=1&amp;as=engineer&amp;story=BUILDER-101#esm-story-BUILDER-101"/);
+  assert.match(render(engineer, "", { permalinkBase: "/app/story-map" }), /href="\/app\/story-map\?as=engineer&amp;story=BUILDER-101#esm-story-BUILDER-101"/);
+  const unsafe = render(engineer, "", { permalinkBase: "javascript:alert(1)" });
+  assert.doesNotMatch(unsafe, /esm-copy-link|javascript:/);
+  assert.doesNotMatch(render(engineer, ""), /data-esm-open/);
+
+  // Customers link to their own stories by public ID, and have no release panels to open.
+  const customer = render(regular, "story=story-2", { preservedParams: undefined });
+  assert.match(customer, /id="esm-story-story-2"/);
+  assert.match(customer, /href="\?story=story-2#esm-story-story-2"/);
+  assert.match(customer, /data-esm-open="[^"]+"/);
+  assert.doesNotMatch(customer, /BUILDER-|builder-mvp/);
+  assert.doesNotMatch(render(regular, "release=release-1"), /data-esm-open/);
+});
+
+test("ESM-122: storyMapPermalink builds links from a base and the host's parameters", () => {
+  assert.equal(storyMapPermalink({ story: "ESM-801" }), "?story=ESM-801#esm-story-ESM-801");
+  assert.equal(storyMapPermalink({ release: "v0-7-4" }, { preservedParams: { view: "internal" } }), "?view=internal&release=v0-7-4#esm-release-v0-7-4");
+  assert.equal(storyMapPermalink({ story: "ESM-801" }, { base: "https://example.test/map?story=OLD#top" }), "https://example.test/map?story=ESM-801#esm-story-ESM-801");
+  assert.equal(storyMapPermalink({ story: "ESM-801" }, { base: "javascript:alert(1)" }), undefined);
+  assert.equal(storyMapAnchorId({ release: "v0-7-4" }), "esm-release-v0-7-4");
+
+  const exported = JSON.parse(storyMapToJson(getStoryMapForViewer(map, engineer), { permalinkBase: "https://example.test/story-map" }));
+  assert.equal(exported.stories.find(story => story.id === "BUILDER-101").permalink, "https://example.test/story-map?story=BUILDER-101#esm-story-BUILDER-101");
+  assert.equal(exported.releases.find(release => release.id === "builder-mvp").permalink, "https://example.test/story-map?release=builder-mvp#esm-release-builder-mvp");
+  assert.ok(JSON.parse(storyMapToJson(getStoryMapForViewer(map, engineer))).stories.every(story => !("permalink" in story)));
+});
+
+test("ESM-122: board.js opens the permalinked panel, expands its lane and copies links", async t => {
+  const written = [];
+  let shown = 0;
+  const panel = { matches: () => false, showPopover: () => { shown++; } };
+  const collapse = { checked: true };
+  const opener = { closest: selector => selector === ".esm-lane" ? { querySelector: () => collapse } : null };
+  const status = { textContent: "" };
+  const label = { textContent: "Copy link" };
+  const link = { dataset: {}, getAttribute: () => "?story=BUILDER-103#esm-story-BUILDER-103", querySelector: () => label };
+  class FakeElement { closest() { return link; } }
+  let click;
+  const board = {
+    dataset: { esmOpen: "p-3" },
+    contains: () => true,
+    querySelector: selector => selector.startsWith("[popovertarget=") ? (selector.includes('"p-3"') ? opener : null) : selector === "[data-esm-copy-status]" ? status : null,
+    addEventListener: (type, handler) => { click = handler; },
+  };
+  const globals = {
+    Element: FakeElement,
+    CSS: { escape: value => value },
+    location: { href: "https://example.test/story-map?as=engineer" },
+    navigator: { clipboard: { writeText: async text => { written.push(text); } } },
+    document: { readyState: "complete", querySelectorAll: () => [], getElementById: id => id === "p-3" ? panel : null },
+  };
+  const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  t.after(() => {
+    for (const [key, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  });
+
+  const { enhanceStoryMapPermalinks } = await import("auto-story-map/board.js");
+  enhanceStoryMapPermalinks({ querySelectorAll: () => [board] });
+  enhanceStoryMapPermalinks({ querySelectorAll: () => [board] });
+  assert.equal(shown, 1, "opens the panel once");
+  assert.equal(collapse.checked, false, "expands the collapsed lane");
+
+  let prevented = false;
+  click({ target: new FakeElement(), button: 0, preventDefault: () => { prevented = true; } });
+  await new Promise(resolve => setTimeout(resolve, 80));
+  assert.equal(prevented, true);
+  assert.deepEqual(written, ["https://example.test/story-map?story=BUILDER-103#esm-story-BUILDER-103"]);
+  assert.equal(label.textContent, "Link copied");
+  assert.equal(status.textContent, "Link copied");
+  assert.ok("copied" in link.dataset);
+
+  // A modified click opens the link as usual.
+  prevented = false;
+  click({ target: new FakeElement(), button: 0, metaKey: true, preventDefault: () => { prevented = true; } });
+  assert.equal(prevented, false);
 });
 
 // The demo map before FINANCE-202 was cut, so tests can watch stories become blocked or cut.

@@ -28,6 +28,14 @@ export interface StoryMapFilters {
    * as its page. Internal views of maps with personas only; otherwise it is ignored.
    */
   view?: StoryMapPage;
+  /**
+   * A story ID from a permalink. The story is kept whatever the other filters say, and the
+   * board opens its panel. Ignored unless the story is in the view, so a customer board treats
+   * an internal-only story like one that does not exist.
+   */
+  story?: string;
+  /** A release ID from a permalink. The board opens its panel, or scrolls to its lane for customers. Ignored unless the release is in the view. */
+  release?: string;
 }
 
 /** The pages of an internal board with personas: the story map, or the Personas tab. */
@@ -61,7 +69,7 @@ function readStatuses(value: unknown): StoryStatusFilter[] {
 
 /**
  * Reads the board’s `q`, `status`, `changed` (`1d`, `7d`, `14d` or `30d`),
- * `persona`, `job`, `activity` and `view` parameters. `status` can repeat, once for each chosen
+ * `persona`, `job`, `activity` and `view` parameters, and a permalink's `story` or `release`. `status` can repeat, once for each chosen
  * status or `stalled`, and `status=all` chooses every status. `persona`, `job`
  * and `activity` repeat, once for each ID. `view=personas` opens the Personas
  * tab. Unknown values are ignored.
@@ -76,6 +84,8 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const job = readIds(params.getAll("job"));
   const activity = readIds(params.getAll("activity"));
   const view = params.get("view") === "personas" ? "personas" as const : undefined;
+  const [story] = readIds(params.getAll("story"));
+  const [release] = readIds(params.getAll("release"));
   return {
     query,
     status,
@@ -84,6 +94,8 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
     ...(job.length ? { job } : {}),
     ...(activity.length ? { activity } : {}),
     ...(view ? { view } : {}),
+    ...(story ? { story } : {}),
+    ...(release ? { release } : {}),
   };
 }
 
@@ -136,8 +148,13 @@ export function filterStoryMapView<View extends StoryMapView>(
   const personaTitles = new Map(internalPersonas.map(item => [item.id, item.title]));
   const statements = new Map(internalPersonas.flatMap(item => item.jobs.map(entry => [entry.id, jobStatement(entry)] as const)));
 
+  // A permalink only counts for a story or release the viewer can see.
+  const linkedStory = filters.story !== undefined ? view.stories.find(item => item.id === filters.story)?.id : undefined;
+  const linkedRelease = filters.release !== undefined ? view.releases.find(item => item.id === filters.release)?.id : undefined;
+
   const hidden = { blocked: 0, cut: 0 };
   const stories = (view.stories as InternalStoryCard[]).filter(story => {
+    if (story.id === linkedStory) return true;
     if (status && !chosen.has(story.status) && !(chosen.has("stalled") && story.stalled)) return false;
     if (since !== undefined && !(story.lastChangedAt && Date.parse(story.lastChangedAt) >= since)) return false;
     if (personaSet.size && !story.personas?.some(id => personaSet.has(id))) return false;
@@ -171,6 +188,8 @@ export function filterStoryMapView<View extends StoryMapView>(
       ...(job.length ? { job } : {}),
       ...(activity.length ? { activity } : {}),
       ...(personasPage ? { view: "personas" as const } : {}),
+      ...(linkedStory ? { story: linkedStory } : {}),
+      ...(linkedRelease ? { release: linkedRelease } : {}),
       total: view.stories.length,
       ...(hidden.blocked || hidden.cut ? { hidden } : {}),
     },
