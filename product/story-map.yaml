@@ -1085,8 +1085,10 @@ stories:
     title: Claim stories so several agents do not clash
     activity: plan
     release: v0-7-5
-    status: in-progress
+    status: merged
     estimate: 5
+    tokens: 5497279
+    estimatedCostUsd: 3.46
     jobs:
       - update-the-map
     summary: story-map claim records that an agent is on a story as a Git ref on the remote, so a second agent is told before it starts the same work.
