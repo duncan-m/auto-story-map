@@ -5,6 +5,57 @@ Because it sits directly inside your product, there are no extra accounts to man
 
 Export the map as JSON and an agent can review your stories and tests and suggest what to build next, with notes in the file on where the data came from and what it leaves out. You can also export it to Lucidchart, Miro, Visio or a spreadsheet. See [Export the map](#export-the-map).
 
+[Try the live demo](https://autostorymap.com/demo), which shows this library's own story map.
+
+## Features
+
+**Map and board**
+
+- The story map is a validated YAML file in your repo, with a JSON Schema for editor autocomplete.
+- A board for React hosts puts activities across the top and releases down the side, with cards showing each story's status, personas and estimate.
+- Search, filter by status, persona, job or recent change, collapse release lanes, and share permalinks to stories and releases.
+- The board works without client-side JavaScript. The optional `board.js` applies filters as soon as you choose them.
+
+**Audience and access**
+
+- The board uses your product's existing sign-in. Engineers and super admins see the internal map by default, and you can set your own permission rules.
+- Signed-in customers see a roadmap of only the stories approved for them, with no internal notes, blocked or cut stories.
+
+**Delivery tracking**
+
+- Status history from Git credits who changed each story, and flags stories stalled in progress.
+- Each story links to the pull requests and commits that name it, and to the tests tagged with its ID.
+- Releases record their notes and expected impact, and stories their estimate in story points.
+- Personas and their jobs to be done, with a Personas tab showing each job's steps, the stories that serve it and the gaps.
+
+**For agents**
+
+- A CLI reads the map (`story`, `stories`, `releases`), validates it and edits it, with JSON output and a dry run before each write.
+- `story-map init` sets up the map, the guide, the rules in `AGENTS.md` and a GitHub Actions check that summarises story changes on each PR.
+- A JSON export, with notes on its provenance and completeness, lets an agent review the map against the code.
+- `story-map preview` shows your own map as a board on your computer.
+
+**Export**: JSON, Visio (`.vsdx`, for Lucidchart, Miro or Visio) and CSV.
+
+**Requirements**: Node.js 20 or newer and a TypeScript or JavaScript backend. The board needs React 18 or 19.
+
+## Roadmap
+
+Merged, coming in the next release:
+
+- **Agent briefs**: copy a ready-made prompt for a story or release from its panel, or open it in Claude or ChatGPT.
+- **Story dependencies**: record which stories a story depends on, and see them on its card and panel.
+
+Planned:
+
+- **Evidence and claims**: look up the evidence for a story, suggest shipped from release tags, and let several agents claim stories without clashing.
+- **Update the map from the board**: confirm drafts and triage stories without editing the YAML, and list what validation flags on an Actions tab.
+- **Map versions and audit**: view and compare earlier versions of the map, split activities into steps, and run a scheduled audit that proposes corrections from the code.
+- **Agent integration**: an MCP server, an installable skill, a `story-map brief` command, and a survey that drafts a first map from a repo's history.
+- **Delivery metrics**: burn-up, throughput, velocity, lead time and cumulative flow from Git history, with no sprints to maintain.
+
+The full plan, story by story, is in [this library's own map][example-map]. Plans can change, and [the changelog][changelog] records what shipped.
+
 ## Code checks
 
 [![Dependency Scan](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/dependency-scan.yml) - [![CodeQL](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/duncan-m/auto-story-map/actions/workflows/codeql.yml) - [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/duncan-m/auto-story-map/badge)](https://scorecard.dev/viewer/?uri=github.com/duncan-m/auto-story-map)
@@ -15,7 +66,7 @@ Export the map as JSON and an agent can review your stories and tests and sugges
 
 ## Try the demo
 
-Use Node.js 20 or newer. Run these commands from a checkout of the [source repository][source].
+The [live demo](https://autostorymap.com/demo) needs no install. To run it locally, use Node.js 20 or newer. Run these commands from a checkout of the [source repository][source].
 
 ```sh
 npm ci
@@ -33,7 +84,7 @@ Things to try:
 - Select **Link stories to their engineering overview** to open its details, then follow the **Engineering overview** link into these docs.
 - Select the **0.4.0: Delivery tracking** release title to see its notes, expected impact and progress.
 - Search for “history”, filter by status, or use **Changed** to see recent changes.
-- Choose **All, including blocked and cut** to see the cut story and its reason. Cut stories are hidden by default.
+- Tick **Blocked** and **Cut** in the status filter to see the cut stories and their reasons. They are hidden by default.
 - Open the **Personas** tab to see each persona, their jobs to be done and the stories that serve them.
 
 The demo reads this repository’s Git history to show when each story changed and who changed it.
@@ -86,7 +137,7 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Run `npm install auto-story-map@0.7.1` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.7.0 lets the status filter take several choices, so host code that reads `filter.status` needs to treat it as an array. It also adds Visio and CSV export and tests linked to stories, and 0.7.1 adds a JSON export for agents with no further upgrade steps. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.3.0 or earlier, follow the [0.4.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040) first, and from 0.2.0 or earlier the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030) before those.
+Run `npm install auto-story-map@0.7.4` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.7.0 lets the status filter take several choices, so host code that reads `filter.status` needs to treat it as an array. It also adds Visio and CSV export and tests linked to stories. 0.7.1 adds a JSON export for agents, and 0.7.4 adds the CLI commands, personas, links to code and estimates, with no further upgrade steps. **0.7.4 changes the licence from Apache-2.0 to the GNU AGPL version 3 only.** See [the changelog][changelog] for details. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.3.0 or earlier, follow the [0.4.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040) first, and from 0.2.0 or earlier the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030) before those.
 
 ## Populate the first map
 
