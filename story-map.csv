@@ -58,5 +58,5 @@ Plan the map,0.7.5: Evidence and claims for agents,ESM-106,Claim stories so seve
 Review changes,0.7.5: Evidence and claims for agents,ESM-105,Look up the evidence for a story,5,Coding agent,read-the-map
 Track delivery,0.7.5: Evidence and claims for agents,ESM-107,Suggest shipped from release tags,2,Product manager; Coding agent,track-progress; update-the-map
 Plan the map,0.7.6: PM improvements,ESM-503,Estimate effort on each story,,Product manager,plan-release; track-progress
-Review changes,0.7.6: PM improvements,ESM-502,Audit the map against the code on a schedule,5,Coding agent; Product manager,update-the-map; track-progress
-Explore the board,0.7.6: PM improvements,ESM-501,Expand activities into steps,8,Product manager,plan-release
+Review changes,0.7.6: PM improvements,ESM-109,Audit the map against the code on a schedule,5,Coding agent; Product manager,update-the-map; track-progress
+Explore the board,0.7.6: PM improvements,ESM-108,Expand activities into steps,8,Product manager,plan-release

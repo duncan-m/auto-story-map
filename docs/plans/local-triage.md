@@ -1,14 +1,14 @@
 # Plan: confirm drafts and triage from the local preview
 
-Status: proposed. The work is ESM-504, ESM-505 and ESM-506 in the **0.7.6: PM improvements** release of the map. The estimates below are agreed.
+Status: proposed. The work is ESM-110, ESM-111 and ESM-112 in the **0.7.6: PM improvements** release of the map. The estimates below are agreed.
 
 A person working alone, or a small team, spends most of their time with the map doing two things: confirming what an agent drafted, and moving stories between releases or statuses while looking at the board. Today both mean editing the YAML or asking an agent. This plan makes both quicker without giving agents a way to confirm drafts and without making the hosted board writable.
 
 Items are numbered in the order they should be built:
 
-1. [Confirm drafts from the command line](#1-confirm-drafts-from-the-command-line) (ESM-504)
-2. [Change status and release from the story panel](#2-change-status-and-release-from-the-story-panel) (ESM-505)
-3. [Save changes from the local preview](#3-save-changes-from-the-local-preview) (ESM-506)
+1. [Confirm drafts from the command line](#1-confirm-drafts-from-the-command-line) (ESM-110)
+2. [Change status and release from the story panel](#2-change-status-and-release-from-the-story-panel) (ESM-111)
+3. [Save changes from the local preview](#3-save-changes-from-the-local-preview) (ESM-112)
 
 The plan comes from a review of outside suggestions. Two of them are not planned, for the reasons in [Not planned](#not-planned).
 
@@ -25,7 +25,7 @@ Builds on `proposeStoryMapEdit` in `src/edit.ts`, which keeps comments and untou
 
 ## 2. Change status and release from the story panel
 
-The internal story panel gets a **Change** section with a status picker, a reason field for blocked and cut, and a release picker. On a read-only board, the hosted one and the default preview, it does not save: it shows the matching command, such as `npx story-map edit ESM-501 --release v0-7-5 --write`, with a **Copy** button, to paste into a terminal or an agent's chat.
+The internal story panel gets a **Change** section with a status picker, a reason field for blocked and cut, and a release picker. On a read-only board, the hosted one and the default preview, it does not save: it shows the matching command, such as `npx story-map edit ESM-108 --release v0-7-5 --write`, with a **Copy** button, to paste into a terminal or an agent's chat.
 
 - Internal view only. The customer view does not change.
 - The command is built from the same options `story-map edit` takes, with each value quoted for the shell, so a reason with quotes or spaces pastes safely. A test checks the quoting against `story-map edit`'s parser.
@@ -55,9 +55,9 @@ ESM-404 stays cut: the hosted board stays read-only, because saving there would 
 
 | Story | Points |
 | --- | --- |
-| ESM-504: Confirm drafts from the command line | 3 |
-| ESM-505: Show the edit command in the story panel | 3 |
-| ESM-506: Save status and release changes from the local preview | 5 |
+| ESM-110: Confirm drafts from the command line | 3 |
+| ESM-111: Show the edit command in the story panel | 3 |
+| ESM-112: Save status and release changes from the local preview | 5 |
 | **Total** | **11** |
 
-0.7.6 already holds 13 points still to merge (ESM-501 and ESM-502), so these stories nearly double what is left. If the release needs to stay small, ESM-504 fits on its own and ESM-505 and ESM-506 can move to the next release together.
+0.7.6 already holds 13 points still to merge (ESM-108 and ESM-109), so these stories nearly double what is left. If the release needs to stay small, ESM-110 fits on its own and ESM-111 and ESM-112 can move to the next release together.

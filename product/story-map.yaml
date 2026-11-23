@@ -373,7 +373,7 @@ releases:
     title: "0.7.5: Evidence and claims for agents"
     summary: Agents look up the evidence for each story, including release tags that show merged work has shipped, and can claim stories when several agents work at once.
     notes: |
-      The second half of the native CLI plan. It comes before the scheduled audit (ESM-502), which uses the evidence from ESM-105.
+      The second half of the native CLI plan. It comes before the scheduled audit (ESM-109), which uses the evidence from ESM-105.
     impact:
       - metric: Agents starting the same story at the same time
         expected: None, for teams that use claims
@@ -712,7 +712,7 @@ stories:
     sources:
       - docs/ENGINEERING-OVERVIEW.md#layout
   # 0.7.6: PM improvements
-  - id: ESM-501
+  - id: ESM-108
     title: Expand activities into steps
     activity: explore
     release: v0-7-6
@@ -725,7 +725,7 @@ stories:
     customer:
       title: Break activities into steps
       summary: Expand an activity to see its steps and the stories under each one.
-  - id: ESM-502
+  - id: ESM-109
     title: Audit the map against the code on a schedule
     activity: review
     release: v0-7-6
@@ -753,7 +753,7 @@ stories:
     sources:
       - docs/plans/effort-estimates.md
       - docs/plans/effort-estimates.md#ui-mockup
-  - id: ESM-504
+  - id: ESM-110
     title: Confirm drafts from the command line
     activity: review
     release: v0-7-6
@@ -766,7 +766,7 @@ stories:
     notes: For people only. It refuses --write when standard input is not a terminal, so agents keep to dry runs (ESM-744).
     sources:
       - docs/plans/local-triage.md#1-confirm-drafts-from-the-command-line
-  - id: ESM-505
+  - id: ESM-111
     title: Show the edit command in the story panel
     activity: explore
     release: v0-7-6
@@ -778,7 +778,7 @@ stories:
     summary: The internal story panel has status, reason and release pickers that build the matching story-map edit command, with a button to copy it.
     sources:
       - docs/plans/local-triage.md#2-change-status-and-release-from-the-story-panel
-  - id: ESM-506
+  - id: ESM-112
     title: Save status and release changes from the local preview
     activity: explore
     release: v0-7-6
@@ -791,7 +791,7 @@ stories:
     notes: Local only, on the loopback address, with an Origin check, a start-up token and a refusal when the file changed since the page loaded. The hosted board stays read-only (ESM-404).
     sources:
       - docs/plans/local-triage.md#3-save-changes-from-the-local-preview
-  - id: ESM-912
+  - id: ESM-113
     title: Read the map as it was at a version
     activity: explore
     release: v0-7-6
@@ -802,7 +802,7 @@ stories:
     summary: story-map stories, story, releases, export and preview take --at with a Git ref or a date, and show the map as it was then. Preview adds a banner naming the version.
     sources:
       - docs/plans/map-versions.md#1-read-the-map-as-it-was-at-a-version
-  - id: ESM-913
+  - id: ESM-114
     title: List the map's versions and compare any two
     activity: review
     release: v0-7-6
@@ -813,7 +813,7 @@ stories:
     summary: story-map versions lists each commit that changed the map, newest first, with its tags, date, who to credit, pull request and a one-line count of what changed. story-map diff takes a second ref to compare two versions.
     sources:
       - docs/plans/map-versions.md#2-list-the-maps-versions-and-compare-any-two
-  - id: ESM-914
+  - id: ESM-115
     title: Switch the board to an earlier version
     activity: explore
     release: v0-7-6
@@ -822,7 +822,7 @@ stories:
       - agree-first-release-plan
       - share-roadmap
     summary: The internal board's Version picker shows the map as it was at each named version, from snapshots in the history file, with a banner and a summary of what changed since.
-    notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size. Needs ESM-912 and ESM-913.
+    notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size. Needs ESM-113 and ESM-114.
     sources:
       - docs/plans/map-versions.md#3-switch-the-board-to-an-earlier-version
   - id: ESM-910
@@ -834,7 +834,7 @@ stories:
       - ground-work-in-customer-needs
       - triage-backlog
     summary: Any job can list up to 6 workflow steps in order, each pointing to the activity where its stories live. A step's stories serve its job and sit in its activity, validate warns about steps with none, the persona panel counts the core job's gaps, and the view, JSON export and diff carry steps and their coverage.
-    notes: Steps point to activities. Activity steps (ESM-501) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format. The job lanes that show each step in order are drawn on the Personas tab, so they ship with ESM-911, as the full display of ESM-907 and ESM-908 does.
+    notes: Steps point to activities. Activity steps (ESM-108) come later, in 0.7.6, and can let a job step point to an activity step then, without changing this format. The job lanes that show each step in order are drawn on the Personas tab, so they ship with ESM-911, as the full display of ESM-907 and ESM-908 does.
     sources:
       - docs/plans/personas.md#10-break-a-job-into-steps
       - docs/story-map.md#personas-and-jobs-to-be-done
@@ -895,7 +895,7 @@ stories:
       - pick-up-work
       - validate-inherited-map
     summary: story-map evidence reports the branches, default-branch commits, plans, tests and broken sources that mention each story, and suggests a status without changing anything.
-    notes: The deterministic evidence step of the scheduled audit (ESM-502), built first so agents can use it on its own.
+    notes: The deterministic evidence step of the scheduled audit (ESM-109), built first so agents can use it on its own.
     sources:
       - docs/plans/native-cli.md#4-look-up-evidence-for-a-story
   - id: ESM-744

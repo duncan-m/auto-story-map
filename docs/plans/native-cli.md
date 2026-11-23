@@ -3,7 +3,7 @@
 Status: in progress. Items 1, 2, 3, 5 and 7, the 0.7.2 release, are built. The stories are in two releases of the map:
 
 - **0.7.2: CLI to read, edit and preview the map**: ESM-741, ESM-742, ESM-744 and ESM-746. It comes before personas, so agents can tag the existing stories with `story-map edit` instead of editing the YAML by hand.
-- **0.7.5: Evidence and claims for agents**: ESM-105, ESM-106 and ESM-107. It comes before the scheduled audit (ESM-502), which depends on ESM-105.
+- **0.7.5: Evidence and claims for agents**: ESM-105, ESM-106 and ESM-107. It comes before the scheduled audit (ESM-109), which depends on ESM-105.
 
 Agents working in a host repository read and change the map by opening `product/story-map.yaml`, grepping for IDs and editing the YAML by hand. That works, but each agent re-learns the format, misses rules that live in the guide, and only finds out it broke something when `validate` runs. This plan gives agents the same operations as commands with JSON output, built on the code the CLI and board already use, so there is one set of rules and no second implementation:
 
@@ -38,7 +38,7 @@ These are proposals. Each is easy to change during review.
 | A. Output | Every new command takes `--format text|json`. Text is the default for people. JSON has `format: "auto-story-map.<kind>"` and `version: 1`, like the JSON export, so agents can check what they got. |
 | B. Story shape | Reads return the same story objects as the JSON export (`StoryMapJsonStory`), so an agent sees one shape everywhere. |
 | C. Audience | The CLI is always the internal view, as `export` already is: whoever runs it has the YAML file. |
-| D. Evidence and the audit | The deterministic evidence step planned for the scheduled audit (ESM-502, part 1) is built here as `story-map evidence`. ESM-502 keeps the agent workflow and depends on ESM-105. |
+| D. Evidence and the audit | The deterministic evidence step planned for the scheduled audit (ESM-109, part 1) is built here as `story-map evidence`. ESM-109 keeps the agent workflow and depends on ESM-105. |
 | E. Edits | Dry run by default. An edit prints the change and the `story-map diff` summary, and validates the result. `--write` applies it. |
 | F. Formatting | Edits keep comments, key order and untouched lines byte for byte. An edit that would reformat anything outside the node it changes is refused rather than written. |
 | G. Claims | Opt-in, for teams running several agents on one map. Stored as Git refs on the remote, never in the map file. |
@@ -220,15 +220,15 @@ npx --no-install story-map evidence --shipped-tags 'v*'
 ## Not now
 
 - **An MCP server.** A thin wrapper over the same functions once the commands settle. Now planned as ESM-748 in 0.8.0, after this plan's commands ship. See [the 0.8.0 plan](0.8.0-agents-and-adoption.md#1-serve-the-cli-over-mcp).
-- **Open PRs as evidence.** Needs a token and each host's API. The audit agent (ESM-502) can look them up itself.
+- **Open PRs as evidence.** Needs a token and each host's API. The audit agent (ESM-109) can look them up itself.
 - **Claims on the board.** Showing “claimed by audit-bot” on a card needs the board to reach the remote at request time.
 - **Editing releases and activities** beyond release impact.
-- **Proposing an edit from the board.** A story panel could copy a `story-map edit` command, such as moving the story to another release, for a person or agent to run. It keeps the board read-only, as ESM-404 decided, and needs ESM-744 and the permalinks in ESM-805 first. A pre-filled pull request is not possible without a token and the host's API. Now planned as ESM-505 and ESM-506 in 0.7.6. See [Confirm drafts and triage from the local preview](local-triage.md#2-change-status-and-release-from-the-story-panel).
+- **Proposing an edit from the board.** A story panel could copy a `story-map edit` command, such as moving the story to another release, for a person or agent to run. It keeps the board read-only, as ESM-404 decided, and needs ESM-744 and the permalinks in ESM-805 first. A pre-filled pull request is not possible without a token and the host's API. Now planned as ESM-111 and ESM-112 in 0.7.6. See [Confirm drafts and triage from the local preview](local-triage.md#2-change-status-and-release-from-the-story-panel).
 
 ## Questions for review
 
 1. **Release.** Settled: the stories are split between **0.7.2: CLI to read, edit and preview the map** and **0.7.5: Evidence and claims for agents**.
-2. **Evidence and the audit.** Is it right to build ESM-502's evidence step here and leave ESM-502 as the agent workflow only?
+2. **Evidence and the audit.** Is it right to build ESM-109's evidence step here and leave ESM-109 as the agent workflow only?
 3. **Claim storage.** Git refs on the remote by default, with a shared folder as the fallback. Is there a host where neither works that we need to support?
 4. **Claim lifetime.** A 4 hour default TTL. Should claims instead last until the story's PR merges?
 5. **`add` and IDs.** Should `add` pick the next number for the map's prefix, or require `--id` so a person chooses the numbering?
