@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dependencies tab mockup</title>
+<!-- Static review mockup for the plan in docs/plans/visual-dependency-map.md (ESM-139 to ESM-142, PR 124).
+     Built on the real styles.css and the board's tab and status markup. Every story, status, release and dependsOn edge is
+     generated from product/story-map.yaml on the PR branch, release 0.8.1: Agent briefs, with its full upstream chain.
+     Readiness, the suggested order and the layout are proposed. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. -->
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 32px 40px 48px; background: #f4f5fa; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: #19223a; }
+  .mock-label { margin: 0 0 10px; color: #5046d5; font: 700 .75rem/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  .mock-section + .mock-section { margin-top: 44px; }
+  .mock-frame { border: 1px solid #dfe4ed; border-radius: 15px; background: #fff; box-shadow: 0 8px 28px rgb(25 34 58 / .08); overflow: hidden; }
+  .mock-callout { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; background: #e2366d; color: #fff; font: 700 .7rem/1 system-ui, sans-serif; vertical-align: middle; flex: none; }
+  .mock-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 28px; margin: 18px 0 0; padding: 0; list-style: none; font-size: .8125rem; line-height: 1.45; }
+  .mock-legend li { display: flex; gap: 6px; }
+  .mock-legend .mock-callout { margin: 0; }
+
+  /* Proposed for ESM-140 to ESM-142 */
+  .dep-toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 14px 17px; border-bottom: 1px solid var(--esm-line); font-size: .8125rem; color: var(--esm-muted); }
+  .dep-select { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--esm-card-line); border-radius: 9px; background: var(--esm-paper); color: var(--esm-ink); font-weight: 600; font-size: .875rem; }
+  .dep-seg { display: inline-flex; border: 1px solid var(--esm-card-line); border-radius: 9px; overflow: hidden; }
+  .dep-seg span { padding: 6px 11px; color: var(--esm-muted); font-weight: 600; }
+  .dep-seg span + span { border-left: 1px solid var(--esm-card-line); }
+  .dep-seg [aria-pressed="true"] { background: var(--esm-activity-bg); color: var(--esm-accent-ink); }
+  .dep-scope-note { margin-left: auto; }
+  .dep-body { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; }
+  .dep-canvas { position: relative; padding: 0; background: var(--esm-canvas); border-right: 1px solid var(--esm-line); overflow: auto; }
+  .dep-graph { position: relative; }
+  .dep-graph > svg { position: absolute; inset: 0; overflow: visible; }
+  .dep-edge { fill: none; stroke: #8f88d9; stroke-width: 1.6; }
+  .dep-edge.met { stroke: #b9c2d3; stroke-dasharray: 4 4; }
+  .dep-node { position: absolute; display: grid; align-content: start; gap: 6px; padding: 10px 12px; border: 1px solid var(--esm-card-line); border-radius: 12px; background: var(--esm-paper); box-shadow: 0 1px 2px var(--esm-shadow); text-align: left; font: inherit; color: var(--esm-ink); cursor: pointer; }
+  .dep-node.external { border-style: dashed; background: #fbfcfe; }
+  .dep-node.in-scope { border: 1.5px solid var(--esm-accent); }
+  .dep-node[data-ready="done"] { opacity: .62; }
+  .dep-node.selected { box-shadow: 0 0 0 3px #d9d5ff; }
+  .dep-node:focus-visible { outline: 2px solid var(--esm-accent); outline-offset: 2px; }
+  .dep-node-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .dep-release { padding: 1px 6px; border-radius: 5px; background: var(--esm-hover); color: var(--esm-muted); font-size: .6875rem; font-weight: 650; }
+  .dep-node-title { font-size: .84rem; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .dep-node-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dep-node-meta .esm-status { font-size: .75rem; }
+  .dep-ready { padding: 1px 6px; border-radius: 999px; font-size: .6875rem; font-weight: 700; }
+  .dep-ready[data-ready="ready"] { background: #dcf1ee; color: #086d57; }
+  .dep-ready[data-ready="waiting"] { background: #fff4e0; color: #8a5300; }
+  .dep-ready[data-ready="risk"] { background: #fbe3ec; color: #9b2c4b; }
+  .dep-canvas-controls { position: absolute; right: 12px; bottom: 12px; display: inline-flex; border: 1px solid var(--esm-card-line); border-radius: 9px; background: var(--esm-paper); }
+  .dep-canvas-controls span { padding: 5px 10px; font-size: .8rem; font-weight: 700; color: var(--esm-muted); }
+  .dep-canvas-controls span + span { border-left: 1px solid var(--esm-card-line); }
+  .dep-key { position: absolute; left: 14px; bottom: 12px; display: flex; gap: 14px; font-size: .72rem; color: var(--esm-muted); background: rgb(255 255 255 / .85); padding: 5px 9px; border-radius: 8px; }
+  .dep-key i { display: inline-block; width: 18px; height: 11px; margin-right: 5px; vertical-align: -1px; border-radius: 3px; }
+  .dep-side { padding: 16px 17px; display: grid; gap: 18px; align-content: start; font-size: .8125rem; }
+  .dep-side h4 { margin: 0 0 8px; font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; color: var(--esm-muted); }
+  .dep-side p { margin: 0; line-height: 1.45; }
+  .dep-steps { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  .dep-steps > li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; }
+  .dep-step-n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--esm-activity-bg); color: var(--esm-accent-ink); font-weight: 700; font-size: .72rem; }
+  .dep-step-label { margin: 2px 0 4px !important; font-weight: 650; color: var(--esm-ink); }
+  .dep-steps ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+  .dep-steps a { color: var(--esm-ink); text-decoration: none; }
+  .dep-steps a:hover { text-decoration: underline; }
+  .dep-step-rel { color: var(--esm-faint); font-size: .72rem; }
+  .dep-warn { padding: 10px 12px; border-radius: 10px; background: var(--esm-stalled-bg); color: #5c3a00; }
+  .dep-ok { padding: 10px 12px; border-radius: 10px; background: #eaf5f3; color: #064f40; }
+  .dep-note { color: var(--esm-faint); }
+  .dep-list { width: 100%; border-collapse: collapse; font-size: .8125rem; }
+  .dep-list th, .dep-list td { padding: 8px 12px; border-bottom: 1px solid var(--esm-line); text-align: left; vertical-align: middle; }
+  .dep-list th { color: var(--esm-muted); font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; background: var(--esm-canvas); }
+  .dep-met { color: var(--esm-faint); text-decoration: line-through; }
+  .dep-unmet { color: var(--esm-ink); font-weight: 650; }
+  .mock-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+  .mock-pair .esm-detail { position: static; display: block; width: auto; height: auto; max-height: none; margin: 0; overflow: visible; transform: none; transition: none; border: 1px solid var(--esm-line); border-radius: 15px; box-shadow: 0 8px 28px rgb(25 34 58 / .1); }
+  .dep-chip { display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border: 1px solid var(--esm-card-line); border-radius: 10px; background: var(--esm-paper); font-size: .8125rem; }
+  .dep-panel-block { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--esm-card-line); border-radius: 12px; background: var(--esm-canvas); }
+  @media (max-width: 1100px) { body { padding: 20px 16px; } .dep-body, .mock-pair, .mock-legend { grid-template-columns: 1fr; } .dep-canvas { border-right: 0; border-bottom: 1px solid var(--esm-line); } }
+</style>
+</head>
+<body>
+<div class="mock-section">
+  <p class="mock-label">Dependencies tab · release focus · full chain (ESM-140, ESM-141, with the ESM-142 order)</p>
+  <div class="mock-frame esm-board" data-theme="light">
+    <nav class="esm-tabs" aria-label="Board views">
+      <a class="esm-tab" href="#">Story map<span class="esm-tab-count">97</span></a>
+      <a class="esm-tab" href="#">Personas<span class="esm-tab-count">4</span></a>
+      <a class="esm-tab" href="#" aria-current="page">Dependencies<span class="mock-callout">1</span></a>
+      <span class="esm-tabs-end">Internal only. Customers see the story map.</span>
+    </nav>
+    <div class="dep-toolbar">
+      <span class="dep-select">Release: 0.8.1: Agent briefs ▾</span><span class="mock-callout">2</span>
+      <span class="dep-seg" role="group" aria-label="Focus"><span aria-pressed="true">Release</span><span aria-pressed="false">Story</span></span>
+      <span class="dep-seg" role="group" aria-label="Depth"><span aria-pressed="false">Direct</span><span aria-pressed="true">Full chain</span></span><span class="mock-callout">3</span>
+      <span class="dep-seg" role="group" aria-label="Show as"><span aria-pressed="true">Graph</span><span aria-pressed="false">List</span></span>
+      <span class="dep-scope-note">2 stories in 0.8.1 · 8 prerequisites from other releases</span>
+    </div>
+    <div class="dep-body">
+      <div class="dep-canvas">
+        <div class="dep-graph" style="width:936px;height:520px">
+          <svg width="936" height="476" aria-hidden="true">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#8f88d9"></path></marker>
+              <marker id="arrow-met" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#b9c2d3"></path></marker>
+            </defs>
+            <path class="dep-edge" d="M216 295 C348 295 348 295 480 295" marker-end="url(#arrow)"></path><path class="dep-edge" d="M450 409 C465 409 465 295 480 295" marker-end="url(#arrow)"></path><path class="dep-edge met" d="M216 181 C348 181 348 295 480 295" marker-end="url(#arrow-met)"></path><path class="dep-edge" d="M216 295 C231 295 231 409 246 409" marker-end="url(#arrow)"></path><path class="dep-edge" d="M216 409 C231 409 231 409 246 409" marker-end="url(#arrow)"></path><path class="dep-edge" d="M684 67 C699 67 699 169.60000000000002 714 169.60000000000002" marker-end="url(#arrow)"></path><path class="dep-edge met" d="M450 181 C582 181 582 169.60000000000002 714 169.60000000000002" marker-end="url(#arrow-met)"></path><path class="dep-edge" d="M450 67 C465 67 465 67 480 67" marker-end="url(#arrow)"></path><path class="dep-edge met" d="M216 67 C231 67 231 67 246 67" marker-end="url(#arrow-met)"></path><path class="dep-edge met" d="M216 181 C231 181 231 181 246 181" marker-end="url(#arrow-met)"></path>
+          </svg>
+          <button type="button" class="dep-node in-scope selected" data-ready="waiting" style="left:486px;top:246px;width:198px;height:98px" aria-label="ESM-126, Write agent briefs from the command line. Planned, Waiting. In this release. Waiting for ESM-105, ESM-116.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-126</span></span>
+  <span class="dep-node-title">Write agent briefs from the command line</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span><span class="dep-ready" data-ready="waiting">Waiting · 2</span></span>
+</button><button type="button" class="dep-node external" data-ready="ready" style="left:18px;top:246px;width:198px;height:98px" aria-label="ESM-105, Look up the evidence for a story. Planned, Ready to start. From 0.7.5.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-105</span><span class="dep-release">0.7.5</span></span>
+  <span class="dep-node-title">Look up the evidence for a story</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span><span class="dep-ready" data-ready="ready">Ready to start</span></span>
+</button><button type="button" class="dep-node external" data-ready="waiting" style="left:252px;top:360px;width:198px;height:98px" aria-label="ESM-116, Serve the CLI over MCP. Planned, Waiting. From 0.8.0. Waiting for ESM-105, ESM-106.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-116</span><span class="dep-release">0.8.0</span></span>
+  <span class="dep-node-title">Serve the CLI over MCP</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span><span class="dep-ready" data-ready="waiting">Waiting · 2</span></span>
+</button><button type="button" class="dep-node external" data-ready="ready" style="left:18px;top:360px;width:198px;height:98px" aria-label="ESM-106, Claim stories so several agents do not clash. Planned, Ready to start. From 0.7.5.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-106</span><span class="dep-release">0.7.5</span></span>
+  <span class="dep-node-title">Claim stories so several agents do not clash</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span><span class="dep-ready" data-ready="ready">Ready to start</span></span>
+</button><button type="button" class="dep-node external" data-ready="done" style="left:18px;top:132px;width:198px;height:98px" aria-label="ESM-123, Write a handoff brief for a story or release. Merged, Done. From 0.7.5.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-123</span><span class="dep-release">0.7.5</span></span>
+  <span class="dep-node-title">Write a handoff brief for a story or release</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="merged"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 8V4.2A3.8 3.8 0 1 1 4.2 8Z" fill="currentColor" stroke="none"></path></svg>Merged</span></span>
+</button><button type="button" class="dep-node in-scope" data-ready="waiting" style="left:720px;top:120.60000000000001px;width:198px;height:98px" aria-label="ESM-127, Start Claude Code or Codex on a brief from the local preview. Planned, Waiting. In this release. Waiting for ESM-112.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-127</span></span>
+  <span class="dep-node-title">Start Claude Code or Codex on a brief from the local preview</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span><span class="dep-ready" data-ready="waiting">Waiting · 1</span></span>
+</button><button type="button" class="dep-node external" data-ready="waiting" style="left:486px;top:18px;width:198px;height:98px" aria-label="ESM-112, Save status and release changes from the local preview. Planned, Waiting. From 0.7.6. Waiting for ESM-111.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-112</span><span class="dep-release">0.7.6</span></span>
+  <span class="dep-node-title">Save status and release changes from the local preview</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span><span class="dep-ready" data-ready="waiting">Waiting · 1</span></span>
+</button><button type="button" class="dep-node external" data-ready="ready" style="left:252px;top:18px;width:198px;height:98px" aria-label="ESM-111, Show the edit command in the story panel. Planned, Ready to start. From 0.7.6.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-111</span><span class="dep-release">0.7.6</span></span>
+  <span class="dep-node-title">Show the edit command in the story panel</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span><span class="dep-ready" data-ready="ready">Ready to start</span></span>
+</button><button type="button" class="dep-node external" data-ready="done" style="left:18px;top:18px;width:198px;height:98px" aria-label="ESM-122, Link to a story or release with a permalink. Shipped, Done. From 0.7.4.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-122</span><span class="dep-release">0.7.4</span></span>
+  <span class="dep-node-title">Link to a story or release with a permalink</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="shipped"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="m5.3 8.2 1.8 1.8 3.6-3.7"></path></svg>Shipped</span></span>
+</button><button type="button" class="dep-node external" data-ready="done" style="left:252px;top:132px;width:198px;height:98px" aria-label="ESM-124, Copy an agent brief from the story and release panels. Merged, Done. From 0.7.5.">
+  <span class="dep-node-head"><span class="esm-card-id">ESM-124</span><span class="dep-release">0.7.5</span></span>
+  <span class="dep-node-title">Copy an agent brief from the story and release panels</span>
+  <span class="dep-node-meta"><span class="esm-status" data-status="merged"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 8V4.2A3.8 3.8 0 1 1 4.2 8Z" fill="currentColor" stroke="none"></path></svg>Merged</span></span>
+</button>
+        </div>
+        <div class="dep-key"><span><i style="border:1.5px solid #5046d5"></i>In 0.8.1</span><span><i style="border:1px dashed #9aa5b8"></i>Other release</span><span><i style="border-top:2px solid #8f88d9;height:0;border-radius:0"></i>Unmet</span><span><i style="border-top:2px dashed #b9c2d3;height:0;border-radius:0"></i>Met</span></div>
+        <div class="dep-canvas-controls" aria-label="Zoom"><span>−</span><span>+</span><span>Fit</span></div>
+      </div>
+      <aside class="dep-side" aria-label="Delivery order">
+        <section>
+          <h4>Suggested order<span class="mock-callout">4</span></h4>
+          <ol class="dep-steps"><li><span class="dep-step-n">1</span><div><p class="dep-step-label">Ready now · any order</p><ul><li><a href="#"><span class="esm-card-id">ESM-105</span> Look up the evidence for a story</a> <span class="dep-step-rel">0.7.5</span></li><li><a href="#"><span class="esm-card-id">ESM-106</span> Claim stories so several agents do not clash</a> <span class="dep-step-rel">0.7.5</span></li><li><a href="#"><span class="esm-card-id">ESM-111</span> Show the edit command in the story panel</a> <span class="dep-step-rel">0.7.6</span></li></ul></div></li><li><span class="dep-step-n">2</span><div><p class="dep-step-label">After step 1 · any order</p><ul><li><a href="#"><span class="esm-card-id">ESM-112</span> Save status and release changes from the local preview</a> <span class="dep-step-rel">0.7.6</span></li><li><a href="#"><span class="esm-card-id">ESM-116</span> Serve the CLI over MCP</a> <span class="dep-step-rel">0.8.0</span></li></ul></div></li><li><span class="dep-step-n">3</span><div><p class="dep-step-label">After step 2 · any order</p><ul><li><a href="#"><span class="esm-card-id">ESM-126</span> Write agent briefs from the command line</a> <span class="dep-step-rel">this release</span></li><li><a href="#"><span class="esm-card-id">ESM-127</span> Start Claude Code or Codex on a brief from the local preview</a> <span class="dep-step-rel">this release</span></li></ul></div></li></ol>
+        </section>
+        <section>
+          <h4>Release risks<span class="mock-callout">5</span></h4>
+          <p class="dep-ok">No prerequisites are cut, blocked or in a later release.</p>
+          <p class="dep-warn" style="margin-top:8px">5 unfinished prerequisites sit outside 0.8.1: ESM-105, ESM-116, ESM-106, ESM-112, ESM-111. Nothing in this release can start until they land.</p>
+        </section>
+        <p class="dep-note">Order follows recorded <code>dependsOn</code> links only. It is not priority, and stories in the same step can be built in parallel. Missing links are unknown, not independence.</p>
+      </aside>
+    </div>
+  </div>
+  <ol class="mock-legend">
+    <li><span class="mock-callout">1</span>A third tab beside Story map and Personas, internal only, like Personas.</li>
+    <li><span class="mock-callout">2</span>Opens on a release. Its stories have a solid accent border; prerequisites from other releases are dashed and name their release.</li>
+    <li><span class="mock-callout">3</span>Full chain follows every upstream link. Direct shows only the stories the release names. Graph and List hold the same content.</li>
+    <li><span class="mock-callout">4</span>The suggested order from ESM-142, the same list the release panel and <code>story-map releases</code> show. Several stories in a step are alternatives, never a ranking.</li>
+    <li><span class="mock-callout">5</span>Cut, blocked and later-release prerequisites, plus the unfinished work outside the release: the real answer for 0.8.1 today.</li>
+    <li>Nodes left to right by depth; arrows point from prerequisite to dependent. Done work is faded with dashed edges. Selecting a node opens the existing story panel.</li>
+  </ol>
+</div>
+
+<div class="mock-section">
+  <p class="mock-label">List view: the accessible alternative to the graph (ESM-140)</p>
+  <div class="mock-frame esm-board" data-theme="light">
+    <table class="dep-list">
+      <thead><tr><th>Story</th><th>Title</th><th>Status</th><th>Readiness</th><th>Release</th><th>Depends on</th></tr></thead>
+      <tbody><tr><td><span class="esm-card-id">ESM-105</span></td><td>Look up the evidence for a story</td><td><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span></td><td>Ready to start</td><td>0.7.5</td><td>—</td></tr><tr><td><span class="esm-card-id">ESM-106</span></td><td>Claim stories so several agents do not clash</td><td><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span></td><td>Ready to start</td><td>0.7.5</td><td>—</td></tr><tr><td><span class="esm-card-id">ESM-122</span></td><td>Link to a story or release with a permalink</td><td><span class="esm-status" data-status="shipped"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="m5.3 8.2 1.8 1.8 3.6-3.7"></path></svg>Shipped</span></td><td>—</td><td>0.7.4</td><td>—</td></tr><tr><td><span class="esm-card-id">ESM-123</span></td><td>Write a handoff brief for a story or release</td><td><span class="esm-status" data-status="merged"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 8V4.2A3.8 3.8 0 1 1 4.2 8Z" fill="currentColor" stroke="none"></path></svg>Merged</span></td><td>—</td><td>0.7.5</td><td>—</td></tr><tr><td><span class="esm-card-id">ESM-111</span></td><td>Show the edit command in the story panel</td><td><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span></td><td>Ready to start</td><td>0.7.6</td><td><span class="dep-met">ESM-122</span></td></tr><tr><td><span class="esm-card-id">ESM-116</span></td><td>Serve the CLI over MCP</td><td><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span></td><td>Waiting</td><td>0.8.0</td><td><span class="dep-unmet">ESM-105</span>, <span class="dep-unmet">ESM-106</span></td></tr><tr><td><span class="esm-card-id">ESM-124</span></td><td>Copy an agent brief from the story and release panels</td><td><span class="esm-status" data-status="merged"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 8V4.2A3.8 3.8 0 1 1 4.2 8Z" fill="currentColor" stroke="none"></path></svg>Merged</span></td><td>—</td><td>0.7.5</td><td><span class="dep-met">ESM-123</span></td></tr><tr><td><span class="esm-card-id">ESM-112</span></td><td>Save status and release changes from the local preview</td><td><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span></td><td>Waiting</td><td>0.7.6</td><td><span class="dep-unmet">ESM-111</span></td></tr><tr><td><span class="esm-card-id">ESM-126</span></td><td>Write agent briefs from the command line</td><td><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span></td><td>Waiting</td><td>This release</td><td><span class="dep-unmet">ESM-105</span>, <span class="dep-unmet">ESM-116</span>, <span class="dep-met">ESM-123</span></td></tr><tr><td><span class="esm-card-id">ESM-127</span></td><td>Start Claude Code or Codex on a brief from the local preview</td><td><span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span></td><td>Waiting</td><td>This release</td><td><span class="dep-unmet">ESM-112</span>, <span class="dep-met">ESM-124</span></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mock-section">
+  <p class="mock-label">Story focus and the story panel (ESM-139, ESM-141)</p>
+  <div class="mock-pair">
+    <div class="mock-frame esm-board" data-theme="light" style="padding:16px">
+      <div class="dep-toolbar" style="padding:0 0 14px;margin-bottom:14px">
+        <span class="dep-select">Story: ESM-126 ▾</span>
+        <span class="dep-seg"><span aria-pressed="true">Direct</span><span aria-pressed="false">Full chain</span></span>
+        <span class="dep-scope-note">3 prerequisites · 0 waiting</span>
+      </div>
+      <div class="dep-panel-block">
+        <span class="dep-chip"><span class="esm-card-id">ESM-105</span>Look up the evidence for a story <span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span> <span class="dep-release">0.7.5</span></span><span class="dep-chip"><span class="esm-card-id">ESM-116</span>Serve the CLI over MCP <span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span> <span class="dep-release">0.8.0</span></span><span class="dep-chip"><span class="esm-card-id">ESM-123</span>Write a handoff brief for a story or release <span class="esm-status" data-status="merged"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M8 8V4.2A3.8 3.8 0 1 1 4.2 8Z" fill="currentColor" stroke="none"></path></svg>Merged</span> <span class="dep-release">0.7.5</span></span>
+        <span style="text-align:center;color:var(--esm-faint)">↓</span>
+        <span class="dep-chip" style="border:1.5px solid var(--esm-accent)"><span class="esm-card-id">ESM-126</span>Write agent briefs from the command line <span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span> <span class="dep-ready" data-ready="waiting">Waiting · 2</span></span>
+        <span style="text-align:center;color:var(--esm-faint)">↓</span>
+        <p class="dep-note" style="margin:0;text-align:center">No stories wait for ESM-126</p>
+      </div>
+    </div>
+    <div class="esm-board" data-theme="light">
+      <div class="esm-detail" role="dialog" aria-label="ESM-126">
+        <div class="esm-detail-head"><div><p class="esm-card-id">ESM-126</p><h3>Write agent briefs from the command line</h3></div></div>
+        <span class="esm-status" data-status="planned"><svg class="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2" stroke-dasharray="2.4 2.2"></circle></svg>Planned</span> <span class="dep-ready" data-ready="waiting">Waiting for 2 stories</span><span class="mock-callout">6</span>
+        <p class="esm-detail-summary">story-map brief prints the brief for stories, a release or an activity, with --full to include notes, persona context and tests inline, and --format json.</p>
+        <section class="esm-detail-section"><h4>Dependencies</h4>
+          <p style="margin:0 0 8px;font-size:.8125rem;color:var(--esm-muted)">Not ready to start: ESM-105 and ESM-116 are not merged yet. <a href="#">Show in Dependencies</a><span class="mock-callout">7</span></p>
+        </section>
+      </div>
+    </div>
+  </div>
+  <ol class="mock-legend">
+    <li><span class="mock-callout">6</span>Readiness on the story panel (ESM-139), beside the existing Dependencies section. The same state comes from <code>story-map story</code>, <code>story-map stories --readiness</code> and the JSON export.</li>
+    <li><span class="mock-callout">7</span>Once the tab exists (ESM-140), the panel links to the story's focused graph (ESM-141).</li>
+    <li>ESM-123 is merged, so it is met and left out of the count; ESM-105 and ESM-116 are planned.</li>
+  </ol>
+</div>
+</body>
+</html>
