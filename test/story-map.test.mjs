@@ -3242,3 +3242,14 @@ test("ESM-503: exports carry story estimates and release totals", () => {
   const collapsedVsdx = page(readStoredZip(storyMapToVsdx(view, { collapsedReleases: ["builder-mvp"], now: exportNow })));
   assert.match(collapsedVsdx, /Collapsed · 4 stories[\s\S]*8 pts · 3 merged · 0 left · 1 unestimated/);
 });
+
+test("ESM-912: detail panels slide in from the right as a full-height sheet", async () => {
+  const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+  const rule = css.match(/\n\.esm-detail \{([^}]*)\}/)?.[1] ?? "";
+  assert.match(rule, /inset: 0 0 0 auto;/, "pinned to the right edge");
+  assert.match(rule, /height: 100dvh;/, "full height");
+  assert.match(rule, /transform: translateX\(100%\);/, "starts off screen");
+  assert.match(css, /\.esm-detail:popover-open \{ transform: none; \}/);
+  assert.match(css, /@starting-style \{\n  \.esm-detail:popover-open \{ transform: translateX\(100%\); \}/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\n  \.esm-detail, \.esm-detail::backdrop \{ transition: none; \}/);
+});

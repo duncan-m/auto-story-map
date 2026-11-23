@@ -374,27 +374,48 @@
 .esm-stalled-note { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--esm-stalled-bg); color: var(--esm-stalled); font-size: .875rem; font-weight: 600; line-height: 1.45; }
 .esm-stalled-note .esm-icon { flex: none; margin-top: 2px; }
 
-/* Story detail panel */
+/* Story detail panel: a full-height sheet that slides in from the right. */
 .esm-detail {
-  width: min(34rem, calc(100vw - 32px));
-  max-height: calc(100dvh - 32px);
-  margin: auto;
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(34rem, 100vw);
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  margin: 0;
   padding: 20px;
   overflow: auto;
-  border: 1px solid var(--esm-line);
-  border-radius: 14px;
+  overscroll-behavior: contain;
+  border: 0;
+  border-left: 1px solid var(--esm-line);
+  border-radius: 0;
   background: var(--esm-paper);
-  box-shadow: 0 12px 60px rgb(25 34 58 / .26);
+  box-shadow: -12px 0 48px rgb(25 34 58 / .22);
   color: var(--esm-ink);
   font: inherit;
   line-height: normal;
+  transform: translateX(100%);
+  transition: transform .22s cubic-bezier(.2, .8, .2, 1), overlay .22s allow-discrete, display .22s allow-discrete;
 }
-.esm-detail::backdrop { background: rgb(25 34 58 / .47); }
-.esm-board[data-theme="dark"] .esm-detail::backdrop { background: rgb(4 6 12 / .7); }
+.esm-detail:popover-open { transform: none; }
+@starting-style {
+  .esm-detail:popover-open { transform: translateX(100%); }
+}
+.esm-detail::backdrop { background: rgb(25 34 58 / .32); opacity: 0; transition: opacity .22s, overlay .22s allow-discrete, display .22s allow-discrete; }
+.esm-detail:popover-open::backdrop { opacity: 1; }
+@starting-style {
+  .esm-detail:popover-open::backdrop { opacity: 0; }
+}
+.esm-board[data-theme="dark"] .esm-detail::backdrop { background: rgb(4 6 12 / .6); }
 @media (prefers-color-scheme: dark) {
-  .esm-board[data-theme="auto"] .esm-detail::backdrop { background: rgb(4 6 12 / .7); }
+  .esm-board[data-theme="auto"] .esm-detail::backdrop { background: rgb(4 6 12 / .6); }
 }
-.esm-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+@media (prefers-reduced-motion: reduce) {
+  .esm-detail, .esm-detail::backdrop { transition: none; }
+}
+/* Keep the close button in reach while a long panel scrolls. */
+.esm-detail-head { position: sticky; top: -20px; z-index: 1; margin: -20px -20px 10px; padding: 20px 20px 10px; background: var(--esm-paper); }
+.esm-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .esm-detail-head .esm-card-id { margin-bottom: 7px; }
 .esm-detail h3 { margin: 0; font-size: 1.27rem; line-height: 1.3; letter-spacing: -.026em; overflow-wrap: anywhere; }
 .esm-close {

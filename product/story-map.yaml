@@ -1161,6 +1161,14 @@ stories:
     notes: Links use the story or release ID, which is already stable. Works without JavaScript by scrolling to the card; board.js opens the panel and copies the link. On customer boards, IDs outside the customer view are ignored.
     sources:
       - docs/plans/story-changes.md#5-link-to-a-story-or-release
+  - id: ESM-912
+    title: Open story details in a panel from the right
+    activity: explore
+    release: v0-7-4
+    status: in-progress
+    jobs:
+      - get-oriented
+    summary: Story, release and persona details slide in as a full-height panel on the right, so the board stays in view beside them, instead of opening in a modal in the middle of the screen.
   # 0.6.1: fixes from the November 2026 code review
   - id: ESM-601
     title: Keep long Git names from breaking the history file
