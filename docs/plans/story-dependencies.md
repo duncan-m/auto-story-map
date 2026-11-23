@@ -16,7 +16,7 @@ What it shows:
 
 1. **Count** to the right of the status on each card: how many stories this one depends on.
 2. **Tooltip** and screen readers name them, such as “Depends on 2 stories: ESM-105, ESM-116”.
-3. **Grey, like the test count,** whatever the status of the stories it depends on. The card shows only the count.
+3. **Grey, like the test count.** The card shows only the count. Since built, the card counts only the dependencies not yet merged or shipped. See [Hide delivered dependencies on cards](#hide-delivered-dependencies-on-cards).
 4. **No dependencies, no count.** The stories waiting for a story show only in its panel.
 5. **The same count** beside the status at the top of the story panel.
 6. **Depends on** lists each story with its status and release, linking to its panel.
@@ -45,5 +45,22 @@ Validate rejects an ID that is not in the map, a story that depends on itself an
 ## What was built
 
 The guide describes the feature in [Record dependencies](../story-map.md#record-dependencies). The dependencies already written in this map's notes and plans moved into `dependsOn`: ESM-109 and ESM-126 depend on ESM-105, ESM-126 also on ESM-116, ESM-111 on ESM-122, ESM-112 on ESM-111, ESM-115 on ESM-113 and ESM-114, and ESM-127 on ESM-112.
+
+## Hide delivered dependencies on cards
+
+A card that kept counting a dependency already merged said the story was still waiting when it was not. ESM-107 showed “1” for ESM-105 after ESM-105 had merged. So, before 0.7.5 ships, cards count only the dependencies that are not yet delivered:
+
+- **Delivered means `merged` or `shipped`.** The work is on the default branch, so dependent work can build on it, as the [dependency planning plan](visual-dependency-map.md) defines a done prerequisite. Blocked and cut dependencies still count.
+- **All delivered, no count.** The card shows nothing, as for a story with no dependencies.
+- **Some delivered.** The card counts the rest, and its tooltip says so, such as “Depends on 1 story not yet merged or shipped: ESM-116”.
+- **The panel is unchanged.** Its count beside the status still counts every dependency, and **Depends on** lists each one with its status, so the record of what the story built on stays visible.
+
+![Mockup of four cards, two whose only dependency is merged with no count, one counting one of two dependencies and one counting two, above the ESM-109 panel listing its merged dependency](story-dependencies-delivered-mockup.png)
+
+The mockup is [story-dependencies-delivered-mockup.html](story-dependencies-delivered-mockup.html), the real board rendered with this change from this product's map, using the real `styles.css`. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot.
+
+ESM-139 builds on this with ready, waiting and at-risk states.
+
+## Follow-ups
 
 The handoff brief from ESM-123 does not list dependencies yet. Adding them to its `<target>` section is a follow-up.

@@ -61,7 +61,7 @@ export type { StoryMapExportOptions } from "./export.js";
 export { checkStoryMap } from "./check.js";
 export type { StoryMapCheckIssue, StoryMapCheckOptions, StoryMapCheckResult } from "./check.js";
 export { evidenceItemsMaxItems, evidenceTextMaxLength, gatherStoryEvidence, StoryEvidenceError } from "./evidence.js";
-export type { EvidenceBranch, EvidenceCommit, EvidenceMention, EvidenceTest, StoryEvidence, StoryEvidenceOptions, StoryEvidenceResult } from "./evidence.js";
+export type { EvidenceBranch, EvidenceCommit, EvidenceMention, EvidenceTag, EvidenceTest, StoryEvidence, StoryEvidenceOptions, StoryEvidenceResult } from "./evidence.js";
 export { findStories, getStories } from "./read.js";
 export type { FoundStories, MissingStory, StoryQuery } from "./read.js";
 export { branchNamesStory, countStoryTokens, defaultClaudeLogs, defaultTokenPrices, defaultTokenPricesDate } from "./tokens.js";

@@ -1,6 +1,6 @@
 import { Fragment, useId, version } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
+import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, isDeliveredStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
@@ -466,11 +466,17 @@ function DependencyIcon() {
   );
 }
 
-/** How many stories this one depends on, beside its status, read as “Depends on 2 stories: ESM-105, ESM-116”. Nothing when it has none. */
-function DependencyCount({ story }: { story: InternalStoryCard }) {
-  const count = story.dependsOn?.length ?? 0;
+/**
+ * How many stories this one depends on, beside its status, read as “Depends on 2 stories: ESM-105, ESM-116”.
+ * Nothing when it has none. Cards pass `outstanding` to count only the dependencies not yet merged or
+ * shipped, so a card whose dependencies are all delivered shows no count. The panel counts them all.
+ */
+function DependencyCount({ story, outstanding = false }: { story: InternalStoryCard; outstanding?: boolean }) {
+  const dependencies = (story.dependsOn ?? []).filter(dependency => !outstanding || !isDeliveredStatus(dependency.status));
+  const count = dependencies.length;
   if (!count) return null;
-  const label = `Depends on ${storyCount(count)}: ${story.dependsOn!.map(dependency => dependency.id).join(", ")}`;
+  const delivered = count < (story.dependsOn?.length ?? 0) ? " not yet merged or shipped" : "";
+  const label = `Depends on ${storyCount(count)}${delivered}: ${dependencies.map(dependency => dependency.id).join(", ")}`;
   return (
     <span className="esm-dependency-count" title={label}>
       <DependencyIcon />
@@ -2071,7 +2077,7 @@ export function StoryMapBoard({
                             <span className="esm-card-title">{story.title}</span>
                             <span className="esm-card-meta">
                               <Status status={story.status} />
-                              {internal && <DependencyCount story={story} />}
+                              {internal && <DependencyCount story={story} outstanding />}
                               {internal && <CardTests story={story} />}
                               {internal && (story.stalled && story.inProgressSince
                                 ? <StalledLabel since={story.inProgressSince} settings={settings} />
