@@ -364,7 +364,7 @@ test("ESM-902: cards, activities and the story panel show who a story is for", (
 
   const panel = panelFor(html, "Look up prices in the material catalogue");
   assert.match(panel, /<dt>For<\/dt><dd class="esm-persona-row"><button type="button" class="esm-persona-chip" aria-haspopup="dialog" popoverTarget="[^"]+-persona-0"><span class="esm-avatar" data-persona="0" aria-hidden="true">BU<\/span>Builder<\/button>/);
-  assert.match(panel, /<dt>Jobs<\/dt><dd><ul class="esm-story-jobs"><li><b>When<\/b> I am pricing a project, <b>I want<\/b> to use the catalogue prices, <b>so that<\/b> my estimate matches what finance pays\. <span class="esm-story-job-persona">· Builder<\/span> <span class="esm-core-label">Core job<\/span><\/li>/);
+  assert.match(panel, /<dt>Jobs<\/dt><dd><ul class="esm-story-jobs"><li><b>When<\/b> I am pricing a project,<br\/><b>I want<\/b> to use the catalogue prices,<br\/><b>so that<\/b> my estimate matches what finance pays\. <span class="esm-story-job-persona">· Builder<\/span> <span class="esm-core-label">Core job<\/span><\/li>/);
   assert.ok(panel.indexOf("<dt>For</dt>") < panel.indexOf("<dt>Activity</dt>"), "For comes first");
   assert.match(panelFor(html, "Submit the estimate to finance"), /so that<\/b> I do not chase finance by email\. <span class="esm-story-job-persona">· Builder<\/span> <span class="esm-draft"/);
 });

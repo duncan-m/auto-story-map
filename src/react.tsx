@@ -428,9 +428,13 @@ function PersonaAvatars({ personas, panelIds }: { personas: readonly PersonaLabe
   );
 }
 
-/** A job statement with its lead words in bold: “When …, I want …, so that ….” */
-function JobStatement({ job }: { job: StoryMapJob }) {
-  return <><b>When</b> {job.situation}, <b>I want</b> {job.motivation}, <b>so that</b> {withoutFinalPunctuation(job.outcome)}.</>;
+/**
+ * A job statement with its lead words in bold: “When …, I want …, so that ….”
+ * With `breaks`, “I want” and “so that” each start a new line, as in the story panel.
+ */
+function JobStatement({ job, breaks = false }: { job: StoryMapJob; breaks?: boolean }) {
+  const gap = breaks ? <br /> : " ";
+  return <><b>When</b> {job.situation},{gap}<b>I want</b> {job.motivation},{gap}<b>so that</b> {withoutFinalPunctuation(job.outcome)}.</>;
 }
 
 /** Marks a persona's core job, the first in their list. */
@@ -538,7 +542,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
             <ul className="esm-story-jobs">
               {jobs.map(({ job, persona }) => (
                 <li key={job.id}>
-                  <JobStatement job={job} /> <span className="esm-story-job-persona">· {persona.title}</span>{job.core && <> <CoreJobLabel /></>}
+                  <JobStatement job={job} breaks /> <span className="esm-story-job-persona">· {persona.title}</span>{job.core && <> <CoreJobLabel /></>}
                   {job.draft && <> <DraftLabel /></>}
                 </li>
               ))}
