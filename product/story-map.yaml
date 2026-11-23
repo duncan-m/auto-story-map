@@ -402,7 +402,7 @@ releases:
         solves: Agents starting work without the plan, the work already built nearby or the repository's rules
         draft: true
   - id: v0-7-6
-    title: "0.7.6: Triage without the YAML"
+    title: "0.7.6: Update the map from the board"
     summary: People confirm drafts and triage stories without editing the YAML, see what validate warns about on an Actions tab, and can send the map to Spreo from the Export menu.
     notes: |
       The Actions tab (ESM-128) lists what validate warns about on the board, so people who never run the CLI see the drafts, estimates and gaps waiting for them. It ships with the draft confirmation and triage work it points to (ESM-110, ESM-111 and ESM-112).

@@ -1,6 +1,6 @@
 # Plan: confirm drafts and triage from the local preview
 
-Status: proposed. The work is ESM-110, ESM-111 and ESM-112 in the **0.7.6: Triage without the YAML** release of the map. The estimates below are agreed.
+Status: proposed. The work is ESM-110, ESM-111 and ESM-112 in the **0.7.6: Update the map from the board** release of the map. The estimates below are agreed.
 
 A person working alone, or a small team, spends most of their time with the map doing two things: confirming what an agent drafted, and moving stories between releases or statuses while looking at the board. Today both mean editing the YAML or asking an agent. This plan makes both quicker without giving agents a way to confirm drafts and without making the hosted board writable.
 
