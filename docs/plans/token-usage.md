@@ -1,6 +1,6 @@
 # Plan: record the tokens used to deliver a story
 
-Status: built. The work is ESM-144 in the **0.7.5: Evidence and claims for agents** release of the map.
+Status: built. The work is ESM-145 in the **0.7.5: Evidence and claims for agents** release of the map.
 
 Agents deliver most stories in this map, but nothing records what that work used. A builder who wants to know whether a story was cheap or expensive to hand to an agent has to dig through each session's `/cost` output, if they kept it. This plan records the tokens and their estimated cost on each story, in the pull request that finishes it, from the logs the agent already writes.
 
@@ -12,7 +12,7 @@ Tokens are internal only. The customer view does not change.
 
 ![Mockup of a story panel with Tokens used and Estimated cost rows under Release, the story-map tokens output in a terminal, and the Tokens used section of a pull request](token-usage-mockup.png)
 
-The mockup is [token-usage-mockup.html](token-usage-mockup.html), built on the real `styles.css`. The story panel is the real board rendered from this product's map, with ESM-144 marked merged and its tokens recorded, as the pull request that finishes it leaves it. The terminal and pull request section are what `story-map tokens` prints for this session. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-144 links to this section from its `sources`.
+The mockup is [token-usage-mockup.html](token-usage-mockup.html), built on the real `styles.css`. The story panel is the real board rendered from this product's map, with ESM-145 marked merged and its tokens recorded, as the pull request that finishes it leaves it. The terminal and pull request section are what `story-map tokens` prints for this session. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-145 links to this section from its `sources`.
 
 What it shows:
 
@@ -26,7 +26,7 @@ Claude Code writes every session to `~/.claude/projects/<folder>/<session>.jsonl
 
 `story-map tokens <ID>` reads those files and counts a response when:
 
-- its branch contains the story ID as a whole word, such as `feat/esm-144-record-tokens-used` for ESM-144 but not a longer number that starts with 144, as the repository's branch rules already ask;
+- its branch contains the story ID as a whole word, such as `feat/esm-145-record-tokens-used` for ESM-145 but not a longer number that starts with 144, as the repository's branch rules already ask;
 - or its branch is one given with `--branch`, such as the generated branch a cloud session started on before it was renamed;
 - or its session is one given with `--session`.
 

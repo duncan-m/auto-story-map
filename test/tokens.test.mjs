@@ -36,68 +36,68 @@ async function scratch(t, files) {
   return { root, logs, run };
 }
 
-test("ESM-144: a branch names a story only when it contains the whole ID", () => {
-  assert.equal(branchNamesStory("feat/esm-144-record-tokens", "ESM-144"), true);
-  assert.equal(branchNamesStory("ESM-144", "ESM-144"), true);
-  assert.equal(branchNamesStory("fix/esm-1440-other", "ESM-144"), false);
-  assert.equal(branchNamesStory("fix/xesm-144", "ESM-144"), false);
-  assert.equal(branchNamesStory("main", "ESM-144"), false);
+test("ESM-145: a branch names a story only when it contains the whole ID", () => {
+  assert.equal(branchNamesStory("feat/esm-145-record-tokens", "ESM-145"), true);
+  assert.equal(branchNamesStory("ESM-145", "ESM-145"), true);
+  assert.equal(branchNamesStory("fix/esm-1450-other", "ESM-145"), false);
+  assert.equal(branchNamesStory("fix/xesm-145", "ESM-145"), false);
+  assert.equal(branchNamesStory("main", "ESM-145"), false);
 });
 
-test("ESM-144: counts each response once, on branches named for the story, in subagent logs too", async t => {
+test("ESM-145: counts each response once, on branches named for the story, in subagent logs too", async t => {
   const { logs } = await scratch(t, {
     "-repo/a.jsonl": [
-      JSON.stringify({ type: "user", sessionId: "s1", gitBranch: "feat/esm-144-tokens", message: { role: "user", content: "hi" } }),
-      response({ id: "m1", branch: "feat/esm-144-tokens", input: 10, output: 5, cacheWrite: 100, cacheRead: 1000 }),
+      JSON.stringify({ type: "user", sessionId: "s1", gitBranch: "feat/esm-145-tokens", message: { role: "user", content: "hi" } }),
+      response({ id: "m1", branch: "feat/esm-145-tokens", input: 10, output: 5, cacheWrite: 100, cacheRead: 1000 }),
       // The same response again, for its second content block, with the final output count.
-      response({ id: "m1", branch: "feat/esm-144-tokens", input: 10, output: 7, cacheWrite: 100, cacheRead: 1000 }),
+      response({ id: "m1", branch: "feat/esm-145-tokens", input: 10, output: 7, cacheWrite: 100, cacheRead: 1000 }),
       response({ id: "m2", branch: "main", input: 99, output: 99 }),
-      response({ id: "m3", branch: "fix/esm-1440", input: 99 }),
+      response({ id: "m3", branch: "fix/esm-1450", input: 99 }),
       "not json {\"usage\"",
     ],
     "-repo/a/subagents/agent-1.jsonl": [
-      response({ id: "m4", branch: "feat/esm-144-tokens", input: 1, output: 2, at: "2026-11-21T09:00:00.000Z" }),
+      response({ id: "m4", branch: "feat/esm-145-tokens", input: 1, output: 2, at: "2026-11-21T09:00:00.000Z" }),
     ],
     "-other/b.jsonl": [
       response({ id: "m5", session: "s2", branch: "claude/generated-name", output: 50, at: "2026-11-19T08:00:00.000Z" }),
     ],
   });
-  const usage = await countStoryTokens("ESM-144", { logs });
+  const usage = await countStoryTokens("ESM-145", { logs });
   assert.deepEqual(
     { total: usage.total, input: usage.input, output: usage.output, cacheWrite: usage.cacheWrite, cacheRead: usage.cacheRead, messages: usage.messages, files: usage.files },
     { total: 11 + 9 + 100 + 1000, input: 11, output: 9, cacheWrite: 100, cacheRead: 1000, messages: 2, files: 3 },
   );
-  assert.deepEqual(usage.branches, ["feat/esm-144-tokens"]);
+  assert.deepEqual(usage.branches, ["feat/esm-145-tokens"]);
   assert.deepEqual(usage.sessions, ["s1"]);
   assert.equal(usage.lastAt, "2026-11-21T09:00:00.000Z");
 
-  const wider = await countStoryTokens("ESM-144", { logs, sessions: ["s2"] });
+  const wider = await countStoryTokens("ESM-145", { logs, sessions: ["s2"] });
   assert.equal(wider.total, usage.total + 50);
   assert.equal(wider.firstAt, "2026-11-19T08:00:00.000Z");
-  assert.equal((await countStoryTokens("ESM-144", { logs, branches: ["main"] })).input, 11 + 99);
+  assert.equal((await countStoryTokens("ESM-145", { logs, branches: ["main"] })).input, 11 + 99);
 });
 
-test("ESM-144: a missing logs folder counts nothing", async () => {
-  const usage = await countStoryTokens("ESM-144", { logs: join(tmpdir(), "story-map-no-such-folder") });
+test("ESM-145: a missing logs folder counts nothing", async () => {
+  const usage = await countStoryTokens("ESM-145", { logs: join(tmpdir(), "story-map-no-such-folder") });
   assert.equal(usage.files, 0);
   assert.equal(usage.messages, 0);
   assert.equal(usage.total, 0);
 });
 
-test("ESM-144: story-map tokens prints the count, the PR section and JSON, and fails when it finds nothing", async t => {
-  const { logs, run } = await scratch(t, { "-repo/a.jsonl": [response({ id: "m1", branch: "feat/esm-144-tokens", input: 1200, output: 34, cacheRead: 1_000_000 })] });
-  const text = run("tokens", "--logs", logs, "ESM-144");
+test("ESM-145: story-map tokens prints the count, the PR section and JSON, and fails when it finds nothing", async t => {
+  const { logs, run } = await scratch(t, { "-repo/a.jsonl": [response({ id: "m1", branch: "feat/esm-145-tokens", input: 1200, output: 34, cacheRead: 1_000_000 })] });
+  const text = run("tokens", "--logs", logs, "ESM-145");
   assert.equal(text.status, 0, text.stderr);
-  assert.match(text.stdout, /^ESM-144 {2}1,001,234 tokens in 1 response across 1 session/);
+  assert.match(text.stdout, /^ESM-145 {2}1,001,234 tokens in 1 response across 1 session/);
   // The log names no model, so there is no cost to record.
-  assert.match(text.stderr, /story-map edit ESM-144 --tokens 1001234 --write/);
+  assert.match(text.stderr, /story-map edit ESM-145 --tokens 1001234 --write/);
   assert.match(text.stdout, /Est\. cost: +unknown: unknown has no price/);
 
-  const markdown = run("tokens", "--format", "markdown", "--logs", logs, "ESM-144");
-  assert.match(markdown.stdout, /^## Tokens used\n\nESM-144: \*\*1,001,234 tokens\*\* in 1 Claude Code session/);
-  assert.match(markdown.stdout, /Branches: `feat\/esm-144-tokens`/);
+  const markdown = run("tokens", "--format", "markdown", "--logs", logs, "ESM-145");
+  assert.match(markdown.stdout, /^## Tokens used\n\nESM-145: \*\*1,001,234 tokens\*\* in 1 Claude Code session/);
+  assert.match(markdown.stdout, /Branches: `feat\/esm-145-tokens`/);
 
-  const json = JSON.parse(run("tokens", "--format=json", "--logs", logs, "ESM-144").stdout);
+  const json = JSON.parse(run("tokens", "--format=json", "--logs", logs, "ESM-145").stdout);
   assert.equal(json.format, "auto-story-map.tokens");
   assert.equal(json.total, 1_001_234);
 
@@ -109,10 +109,10 @@ test("ESM-144: story-map tokens prints the count, the PR section and JSON, and f
   const unknown = run("tokens", "--logs", logs, "ESM-9999");
   assert.equal(unknown.status, 1);
   assert.match(unknown.stderr, /no story with this ID/);
-  assert.equal(run("tokens", "ESM-144", "ESM-105").status, 2);
+  assert.equal(run("tokens", "ESM-145", "ESM-105").status, 2);
 });
 
-test("ESM-144: edit --tokens records the count, shown in the internal view and the diff but never to customers", async t => {
+test("ESM-145: edit --tokens records the count, shown in the internal view and the diff but never to customers", async t => {
   const result = await proposeStoryMapEdit(ownMap, [{ op: "tokens", id: "ESM-105", tokens: 1_843_920 }]);
   assert.equal(result.valid, true);
   assert.match(result.lineDiff, /\n\+ {4}tokens: 1843920\n/);
@@ -133,21 +133,21 @@ test("ESM-144: edit --tokens records the count, shown in the internal view and t
   assert.match(bad.stderr, /--tokens must be a whole number/);
 });
 
-test("ESM-144: estimates the cost per response from its model, cache duration and speed", async t => {
+test("ESM-145: estimates the cost per response from its model, cache duration and speed", async t => {
   const M = 1_000_000;
   const { logs } = await scratch(t, {
     "-repo/a.jsonl": [
       // Opus 5.5: $4 in, $20 out, $0.20 cache reads, 5-minute writes 1.25 times input, 1-hour writes 2 times.
-      response({ id: "m1", branch: "feat/esm-144", model: "claude-opus-5-5", input: M, output: M, cacheRead: M, cacheWrite: 2 * M, cacheWrite1h: M }),
+      response({ id: "m1", branch: "feat/esm-145", model: "claude-opus-5-5", input: M, output: M, cacheRead: M, cacheWrite: 2 * M, cacheWrite1h: M }),
       // The context-window suffix is ignored, and fast mode doubles the price.
-      response({ id: "m2", branch: "feat/esm-144", model: "claude-opus-5-5[1m]", speed: "fast", output: M }),
+      response({ id: "m2", branch: "feat/esm-145", model: "claude-opus-5-5[1m]", speed: "fast", output: M }),
       // Haiku 5.5 costs more once the prompt is over 100K tokens.
-      response({ id: "m3", branch: "feat/esm-144", model: "claude-haiku-5-5", input: 200_000, output: M }),
-      response({ id: "m4", branch: "feat/esm-144", model: "claude-new-model", output: 500 }),
-      response({ id: "m5", branch: "feat/esm-144", model: "<synthetic>" }),
+      response({ id: "m3", branch: "feat/esm-145", model: "claude-haiku-5-5", input: 200_000, output: M }),
+      response({ id: "m4", branch: "feat/esm-145", model: "claude-new-model", output: 500 }),
+      response({ id: "m5", branch: "feat/esm-145", model: "<synthetic>" }),
     ],
   });
-  const usage = await countStoryTokens("ESM-144", { logs });
+  const usage = await countStoryTokens("ESM-145", { logs });
   const opus = 4 + 20 + 0.2 + 5 + 8;
   const fast = 40;
   const haiku = 0.2 * 0.5 + 2.5;
@@ -160,28 +160,28 @@ test("ESM-144: estimates the cost per response from its model, cache duration an
     ["claude-haiku-5-5", false, 2.6],
     ["claude-new-model", false, undefined],
   ]);
-  const custom = await countStoryTokens("ESM-144", { logs, prices: { "claude-new-model": { input: 0, output: 2000, cacheRead: 0 } } });
+  const custom = await countStoryTokens("ESM-145", { logs, prices: { "claude-new-model": { input: 0, output: 2000, cacheRead: 0 } } });
   assert.equal(custom.cost.usd, 1);
   assert.deepEqual(custom.cost.unpricedModels, ["claude-haiku-5-5", "claude-opus-5-5", "claude-opus-5-5[1m]"]);
 });
 
-test("ESM-144: story-map tokens prints the cost and --prices replaces the built-in prices", async t => {
-  const { root, logs, run } = await scratch(t, { "-repo/a.jsonl": [response({ id: "m1", branch: "feat/esm-144", model: "claude-sonnet-5-5", output: 1_000_000 })] });
-  const text = run("tokens", "--logs", logs, "ESM-144");
+test("ESM-145: story-map tokens prints the cost and --prices replaces the built-in prices", async t => {
+  const { root, logs, run } = await scratch(t, { "-repo/a.jsonl": [response({ id: "m1", branch: "feat/esm-145", model: "claude-sonnet-5-5", output: 1_000_000 })] });
+  const text = run("tokens", "--logs", logs, "ESM-145");
   assert.match(text.stdout, /Est\. cost: +\$10\.00 at API list prices as of \d{4}-\d{2}-\d{2}/);
   assert.match(text.stderr, /--tokens 1000000 --estimated-cost 10\.00 --write/);
-  assert.match(run("tokens", "--format", "markdown", "--logs", logs, "ESM-144").stdout, /Estimated cost: \*\*\$10\.00\*\* at API list prices/);
+  assert.match(run("tokens", "--format", "markdown", "--logs", logs, "ESM-145").stdout, /Estimated cost: \*\*\$10\.00\*\* at API list prices/);
   await writeFile(join(root, "prices.json"), JSON.stringify({ "claude-sonnet-5-5": { input: 1, output: 5, cacheRead: 0.1 } }));
-  const json = JSON.parse(run("tokens", "--format", "json", "--prices", "prices.json", "--logs", logs, "ESM-144").stdout);
+  const json = JSON.parse(run("tokens", "--format", "json", "--prices", "prices.json", "--logs", logs, "ESM-145").stdout);
   assert.equal(json.cost.usd, 5);
   assert.equal(json.prices, "prices.json");
   await writeFile(join(root, "bad.json"), JSON.stringify({ "claude-sonnet-5-5": { input: "cheap" } }));
-  const bad = run("tokens", "--prices", "bad.json", "--logs", logs, "ESM-144");
+  const bad = run("tokens", "--prices", "bad.json", "--logs", logs, "ESM-145");
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /input must be a price/);
 });
 
-test("ESM-144: edit --estimated-cost records dollars to the cent, internal only", async t => {
+test("ESM-145: edit --estimated-cost records dollars to the cent, internal only", async t => {
   const result = await proposeStoryMapEdit(ownMap, [{ op: "estimated-cost", id: "ESM-105", usd: 14.274 }]);
   assert.equal(result.valid, true);
   assert.match(result.lineDiff, /\n\+ {4}estimatedCostUsd: 14\.27\n/);

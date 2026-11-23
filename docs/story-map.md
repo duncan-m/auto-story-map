@@ -858,16 +858,17 @@ const map = getStoryMapPage(document, viewer, {
 
 ### Open a brief in a web agent
 
-Pass `webAgents` to the board, and each **Share** menu gets an **Open in Claude** or **Open in ChatGPT** link that starts a new web chat with the brief filled in:
+Pass `webAgents` to the board, and each **Share** menu gets an **Open in Claude**, **Open in Claude Code** or **Open in ChatGPT** link that starts a new web chat or Claude Code session with the brief filled in:
 
 ```tsx
-<StoryMapBoard map={view} webAgents={["claude", "chatgpt"]} />
+<StoryMapBoard map={view} repositoryUrl="https://github.com/org/repo" webAgents={["claude", "claude-code", "chatgpt"]} />
 ```
 
-- **Off by default.** Opening one sends internal map content, from the brief, to Anthropic or OpenAI, so it is the host's choice. Each link says which company the brief goes to. The [example host](https://github.com/duncan-m/auto-story-map/blob/main/example/demo.mjs) turns both on, and `story-map preview` does not.
-- **Plain links.** Each opens `https://claude.ai/new?q=` or `https://chatgpt.com/?q=` with the brief in a new tab, so it works without JavaScript.
+- **Off by default.** Opening one sends internal map content, from the brief, to Anthropic or OpenAI, so it is the host's choice. Each link says which company the brief goes to. The [example host](https://github.com/duncan-m/auto-story-map/blob/main/example/demo.mjs) turns all three on, and `story-map preview` does not.
+- **Plain links.** Each opens `https://claude.ai/new?q=`, `https://claude.ai/code?q=` or `https://chatgpt.com/?q=` with the brief in a new tab, so it works without JavaScript.
+- **Claude Code starts in the repository.** When `repositoryUrl` is a GitHub address, the Claude Code link adds `repo=<owner>/<name>`, and the session opens in that repository. For other hosts, the viewer picks the repository. Claude Code's `q` and `repo` parameters are not documented by Anthropic, so if they change, the link opens Claude Code without the prompt or repository.
 - **Long briefs.** When the link would be longer than 8,000 characters (`webAgentLinkMaxLength`), it opens an empty chat instead, and board.js copies the brief first and says “Brief copied. Paste it into the chat.” Without JavaScript or clipboard access, those links are left out, and the brief can still be copied by hand. A story brief usually fits, and a release brief often does not.
-- **A web chat cannot read the repository.** The brief points to files rather than including them, so a web agent can plan, review and answer questions about a story, but not build it.
+- **A web chat cannot read the repository.** The brief points to files rather than including them, so Claude or ChatGPT can plan, review and answer questions about a story, but not build it. Claude Code on the web works in a checkout of the repository, so it can build it.
 - The list is fixed in the library, as `storyMapWebAgents`. Others can be added once someone has checked that their prompt parameter works.
 
 ## Integrate with a product

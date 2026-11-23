@@ -381,13 +381,13 @@ releases:
         draft: true
   - id: v0-7-5
     title: "0.7.5: Evidence and claims for agents"
-    summary: Agents look up the evidence for each story, including release tags that show merged work has shipped, and can claim stories when several agents work at once. Internal viewers copy an agent brief for a story or release from its panel, or open it in Claude or ChatGPT.
+    summary: Agents look up the evidence for each story, including release tags that show merged work has shipped, and can claim stories when several agents work at once. Internal viewers copy an agent brief for a story or release from its panel, or open it in Claude, Claude Code or ChatGPT.
     notes: |
       The second half of the native CLI plan. It comes before the scheduled audit (ESM-109), which uses the evidence from ESM-105.
 
-      Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief and local launch in 0.8.1.
+      Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief and local launch in 0.8.1. Open in Claude Code (ESM-144) follows ESM-125, so a brief can start a Claude Code session on the web in the repository, not only a web chat. Its mockup is docs/plans/open-in-claude-code-mockup.html.
 
-      Token counts (ESM-144) record the tokens used to deliver each story, in the pull request that finishes it. Mockup: docs/plans/token-usage.md#ui-mockup
+      Token counts (ESM-145) record the tokens used to deliver each story, in the pull request that finishes it. Mockup: docs/plans/token-usage.md#ui-mockup
 
       Plans: docs/plans/native-cli.md, docs/plans/agent-briefs.md and docs/plans/token-usage.md
     impact:
@@ -402,6 +402,10 @@ releases:
       - metric: Time to hand a story or release to a coding agent
         expected: One copy from its panel, instead of writing the prompt by hand
         solves: Agents starting work without the plan, the work already built nearby or the repository's rules
+        draft: true
+      - metric: Steps to start building a story in Claude Code on the web
+        expected: One link from its panel opens a session in the repository with the brief filled in, instead of opening Claude Code, picking the repository and pasting the brief
+        solves: A web chat that can plan a story from its brief but cannot read or build in the repository
         draft: true
       - metric: Stories merged with the tokens used to deliver them
         expected: Every story an agent finishes in Claude Code, from the pull request that marks it merged
@@ -1174,6 +1178,22 @@ stories:
       - docs/plans/story-dependencies.md#ui-mockup
       - docs/story-map.md#record-dependencies
   - id: ESM-144
+    title: Open an agent brief in Claude Code on the web
+    activity: plan
+    release: v0-7-5
+    status: merged
+    estimate: 1
+    dependsOn:
+      - ESM-125
+    jobs:
+      - plan-and-build
+    summary: Internal story and release panels can offer Open in Claude Code in the Share menu, which starts a new Claude Code session on the web with the brief filled in, in the repository named by a GitHub repositoryUrl.
+    notes: Off by default, like the other web agents. Uses claude.ai/code with q and repo, which Anthropic does not document and were tried by hand on 23 November 2026. Without a GitHub repositoryUrl the link leaves repo out and the viewer picks the repository. Unlike a web chat, Claude Code can read and build in the repository.
+    sources:
+      - docs/plans/agent-briefs.md#open-the-brief-in-claude-code-on-the-web
+      - docs/plans/agent-briefs.md#claude-code-mockup
+      - docs/story-map.md#open-a-brief-in-a-web-agent
+  - id: ESM-145
     title: Record the tokens used to deliver a story
     activity: review
     release: v0-7-5
