@@ -1,6 +1,6 @@
 # Plan: confirm drafts and triage from the local preview
 
-Status: proposed. The work is ESM-504, ESM-505 and ESM-506 in the **0.7.6: PM improvements** release of the map. Estimates below are suggestions until the team agrees them.
+Status: proposed. The work is ESM-504, ESM-505 and ESM-506 in the **0.7.6: PM improvements** release of the map. The estimates below are agreed.
 
 A person working alone, or a small team, spends most of their time with the map doing two things: confirming what an agent drafted, and moving stories between releases or statuses while looking at the board. Today both mean editing the YAML or asking an agent. This plan makes both quicker without giving agents a way to confirm drafts and without making the hosted board writable.
 
@@ -21,7 +21,7 @@ The plan comes from a review of outside suggestions. Two of them are not planned
 - **People only.** Agents must not remove `draft` (ESM-744). `--write` asks the person to type the ID back on an interactive terminal, and refuses when standard input is not a terminal, which is how agents run commands. There is no flag to skip the prompt. `AGENTS.md` and the guide say agents never run it with `--write`. This does not stop a determined agent, but it keeps the ordinary path for agents a dry run.
 - **Credit:** the history already credits the commit author, and `diff` already reports confirmed drafts under “Confirmed”, so neither changes.
 
-Builds on `proposeStoryMapEdit` in `src/edit.ts`, which keeps comments and untouched lines. Suggested estimate: 3 points.
+Builds on `proposeStoryMapEdit` in `src/edit.ts`, which keeps comments and untouched lines. Estimate: 3 points.
 
 ## 2. Change status and release from the story panel
 
@@ -31,7 +31,7 @@ The internal story panel gets a **Change** section with a status picker, a reaso
 - The command is built from the same options `story-map edit` takes, with each value quoted for the shell, so a reason with quotes or spaces pastes safely. A test checks the quoting against `story-map edit`'s parser.
 - No backend and no new rights: copying a command changes nothing.
 
-It uses the story permalinks from ESM-805, in 0.7.4. This is the UI that item 3 saves from, so it is built first and item 3 adds only the save. Suggested estimate: 3 points.
+It uses the story permalinks from ESM-805, in 0.7.4. This is the UI that item 3 saves from, so it is built first and item 3 adds only the save. Estimate: 3 points.
 
 ## 3. Save changes from the local preview
 
@@ -43,7 +43,7 @@ It uses the story permalinks from ESM-805, in 0.7.4. This is the UI that item 3 
 - **Credit:** nothing new. The change is a normal file edit, so the commit that includes it credits its author.
 - **Not drag and drop, yet.** Dragging cards between release lanes needs keyboard and screen reader support and a new drag layer on the board. The pickers in item 2 cover the same moves. Dragging can follow as its own story if people ask for it.
 
-ESM-404 stays cut: the hosted board stays read-only, because saving there would need the map on a hosted service. This item writes only to a file on the person's own machine. Suggested estimate: 5 points.
+ESM-404 stays cut: the hosted board stays read-only, because saving there would need the map on a hosted service. This item writes only to a file on the person's own machine. Estimate: 5 points.
 
 ## Not planned
 
@@ -53,7 +53,7 @@ ESM-404 stays cut: the hosted board stays read-only, because saving there would 
 
 ## Effort and release fit
 
-| Story | Suggested points |
+| Story | Points |
 | --- | --- |
 | ESM-504: Confirm drafts from the command line | 3 |
 | ESM-505: Show the edit command in the story panel | 3 |

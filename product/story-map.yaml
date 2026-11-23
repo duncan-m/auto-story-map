@@ -150,7 +150,7 @@ personas:
         - Starts with the selected slice and retrieves linked personas, stories, or evidence when the task needs more detail.
         - Treats customer evidence, agreed decisions, and inferred assumptions as distinct inputs.
         - Asks the builder or product manager when uncertainty could materially change the customer experience, scope, or dependency order. Records meaningful, reversible assumptions when it can proceed.
-        - Applies approved scope and draft-status changes through the project's review workflow.
+        - Proposes scope changes and drafts through the project's review workflow, and leaves confirming drafts to a person.
       draft: true
     jobs:
       - id: pick-up-work
@@ -752,6 +752,7 @@ stories:
     activity: review
     release: v0-7-6
     status: planned
+    estimate: 3
     jobs:
       - ground-work-in-customer-needs
       - plan-and-build
@@ -764,6 +765,7 @@ stories:
     activity: explore
     release: v0-7-6
     status: planned
+    estimate: 3
     jobs:
       - triage-backlog
       - get-oriented
@@ -775,6 +777,7 @@ stories:
     activity: explore
     release: v0-7-6
     status: planned
+    estimate: 5
     jobs:
       - triage-backlog
       - get-oriented
@@ -1305,6 +1308,7 @@ stories:
     activity: plan
     release: v0-8-0
     status: planned
+    estimate: 5
     jobs:
       - pick-up-work
       - update-the-map
@@ -1317,6 +1321,7 @@ stories:
     activity: set-up
     release: v0-8-0
     status: planned
+    estimate: 2
     jobs:
       - pick-up-work
       - update-the-map
@@ -1328,6 +1333,7 @@ stories:
     activity: set-up
     release: v0-8-0
     status: planned
+    estimate: 5
     jobs:
       - draft-first-map
       - reconstruct-current-product
@@ -1340,6 +1346,7 @@ stories:
     activity: explore
     release: v0-8-0
     status: planned
+    estimate: 3
     jobs:
       - plan-and-build
     summary: A story ID in a describe or suite name covers every test inside it, so renaming a test does not unlink it from its story.
