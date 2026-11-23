@@ -371,7 +371,7 @@ releases:
     notes: |
       Each line in a story's History links to the pull request and commit behind it, and a Changes section lists the merged pull requests and commits whose title, message or branch name names the story. Story, release and persona details open in a panel from the right, and each story and release panel has a Copy link button for a permalink that opens the board on it.
 
-      Published to npm as 0.7.4 together with 0.7.2 and 0.7.3, which were not published on their own, and the estimates from 0.7.6 (ESM-503). The first version under the GNU AGPL.
+      Published to npm as 0.7.4 together with 0.7.2 and 0.7.3, which were not published on their own. It also brings effort estimates in story points (ESM-503), first planned for 0.7.6. The first version under the GNU AGPL.
 
       Plan: docs/plans/story-changes.md
     impact:
@@ -395,7 +395,7 @@ releases:
         draft: true
   - id: v0-7-6
     title: "0.7.6: PM improvements"
-    summary: Activities expand into steps, stories carry effort estimates with a total on each release, a scheduled audit proposes map corrections from the code, people confirm drafts and triage stories without editing the YAML, and earlier versions of the map can be read, compared and viewed on the board.
+    summary: Activities expand into steps, a scheduled audit proposes map corrections from the code, people confirm drafts and triage stories without editing the YAML, and earlier versions of the map can be read, compared and viewed on the board.
     notes: |
       Plans: docs/plans/local-triage.md and docs/plans/map-versions.md
     impact:
@@ -753,7 +753,7 @@ stories:
   - id: ESM-503
     title: Estimate effort on each story
     activity: plan
-    release: v0-7-6
+    release: v0-7-4
     status: shipped
     jobs:
       - triage-backlog
