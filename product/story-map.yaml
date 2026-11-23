@@ -1174,11 +1174,13 @@ stories:
     jobs:
       - triage-backlog
       - get-oriented
-    summary: Stories record the stories they depend on in a new dependsOn list. Cards show a small count of them to the right of the status. The story panel lists the stories it depends on and the stories waiting for it, with their status, each linking to that story's panel, so a builder sees a workable build order without reading every story's notes.
+    summary: Stories record the stories they depend on in a new dependsOn list. Cards show a small count of those not yet merged or shipped to the right of the status. The story panel lists the stories it depends on and the stories waiting for it, with their status, each linking to that story's panel, so a builder sees a workable build order without reading every story's notes.
     notes: Dependencies are written in story notes today, such as Needs ESM-113, so the board never shows them. dependsOn is added to the schema. Validate checks its IDs, rejects cycles and warns when a story depends on a cut story. edit and add get options to add and remove dependencies. The stories waiting for a story are worked out from the other stories' lists, not recorded. Internal view only.
     sources:
       - docs/plans/story-dependencies.md#ui-mockup
       - docs/story-map.md#record-dependencies
+      - docs/plans/story-dependencies.md#hide-delivered-dependencies-on-cards
+      - docs/plans/story-dependencies-delivered-mockup.html
   - id: ESM-144
     title: Open an agent brief in Claude Code on the web
     activity: plan
