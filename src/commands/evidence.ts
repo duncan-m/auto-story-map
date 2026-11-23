@@ -10,6 +10,7 @@ interface EvidenceOptions {
   root: string;
   defaultBranch?: string;
   history?: string;
+  shippedTags?: string;
   plans: string[];
   tests: string[];
   ids: string[];
@@ -20,6 +21,7 @@ function storyText(story: StoryEvidence, defaultBranch: string | undefined): str
   const suggestion = story.suggestedStatus === story.status ? "no change suggested" : `suggests ${story.suggestedStatus}`;
   lines.push(`  Status:    ${story.status}${story.stalled ? " (stalled)" : ""}, ${suggestion}`);
   for (const reason of story.reasons) lines.push(`    ${escapeText(reason)}`);
+  if (story.shippedIn) lines.push(`  Shipped in: ${escapeText(story.shippedIn.tag)} (${escapeText(story.shippedIn.commit.slice(0, 7))})`);
   if (story.branches.length) {
     lines.push("  Branches:");
     for (const branch of story.branches) {
@@ -55,7 +57,7 @@ export default defineCommand({
     for (let index = 0; index < rest.length; index++) {
       const arg = rest[index];
       const name = arg.split("=")[0];
-      if (["--format", "--map", "--root", "--default-branch", "--history", "--plans", "--tests"].includes(name)) {
+      if (["--format", "--map", "--root", "--default-branch", "--history", "--shipped-tags", "--plans", "--tests"].includes(name)) {
         const [value, next] = optionValue(rest, index, name);
         index = next;
         if (name === "--format") options.format = readFormat(value, formats);
@@ -63,6 +65,7 @@ export default defineCommand({
         else if (name === "--root") options.root = value;
         else if (name === "--default-branch") options.defaultBranch = value;
         else if (name === "--history") options.history = value;
+        else if (name === "--shipped-tags") options.shippedTags = value;
         else if (name === "--plans") options.plans.push(value);
         else options.tests.push(value);
       } else if (arg.startsWith("-")) {
@@ -89,6 +92,7 @@ export default defineCommand({
         plans: options.plans.length ? options.plans : undefined,
         tests: options.tests.length ? options.tests : undefined,
         history: inputs.history,
+        shippedTags: options.shippedTags,
       });
     } catch (error) {
       console.error(`story-map: ${escapeText(error instanceof Error ? error.message : String(error))}`);
