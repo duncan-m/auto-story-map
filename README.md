@@ -97,18 +97,6 @@ The demo reads this repository’s Git history to show when each story changed a
 
 The demo listens on loopback and serves the same view as JSON at `/api/story-map`.
 
-### Cards and panels
-
-Cards show the story ID, title and status. Selecting a card opens a panel with its summary, activity and release.
-
-Internal viewers also see engineering notes, sources and the last editor in the panel. Each release lane can be collapsed to its title and story count.
-
-The panel, the collapse toggles and the search form work without client-side JavaScript. The demo also loads the optional `board.js` script, so filters apply as soon as you choose them.
-
-### Personas
-
-![The Personas tab in the demo, as a super admin sees it. A list on the left shows four personas, Product manager, Engineer, Coding agent and Product customer, each with a story count. The selected Product manager page shows what success means, the tools they use today and their constraints. Below, their core job reads as When, I want and so that, with a progress bar for its stories and three numbered steps, each linking to its stories.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/personas-screenshot.png)
-
 ### Preview your own map
 
 In a product that installs the library, `npx story-map preview` serves your own `product/story-map.yaml` as a board at `http://127.0.0.1:4173/story-map`, with internal and customer views, before you add the board to your product. It reads the map on every reload and shows validation errors on the page. See [Preview the map locally](docs/story-map.md#preview-the-map-locally).
