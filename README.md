@@ -125,7 +125,28 @@ The map lives in the product repo. The deployed product renders the file include
 
 ## Upgrade an existing install
 
-Run `npm install auto-story-map@0.7.4` in your host repo, keep your existing `product/story-map.yaml`, and rebuild the app with the updated stylesheet. 0.7.0 lets the status filter take several choices, so host code that reads `filter.status` needs to treat it as an array. It also adds Visio and CSV export and tests linked to stories. 0.7.1 adds a JSON export for agents, and 0.7.4 adds the CLI commands, personas, links to code and estimates, with no further upgrade steps. **0.7.4 changes the licence from Apache-2.0 to the GNU AGPL version 3 only.** See [the changelog][changelog] for details. Follow the [upgrade steps][upgrade]. If you are upgrading from 0.3.0 or earlier, follow the [0.4.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040) first, and from 0.2.0 or earlier the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030) before those.
+In your host repo:
+
+1. Run `npm install auto-story-map@0.7.4`.
+2. Keep your existing `product/story-map.yaml`.
+3. Rebuild the app with the updated stylesheet.
+
+**0.7.4 changes the licence from Apache-2.0 to the GNU AGPL version 3 only.**
+
+What each version needs from you:
+
+| Version | What it adds | Upgrade steps |
+| --- | --- | --- |
+| 0.7.4 | CLI commands, personas, links to code and estimates | None |
+| 0.7.1 | JSON export for agents | None |
+| 0.7.0 | Visio and CSV export, tests linked to stories, and a status filter with several choices | Host code that reads `filter.status` must treat it as an array. Follow the [0.7.0 upgrade steps][upgrade]. |
+
+Upgrading from an older version? Follow these steps first, oldest first:
+
+- From 0.2.0 or earlier: the [0.3.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-030).
+- From 0.3.0 or earlier: the [0.4.0 upgrade steps](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-040).
+
+See [the changelog][changelog] for the details of each version.
 
 ## Populate the first map
 
