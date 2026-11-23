@@ -1126,7 +1126,7 @@ stories:
     sources:
       - docs/ENGINEERING-OVERVIEW.md#story-tests
       - docs/story-map.md#link-tests-to-stories
-  - id: ESM-803
+  - id: ESM-120
     title: Link history lines to their pull request and commit
     activity: track
     release: v0-7-4
@@ -1137,7 +1137,7 @@ stories:
     summary: Each line in a story's History, and its last update, links to the pull request and commit that made the change, when the host passes its repository URL.
     sources:
       - docs/plans/story-changes.md#1-record-pull-requests-in-the-history
-  - id: ESM-804
+  - id: ESM-121
     title: Show the pull requests and commits that name a story
     activity: track
     release: v0-7-4
@@ -1149,7 +1149,7 @@ stories:
     notes: Changes point to stories, so the map is never edited to list them. Merged work only; open pull requests from the GitHub API are a possible follow-up.
     sources:
       - docs/plans/story-changes.md#3-find-the-changes-that-name-a-story
-  - id: ESM-805
+  - id: ESM-122
     title: Link to a story or release with a permalink
     activity: explore
     release: v0-7-4

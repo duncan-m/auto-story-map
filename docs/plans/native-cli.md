@@ -223,7 +223,7 @@ npx --no-install story-map evidence --shipped-tags 'v*'
 - **Open PRs as evidence.** Needs a token and each host's API. The audit agent (ESM-109) can look them up itself.
 - **Claims on the board.** Showing “claimed by audit-bot” on a card needs the board to reach the remote at request time.
 - **Editing releases and activities** beyond release impact.
-- **Proposing an edit from the board.** A story panel could copy a `story-map edit` command, such as moving the story to another release, for a person or agent to run. It keeps the board read-only, as ESM-404 decided, and needs ESM-744 and the permalinks in ESM-805 first. A pre-filled pull request is not possible without a token and the host's API. Now planned as ESM-111 and ESM-112 in 0.7.6. See [Confirm drafts and triage from the local preview](local-triage.md#2-change-status-and-release-from-the-story-panel).
+- **Proposing an edit from the board.** A story panel could copy a `story-map edit` command, such as moving the story to another release, for a person or agent to run. It keeps the board read-only, as ESM-404 decided, and needs ESM-744 and the permalinks in ESM-122 first. A pre-filled pull request is not possible without a token and the host's API. Now planned as ESM-111 and ESM-112 in 0.7.6. See [Confirm drafts and triage from the local preview](local-triage.md#2-change-status-and-release-from-the-story-panel).
 
 ## Questions for review
 

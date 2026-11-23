@@ -1,6 +1,6 @@
 # Plan: link stories to their code, and to each other
 
-Status: proposed. The work is ESM-803, ESM-804 and ESM-805, all in the **0.7.4: Links to code and stories** release of the map.
+Status: proposed. The work is ESM-120, ESM-121 and ESM-122, all in the **0.7.4: Links to code and stories** release of the map.
 
 Internal viewers open a story and can follow its work to the code: each line in its **History** links to the pull request and commit that made the change, and a new **Changes** section lists the pull requests and commits that delivered the story. As with tests, changes point to stories, not the other way round: a commit message, pull request title or branch name names the story ID, and the history build collects them. Nobody edits the map to list them.
 
@@ -8,11 +8,11 @@ The same release adds permalinks: a link that opens the board on one story's or 
 
 Items are numbered in the order they should be built, and each section uses the same number:
 
-1. [Record pull requests in the history](#1-record-pull-requests-in-the-history) (ESM-803)
-2. [Link history lines to their commit and pull request](#2-link-history-lines-to-their-commit-and-pull-request) (ESM-803)
-3. [Find the changes that name a story](#3-find-the-changes-that-name-a-story) (ESM-804)
-4. [Show changes in the story panel](#4-show-changes-in-the-story-panel) (ESM-804)
-5. [Link to a story or release](#5-link-to-a-story-or-release) (ESM-805)
+1. [Record pull requests in the history](#1-record-pull-requests-in-the-history) (ESM-120)
+2. [Link history lines to their commit and pull request](#2-link-history-lines-to-their-commit-and-pull-request) (ESM-120)
+3. [Find the changes that name a story](#3-find-the-changes-that-name-a-story) (ESM-121)
+4. [Show changes in the story panel](#4-show-changes-in-the-story-panel) (ESM-121)
+5. [Link to a story or release](#5-link-to-a-story-or-release) (ESM-122)
 6. [Document it](#6-document-it) (all three)
 
 Commit links and changes are internal only. Permalinks work on both boards, and a customer permalink opens only stories the customer view already shows. Customer-facing copy does not change.
@@ -45,7 +45,7 @@ These are proposals. Each is easy to change during review.
 | F. Without a repository URL | Commit hashes and pull request numbers are left out, so existing boards look the same until the host opts in. `sourceBaseUrl` is not reused, because it points at files on a branch, not at the repository. |
 | G. Where the panel shows changes | A **Changes** section between **History** and **Tests**, newest first. The card face does not change. |
 | H. What a change shows | A pull request shows its number and title, when it was merged and by whom, and how many of its commits name the story, such as “#68 Export the map as JSON for agents · merged 21 Nov by Duncan Malcolm · 2 commits”. A direct commit shows its short hash and subject. Branch commits are not listed one by one; the pull request link has them. |
-| I. Empty state | When the history has a `changes` list and a story has none, the panel says “No pull requests or commits name ESM-803 yet” and shows how to name one. With an older history file, the section is left out. |
+| I. Empty state | When the history has a `changes` list and a story has none, the panel says “No pull requests or commits name ESM-120 yet” and shows how to name one. With an older history file, the section is left out. |
 | J. Search | Change titles are not searched. The board's search stays on IDs, titles and summaries. |
 | K. Permalink form | `?story=ESM-801#esm-story-ESM-801` for a story and `?release=v0-7-4#esm-release-v0-7-4` for a release. The query lets the server make sure the story is on the board; the fragment scrolls to its card without JavaScript. Story and release IDs are already stable and unique, so they are the link. |
 | L. What a permalink keeps | The host's `preservedParams`, but not the viewer's filters, so a link opens the same board for whoever follows it. |
@@ -71,7 +71,7 @@ These are proposals. Each is easy to change during review.
 | 5 | Link to a story or release | M | — |
 | 6 | Document it | S | 2, 4, 5 |
 
-Items 1 and 2 can ship in one PR, which sets ESM-803 to `merged`. Items 3 to 5 can follow in a second PR, with ESM-804 going to `in-progress` and then `merged`. Item 5 does not depend on the others, so ESM-805 can ship in its own PR at any point.
+Items 1 and 2 can ship in one PR, which sets ESM-120 to `merged`. Items 3 to 5 can follow in a second PR, with ESM-121 going to `in-progress` and then `merged`. Item 5 does not depend on the others, so ESM-122 can ship in its own PR at any point.
 
 Every PR follows the repository's rules: update `product/story-map.yaml` in the same PR, run `npm run validate` and `npm test`, name new tests with their story ID, add a `## Unreleased` entry to `CHANGELOG.md`, and include the `story-map diff origin/main` summary in the PR description.
 
@@ -86,7 +86,7 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 - History files written before this change have no `pullRequest`, and still load.
 - Add the field to the JSON export's history entries, which already spread each entry.
 
-**Tests.** ESM-803: on a fixture repository, a merge commit, a squash commit, a rebase commit with `(#n)`, a GitLab merge commit and a direct commit each give the right number or none. A subject with `(#12)` in the middle is not a pull request. An old history file without the field still parses.
+**Tests.** ESM-120: on a fixture repository, a merge commit, a squash commit, a rebase commit with `(#n)`, a GitLab merge commit and a direct commit each give the right number or none. A subject with `(#12)` in the middle is not a pull request. An old history file without the field still parses.
 
 ## 2. Link history lines to their commit and pull request
 
@@ -99,7 +99,7 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 - New classes `esm-history-link` and `esm-commit-hash`, using the existing `--esm-*` colours in both copies of the dark palette.
 - The example host in `example/demo.mjs` passes `repositoryUrl="https://github.com/duncan-m/auto-story-map"`.
 
-**Tests.** ESM-803: links appear with `repositoryUrl` and with templates, use the full hash, and are absent without either. A `javascript:` template makes no link. Customer boards show no hashes or numbers. The smoke test still passes with React 18 and 19.
+**Tests.** ESM-120: links appear with `repositoryUrl` and with templates, use the full hash, and are absent without either. A `javascript:` template makes no link. Customer boards show no hashes or numbers. The smoke test still passes with React 18 and 19.
 
 ## 3. Find the changes that name a story
 
@@ -131,7 +131,7 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 - Limits: titles and branch names cut to 200 code points with `fitHistoryText`, at most 30 changes listed per story with the rest counted in `moreChanges`, and at most 20,000 changes in the file. Check them in `storyMapHistorySchema`.
 - A shallow clone gives only the changes it can see, and the file already says `complete: false`.
 
-**Tests.** ESM-804: on a fixture repository with merge, squash and direct commits: an ID in a subject, a body and a branch name; an ID in lower case in a message (not matched) and in a branch (matched); an ID that is part of a longer word (not matched); a pull request whose only mention is on a branch commit; two stories in one pull request; an unknown ID; the per-story limit; a bot author credited to the merger.
+**Tests.** ESM-121: on a fixture repository with merge, squash and direct commits: an ID in a subject, a body and a branch name; an ID in lower case in a message (not matched) and in a branch (matched); an ID that is part of a longer word (not matched); a pull request whose only mention is on a branch commit; two stories in one pull request; an unknown ID; the per-story limit; a bot author credited to the merger.
 
 ## 4. Show changes in the story panel
 
@@ -143,7 +143,7 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 - New classes `esm-changes`, `esm-change`, `esm-change-meta` and `esm-changes-empty`.
 - The JSON export adds each story's `changes`, and a note in `provenance` that changes come from commit messages and branch names on the main branch, so open work is missing.
 
-**Tests.** ESM-804: the panel lists changes newest first, links them with a repository URL, shows the empty state only with a `changes` list, and is absent on customer boards. The JSON export includes changes and the note.
+**Tests.** ESM-121: the panel lists changes newest first, links them with a repository URL, shows the empty state only with a `changes` list, and is absent on customer boards. The JSON export includes changes and the note.
 
 ## 5. Link to a story or release
 
@@ -156,7 +156,7 @@ Every PR follows the repository's rules: update `product/story-map.yaml` in the 
 - `:target` styles on `.esm-card` and the release header, using `--esm-accent`, in both copies of the dark palette.
 - The JSON export adds `permalink` to each story and release when the host passes `permalinkBase` to `storyMapToJson`, so an agent can link to the board in its suggestions.
 
-**Tests.** ESM-805: `?story=` keeps a blocked or cut story and opens its lane; an unknown ID, a badly formed ID and an internal-only story on a customer board are all ignored the same way; card and lane IDs are stable across renders; **Copy link** keeps `preservedParams` and drops filters; the board.js test opens the panel and copies the link. The smoke test still passes with React 18 and 19.
+**Tests.** ESM-122: `?story=` keeps a blocked or cut story and opens its lane; an unknown ID, a badly formed ID and an internal-only story on a customer board are all ignored the same way; card and lane IDs are stable across renders; **Copy link** keeps `preservedParams` and drops filters; the board.js test opens the panel and copies the link. The smoke test still passes with React 18 and 19.
 
 ## 6. Document it
 
