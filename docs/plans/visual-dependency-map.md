@@ -10,7 +10,7 @@ Release proposal: **0.8.4: Dependency planning**, after the proposed delivery an
 4. [Explore dependencies as a graph](#4-explore-dependencies-as-a-graph) (ESM-140)
 5. [Focus on a release or story](#5-focus-on-a-release-or-story) (ESM-141)
 
-No story-point estimates are proposed: the team must agree them. No customer-facing copy is approved. Review release placement before implementation.
+No story-point estimates are proposed: the team must agree them. No customer-facing copy is approved.
 
 ## Why and customer outcome
 
@@ -146,8 +146,14 @@ Implementation should use focused PRs per story, include the story IDs in test n
 
 All three are hypotheses awaiting human review (`draft: true` in the map). No baseline or actual improvement is claimed.
 
+## Decisions
+
+Agreed in review:
+
+- The work stays in 0.8.4, after the analytics releases.
+- A `merged` prerequisite counts as done, and a `blocked` prerequisite makes a story at risk.
+- ESM-143 stays a separate story.
+
 ## Open review decisions
 
-1. Confirm 0.8.4 placement relative to the proposed analytics work; nothing here depends on analytics.
-2. Confirm that a `merged` prerequisite counts as done, and that a `blocked` prerequisite makes a story at risk.
-3. Confirm the checkpoint before ESM-140: build the graph only if the earlier stories show it is needed.
+1. Confirm the checkpoint before ESM-140: build the graph only if the earlier stories show it is needed.
