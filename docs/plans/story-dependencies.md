@@ -34,9 +34,10 @@ Each story gets an optional `dependsOn` list of story IDs in the schema:
       - ESM-105
 ```
 
-Validate rejects an ID that is not in the map, a story that depends on itself and a cycle. The board works out the stories waiting for each story from these lists, so nothing is recorded twice. Existing “Needs ESM-…” notes move into `dependsOn` in the same PR.
+Validate rejects an ID that is not in the map, a story that depends on itself and a cycle. It warns when a story that is not cut depends on a cut story, because that work will not land. The board works out the stories waiting for each story from these lists, so nothing is recorded twice. Existing “Needs ESM-…” notes move into `dependsOn` in the same PR.
 
-## Open questions
+`story-map edit` gets `--add-dependency <ID>` and `--remove-dependency <ID>`, and `story-map add` gets `--dependency <ID>`, repeated for each story, so agents record dependencies without editing the YAML by hand. `story-map diff` shows dependencies added and removed.
 
-- **Cut dependencies:** whether validate should warn when a story depends on a cut story.
-- **Edit and add:** whether `story-map edit` and `add` get `--add-dependency` and `--remove-dependency` in this story or later.
+## Estimate
+
+8 points: the schema field and its checks, the edit and add options, the diff line, the card count, the panel's Dependencies section, moving the existing notes into `dependsOn`, the docs and tests.
