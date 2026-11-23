@@ -332,7 +332,7 @@ releases:
     notes: |
       Agents and scripts read the map with story-map story, stories and releases, get validation results as JSON, and change the map with story-map edit, add and release-impact, which show a dry run and only write a valid map. story-map preview shows any map as a board on your own computer before a product adds the board.
 
-      The first half of the native CLI plan, moved ahead of personas so agents could tag stories with story-map edit instead of editing the YAML by hand. Evidence and claims follow in 0.7.5. Not published on its own: it goes to npm in 0.7.4.
+      The first half of the native CLI plan, moved ahead of personas so agents could tag stories with story-map edit instead of editing the YAML by hand. Evidence and claims follow in 0.7.5. Not published on its own: it reached npm in 0.7.4.
     impact:
       - metric: Map edits made by hand in the YAML file by agents
         expected: Made with story-map edit, which checks the change before writing it
@@ -348,7 +348,7 @@ releases:
     notes: |
       The map names the people the product serves and their jobs to be done, and each story says which jobs it serves. The board shows personas on cards and activities, filters by persona and job, and opens a panel with each persona's jobs and the stories that serve them. A Personas tab beside the map gives each persona a page, with their context and their jobs as lanes, core job first, each with its steps in order and the gaps marked.
 
-      Not published on its own: it goes to npm in 0.7.4.
+      Not published on its own: it reached npm in 0.7.4.
 
       Mockup: docs/plans/personas.md#ui-mockup
       Personas tab mockup: docs/plans/personas.md#personas-tab-mockup
@@ -371,7 +371,7 @@ releases:
     notes: |
       Each line in a story's History links to the pull request and commit behind it, and a Changes section lists the merged pull requests and commits whose title, message or branch name names the story. Story, release and persona details open in a panel from the right, and each story and release panel has a Copy link button for a permalink that opens the board on it.
 
-      Goes to npm together with 0.7.2 and 0.7.3, which were not published on their own, and the estimates from 0.7.6 (ESM-503). The first version under the GNU AGPL.
+      Published to npm as 0.7.4 together with 0.7.2 and 0.7.3, which were not published on their own, and the estimates from 0.7.6 (ESM-503). The first version under the GNU AGPL.
 
       Plan: docs/plans/story-changes.md
     impact:
@@ -754,7 +754,7 @@ stories:
     title: Estimate effort on each story
     activity: plan
     release: v0-7-6
-    status: merged
+    status: shipped
     jobs:
       - triage-backlog
       - get-oriented
@@ -839,7 +839,7 @@ stories:
     title: Break a job into steps
     activity: explore
     release: v0-7-3
-    status: merged
+    status: shipped
     jobs:
       - ground-work-in-customer-needs
       - triage-backlog
@@ -857,7 +857,7 @@ stories:
     title: Open a persona page next to the map
     activity: explore
     release: v0-7-3
-    status: merged
+    status: shipped
     jobs:
       - ground-work-in-customer-needs
       - get-oriented
@@ -875,7 +875,7 @@ stories:
     title: Read the map from the command line
     activity: explore
     release: v0-7-2
-    status: merged
+    status: shipped
     estimate: 3
     jobs:
       - pick-up-work
@@ -887,7 +887,7 @@ stories:
     title: Print validation results as JSON
     activity: review
     release: v0-7-2
-    status: merged
+    status: shipped
     estimate: 1
     jobs:
       - update-the-map
@@ -912,7 +912,7 @@ stories:
     title: Propose map edits from the command line
     activity: plan
     release: v0-7-2
-    status: merged
+    status: shipped
     estimate: 5
     jobs:
       - update-the-map
@@ -937,7 +937,7 @@ stories:
     title: Preview the map locally before adding the board
     activity: set-up
     release: v0-7-2
-    status: merged
+    status: shipped
     estimate: 2
     jobs:
       - get-oriented
@@ -965,7 +965,7 @@ stories:
     title: Define personas in the map file
     activity: plan
     release: v0-7-3
-    status: merged
+    status: shipped
     estimate: 5
     jobs:
       - ground-work-in-customer-needs
@@ -982,7 +982,7 @@ stories:
     title: Show who a story is for
     activity: explore
     release: v0-7-3
-    status: merged
+    status: shipped
     estimate: 3
     jobs:
       - ground-work-in-customer-needs
@@ -998,7 +998,7 @@ stories:
     title: Filter the board by persona
     activity: explore
     release: v0-7-3
-    status: merged
+    status: shipped
     estimate: 2
     jobs:
       - ground-work-in-customer-needs
@@ -1014,7 +1014,7 @@ stories:
     title: Open a persona to see jobs and coverage
     activity: explore
     release: v0-7-3
-    status: merged
+    status: shipped
     estimate: 3
     jobs:
       - ground-work-in-customer-needs
@@ -1029,7 +1029,7 @@ stories:
     title: Share approved personas with customers
     activity: explore
     release: v0-7-3
-    status: merged
+    status: shipped
     estimate: 2
     jobs:
       - share-roadmap
@@ -1045,7 +1045,7 @@ stories:
     title: Include personas in exports
     activity: explore
     release: v0-7-3
-    status: merged
+    status: shipped
     estimate: 2
     jobs:
       - pick-up-work
@@ -1062,7 +1062,7 @@ stories:
     title: Describe a persona's context
     activity: plan
     release: v0-7-3
-    status: merged
+    status: shipped
     jobs:
       - recover-customer-context
       - ground-work-in-customer-needs
@@ -1080,7 +1080,7 @@ stories:
     title: Mark a persona's core job
     activity: explore
     release: v0-7-3
-    status: merged
+    status: shipped
     jobs:
       - ground-work-in-customer-needs
     summary: The first job in a persona's list is their core job. The persona popover labels it, validate warns when it has no stories, and diff reports when it changes. On the Personas tab (ESM-911) it is the first lane.
@@ -1096,7 +1096,7 @@ stories:
     title: Write job statements with a trigger and a stake
     activity: plan
     release: v0-7-3
-    status: merged
+    status: shipped
     jobs:
       - draft-first-map
       - ground-work-in-customer-needs
@@ -1140,7 +1140,7 @@ stories:
     title: Link history lines to their pull request and commit
     activity: track
     release: v0-7-4
-    status: merged
+    status: shipped
     estimate: 3
     jobs:
       - plan-and-build
@@ -1151,7 +1151,7 @@ stories:
     title: Show the pull requests and commits that name a story
     activity: track
     release: v0-7-4
-    status: merged
+    status: shipped
     estimate: 8
     jobs:
       - plan-and-build
@@ -1163,7 +1163,7 @@ stories:
     title: Link to a story or release with a permalink
     activity: explore
     release: v0-7-4
-    status: merged
+    status: shipped
     estimate: 3
     jobs:
       - get-oriented
@@ -1175,7 +1175,7 @@ stories:
     title: Open story details in a panel from the right
     activity: explore
     release: v0-7-4
-    status: merged
+    status: shipped
     jobs:
       - get-oriented
     summary: Story, release and persona details slide in as a full-height panel on the right, so the board stays in view beside them, instead of opening in a modal in the middle of the screen.
@@ -1342,7 +1342,7 @@ stories:
     title: Export the map as JSON for agents
     activity: explore
     release: v0-7-1
-    status: merged
+    status: shipped
     jobs:
       - pick-up-work
     summary: storyMapToJson writes every internal story with its notes, sources, history and tagged tests, plus notes on where the data came from and what is left out, so an agent can review stories and tests and suggest product work.
