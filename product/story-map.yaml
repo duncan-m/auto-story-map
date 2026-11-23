@@ -387,8 +387,6 @@ releases:
 
       Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief and local launch in 0.8.1.
 
-      The Export menu gains a Spreo item (ESM-137), linking to a guide for building an interactive story board in Spreo through its MCP integration from ChatGPT, Claude or Claude Code.
-
       Plans: docs/plans/native-cli.md and docs/plans/agent-briefs.md
     impact:
       - metric: Agents starting the same story at the same time
@@ -403,15 +401,13 @@ releases:
         expected: One copy from its panel, instead of writing the prompt by hand
         solves: Agents starting work without the plan, the work already built nearby or the repository's rules
         draft: true
-      - metric: Time to get the story map into Spreo
-        expected: One click from the Export menu to a guide with a ready-made prompt, instead of working out the steps and prompt by hand
-        solves: People who plan in Spreo not finding a way to move the map there from the Export menu
-        draft: true
   - id: v0-7-6
     title: "0.7.6: PM improvements"
     summary: Activities expand into steps, a scheduled audit proposes map corrections from the code, people confirm drafts and triage stories without editing the YAML, and earlier versions of the map can be read, compared and viewed on the board.
     notes: |
       The Actions tab (ESM-128) lists what validate warns about on the board, so people who never run the CLI see the drafts, estimates and gaps waiting for them.
+
+      The Export menu gains a Spreo item (ESM-137), linking to a guide for building an interactive story board in Spreo through its MCP integration from ChatGPT, Claude or Claude Code.
 
       Plans: docs/plans/local-triage.md, docs/plans/map-versions.md and docs/plans/actions-tab.md
     impact:
@@ -430,6 +426,10 @@ releases:
       - metric: Validation warnings only seen by people who run the CLI
         expected: "None: every warning is listed on the board's Actions tab"
         solves: Drafts, estimates and gaps waiting on product people who never see them
+        draft: true
+      - metric: Time to get the story map into Spreo
+        expected: One click from the Export menu to a guide with a ready-made prompt, instead of working out the steps and prompt by hand
+        solves: People who plan in Spreo not finding a way to move the map there from the Export menu
         draft: true
     customer:
       title: "0.7.6"
@@ -917,7 +917,7 @@ stories:
   - id: ESM-137
     title: Add export support for Spreo
     activity: explore
-    release: v0-7-5
+    release: v0-7-6
     status: planned
     estimate: 2
     jobs:
