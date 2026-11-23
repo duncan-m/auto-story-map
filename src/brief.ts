@@ -389,6 +389,22 @@ function render(view: InternalView, parts: BriefParts, options: ResolvedOptions)
   let keepNotYet = parts.notYet.length;
   let brief = write(keepBuilt, keepNotYet);
   // Cut the neighbour lists, longest first, until the brief fits. The targets are never cut.
+  // Work out the cut from each line's size first, so a long brief is rendered a few times, not once per line.
+  let over = bytes(brief) - parts.maxBytes;
+  if (over > 0) {
+    const size = (entry: Neighbour | undefined) => entry ? bytes(storyLine(entry)) + 1 : 0;
+    const moreLine = bytes(list(parts.built.length ? parts.built : parts.notYet, 0)[0] ?? "") + 1;
+    while (over > 0 && (keepBuilt > 0 || keepNotYet > 0)) {
+      const cutNotYet = keepNotYet >= keepBuilt;
+      const entries = cutNotYet ? parts.notYet : parts.built;
+      const keep = cutNotYet ? keepNotYet : keepBuilt;
+      over -= size(entries[keep - 1]) - (keep === entries.length ? moreLine : 0);
+      if (cutNotYet) keepNotYet--;
+      else keepBuilt--;
+    }
+    brief = write(keepBuilt, keepNotYet);
+  }
+  // The "more not listed" lines can differ in length from the estimate, so check the result.
   while (bytes(brief) > parts.maxBytes && (keepBuilt > 0 || keepNotYet > 0)) {
     if (keepNotYet >= keepBuilt) keepNotYet--;
     else keepBuilt--;

@@ -97,6 +97,13 @@ const server = createServer(async (request, response) => {
     const map = parseStoryMap(await readFile(mapFile, "utf8"));
     const result = makeStoryMapResponse(url, map, viewer, {
       navigation,
+      brief: {
+        readFirst: [
+          { path: "docs/ENGINEERING-OVERVIEW.md", about: "architecture and the behaviour to preserve" },
+          { path: "docs/story-map.md", about: "map rules" },
+        ],
+        validateCommand: "npm run validate",
+      },
       sourceBaseUrl,
       repositoryUrl,
       canViewInternal,
