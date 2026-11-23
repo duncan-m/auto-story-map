@@ -720,6 +720,35 @@ Links are relative to the page. Pass `permalinkBase` to `StoryMapBoard`, such as
 
 Cards and lanes get the IDs `esm-story-<story ID>` and `esm-release-<release ID>`. Only render one board per page with permalinks: a second board would share these IDs, and only the first gets the scroll.
 
+## Write a brief for an agent
+
+`storyMapBrief(view, { story })` and `storyMapBrief(view, { release })` write a handoff brief: a short Markdown prompt that hands a story, or every open story in a release, to a coding agent. It is built from the map, so nobody writes the prompt by hand, and it points to files and commands instead of copying them, because the agent can read the repository.
+
+```ts
+import { getStoryMapForViewer, storyMapBrief } from "auto-story-map";
+
+const view = getStoryMapForViewer(document, viewer, { canViewInternal, history, tests });
+const brief = storyMapBrief(view, {
+  story: "ESM-111",
+  readFirst: [{ path: "docs/ENGINEERING-OVERVIEW.md", about: "architecture and the behaviour to preserve" }],
+});
+```
+
+The brief has tagged sections:
+
+- `<rules>`: follow `AGENTS.md`, set the story to `in-progress` with `story-map edit` before the first code change, the branch to create, and the story ID to put in commits, the PR title and test names. A release brief asks for each story to be set to `in-progress` when work on it starts, not all at once. The branch is `feat/<ID>-<first words of the title>`, such as `feat/esm-111-show-edit-command`, at most 50 characters. `storyMapBriefBranch` gives the same name.
+- `<target>`: each story to build, with its status, release, activity, estimate, summary, plan, other sources, personas and jobs, and the `story-map story` command for the rest. The plan is the first Markdown link with a `#heading` in its `sources`, as for the [Engineering overview link](#link-an-engineering-overview). A release brief targets its planned and in-progress stories, by activity from left to right, then in map order.
+- `<context>`: the `readFirst` documents, the merged and shipped stories nearby to reuse, and the planned stories nearby not to build yet. For a story, these are up to five of the most recently changed delivered stories in its activity, and the planned stories in its activity in the same release or later. For a release, they are the delivered stories in it and in the release before, and the planned stories in the release after.
+- `<in_flight>`: the tests tagged with each target and the pull requests and commits that name it, when the view has a [tests index](#link-tests-to-stories) and [history](#link-pull-requests-and-commits-to-stories). Left out when there is none.
+- `<open_decisions>`: draft jobs, a target with no estimate or no plan, a target that is not planned or in progress, and blocked stories in the same release with their reason.
+- `<done_when>`: the plan is met with tagged tests, validation and the tests pass, and the PR has the `story-map diff` summary.
+
+Pass `mapPath` when the map is not `product/story-map.yaml`, `validateCommand` and `testCommand` for your own commands, which default to `npx story-map validate <mapPath>` and `npm test`, and `baseBranch` when pull requests go somewhere other than `main`.
+
+- **Internal only.** A brief carries internal notes, estimates and draft jobs, so it throws a `TypeError` for a customer view, and for a filtered view, because it lists the stories around its target. Pass the view from `getStoryMapForViewer`. An unknown story or release throws a `RangeError`.
+- **Safe text.** Text from the map is written on one line, with `&`, `<` and `>` escaped, so a title or summary cannot close a section, add one or start a line that reads as a rule.
+- **Short.** A story brief stays under 4 KB and a release brief under 16 KB. Past that, the lists of stories to reuse and not to build are cut down, with a line that says how many were left out. The targets are never cut.
+
 ## Integrate with a product
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.
