@@ -2,11 +2,16 @@
 
 Status: proposed. Planning and backlog only; no implementation in this PR.
 
-Release proposal: **0.8.4: Dependency planning**, after the proposed delivery analytics releases. It builds on the `dependsOn` links from ESM-129, described in [Record dependencies](../story-map.md#record-dependencies) and planned in [the story dependencies plan](story-dependencies.md), rather than adding a second dependency system. Readiness and a suggested order come first, where agents and the existing panels can use them. The graph follows.
+Release proposal: **0.8.4: Dependency planning** for readiness, order and briefs, after the proposed delivery analytics releases, then **0.8.5: Dependency graph** for the graph. It builds on the `dependsOn` links from ESM-129, described in [Record dependencies](../story-map.md#record-dependencies) and planned in [the story dependencies plan](story-dependencies.md), rather than adding a second dependency system. Readiness and a suggested order come first, where agents and the existing panels can use them. The graph follows in the next release.
+
+0.8.4: Dependency planning
 
 1. [Work out readiness and dependency risks](#1-work-out-readiness-and-dependency-risks) (ESM-139)
 2. [Suggest a delivery order for a release](#2-suggest-a-delivery-order-for-a-release) (ESM-142)
 3. [List prerequisites in agent briefs](#3-list-prerequisites-in-agent-briefs) (ESM-143)
+
+0.8.5: Dependency graph
+
 4. [Explore dependencies as a graph](#4-explore-dependencies-as-a-graph) (ESM-140)
 5. [Focus on a release or story](#5-focus-on-a-release-or-story) (ESM-141)
 
@@ -128,32 +133,32 @@ Let the viewer choose a release or focus on a story, with direct neighbours by d
 - Large sets show truncation and expansion without hiding a blocking link.
 - Tests named `ESM-141:` cover deep chains, filters, missing and obsolete selections and mixed releases.
 
-## Delivery sequence and review checkpoints
+## Delivery sequence
 
-**First:** ESM-139, then ESM-142 and ESM-143 in parallel. Agents and the existing panels get readiness, an order and briefs that name prerequisites, with no new tab.
+**0.8.4:** ESM-139, then ESM-142 and ESM-143 in parallel. Agents and the existing panels get readiness, an order and briefs that name prerequisites, with no new tab.
 
-**Checkpoint:** before ESM-140, review whether people use the readiness line and release order, and how many links the map has by then. If the graph would add little over the release panel's order, defer ESM-140 and ESM-141.
-
-**Then:** ESM-140, then ESM-141.
+**0.8.5:** ESM-140, then ESM-141. The tab reuses the readiness and order from 0.8.4.
 
 Implementation should use focused PRs per story, include the story IDs in test names and commit messages, and run `npm run validate`, the relevant tests and `story-map diff origin/main`.
 
 ## Draft release impact
 
+0.8.4:
+
 - **Time to identify the unfinished prerequisites for a chosen story:** shown on its panel and from the CLI, instead of opening each related story in turn; solves opaque build order.
 - **Time to find a feasible sequence for a release:** a ready set and order in the release panel and CLI, without tracing links by hand; solves repeated sequencing work.
 - **Release-order dependency conflicts surfaced before implementation:** warnings for prerequisites that are cut, blocked or in later releases; solves hidden planning conflicts.
 
-All three are hypotheses awaiting human review (`draft: true` in the map). No baseline or actual improvement is claimed.
+0.8.5:
+
+- **Time to see why a release cannot start:** one view of the release and its prerequisites from other releases, instead of following links story by story; solves long prerequisite chains that span several releases.
+
+All four are hypotheses awaiting human review (`draft: true` in the map). No baseline or actual improvement is claimed.
 
 ## Decisions
 
 Agreed in review:
 
-- The work stays in 0.8.4, after the analytics releases.
+- Readiness, order and briefs stay in 0.8.4, after the analytics releases. The graph and focus views move to 0.8.5.
 - A `merged` prerequisite counts as done, and a `blocked` prerequisite makes a story at risk.
 - ESM-143 stays a separate story.
-
-## Open review decisions
-
-1. Confirm the checkpoint before ESM-140: build the graph only if the earlier stories show it is needed.

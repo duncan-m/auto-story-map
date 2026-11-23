@@ -499,9 +499,9 @@ releases:
         draft: true
   - id: v0-8-4
     title: "0.8.4: Dependency planning"
-    summary: See which stories can start, a dependency-respecting build order and dependency risks, in the panels, CLI, agent briefs and a visual graph, without maintaining another planning system.
+    summary: See which stories can start, a dependency-respecting build order and dependency risks, in the panels, CLI and agent briefs, without maintaining another planning system.
     notes: |
-      Planning proposal only, built on the existing dependsOn links from ESM-129. First readiness on the story panel, CLI and JSON (ESM-139), then a suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). The internal Dependencies tab and its focus views (ESM-140, ESM-141) follow after a review checkpoint. No editable graph or new dependency storage.
+      Planning proposal only, built on the existing dependsOn links from ESM-129. First readiness on the story panel, CLI and JSON (ESM-139), then a suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). The internal Dependencies tab and its focus views (ESM-140, ESM-141) follow in 0.8.5. No new dependency storage.
 
       Plan: docs/plans/visual-dependency-map.md
       Mockup: docs/plans/visual-dependency-map.md#ui-mockup
@@ -517,6 +517,19 @@ releases:
       - metric: Release-order conflicts identified before implementation
         expected: Warnings for prerequisites that are cut, blocked or in later releases
         solves: Hidden cross-release, cut and blocked prerequisites
+        draft: true
+  - id: v0-8-5
+    title: "0.8.5: Dependency graph"
+    summary: Explore a release's or a story's dependency chain as an internal, read-only graph, with the suggested order and risks from 0.8.4 beside it.
+    notes: |
+      Planning proposal only. An internal Dependencies tab with a server-rendered graph and list (ESM-140), then release and story focus with a full-chain option (ESM-141). Reuses the readiness and order from 0.8.4. No editable graph or new dependency storage.
+
+      Plan: docs/plans/visual-dependency-map.md
+      Mockup: docs/plans/visual-dependency-map.md#ui-mockup
+    impact:
+      - metric: Time to see why a release cannot start
+        expected: One view of the release and its prerequisites from other releases, instead of following links story by story
+        solves: Long prerequisite chains that span several releases
         draft: true
 stories:
   # 0.1.0
@@ -1763,7 +1776,7 @@ stories:
   - id: ESM-140
     title: Explore dependencies as a visual graph
     activity: explore
-    release: v0-8-4
+    release: v0-8-5
     status: planned
     dependsOn:
       - ESM-142
@@ -1777,7 +1790,7 @@ stories:
   - id: ESM-141
     title: Focus dependency views on a release or story
     activity: explore
-    release: v0-8-4
+    release: v0-8-5
     status: planned
     dependsOn:
       - ESM-140
