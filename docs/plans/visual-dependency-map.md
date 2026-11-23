@@ -15,7 +15,7 @@ Release proposal: **0.8.4: Dependency planning** for readiness, order and briefs
 4. [Explore dependencies as a graph](#4-explore-dependencies-as-a-graph) (ESM-140)
 5. [Focus on a release or story](#5-focus-on-a-release-or-story) (ESM-141)
 
-No story-point estimates are proposed: the team must agree them. No customer-facing copy is approved.
+Estimates for 0.8.4: ESM-139 5 points, ESM-142 5 and ESM-143 3, 13 in all. ESM-140 and ESM-141 in 0.8.5 have none yet. No customer-facing copy is approved.
 
 ## Why and customer outcome
 

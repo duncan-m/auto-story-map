@@ -1826,6 +1826,7 @@ stories:
     activity: track
     release: v0-8-4
     status: planned
+    estimate: 5
     jobs:
       - triage-backlog
       - plan-and-build
@@ -1867,6 +1868,7 @@ stories:
     activity: track
     release: v0-8-4
     status: planned
+    estimate: 5
     dependsOn:
       - ESM-139
     jobs:
@@ -1882,6 +1884,7 @@ stories:
     activity: plan
     release: v0-8-4
     status: planned
+    estimate: 3
     dependsOn:
       - ESM-139
     jobs:
