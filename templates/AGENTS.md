@@ -27,7 +27,7 @@ Run `npx --no-install story-map validate --check-sources product/story-map.yaml`
 
 ### Branches and pull requests
 
-Name each branch for the work it holds and include the story ID, such as `fix/billing-204-refund-cancelled-orders`. Start each pull request title with the story ID and a colon, such as “BILLING-204: Refund cancelled orders”. Do not use random or generated branch names, such as `claude/zealous-fermat-srf6a2`, or the branch name as the title. This is your explicit permission to rename a branch your session assigned before the first push.
+Name each branch for the work it holds and include the story ID, such as `fix/billing-204-refund-cancelled-orders`. Start each pull request title and commit message with the story ID and a colon, such as “BILLING-204: Refund cancelled orders”, so the story panel lists the work under **Changes**. Do not use random or generated branch names, such as `claude/zealous-fermat-srf6a2`, or the branch name as the title. This is your explicit permission to rename a branch your session assigned before the first push.
 
 In the PR description, include the summary from `npx --no-install story-map diff origin/<base branch>`, and call out anything under **Customer-facing changes**.
 <!-- auto-story-map:end -->

@@ -5,7 +5,7 @@ import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
@@ -201,6 +201,8 @@ function StalledLabel({ since, settings }: { since: string; settings: DateSettin
 interface RepositoryLinker {
   commit(hash: string): string | undefined;
   pullRequest(number: number): string | undefined;
+  /** A search of the repository's pull requests, on GitHub only. */
+  searchPullRequests(text: string): string | undefined;
 }
 
 /** Keeps a link only when it is an http(s) URL. */
@@ -226,6 +228,9 @@ function repositoryLinker(repositoryUrl?: string, templates?: StoryMapRepository
   return {
     commit: hash => build(templates?.commit, "commit", /\{commit\}/g, hash),
     pullRequest: number => build(templates?.pullRequest, "pull", /\{number\}/g, String(number)),
+    searchPullRequests: text => base && !templates?.pullRequest && new URL(base).hostname === "github.com"
+      ? webLink(`${base}/pulls?q=${encodeURIComponent(`is:pr ${text}`)}`)
+      : undefined,
   };
 }
 
@@ -391,6 +396,85 @@ function CardTests({ story }: { story: InternalStoryCard }) {
   );
 }
 
+function PullRequestIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="4" cy="3.5" r="1.5" /><circle cx="4" cy="12.5" r="1.5" /><circle cx="12" cy="12.5" r="1.5" />
+      <path d="M4 5v6M12 11V6.5a2 2 0 0 0-2-2H7.5M9 3 7.5 4.5 9 6" />
+    </svg>
+  );
+}
+
+function CommitIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+      <circle cx="8" cy="8" r="2.5" /><path d="M1.5 8h4M10.5 8h4" />
+    </svg>
+  );
+}
+
+const commits = (count: number) => `${count} ${count === 1 ? "commit" : "commits"}`;
+
+/** Pull requests and direct commits that name the story, newest first. Titles are untrusted and rendered as text. */
+function ChangesSection({ story, panelId, settings, links }: { story: InternalStoryCard; panelId: string; settings: DateSettings; links: RepositoryLinker }) {
+  const headingId = `${panelId}-changes`;
+  const changes = story.changes ?? [];
+  const more = story.moreChanges ?? 0;
+  const search = more > 0 ? links.searchPullRequests(story.id) : undefined;
+  return (
+    <section className="esm-detail-section esm-changes" aria-labelledby={headingId}>
+      <h4 id={headingId}>Changes</h4>
+      {changes.length === 0 && more === 0 ? (
+        <p className="esm-changes-empty">
+          No pull requests or commits name {story.id} yet. Put the ID in a branch name, pull request title or commit message, such as <code>{`feat/${story.id.toLowerCase()}-…`}</code>.
+        </p>
+      ) : (
+        <ul className="esm-change-list" aria-labelledby={headingId}>
+          {changes.map(change => <ChangeItem key={change.commit} change={change} settings={settings} links={links} />)}
+        </ul>
+      )}
+      {more > 0 && (
+        <p className="esm-changes-more">
+          {search ? <a href={search} {...newTab}>+{more} more<NewTabHint /></a> : `+${more} more`}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function ChangeItem({ change, settings, links }: { change: StoryChangeEntry; settings: DateSettings; links: RepositoryLinker }) {
+  const pullRequest = change.pullRequest !== undefined;
+  const href = (pullRequest ? links.pullRequest(change.pullRequest!) : undefined) ?? links.commit(change.commit);
+  const label = pullRequest ? `#${change.pullRequest}` : shortHash(change.commit);
+  const title = <>
+    {pullRequest ? <span className="esm-change-number">{label}</span> : <code className="esm-commit-hash">{label}</code>}
+    {" "}
+    <span className="esm-change-title">{change.title ?? (pullRequest ? "Pull request" : "Commit")}</span>
+  </>;
+  const date = <time dateTime={change.at}>{formatDate(change.at, settings)}</time>;
+  const meta = pullRequest
+    ? <>
+      merged {date}{change.mergedBy && ` by ${change.mergedBy}`}
+      {change.by && change.by !== change.mergedBy && ` · by ${change.by}`}
+      {change.commitCount !== undefined && ` · ${commits(change.commitCount)}`}
+    </>
+    : <>
+      {date}{change.by && ` · by ${change.by}`}
+      {change.commitCount !== undefined && ` · ${commits(change.commitCount)}`}
+    </>;
+  return (
+    <li className="esm-change" data-kind={pullRequest ? "pull-request" : "commit"}>
+      {pullRequest ? <PullRequestIcon /> : <CommitIcon />}
+      <span className="esm-change-body">
+        {href
+          ? <a className="esm-change-link" href={href} {...newTab}><span className="esm-visually-hidden">{pullRequest ? "Pull request " : "Commit "}</span>{title}<NewTabHint /></a>
+          : <span><span className="esm-visually-hidden">{pullRequest ? "Pull request " : "Commit "}</span>{title}</span>}
+        <span className="esm-change-meta">{meta}</span>
+      </span>
+    </li>
+  );
+}
+
 function TestsSection({ story, panelId, sourceBaseUrl }: { story: InternalStoryCard; panelId: string; sourceBaseUrl?: string }) {
   const headingId = `${panelId}-tests`;
   const files = new Map<string, { tests: StoryTestLink[]; more: number }>();
@@ -535,7 +619,7 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, lookup, personaPanelIds }: {
+function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds }: {
   story: InternalStoryCard;
   links: RepositoryLinker;
   lookup: PersonaLookup;
@@ -550,6 +634,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
   stalledAfterWeeks?: number;
   /** True when the view has a tests index, so the empty state can show. */
   testsIndexed?: boolean;
+  changesIndexed?: boolean;
 }) {
   const titleId = `${panelId}-title`;
   const sources = internal ? resolveSources(story.sources, sourceBaseUrl) : [];
@@ -631,6 +716,9 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
           <h4 id={`${panelId}-history`}>History</h4>
           <HistoryList entries={story.history} settings={settings} labelledBy={`${panelId}-history`} links={links} />
         </section>
+      )}
+      {internal && (changesIndexed || !!story.changes?.length || !!story.moreChanges) && (
+        <ChangesSection story={story} panelId={panelId} settings={settings} links={links} />
       )}
       {internal && (testsIndexed || !!story.tests?.length || !!story.moreTests?.length) && (
         <TestsSection story={story} panelId={panelId} sourceBaseUrl={sourceBaseUrl} />
@@ -1484,6 +1572,7 @@ export function StoryMapBoard({
   const internal = map.audience === "internal";
   const stalledAfterWeeks = map.audience === "internal" ? map.stalledAfterWeeks : undefined;
   const testsIndexed = map.audience === "internal" && map.testsIndexed === true;
+  const changesIndexed = map.audience === "internal" && map.changesIndexed === true;
   const filtering = isFiltering(map.filter);
   const settings = dateFormatters(locale, timeZone, now ?? new Date());
   const links = repositoryLinker(repositoryUrl, repositoryLinks);
@@ -1671,6 +1760,7 @@ export function StoryMapBoard({
           settings={settings}
           stalledAfterWeeks={stalledAfterWeeks}
           testsIndexed={testsIndexed}
+          changesIndexed={changesIndexed}
           lookup={lookup}
           personaPanelIds={personaPanelIds}
         />

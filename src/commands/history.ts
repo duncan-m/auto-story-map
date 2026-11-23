@@ -40,7 +40,8 @@ export default defineCommand({
       warnSkipped(result);
       if (!await writeOutput(JSON.stringify(result, null, 2) + "\n", options.out)) return;
       const stories = new Set(result.events.map(event => event.storyId)).size;
-      console.error(`${options.out}: ${result.events.length} changes to ${stories} stories${result.complete ? "" : " (partial: shallow clone)"}`);
+      const named = result.changes?.length ?? 0;
+      console.error(`${options.out}: ${result.events.length} changes to ${stories} stories, ${named} pull ${named === 1 ? "request or commit names" : "requests or commits name"} a story${result.complete ? "" : " (partial: shallow clone)"}`);
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = error instanceof StoryMapHistoryError ? 2 : 1;

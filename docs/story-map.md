@@ -629,6 +629,23 @@ const view = getStoryMapForViewer(document, viewer, { canViewInternal, history, 
 
 Pass `now` to `getStoryMapForViewer` as well as to `filterStoryMapView` and the board when the host fixes the time, such as in tests.
 
+## Link pull requests and commits to stories
+
+Internal viewers can see the merged pull requests and commits that delivered a story, in a **Changes** section of its panel between **History** and **Tests**. As with tests, changes point to stories: a pull request title, commit message or branch name names the story ID, and `story-map history` collects them, so nobody edits the map to list them.
+
+To link a change to a story, name the story ID in any of:
+
+- the branch name, in any case, such as `feat/esm-801-story-tests-panel`
+- the pull request title or a commit message, in the map's case, such as “ESM-801: Show a story's tests in its panel”
+
+A change can name several stories. The ID must stand on its own, so it does not count inside a longer word or number, and IDs for stories no longer in the map are ignored.
+
+`story-map history` reads the first-parent history of the branch, usually `main`, once more across every file. A pull request counts when its merge or squash commit, its title, any commit on its branch or its branch name names the story. Each change in the file has its `storyIds`, the `pullRequest` number when there is one, its `title` (the pull request title, or the commit subject for a direct commit), the merged `branch` when the merge commit names it, the `commit`, when it was merged (`at`), who wrote it (`by`) and merged it (`mergedBy`), and how many commits its branch had (`commitCount`). People are credited as in the history: the author, or the merger when the author is a bot. Each story lists its newest 30 changes, and older ones are counted in `moreChanges`.
+
+The panel shows each pull request as its number and title, such as “#68 Export the map as JSON for agents”, with “merged 21 Nov 2026, 18:02 by Duncan Malcolm · 2 commits”, and each direct commit as its short hash and subject. With `repositoryUrl` or `repositoryLinks` on `StoryMapBoard`, each title links to its pull request or commit, and on GitHub “+N more” links to a search of the repository's pull requests. A story with none says “No pull requests or commits name ESM-120 yet”. History files written before 0.7.4 have no changes, and the section is left out.
+
+Only merged work is found: open pull requests, and work merged without the story ID, are missing. Titles and branch names come from Git, so anyone who can push can write them. They are rendered as text, cut to 200 characters, and only shown to internal viewers. Customers never see them, and the JSON export's `provenance` says where they come from.
+
 ## Link tests to stories
 
 Internal viewers can see the tests that cover a story in its panel, each linking to its line in the repository. Tests point to stories, not the other way round: a test names its story, and a build step collects them, so the lists keep up as tests are added, renamed or moved, and nobody edits the map to list them.

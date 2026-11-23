@@ -3,14 +3,19 @@ import { relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import {
   fitHistoryText,
+  historyChangesMaxItems,
+  historyChangesPerStory,
+  historyChangeTextMaxLength,
   historyNameMaxLength,
   historyReasonMaxLength,
   historySkippedMaxItems,
   type SkippedStoryMapVersion,
+  type StoryChange,
   type StoryHistoryEvent,
   type StoryLastEdit,
   type StoryMapHistory,
 } from "./history.js";
+import { storyIdPattern } from "./references.js";
 import { formatStoryMapIssue, loadHistoricalStoryMap, StoryMapValidationError, type StoryMapDocument } from "./schema.js";
 
 const run = promisify(execFile);
@@ -41,12 +46,14 @@ interface Commit {
   committedAt: string;
   authorName: string;
   committerName: string;
+  subject: string;
+  body: string;
   pullRequest?: number;
 }
 
-async function git(cwd: string, args: string[]) {
+async function git(cwd: string, args: string[], maxBuffer = 64 * 1024 * 1024) {
   try {
-    const { stdout } = await run("git", args, { cwd, maxBuffer: 64 * 1024 * 1024 });
+    const { stdout } = await run("git", args, { cwd, maxBuffer });
     return stdout;
   } catch (error) {
     const stderr = String((error as { stderr?: unknown }).stderr ?? "").trim();
@@ -84,8 +91,9 @@ export function pullRequestNumber(subject: string, body = ""): number | undefine
 function parseCommits(output: string): Commit[] {
   return output.split("\0").map(record => record.replace(/^\n/, "")).filter(Boolean).map(record => {
     const [sha, parents, committedAt, authorName, committerName, subject = "", ...body] = record.split(separator);
-    const pullRequest = pullRequestNumber(subject, body.join(separator));
-    return { sha, parents: parents ? parents.split(" ") : [], committedAt, authorName, committerName, ...(pullRequest ? { pullRequest } : {}) };
+    const message = body.join(separator);
+    const pullRequest = pullRequestNumber(subject, message);
+    return { sha, parents: parents ? parents.split(" ") : [], committedAt, authorName, committerName, subject, body: message, ...(pullRequest ? { pullRequest } : {}) };
   });
 }
 
@@ -93,6 +101,120 @@ function parseCommits(output: string): Commit[] {
 function mergedBy(commit: Commit) {
   if (commit.parents.length > 1) return commit.authorName;
   return commit.committerName === "GitHub" ? undefined : commit.committerName;
+}
+
+const githubMerge = /^Merge pull request #\d+ from (\S+)/;
+const branchMerge = /^Merge branch '([^']+)'/;
+
+/** The merged branch, from a GitHub (`from owner/branch`) or Git (`Merge branch 'name'`) merge subject. */
+function mergedBranch(subject: string) {
+  const github = githubMerge.exec(subject);
+  if (github) return github[1].replace(/^[^/]+\//, "");
+  return branchMerge.exec(subject)?.[1];
+}
+
+/**
+ * A change's title: for a merge, the first line of its body, which GitHub and
+ * GitLab set to the pull request title. For a squash or rebase commit, its
+ * subject without the `(#n)` suffix. Otherwise its subject.
+ */
+function changeTitle(commit: Commit) {
+  if (commit.parents.length > 1 || githubMerge.test(commit.subject)) {
+    const first = commit.body.split("\n").map(line => line.trim()).find(Boolean);
+    if (first && !/^See merge request /.test(first)) return first;
+  }
+  return commit.subject.replace(/\s*\(#\d+\)\s*$/, "");
+}
+
+/**
+ * Reads every commit on `ref` once and records each first-parent commit whose
+ * subject, body, merged branch name, or merged branch commits name a story in
+ * `map`. A merge's branch commits are those reachable from its second parent
+ * and not from its first, found in memory by walking the first-parent chain
+ * oldest first, so the whole history stays one Git call.
+ */
+async function findStoryChanges(cwd: string, ref: string, map: StoryMapDocument, credit: (author: string, merger: string | undefined) => string) {
+  const pattern = storyIdPattern({ map });
+  if (!pattern) return { changes: [], moreChanges: [] };
+  // Branch names separate words with hyphens, as in feat/esm-801-story-tests-panel, so only letters and digits end an ID there.
+  const branchPattern = new RegExp(pattern.source.replace("(?<![A-Za-z0-9_-])", "(?<![A-Za-z0-9])").replace("(?![A-Za-z0-9_-])", "(?![A-Za-z0-9])"), "gi");
+  const ids = new Map(map.stories.map((story, index) => [story.id, index]));
+  const byLowerCase = new Map(map.stories.map(story => [story.id.toLowerCase(), story.id]));
+  const named = (text: string, into: Set<string>) => {
+    for (const match of text.matchAll(pattern)) if (ids.has(match[0])) into.add(match[0]);
+  };
+
+  const head = (await git(cwd, ["rev-parse", "--verify", `${ref}^{commit}`])).trim();
+  const format = ["%H", "%P", "%cI", "%an", "%cn", "%s", "%b"].join("%x1f");
+  const commits = new Map(parseCommits(await git(cwd, ["log", "-z", `--format=${format}`, head], 1024 * 1024 * 1024)).map(commit => [commit.sha, commit]));
+
+  const chain: Commit[] = [];
+  for (let commit = commits.get(head); commit; commit = commits.get(commit.parents[0])) chain.push(commit);
+  chain.reverse();
+
+  const seen = new Set<string>();
+  const found: StoryChange[] = [];
+  for (const commit of chain) {
+    const branchCommits: Commit[] = [];
+    const stack = commit.parents.slice(1);
+    while (stack.length) {
+      const sha = stack.pop()!;
+      const branchCommit = commits.get(sha);
+      if (!branchCommit || seen.has(sha)) continue;
+      seen.add(sha);
+      branchCommits.push(branchCommit);
+      stack.push(...branchCommit.parents);
+    }
+    seen.add(commit.sha);
+
+    const stories = new Set<string>();
+    named(`${commit.subject}\n${commit.body}`, stories);
+    for (const branchCommit of branchCommits) named(`${branchCommit.subject}\n${branchCommit.body}`, stories);
+    const branch = mergedBranch(commit.subject);
+    for (const match of branch?.matchAll(branchPattern) ?? []) {
+      const id = byLowerCase.get(match[0].toLowerCase());
+      if (id) stories.add(id);
+    }
+    if (!stories.size) continue;
+
+    const work = branchCommits.filter(branchCommit => branchCommit.parents.length < 2);
+    const latest = work.reduce<Commit | undefined>((newest, next) => !newest || next.committedAt > newest.committedAt ? next : newest, undefined);
+    const rawMerger = mergedBy(commit);
+    const by = historyName(credit(latest?.authorName ?? commit.authorName, rawMerger));
+    const merger = historyName(rawMerger);
+    const title = fitHistoryText(changeTitle(commit), historyChangeTextMaxLength);
+    const branchName = fitHistoryText(branch, historyChangeTextMaxLength);
+    found.push({
+      storyIds: [...stories].sort((a, b) => ids.get(a)! - ids.get(b)!),
+      ...(commit.pullRequest ? { pullRequest: commit.pullRequest } : {}),
+      ...(title ? { title } : {}),
+      ...(branchName ? { branch: branchName } : {}),
+      commit: commit.sha,
+      at: new Date(commit.committedAt).toISOString(),
+      ...(by ? { by } : {}),
+      ...(merger ? { mergedBy: merger } : {}),
+      ...(work.length ? { commitCount: work.length } : {}),
+    });
+  }
+
+  // Newest first, keeping at most historyChangesPerStory for each story and counting the rest.
+  const listed = new Map<string, number>();
+  const more = new Map<string, number>();
+  const changes: StoryChange[] = [];
+  for (const change of found.reverse()) {
+    const kept = change.storyIds.filter(id => {
+      const count = listed.get(id) ?? 0;
+      if (count < historyChangesPerStory && changes.length < historyChangesMaxItems) {
+        listed.set(id, count + 1);
+        return true;
+      }
+      more.set(id, (more.get(id) ?? 0) + 1);
+      return false;
+    });
+    if (kept.length) changes.push({ ...change, storyIds: kept });
+  }
+  const moreChanges = map.stories.flatMap(story => more.has(story.id) ? [{ storyId: story.id, count: more.get(story.id)! }] : []);
+  return { changes, moreChanges };
 }
 
 /** Compares two values regardless of key order. */
@@ -131,6 +253,8 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
 
   const bots = new Set((options.botNames ?? []).map(name => name.trim().toLowerCase()).filter(Boolean));
   const isBot = (name: string) => name.toLowerCase().endsWith("[bot]") || bots.has(name.toLowerCase());
+  // A bot did the work, so credit the person who accepted it, when Git knows who that is.
+  const credit = (author: string, merger: string | undefined) => isBot(author) && merger && !isBot(merger) ? merger : author;
 
   const events: StoryHistoryEvent[] = [];
   const lastEdits = new Map<string, StoryLastEdit>();
@@ -201,9 +325,7 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     const editor = async (story: StoryMapDocument["stories"][number]) => {
       const earlier = before.get(story.id);
       if (story.updatedBy && (!earlier || earlier.updatedBy !== story.updatedBy)) return story.updatedBy;
-      const name = await author();
-      // A bot did the edit, so credit the person who accepted it, when Git knows who that is.
-      return isBot(name) && rawMerger && !isBot(rawMerger) ? rawMerger : name;
+      return credit(await author(), rawMerger);
     };
 
     for (const story of current.stories) {
@@ -231,6 +353,8 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     previous = current;
   }
 
+  const { changes, moreChanges } = previous ? await findStoryChanges(cwd, ref, previous, credit) : { changes: [], moreChanges: [] };
+
   return {
     version: 1,
     generatedAt: (options.now ?? new Date()).toISOString(),
@@ -239,5 +363,7 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     // Only stories still in the map. A story first seen in a shallow clone's baseline has no known edit.
     lastEdits: (previous?.stories ?? []).flatMap(story => lastEdits.get(story.id) ?? []),
     ...(skippedCount ? { skipped, skippedCount } : {}),
+    changes,
+    ...(moreChanges.length ? { moreChanges } : {}),
   };
 }

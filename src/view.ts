@@ -1,6 +1,6 @@
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
-import type { StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
+import type { StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
@@ -121,6 +121,9 @@ export interface PersonaLabel extends StoryMapLabel {
 /** A story’s change as shown to internal viewers. */
 export type StoryHistoryEntry = Omit<StoryHistoryEvent, "storyId">;
 
+/** A pull request or direct commit that names a story, as internal viewers see it. */
+export type StoryChangeEntry = Omit<StoryChange, "storyIds">;
+
 export interface InternalStoryCard extends StoryCard {
   /** Why the story is blocked or cut. */
   statusReason?: string;
@@ -145,6 +148,10 @@ export interface InternalStoryCard extends StoryCard {
   tests?: StoryTestLink[];
   /** Tagged tests the index left out because of its limits, counted per file. */
   moreTests?: { file: string; count: number }[];
+  /** Pull requests and direct commits that name the story, newest first. Present when the history lists at least one. */
+  changes?: StoryChangeEntry[];
+  /** How many older changes the history left out for this story. */
+  moreChanges?: number;
 }
 
 /** A test or group tagged with a story, as internal viewers see it. */
@@ -216,6 +223,8 @@ export type StoryMapView =
     testsIndexed?: true;
     /** When the tests index was generated. Present with `testsIndexed`. */
     testsGeneratedAt?: string;
+    /** True when the history lists changes, so a story without `changes` has none that name it. */
+    changesIndexed?: true;
   })
   | (StoryMapBaseView & {
     audience: "all-users";
@@ -312,6 +321,16 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       else moreTestsByStory.set(storyId, [{ file, count }]);
     }
     const lastEdits = new Map((history?.lastEdits ?? []).map(({ storyId, ...edit }) => [storyId, edit]));
+    const changesByStory = new Map<string, StoryChangeEntry[]>();
+    for (const { storyIds, ...change } of history?.changes ?? []) {
+      for (const id of new Set(storyIds)) {
+        const entries = changesByStory.get(id);
+        if (entries) entries.push({ ...change });
+        else changesByStory.set(id, [{ ...change }]);
+      }
+    }
+    for (const entries of changesByStory.values()) entries.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+    const moreChanges = new Map((history?.moreChanges ?? []).map(({ storyId, count }) => [storyId, count]));
     const storyCounts = new Map(map.releases.map(release => [
       release.id,
       Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>,
@@ -405,12 +424,15 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           ...(stalled ? { stalled } : {}),
           ...(testsByStory.has(story.id) ? { tests: testsByStory.get(story.id)! } : {}),
           ...(moreTestsByStory.has(story.id) ? { moreTests: moreTestsByStory.get(story.id)! } : {}),
+          ...(changesByStory.has(story.id) ? { changes: changesByStory.get(story.id)! } : {}),
+          ...(moreChanges.has(story.id) ? { moreChanges: moreChanges.get(story.id)! } : {}),
         };
       }),
       ...(history ? { history: { generatedAt: history.generatedAt, complete: history.complete } } : {}),
       ...(stalledAfterWeeks > 0 ? { stalledAfterWeeks } : {}),
       ...(recentUpdates ? { recentUpdates } : {}),
       ...(options.tests ? { testsIndexed: true as const, testsGeneratedAt: options.tests.generatedAt } : {}),
+      ...(history?.changes ? { changesIndexed: true as const } : {}),
     };
   }
 
