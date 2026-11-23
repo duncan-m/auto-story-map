@@ -178,6 +178,10 @@ export interface StoryMapFilterState {
    * first persona when none is chosen. Internal views of maps with personas only.
    */
   view?: "personas";
+  /** The story a permalink opened, when it is in the view. It is kept whatever the other filters say. */
+  story?: string;
+  /** The release a permalink opened, when it is in the view. */
+  release?: string;
   /** Number of stories in the view before filtering. */
   total: number;
   /** Blocked and cut stories that match the other filters but are hidden by the default status filter. */
@@ -499,7 +503,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
 export interface StoryMapPageOptions<Viewer extends StoryMapViewer = StoryMapViewer> extends StoryMapAccessOptions<Viewer> {
   /**
    * The request's query parameters, such as `url.searchParams`. The `q`,
-   * `status`, `changed`, `persona`, `job` and `activity` filters, and the `view`, are read from them, and anything else is ignored.
+   * `status`, `changed`, `persona`, `job` and `activity` filters, the `view`, and a permalink's `story` or `release` are read from them, and anything else is ignored.
    */
   searchParams?: URLSearchParams;
 }

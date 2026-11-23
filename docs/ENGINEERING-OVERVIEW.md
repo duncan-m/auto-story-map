@@ -258,6 +258,8 @@ The lane shows the first impact item in one line with “+N more”, and a **Dra
 
 Panel IDs come from `useId()`, so two boards on one page do not collide.
 
+Permalinks need stable targets, so cards also get `id="esm-story-<story ID>"` and release lanes `id="esm-release-<release ID>"` (`storyMapAnchorId` in `src/permalink.ts`). These are not unique across two boards on one page; the guide says only the first gets the scroll. `filterStoryMapView` reads `story` and `release`, keeps a linked story whatever the other filters say, and records it as `filter.story` or `filter.release` only when it is in the viewer's projection, so customers cannot probe for internal IDs. The board puts the matching panel's ID on the section as `data-esm-open`, and board.js calls `showPopover()` on it, clearing the collapse checkbox of its lane without saving it. Without JavaScript, the fragment scrolls to the card and `:target` highlights it. **Copy link** (`CopyLink`, class `esm-copy-link`) is a plain `<a>` built by `storyMapPermalink` from `permalinkBase` and `preservedParams`; board.js copies its absolute URL with `navigator.clipboard` and announces “Link copied” in the board's `data-esm-copy-status` live region.
+
 ### Engineering links
 
 `resolveSources` turns each source into a link or plain text:
@@ -434,6 +436,7 @@ Templates and the guide are found relative to the compiled `dist/init.js` (`new 
 - **Keep internal IDs out of the customer view.** Customer IDs are renumbered on purpose.
 - **Blocked and cut stay internal.** The customer projection drops them, and tests check that customer HTML and JSON never mention them or their reasons.
 - **History contains names.** Keep it internal-only and out of static assets.
+- **Permalinks reveal nothing new.** A `story` or `release` ID only counts when it is in the viewer's projection, so an internal-only or unknown ID gives the same board as no ID.
 - **Commit messages and branch names are untrusted, and internal only.** Anyone who can push writes them, and they can name unreleased work. Change titles and branches are cut to length when written, checked when parsed, rendered as text, and attached to internal views only.
 - **Responses are private.** `storyMapResponseHeaders` is `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. The example host sends it with every response, and hosts are told to do the same, because the page differs per viewer.
 - **Only `http` and `https` sources become links.** React escapes all text, and the board never uses `dangerouslySetInnerHTML`. A test checks that story text renders as text.
