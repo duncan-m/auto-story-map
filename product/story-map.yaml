@@ -315,11 +315,15 @@ releases:
         draft: true
   - id: v0-7-6
     title: "0.7.6: PM improvements"
-    summary: Activities expand into steps, stories carry effort estimates with a total on each release, and a scheduled audit proposes map corrections from the code.
+    summary: Activities expand into steps, stories carry effort estimates with a total on each release, a scheduled audit proposes map corrections from the code, and people confirm drafts and triage stories without editing the YAML.
     impact:
       - metric: Map changes that are missing from feature PRs
         expected: Found by the weekly audit and proposed in a PR
         solves: The map drifting from the code when a PR forgets to update it
+        draft: true
+      - metric: Drafts confirmed or stories moved by editing the YAML by hand
+        expected: Done with story-map confirm, or from the story panel in the local preview
+        solves: People working alone switching to the YAML or an agent to confirm a draft or move a story
         draft: true
     customer:
       title: "0.7.6"
@@ -657,6 +661,40 @@ stories:
     sources:
       - docs/plans/effort-estimates.md
       - docs/plans/effort-estimates.md#ui-mockup
+  - id: ESM-504
+    title: Confirm drafts from the command line
+    activity: review
+    release: v0-7-6
+    status: planned
+    jobs:
+      - review-in-context
+    summary: "story-map confirm shows a drafted job, persona context or impact item as the reader sees it and, after the person types its ID back on a terminal, removes draft: true."
+    notes: For people only. It refuses --write when standard input is not a terminal, so agents keep to dry runs (ESM-744).
+    sources:
+      - docs/plans/local-triage.md#1-confirm-drafts-from-the-command-line
+  - id: ESM-505
+    title: Show the edit command in the story panel
+    activity: explore
+    release: v0-7-6
+    status: planned
+    jobs:
+      - plan-release
+      - track-progress
+    summary: The internal story panel has status, reason and release pickers that build the matching story-map edit command, with a button to copy it.
+    sources:
+      - docs/plans/local-triage.md#2-change-status-and-release-from-the-story-panel
+  - id: ESM-506
+    title: Save status and release changes from the local preview
+    activity: explore
+    release: v0-7-6
+    status: planned
+    jobs:
+      - plan-release
+      - track-progress
+    summary: story-map preview --writable saves the story panel's status and release changes to the map file, with the same checks as story-map edit --write.
+    notes: Local only, on the loopback address, with an Origin check, a start-up token and a refusal when the file changed since the page loaded. The hosted board stays read-only (ESM-404).
+    sources:
+      - docs/plans/local-triage.md#3-save-changes-from-the-local-preview
   - id: ESM-910
     title: Break a job into steps
     activity: explore
