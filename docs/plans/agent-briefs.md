@@ -5,7 +5,7 @@ Status: proposed. The work is split across two releases of the map. Copying a br
 - **0.7.5: Evidence and claims for agents**: ESM-123, ESM-124 and ESM-125
 - **0.8.1: Agent briefs**: ESM-126 and ESM-127
 
-The estimates for ESM-123 to ESM-125 are agreed. Those for ESM-126 and ESM-127 are not yet.
+The estimates below are agreed.
 
 Items are numbered in the order they should be built:
 
@@ -160,7 +160,7 @@ npx story-map brief --activity explore
 
 This is why this item is in 0.8.1: it comes after evidence and claims in 0.7.5, after the MCP server in 0.8.0, and after the brief format has been tested from the panel in 0.7.5.
 
-Estimate: not agreed. Suggested 3 points.
+Estimate: 3 points, agreed.
 
 ## 5. Start a local agent from the preview
 
@@ -171,7 +171,7 @@ In `story-map preview --writable` (ESM-112), the panel's brief section gets a **
 - **A fixed list of commands.** The agent name picks one of two commands built into the library, run with `execFile` and an argument array, never through a shell. The exact arguments for `claude` and `codex` are checked when this is built.
 - **No Git changes.** The brief names the branch, and the agent creates it.
 
-Estimate: not agreed. Suggested 5 points. It depends on ESM-112 in 0.7.6.
+Estimate: 5 points, agreed. It depends on ESM-112 in 0.7.6.
 
 ## Briefs and evidence
 
