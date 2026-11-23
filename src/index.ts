@@ -33,6 +33,8 @@ export type {
 } from "./view.js";
 export { changedWithinOptions, filterStoryMapView, readStoryMapFilters } from "./filter.js";
 export type { ChangedWithinDays, FilterOptions, StoryMapFilters, StoryMapPage } from "./filter.js";
+export { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
+export type { StoryMapPermalinkTarget } from "./permalink.js";
 export { parseStoryMapHistory, storyMapHistorySchema } from "./history.js";
 export type { SkippedStoryMapVersion, StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory, StoryMoreChanges } from "./history.js";
 export {
@@ -49,7 +51,7 @@ export type { CoreJobChange, CustomerStoryChange, GroupChanges, InactiveStoryCha
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";
 export { jsonContentType, storyMapToJson } from "./export-json.js";
-export type { StoryMapJsonExport, StoryMapJsonExportOptions, StoryMapJsonJob, StoryMapJsonPersona, StoryMapJsonStory } from "./export-json.js";
+export type { StoryMapJsonExport, StoryMapJsonExportOptions, StoryMapJsonJob, StoryMapJsonPersona, StoryMapJsonRelease, StoryMapJsonStory } from "./export-json.js";
 export { storyMapExportFormats, storyMapExportResponse } from "./export-response.js";
 export type { StoryMapExportFormat, StoryMapExportResponse, StoryMapExportResponseOptions } from "./export-response.js";
 export type { StoryMapExportOptions } from "./export.js";

@@ -1,5 +1,6 @@
 import { prepareStoryMapExport, type StoryMapExportOptions } from "./export.js";
 import { jobStatement } from "./personas.js";
+import { storyMapPermalink } from "./permalink.js";
 import { activeStoryStatuses, storyStatuses, storyStatusLabels, type StoryStatus } from "./status.js";
 import type { StoryMapPersonaContext } from "./schema.js";
 import { storyMapCommit, storyMapVersion } from "./version.js";
@@ -25,6 +26,14 @@ const statusMeanings: Record<StoryStatus, string> = {
 export interface StoryMapJsonStory extends InternalStoryCard {
   /** Tagged tests, including those the index left out over its limits. Present only when a tests index was supplied, so 0 means none are tagged. */
   testCount?: number;
+  /** A link that opens the board on the story's panel. Present when `permalinkBase` was passed. */
+  permalink?: string;
+}
+
+/** A release in the JSON export. */
+export interface StoryMapJsonRelease extends InternalReleaseLabel {
+  /** A link that opens the board on the release's panel. Present when `permalinkBase` was passed. */
+  permalink?: string;
 }
 
 /** A job to be done in the JSON export, with its stories by status, its statement and how many active stories serve it. */
@@ -46,7 +55,13 @@ export interface StoryMapJsonPersona extends StoryMapLabel {
 }
 
 /** Options for `storyMapToJson`. Collapsed lanes are a board view, so the JSON export always includes every release's stories. */
-export type StoryMapJsonExportOptions = Omit<StoryMapExportOptions, "collapsedReleases">;
+export type StoryMapJsonExportOptions = Omit<StoryMapExportOptions, "collapsedReleases"> & {
+  /**
+   * The internal board page's URL, such as `https://example.com/story-map`. Each story and
+   * release then gets a `permalink` to its panel, so an agent can link to the board.
+   */
+  permalinkBase?: string;
+};
 
 /** The document written by `storyMapToJson`. */
 export interface StoryMapJsonExport {
@@ -84,7 +99,7 @@ export interface StoryMapJsonExport {
   /** The map's personas and their jobs to be done, in map order. Absent when the map has none. Stories refer to them by ID. */
   personas?: StoryMapJsonPersona[];
   /** Each release's `storyCounts` count every story in it, even when some are left out by `maxStories`. */
-  releases: InternalReleaseLabel[];
+  releases: StoryMapJsonRelease[];
   /** In map order. */
   stories: StoryMapJsonStory[];
   recentUpdates?: StoryMapRecentUpdates;
@@ -114,7 +129,12 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
 
   const kept = new Set(model.releases.flatMap(release => [...release.cells.values()].flat().map(story => story.id)));
   const testsIndexed = view.testsIndexed === true;
-  const stories = view.stories.filter(story => kept.has(story.id)).map(story => toJsonStory(story, testsIndexed));
+  const link = (target: { story: string } | { release: string }) => {
+    const permalink = options.permalinkBase ? storyMapPermalink(target, { base: options.permalinkBase }) : undefined;
+    return permalink ? { permalink } : {};
+  };
+  const stories = view.stories.filter(story => kept.has(story.id)).map(story => ({ ...toJsonStory(story, testsIndexed), ...link({ story: story.id }) }));
+  const releases: StoryMapJsonRelease[] = view.releases.map(release => ({ ...release, ...link({ release: release.id }) }));
 
   // Counted over the whole map, like release storyCounts, so maxStories does not hide a job's work.
   const personas: StoryMapJsonPersona[] = (view.personas ?? []).map(persona => ({
@@ -190,7 +210,7 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
     statuses: storyStatuses.map(id => ({ id, label: storyStatusLabels[id], meaning: statusMeanings[id] })),
     activities: view.activities,
     ...(personas.length ? { personas } : {}),
-    releases: view.releases,
+    releases,
     stories,
     ...(view.recentUpdates ? { recentUpdates: view.recentUpdates } : {}),
     ...(view.stalledAfterWeeks ? { stalledAfterWeeks: view.stalledAfterWeeks } : {}),

@@ -9,7 +9,8 @@
  * screen reader users keep their place. Menus close on Escape or a click elsewhere.
  * It also remembers which release lanes the viewer collapsed, and adds them to
  * the board's export links so the downloaded file matches, and which job lanes
- * they collapsed on the Personas tab.
+ * they collapsed on the Personas tab. It opens the panel a permalink names, and
+ * turns each panel's **Copy link** into a button that copies the permalink.
  */
 
 const focusKey = "esm-filter-focus";
@@ -189,10 +190,67 @@ export function enhanceStoryMapMenus(root: ParentNode = document) {
   }
 }
 
+const enhancedPermalinks = new WeakSet<Element>();
+const copiedMs = 2000;
+
+/** Says something in the board's live region, clearing it first so the same words are announced again. */
+function announce(board: Element, message: string) {
+  const status = board.querySelector("[data-esm-copy-status]");
+  if (!status) return;
+  status.textContent = "";
+  setTimeout(() => { status.textContent = message; }, 50);
+}
+
+/**
+ * Opens the story or release panel a permalink names, from the board's `data-esm-open`,
+ * expanding its lane if the viewer had collapsed it, without changing what is remembered.
+ * Turns each panel's **Copy link** into a button that copies the permalink and says
+ * “Link copied”. Without clipboard access, it stays a plain link. Safe to call more than once.
+ */
+export function enhanceStoryMapPermalinks(root: ParentNode = document) {
+  for (const board of root.querySelectorAll<HTMLElement>(".esm-board")) {
+    if (enhancedPermalinks.has(board)) continue;
+    enhancedPermalinks.add(board);
+
+    const panelId = board.dataset.esmOpen;
+    const panel = panelId ? document.getElementById(panelId) : null;
+    if (panelId && panel && board.contains(panel)) {
+      const opener = board.querySelector(`[popovertarget="${CSS.escape(panelId)}"]`);
+      const collapse = opener?.closest(".esm-lane")?.querySelector<HTMLInputElement>("input.esm-collapse-input");
+      if (collapse?.checked) collapse.checked = false;
+      try {
+        if (!panel.matches(":popover-open")) panel.showPopover();
+      } catch {
+        // Browsers without popovers keep the card highlighted by :target instead.
+      }
+    }
+
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) continue;
+    board.addEventListener("click", event => {
+      const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[data-esm-copy-link]") : null;
+      // Let modified clicks open the link in a new tab or window.
+      if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      const url = new URL(link.getAttribute("href") ?? "", location.href).href;
+      navigator.clipboard.writeText(url).then(() => {
+        const label = link.querySelector("[data-esm-copy-label]");
+        if (label) label.textContent = "Link copied";
+        link.dataset.copied = "";
+        announce(board, "Link copied");
+        setTimeout(() => {
+          if (label) label.textContent = "Copy link";
+          delete link.dataset.copied;
+        }, copiedMs);
+      }, () => announce(board, "Could not copy the link. Open the link's menu to copy it."));
+    });
+  }
+}
+
 function enhance() {
   enhanceStoryMapFilters();
   enhanceStoryMapReleases();
   enhanceStoryMapMenus();
+  enhanceStoryMapPermalinks();
 }
 
 if (typeof document !== "undefined") {

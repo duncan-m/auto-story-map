@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
+import { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
@@ -32,6 +33,12 @@ export interface StoryMapBoardProps {
   repositoryUrl?: string;
   /** Templates that replace the `repositoryUrl` links, for GitLab and other hosts. */
   repositoryLinks?: StoryMapRepositoryLinks;
+  /**
+   * The board page's URL or path, such as `https://example.com/story-map`, for the
+   * **Copy link** permalinks in story and release panels. Set it when the board renders
+   * behind a proxy or on another path. Without it, permalinks are relative to the page.
+   */
+  permalinkBase?: string;
   /** `light` by default. `auto` follows the viewer's colour scheme preference. */
   theme?: "light" | "dark" | "auto";
   /** Query parameters to keep when the filter form is submitted, such as a host's own page state. */
@@ -623,9 +630,10 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds }: {
+function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds }: {
   story: InternalStoryCard;
   links: RepositoryLinker;
+  permalink?: string;
   lookup: PersonaLookup;
   /** Each persona's panel, by persona ID, so the For row can open it. */
   personaPanelIds: ReadonlyMap<string, string>;
@@ -657,7 +665,10 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
           {internal && <p className="esm-card-id">{story.id}</p>}
           <h3 id={titleId}>{story.title}</h3>
         </div>
-        <CloseButton panelId={panelId} />
+        <div className="esm-detail-actions">
+          <CopyLink href={permalink} label="this story" />
+          <CloseButton panelId={panelId} />
+        </div>
       </div>
       <Status status={story.status} />
       {internal && story.statusReason && <p className="esm-status-reason">{story.statusReason}</p>}
@@ -818,6 +829,27 @@ function releaseEstimateNote({ total, merged, left, unestimated }: ReleaseEstima
   return `${points(total)}${waiting}, ${left} left to do.${missing}`;
 }
 
+function LinkIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6.8 9.2a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-.7.7M9.2 6.8a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l.7-.7" />
+    </svg>
+  );
+}
+
+/**
+ * A permalink to the panel's story or release. Without board.js it is a plain link
+ * to copy or open; board.js copies it instead and says “Link copied”.
+ */
+function CopyLink({ href, label }: { href?: string; label: string }) {
+  if (!href) return null;
+  return (
+    <a className="esm-copy-link" href={href} data-esm-copy-link="" title={`Link to ${label}`}>
+      <LinkIcon /><span data-esm-copy-label="">Copy link</span><span className="esm-visually-hidden"> to {label}</span>
+    </a>
+  );
+}
+
 function CloseButton({ panelId }: { panelId: string }) {
   return (
     <button type="button" className="esm-close" aria-label="Close" autoFocus {...popoverTarget(panelId, "hide")}>
@@ -862,9 +894,10 @@ function paragraphs(text: string) {
   return text.split(/\n[ \t]*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
 }
 
-function ReleaseDetail({ release, panelId, stories, storyPanelIds, filtered }: {
+function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, filtered }: {
   release: InternalReleaseLabel;
   panelId: string;
+  permalink?: string;
   /** The release’s stories that are on the board. */
   stories: InternalStoryCard[];
   storyPanelIds: Map<InternalStoryCard, string>;
@@ -885,7 +918,10 @@ function ReleaseDetail({ release, panelId, stories, storyPanelIds, filtered }: {
           <p className="esm-card-id">Release</p>
           <h3 id={titleId}>{release.title}</h3>
         </div>
-        <CloseButton panelId={panelId} />
+        <div className="esm-detail-actions">
+          <CopyLink href={permalink} label="this release" />
+          <CloseButton panelId={panelId} />
+        </div>
       </div>
       {release.summary && <p className="esm-detail-summary">{release.summary}</p>}
       {release.notes && (
@@ -1563,6 +1599,7 @@ export function StoryMapBoard({
   sourceBaseUrl,
   repositoryUrl,
   repositoryLinks,
+  permalinkBase,
   theme = "light",
   preservedParams,
   locale = defaultLocale,
@@ -1580,6 +1617,7 @@ export function StoryMapBoard({
   const filtering = isFiltering(map.filter);
   const settings = dateFormatters(locale, timeZone, now ?? new Date());
   const links = repositoryLinker(repositoryUrl, repositoryLinks);
+  const permalink = (target: { story: string } | { release: string }) => storyMapPermalink(target, { base: permalinkBase, preservedParams });
 
   const activityTitles = new Map(map.activities.map(activity => [activity.id, activity.title]));
   const releaseTitles = new Map(map.releases.map(release => [release.id, release.title]));
@@ -1626,9 +1664,14 @@ export function StoryMapBoard({
   const personaList = [...lookup.personas.values()];
   const tabs = internal && map.filter && personaList.length > 0 ? map.filter : undefined;
   const personasTab = !!tabs && tabs.view === "personas";
+  // The panel a permalink opens, which board.js shows on load. Customers have no release panels, so their release links only scroll.
+  const linkedStory = !personasTab && map.filter?.story ? placed.find(story => story.id === map.filter!.story) : undefined;
+  const linkedReleaseIndex = !personasTab && internalReleases && showGrid && map.filter?.release ? releases.findIndex(release => release.id === map.filter!.release) : -1;
+  const openPanel = linkedStory ? panelIds.get(linkedStory) : linkedReleaseIndex >= 0 ? `${baseId}-release-${linkedReleaseIndex}` : undefined;
 
   return (
-    <section className="esm-board" data-theme={theme} data-hide-inactive={hideInactive ? "" : undefined} aria-labelledby={headingId}>
+    <section className="esm-board" data-theme={theme} data-hide-inactive={hideInactive ? "" : undefined} data-esm-open={openPanel} aria-labelledby={headingId}>
+      <p className="esm-visually-hidden" role="status" data-esm-copy-status="" />
       <header className="esm-header">
         <p className="esm-eyebrow">{internal ? "User story map" : "Roadmap"}</p>
         <h2 id={headingId}>{map.title}</h2>
@@ -1693,7 +1736,7 @@ export function StoryMapBoard({
                 ))}
               </div>
               {releases.map((release, laneIndex) => (
-                <div className="esm-row esm-lane" role="row" data-lane={laneIndex % 3} key={release.id}>
+                <div className="esm-row esm-lane" role="row" id={storyMapAnchorId({ release: release.id })} data-lane={laneIndex % 3} key={release.id}>
                   <div className="esm-release" role="rowheader">
                     <ReleaseCollapse releaseId={release.id} title={release.title} />
                     <span className="esm-release-name">
@@ -1725,6 +1768,7 @@ export function StoryMapBoard({
                           <button
                             type="button"
                             className="esm-card"
+                            id={storyMapAnchorId({ story: story.id })}
                             aria-haspopup="dialog"
                             data-inactive={isActiveStatus(story.status) ? undefined : ""}
                             key={story.id}
@@ -1756,6 +1800,7 @@ export function StoryMapBoard({
           key={story.id}
           story={story}
           panelId={panelIds.get(story)!}
+          permalink={permalink({ story: story.id })}
           activityTitle={activityTitles.get(story.activity)!}
           releaseTitle={releaseTitles.get(story.release)!}
           internal={internal}
@@ -1784,6 +1829,7 @@ export function StoryMapBoard({
           key={release.id}
           release={internalReleases.get(release.id)!}
           panelId={`${baseId}-release-${index}`}
+          permalink={permalink({ release: release.id })}
           stories={placed.filter(story => story.release === release.id)}
           storyPanelIds={panelIds}
           filtered={!!map.filter}
