@@ -14,16 +14,29 @@ The mockup is [story-dependencies-mockup.html](story-dependencies-mockup.html), 
 
 What it shows:
 
-1. **Waiting.** To the right of the status, an amber icon and count when a story it depends on is not merged yet.
-2. **Count** of the stories it depends on. The tooltip and screen readers name the ones still to land.
-3. **Ready.** Once every dependency is merged or shipped, the icon turns grey, like the test count.
-4. **No dependencies, no icon.** Stories that need it show in its panel instead.
-5. **The same icon** beside the status at the top of the story panel.
-6. **Depends on** lists each story with its status and release, linking to its panel, with a line saying what it is waiting on.
-7. **No icon** on a story that depends on nothing, even when others need it.
-8. **Needed by** lists the stories that depend on this one, so finishing it shows what it unblocks.
+1. **Count** to the right of the status on each card: how many stories this one depends on.
+2. **Tooltip** and screen readers name them, such as “Depends on 2 stories: ESM-105, ESM-116”.
+3. **Grey, like the test count,** whatever the status of the stories it depends on. The card shows only the count.
+4. **No dependencies, no count.** The stories waiting for a story show only in its panel.
+5. **The same count** beside the status at the top of the story panel.
+6. **Depends on** lists each story with its status and release, linking to its panel.
+7. **No count** on a story that depends on nothing, even when others wait for it.
+8. **Waiting for this story** lists the stories whose `dependsOn` names this one, so finishing it shows what it unblocks.
+
+## Record dependencies in the map
+
+Each story gets an optional `dependsOn` list of story IDs in the schema:
+
+```yaml
+  - id: ESM-109
+    title: Audit the map against the code on a schedule
+    dependsOn:
+      - ESM-105
+```
+
+Validate rejects an ID that is not in the map, a story that depends on itself and a cycle. The board works out the stories waiting for each story from these lists, so nothing is recorded twice. Existing “Needs ESM-…” notes move into `dependsOn` in the same PR.
 
 ## Open questions
 
-- **Where dependencies are recorded:** a new `dependsOn` list of story IDs, which validate can check, or IDs read from the notes, which needs no schema change but cannot tell “needs” from a passing mention.
-- **Cut and blocked dependencies:** whether a story that depends on a cut story should warn in validate.
+- **Cut dependencies:** whether validate should warn when a story depends on a cut story.
+- **Edit and add:** whether `story-map edit` and `add` get `--add-dependency` and `--remove-dependency` in this story or later.
