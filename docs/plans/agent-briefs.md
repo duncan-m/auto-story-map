@@ -5,7 +5,7 @@ Status: proposed. The work is split across two releases of the map. Copying a br
 - **0.7.5: Evidence and claims for agents**: ESM-123, ESM-124 and ESM-125
 - **0.8.1: Agent briefs**: ESM-126 and ESM-127
 
-None of the estimates below are agreed yet.
+The estimates below are agreed.
 
 Items are numbered in the order they should be built:
 
@@ -115,7 +115,7 @@ Cut stories are left out. A blocked story in the same release is listed under op
 
 **Size.** A story brief should stay under 4 KB and a release brief under 16 KB. Past that, the "Already built" and "Not yet" lists are cut down first, with a line that says how many were left out. The targets are never cut.
 
-Estimate: not agreed. Suggested 5 points.
+Estimate: 5 points, agreed.
 
 ## 2. Copy the brief from the panel
 
@@ -127,7 +127,7 @@ The internal story panel and release panel get an **Agent brief** section, next 
 
 The brief is rendered into each panel's HTML on the server. On this map that adds about 2.5 KB per story panel. If that makes large boards slow, the fallback is to load each brief from the host's JSON route when its panel opens (see [Decisions to make](#decisions-to-make)).
 
-Estimate: not agreed. Suggested 2 points.
+Estimate: 2 points, agreed.
 
 ## 3. Open the brief in a web agent
 
@@ -139,7 +139,7 @@ Next to **Copy brief**, the panel can show **Open in Claude** and **Open in Chat
 - **A web chat cannot read the repository.** The brief points to files rather than including them, so a web agent can plan, review and ask questions about a story but not build it. Item 5 covers building.
 - The list of agents is fixed in the library. Other web agents can be added once someone has checked that their prompt parameter works.
 
-Estimate: not agreed. Suggested 2 points.
+Estimate: 2 points, agreed.
 
 ## 4. Write briefs from the command line
 
@@ -160,7 +160,7 @@ npx story-map brief --activity explore
 
 This is why this item is in 0.8.1: it comes after evidence and claims in 0.7.5, after the MCP server in 0.8.0, and after the brief format has been tested from the panel in 0.7.5.
 
-Estimate: not agreed. Suggested 3 points.
+Estimate: 3 points, agreed.
 
 ## 5. Start a local agent from the preview
 
@@ -171,7 +171,7 @@ In `story-map preview --writable` (ESM-112), the panel's brief section gets a **
 - **A fixed list of commands.** The agent name picks one of two commands built into the library, run with `execFile` and an argument array, never through a shell. The exact arguments for `claude` and `codex` are checked when this is built.
 - **No Git changes.** The brief names the branch, and the agent creates it.
 
-Estimate: not agreed. Suggested 5 points. It depends on ESM-112 in 0.7.6.
+Estimate: 5 points, agreed. It depends on ESM-112 in 0.7.6.
 
 ## Briefs and evidence
 

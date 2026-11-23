@@ -1,6 +1,6 @@
 # Plan: see earlier versions of the map
 
-Status: proposed. The work is ESM-113, ESM-114 and ESM-115 in the **0.7.6: PM improvements** release of the map. The estimates are not agreed yet.
+Status: proposed. The work is ESM-113, ESM-114 and ESM-115 in the **0.7.6: PM improvements** release of the map. The estimates are agreed.
 
 The map already has a version every time it changes, because it lives in Git. But only an agent or someone at ease with Git can use those versions today: `story-map diff` compares the map with one ref, and the history file records each story's status changes. A product manager can't easily answer "what did the plan look like when we agreed 0.7.0?", "what changed in the map last month?" or "which stories did we drop since the last review?" without checking out an old commit.
 
@@ -74,10 +74,11 @@ This item needs items 1 and 2: it shows the same read through the same projectio
 
 ## Effort and release fit
 
-The team hasn't agreed estimates for these stories. They fit 0.7.6 because ESM-112's local preview work and item 1's preview banner touch the same code, and both serve the product manager reviewing an inherited map. If 0.7.6 is full, item 3 can move to the next release on its own.
+They fit 0.7.6 because ESM-112's local preview work and item 1's preview banner touch the same code, and both serve the product manager reviewing an inherited map. If 0.7.6 is full, item 3 can move to the next release on its own.
 
 | Story | Points |
 | --- | --- |
-| ESM-113: Read the map as it was at a version | Not agreed |
-| ESM-114: List the map's versions and compare any two | Not agreed |
-| ESM-115: Switch the board to an earlier version | Not agreed |
+| ESM-113: Read the map as it was at a version | 3 |
+| ESM-114: List the map's versions and compare any two | 3 |
+| ESM-115: Switch the board to an earlier version | 8 |
+| **Total** | **14** |
