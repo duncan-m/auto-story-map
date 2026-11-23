@@ -19,6 +19,7 @@ const styles = new Map([
   ["/story-map.css", await readFile(new URL("../styles.css", import.meta.url), "utf8")],
   ["/example-host.css", await readFile(new URL("./host.css", import.meta.url), "utf8")],
 ]);
+const favicon = await readFile(new URL("./favicon.svg", import.meta.url), "utf8");
 const scripts = new Map([
   ["/story-map-board.js", await readFile(new URL("../dist/board.js", import.meta.url), "utf8")],
 ]);
@@ -66,6 +67,10 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost");
     if (url.pathname === "/") {
       response.writeHead(302, { Location: "/story-map" }).end();
+      return;
+    }
+    if (url.pathname === "/favicon.svg") {
+      response.writeHead(200, { "Content-Type": "image/svg+xml" }).end(favicon);
       return;
     }
     if (scripts.has(url.pathname)) {
