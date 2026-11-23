@@ -417,6 +417,7 @@
 .esm-detail-head { position: sticky; top: -20px; z-index: 1; margin: -20px -20px 10px; padding: 20px 20px 10px; background: var(--esm-paper); }
 .esm-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .esm-detail-head .esm-card-id { margin-bottom: 7px; }
+.esm-detail-head:has(+ .esm-status) { margin-bottom: 0; padding-bottom: 8px; }
 .esm-detail h3 { margin: 0; font-size: 1.27rem; line-height: 1.3; letter-spacing: -.026em; overflow-wrap: anywhere; }
 .esm-close {
   display: inline-grid;
