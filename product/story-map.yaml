@@ -1005,7 +1005,7 @@ stories:
     title: Write a handoff brief for a story or release
     activity: plan
     release: v0-7-5
-    status: planned
+    status: merged
     estimate: 5
     jobs:
       - plan-and-build
@@ -1014,6 +1014,7 @@ stories:
     notes: Internal view only. Text from the map is escaped so it cannot close or add a section.
     sources:
       - docs/plans/agent-briefs.md#1-write-a-handoff-brief-for-a-story-or-release
+      - docs/story-map.md#write-a-brief-for-an-agent
   - id: ESM-124
     title: Copy an agent brief from the story and release panels
     activity: plan
