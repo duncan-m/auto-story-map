@@ -255,6 +255,6 @@ test("ESM-123: names branches from the ID and the first words of the title", () 
   assert.equal(storyMapBriefBranch("ESM-1--", "--Hello--world--"), "feat/esm-1-hello-world");
   // Long runs of hyphens stay fast, because names are split rather than trimmed with a backtracking regex.
   const started = performance.now();
-  assert.equal(storyMapBriefBranch(`${"-".repeat(100_000)}x`, `${"-".repeat(1_000_000)}a`), "feat/x-a");
+  assert.equal(storyMapBriefBranch(`${"-".repeat(100_000)}x`, `${"-".repeat(1_000_000)}zebra`), "feat/x-zebra");
   assert.ok(performance.now() - started < 1000);
 });
