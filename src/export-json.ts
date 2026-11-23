@@ -23,7 +23,7 @@ const statusMeanings: Record<StoryStatus, string> = {
 };
 
 /** A story in the JSON export: the internal card, plus a test count when a tests index was supplied. */
-export interface StoryMapJsonStory extends InternalStoryCard {
+export interface StoryMapJsonStory extends Omit<InternalStoryCard, "brief"> {
   /** Tagged tests, including those the index left out over its limits. Present only when a tests index was supplied, so 0 means none are tagged. */
   testCount?: number;
   /** A link that opens the board on the story's panel. Present when `permalinkBase` was passed. */
@@ -31,7 +31,7 @@ export interface StoryMapJsonStory extends InternalStoryCard {
 }
 
 /** A release in the JSON export. */
-export interface StoryMapJsonRelease extends InternalReleaseLabel {
+export interface StoryMapJsonRelease extends Omit<InternalReleaseLabel, "brief"> {
   /** A link that opens the board on the release's panel. Present when `permalinkBase` was passed. */
   permalink?: string;
 }
@@ -108,8 +108,10 @@ export interface StoryMapJsonExport {
 
 /** A story in the shape the JSON export and the CLI's read commands share. `testsIndexed` adds `testCount`. */
 export function toJsonStory(story: InternalStoryCard, testsIndexed: boolean): StoryMapJsonStory {
+  // The agent brief is for the board's panel. The export and read commands carry the facts it is built from.
+  const { brief: _brief, ...fields } = story;
   return {
-    ...story,
+    ...fields,
     ...(testsIndexed ? { testCount: (story.tests?.length ?? 0) + (story.moreTests ?? []).reduce((sum, more) => sum + more.count, 0) } : {}),
   };
 }
@@ -134,7 +136,7 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
     return permalink ? { permalink } : {};
   };
   const stories = view.stories.filter(story => kept.has(story.id)).map(story => ({ ...toJsonStory(story, testsIndexed), ...link({ story: story.id }) }));
-  const releases: StoryMapJsonRelease[] = view.releases.map(release => ({ ...release, ...link({ release: release.id }) }));
+  const releases: StoryMapJsonRelease[] = view.releases.map(({ brief: _brief, ...release }) => ({ ...release, ...link({ release: release.id }) }));
 
   // Counted over the whole map, like release storyCounts, so maxStories does not hide a job's work.
   const personas: StoryMapJsonPersona[] = (view.personas ?? []).map(persona => ({

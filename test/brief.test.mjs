@@ -1,16 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { stringify } from "yaml";
+import { StoryMapBoard } from "auto-story-map/react";
 import {
   briefBranchMaxLength,
   filterStoryMapView,
   getStoryMapForViewer,
+  getStoryMapPage,
   parseStoryMap,
   parseStoryMapHistory,
   parseStoryMapTests,
   storyBriefMaxBytes,
   storyMapBrief,
   storyMapBriefBranch,
+  storyMapToJson,
 } from "auto-story-map";
 
 const engineer = { roles: ["engineer"] };
@@ -46,8 +51,12 @@ function shopMap(stories = [
         { id: "find-item", situation: "I need a gift", motivation: "to find one quickly", outcome: "I buy it the same day", draft: true },
       ],
     }],
-    activities: [{ id: "browse", title: "Browse" }, { id: "buy", title: "Buy" }],
-    releases: [{ id: "r1", title: "1.0: First" }, { id: "r2", title: "1.1: Search and pay" }, { id: "r3", title: "1.2: Later" }],
+    activities: [{ id: "browse", title: "Browse", customer: { title: "Browse" } }, { id: "buy", title: "Buy" }],
+    releases: [
+      { id: "r1", title: "1.0: First", customer: { title: "First" } },
+      { id: "r2", title: "1.1: Search and pay", customer: { title: "Search" } },
+      { id: "r3", title: "1.2: Later" },
+    ],
     stories,
   }));
 }
@@ -257,4 +266,120 @@ test("ESM-123: names branches from the ID and the first words of the title", () 
   const started = performance.now();
   assert.equal(storyMapBriefBranch(`${"-".repeat(100_000)}x`, `${"-".repeat(1_000_000)}zebra`), "feat/x-zebra");
   assert.ok(performance.now() - started < 1000);
+});
+
+test("ESM-124: the view writes a brief for each open story and release only when asked", () => {
+  const map = shopMap();
+  const plain = getStoryMapForViewer(map, engineer);
+  assert.ok(plain.stories.every(story => !("brief" in story)) && plain.releases.every(release => !("brief" in release)));
+
+  const options = { mapPath: "map.yaml", validateCommand: "npm run validate" };
+  const view = getStoryMapForViewer(map, engineer, { brief: options });
+  const briefed = Object.fromEntries(view.stories.map(story => [story.id, story.brief]));
+  // Planned, in-progress and blocked stories get a brief. Merged, shipped and cut work has nothing left to hand over.
+  for (const id of ["SHOP-3", "SHOP-4", "SHOP-5", "SHOP-6", "SHOP-8"]) assert.equal(briefed[id], storyMapBrief(plain, { ...options, story: id }), id);
+  for (const id of ["SHOP-1", "SHOP-2", "SHOP-7", "SHOP-9", "SHOP-10"]) assert.equal(briefed[id], undefined, id);
+  assert.deepEqual(view.releases.map(release => release.brief === undefined), [true, false, false]);
+  assert.equal(view.releases[1].brief, storyMapBrief(plain, { ...options, release: "r2" }));
+  assert.equal(getStoryMapForViewer(map, engineer, { brief: true }).stories[2].brief, storyMapBrief(plain, { story: "SHOP-3" }));
+
+  // Briefs are written before the filters, so a search does not change the neighbours a brief lists.
+  const page = getStoryMapPage(map, engineer, { brief: options, searchParams: new URLSearchParams("q=SHOP-3") });
+  assert.deepEqual(page.stories.map(story => story.id), ["SHOP-3"]);
+  assert.equal(page.stories[0].brief, briefed["SHOP-3"]);
+  assert.match(page.stories[0].brief, /SHOP-5 \(planned, same release\)/);
+
+  // The JSON export keeps its shape.
+  const exported = JSON.parse(storyMapToJson(view));
+  assert.ok(exported.stories.every(story => !("brief" in story)) && exported.releases.every(release => !("brief" in release)));
+});
+
+test("ESM-124: internal story and release panels show the brief, and customer boards never do", () => {
+  const map = shopMap([
+    story("SHOP-1", "browse", "r1", "shipped", { customer: { title: "Find gifts" } }),
+    story("SHOP-3", "browse", "r2", "planned", { estimate: 3, title: "Search <items>", customer: { title: "Search" }, sources: ["docs/plans/shop.md#3"] }),
+    story("SHOP-4", "buy", "r2", "in-progress", { estimate: 2, sources: ["docs/plans/shop.md#4"] }),
+  ]);
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer, { brief: true }) }));
+
+  const sections = html.match(/<section class="esm-detail-section esm-brief"[\s\S]*?<\/section>/g);
+  assert.equal(sections.length, 3, "SHOP-3, SHOP-4 and release r2");
+  const [story3] = sections.filter(section => section.includes("Copied brief: SHOP-3"));
+  assert.match(story3, /<h4 id="[^"]+-brief-heading">Agent brief<\/h4>/);
+  // Without board.js, the button stays hidden and the brief is in a closed details block.
+  assert.match(story3, /<button type="button" class="esm-copy-brief" data-esm-copy-brief="([^"]+)" data-esm-copied="Copied brief: SHOP-3" hidden="">/);
+  const briefId = story3.match(/data-esm-copy-brief="([^"]+)"/)[1];
+  assert.match(story3, new RegExp(`<details class="esm-brief-details"><summary>Show the brief</summary><pre class="esm-brief-text" id="${briefId}" tabindex="0">Build story SHOP-3 `));
+  assert.doesNotMatch(story3, /<details[^>]* open/);
+  // The brief escapes map text itself, and React escapes it again for HTML.
+  assert.match(story3, /SHOP-3  Search &amp;lt;items&amp;gt;/);
+  assert.ok(sections.some(section => section.includes('data-esm-copied="Copied brief: 1.1, 2 stories"')));
+  assert.ok(!sections.some(section => section.includes("Copied brief: SHOP-1")), "shipped stories have no brief");
+
+  // No briefs unless the view asked for them, and never for customers.
+  assert.doesNotMatch(renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) })), /esm-brief|Agent brief/);
+  const customer = getStoryMapForViewer(map, { roles: [] }, { brief: true });
+  assert.equal(customer.audience, "all-users");
+  assert.ok(customer.stories.length > 0);
+  assert.doesNotMatch(JSON.stringify(customer), /brief/i);
+  assert.doesNotMatch(renderToStaticMarkup(createElement(StoryMapBoard, { map: customer })), /esm-brief|Agent brief|Copy brief/);
+});
+
+test("ESM-124: board.js shows Copy brief, copies the brief and says what it copied", async t => {
+  const written = [];
+  const status = { textContent: "" };
+  const label = { textContent: "Copy brief" };
+  const pre = { textContent: "Build story SHOP-3 from the Shop story map." };
+  const button = { hidden: true, dataset: { esmCopyBrief: "p-3-brief", esmCopied: "Copied brief: SHOP-3" }, querySelector: () => label };
+  class FakeElement { closest(selector) { return selector === "button[data-esm-copy-brief]" ? button : null; } }
+  let click;
+  const board = {
+    contains: node => node === pre,
+    querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
+    querySelectorAll: selector => selector === "button[data-esm-copy-brief]" ? [button] : [],
+    addEventListener: (type, handler) => { click = handler; },
+  };
+  let clipboard = { writeText: async text => { written.push(text); } };
+  const globals = {
+    Element: FakeElement,
+    navigator: { get clipboard() { return clipboard; } },
+    document: { readyState: "complete", querySelectorAll: () => [], getElementById: id => id === "p-3-brief" ? pre : null },
+  };
+  const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  t.after(() => {
+    for (const [key, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  });
+
+  const { enhanceStoryMapBriefs } = await import("auto-story-map/board.js");
+  enhanceStoryMapBriefs({ querySelectorAll: () => [board] });
+  enhanceStoryMapBriefs({ querySelectorAll: () => [board] });
+  assert.equal(button.hidden, false, "shows the button");
+
+  click({ target: new FakeElement() });
+  await new Promise(resolve => setTimeout(resolve, 80));
+  assert.deepEqual(written, ["Build story SHOP-3 from the Shop story map."], "copies once, though enhanced twice");
+  assert.equal(label.textContent, "Copied");
+  assert.equal(status.textContent, "Copied brief: SHOP-3");
+  assert.ok("copied" in button.dataset);
+
+  // A failed copy says how to copy by hand.
+  clipboard = { writeText: async () => { throw new Error("denied"); } };
+  click({ target: new FakeElement() });
+  await new Promise(resolve => setTimeout(resolve, 80));
+  assert.match(status.textContent, /Could not copy the brief/);
+});
+
+test("ESM-124: without clipboard access, Copy brief stays hidden", async t => {
+  const button = { hidden: true, dataset: {} };
+  const board = { querySelectorAll: () => [button], addEventListener: () => assert.fail("no listener without a clipboard") };
+  const saved = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { value: {}, configurable: true, writable: true });
+  t.after(() => saved ? Object.defineProperty(globalThis, "navigator", saved) : delete globalThis.navigator);
+  const { enhanceStoryMapBriefs } = await import("auto-story-map/board.js");
+  enhanceStoryMapBriefs({ querySelectorAll: () => [board] });
+  assert.equal(button.hidden, true);
 });

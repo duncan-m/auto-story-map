@@ -776,6 +776,28 @@ Pass `mapPath` when the map is not `product/story-map.yaml`, `validateCommand` a
 - **Safe text.** Text from the map is written on one line, with `&`, `<` and `>` escaped, so a title or summary cannot close a section, add one or start a line that reads as a rule.
 - **Short.** A story brief stays under 4 KB and a release brief under 16 KB. Past that, the lists of stories to reuse and not to build are cut down, with a line that says how many were left out. The targets are never cut.
 
+### Copy a brief from the board
+
+Pass `brief` to `getStoryMapPage` or `getStoryMapForViewer`, and the internal story and release panels get an **Agent brief** section. Pass `true`, or the brief's options:
+
+```ts
+const map = getStoryMapPage(document, viewer, {
+  canViewInternal,
+  history,
+  tests,
+  searchParams: url.searchParams,
+  brief: { readFirst: [{ path: "docs/ENGINEERING-OVERVIEW.md", about: "architecture and the behaviour to preserve" }] },
+});
+```
+
+- **Which panels.** Stories that are planned, in progress or blocked, and releases with planned or in-progress stories. Merged, shipped and cut work has nothing left to hand to an agent, so its panels have no brief.
+- **Filters do not change it.** The briefs are written before the search and filters, so a brief lists the same stories around its target whatever the viewer is looking at. Each is on the view as `brief`, on the story or release.
+- **Without JavaScript**, the brief is in a closed **Show the brief** block, to select and copy by hand. With [board.js](#integrate-with-a-product), a **Copy brief** button copies it and says what it copied, such as “Copied brief: ESM-111” or “Copied brief: 0.7.5, 5 stories”. Without clipboard access, the button stays hidden.
+- **Internal only.** Customer views never have briefs, even when `brief` is passed.
+- **Page size.** Each brief is about 2 to 4 KB. On this repository's map, briefs for its 28 open stories and 6 open releases add 140 KB to the internal page, or 19 KB gzipped. Leave `brief` out of the JSON endpoint, as the [example host](https://github.com/duncan-m/auto-story-map/blob/main/example/host.mjs) does, unless something reads them there. The JSON export never includes them.
+
+`story-map preview` turns briefs on, naming the map by its path from where you run it.
+
 ## Integrate with a product
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.
