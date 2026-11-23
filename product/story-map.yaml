@@ -1046,7 +1046,7 @@ stories:
     title: Look up the evidence for a story
     activity: review
     release: v0-7-5
-    status: planned
+    status: merged
     estimate: 5
     jobs:
       - validate-inherited-map

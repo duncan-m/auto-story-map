@@ -107,7 +107,7 @@ const githubMerge = /^Merge pull request #\d+ from (\S+)/;
 const branchMerge = /^Merge branch '([^']+)'/;
 
 /** The merged branch, from a GitHub (`from owner/branch`) or Git (`Merge branch 'name'`) merge subject. */
-function mergedBranch(subject: string) {
+export function mergedBranch(subject: string) {
   const github = githubMerge.exec(subject);
   if (github) return github[1].replace(/^[^/]+\//, "");
   return branchMerge.exec(subject)?.[1];
