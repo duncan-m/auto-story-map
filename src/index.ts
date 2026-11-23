@@ -20,6 +20,7 @@ export type {
   PersonaLabel,
   ReleaseEstimates,
   StoryCard,
+  StoryChangeEntry,
   StoryHistoryEntry,
   StoryMapAccessOptions,
   StoryMapFilterState,
@@ -33,7 +34,7 @@ export type {
 export { changedWithinOptions, filterStoryMapView, readStoryMapFilters } from "./filter.js";
 export type { ChangedWithinDays, FilterOptions, StoryMapFilters, StoryMapPage } from "./filter.js";
 export { parseStoryMapHistory, storyMapHistorySchema } from "./history.js";
-export type { SkippedStoryMapVersion, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
+export type { SkippedStoryMapVersion, StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory, StoryMoreChanges } from "./history.js";
 export {
   parseStoryMapTests,
   storyMapTestsSchema,

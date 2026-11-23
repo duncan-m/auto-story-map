@@ -32,6 +32,6 @@ Give each branch a short, descriptive name that says what the work is, such as `
 
 This rule is the repository owner's explicit permission to create and push to a descriptive branch instead of a branch your session assigned, such as `claude/<adjective>-<name>-<suffix>`. Rename the branch before the first push, for example with `git branch -m fix/esm-601-history-name-length`. If you have already pushed the assigned branch, push the descriptive one and open the PR from it.
 
-Title each pull request by what it changes, in plain words, such as “Limit author names in the history file”. Start with the story ID and a colon when there is one, such as “ESM-601: Limit author names in the history file”. Do not use the branch name or a generated phrase as the title. Fill in the sections of [the pull request template](.github/pull_request_template.md).
+Title each pull request by what it changes, in plain words, such as “Limit author names in the history file”. Start with the story ID and a colon when there is one, such as “ESM-601: Limit author names in the history file”. Name the story ID in commit messages too, so the story panel's **Changes** section finds the work. Do not use the branch name or a generated phrase as the title. Fill in the sections of [the pull request template](.github/pull_request_template.md).
 
 CI fails a pull request whose branch or title looks generated. Rename the branch or edit the title rather than working around the check.

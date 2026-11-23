@@ -292,7 +292,7 @@ const markdownFilter: FileFilter = { include: (_, name) => markdownExtensions.ha
  * BUILDER-102, as whole words, so text like UTF-8 or BUILDER-1x is ignored.
  * Returns undefined when no story ID has a prefix.
  */
-export function storyIdPattern(loaded: LoadedStoryMap): RegExp | undefined {
+export function storyIdPattern(loaded: Pick<LoadedStoryMap, "map">): RegExp | undefined {
   const prefixes = new Set(loaded.map.stories.flatMap(story => /^([A-Za-z][A-Za-z0-9]*)-\d+$/.exec(story.id)?.[1] ?? []));
   if (!prefixes.size) return undefined;
   const escaped = [...prefixes].map(prefix => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));

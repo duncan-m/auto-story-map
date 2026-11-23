@@ -316,6 +316,15 @@ Who is credited:
 - **`by`** (for events and last edits): the story's `updatedBy` if this change set or changed it. Otherwise the commit author, unless the author is a bot (a name ending in `[bot]`, or one of `botNames` from `--bot-names`, compared case-insensitively) and the commit has a `mergedBy` who is not a bot: then the merger. For a merge commit, it is the author of the latest non-merge commit on the merged branch that touched the map, found with one extra `git log` per merge, and cached for that commit.
 - **`mergedBy`**: for a merge commit, its author (the person who merged). For a single-parent commit, the committer, unless the committer is `GitHub`. GitHub records itself as the committer of squash and rebase merges made on the website, so those entries have no `mergedBy`.
 
+Then `findStoryChanges` finds the pull requests and direct commits that name a story, for the **Changes** section:
+
+1. Read every commit on the ref once, with parents, subject and body, using `git log -z`. Walk the first-parent chain oldest first, keeping a set of commits already seen. A merge's branch commits are those reachable from its second parent that are not yet seen, which are exactly those not reachable from its first parent, so the whole history needs one Git call and no `git log A..B` per merge.
+2. A first-parent commit names a story when its subject or body, any of its branch commits' messages, or its merged branch name contains the ID. Messages use `storyIdPattern` in the map's case. Branch names are matched ignoring case, and with a looser boundary, so the hyphens in `feat/esm-801-story-tests-panel` do not hide the ID. Only IDs in the newest readable version of the map count.
+3. Title: for a merge, the first line of its body, which GitHub and GitLab set to the pull request title. Otherwise the subject without a `(#n)` suffix. Branch: from `Merge pull request #n from owner/branch` or `Merge branch 'name'`. `by` is the latest branch commit's author for a merge, or the commit author, credited to the merger when a bot. `commitCount` counts the branch's non-merge commits.
+4. Newest first, keep at most `historyChangesPerStory` (30) per story and `historyChangesMaxItems` (20,000) in all. A change keeps only the stories it still counts for, and the rest are counted in `moreChanges`. Titles and branch names are cut to `historyChangeTextMaxLength` (200) code points.
+
+`changes` is always written by 0.7.4 and later, even when empty, so the view sets `changesIndexed` and the panel can tell “none” from “not built”. The internal view attaches each story's entries as `changes`, newest first, and `moreChanges` as a count. The customer projection is an allow-list, so it never includes them.
+
 Git names have no length limit, but the history format does. Every `by`, `mergedBy` and `reason` goes through `fitHistoryText` in `src/history.ts`, which trims it and cuts it to `historyNameMaxLength` (120) or `historyReasonMaxLength` (500) code points, ending in “…”. The schema counts code points the same way, so the writer can never produce a file the reader rejects. The `StoryMapHistory` interfaces and `storyMapHistorySchema` both describe the format, and a compile-time check makes `tsc` fail if they disagree, so change them together.
 
 ### Using it
@@ -425,6 +434,7 @@ Templates and the guide are found relative to the compiled `dist/init.js` (`new 
 - **Keep internal IDs out of the customer view.** Customer IDs are renumbered on purpose.
 - **Blocked and cut stay internal.** The customer projection drops them, and tests check that customer HTML and JSON never mention them or their reasons.
 - **History contains names.** Keep it internal-only and out of static assets.
+- **Commit messages and branch names are untrusted, and internal only.** Anyone who can push writes them, and they can name unreleased work. Change titles and branches are cut to length when written, checked when parsed, rendered as text, and attached to internal views only.
 - **Responses are private.** `storyMapResponseHeaders` is `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. The example host sends it with every response, and hosts are told to do the same, because the page differs per viewer.
 - **Only `http` and `https` sources become links.** React escapes all text, and the board never uses `dangerouslySetInnerHTML`. A test checks that story text renders as text.
 - **The publish job installs nothing.** It is the only job that can get an npm publishing token, so it publishes the tarball built by `pack` and never runs `npm ci` or dependency scripts.

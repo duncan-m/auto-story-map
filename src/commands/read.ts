@@ -111,6 +111,15 @@ function storyText(view: Extract<StoryMapView, { audience: "internal" }>, story:
       lines.push(`    ${entry.at.slice(0, 10)}  ${change}${by} (${escapeText(entry.commit.slice(0, 7))})${reason}`);
     }
   }
+  if (story.changes?.length || story.moreChanges) {
+    lines.push("  Changes:");
+    for (const change of story.changes ?? []) {
+      const ref = change.pullRequest !== undefined ? `#${change.pullRequest}` : change.commit.slice(0, 7);
+      const by = change.by ? ` by ${escapeText(change.by)}` : "";
+      lines.push(`    ${change.at.slice(0, 10)}  ${escapeText(ref)} ${escapeText(change.title ?? "")}${by}`.trimEnd());
+    }
+    if (story.moreChanges) lines.push(`    ${count(story.moreChanges, "more change", "more changes")}`);
+  }
   if (story.testCount !== undefined) {
     lines.push(`  Tests:     ${count(story.testCount, "tagged test", "tagged tests")}`);
     for (const test of story.tests ?? []) lines.push(`    ${escapeText(test.file)}:${test.line}  ${escapeText(test.name)}`);
