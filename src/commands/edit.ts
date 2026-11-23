@@ -115,6 +115,7 @@ export const edit = defineCommand({
       ["--add-source", "add-source", "source"], ["--remove-source", "remove-source", "source"],
       ["--add-job", "add-job", "job"], ["--remove-job", "remove-job", "job"],
       ["--add-persona", "add-persona", "persona"], ["--remove-persona", "remove-persona", "persona"],
+      ["--add-dependency", "add-dependency", "dependency"], ["--remove-dependency", "remove-dependency", "dependency"],
     ];
     const listEdits: unknown[] = [];
     const ids: string[] = [];
@@ -172,12 +173,14 @@ export const add = defineCommand({
     const sources: string[] = [];
     const jobs: string[] = [];
     const personas: string[] = [];
+    const dependsOn: string[] = [];
     const positional: string[] = [];
     const common = parseEditArgs(rest, (name, value) => {
       if (["--id", "--title", "--activity", "--release", "--status", "--reason", "--summary", "--notes"].includes(name)) fields[name.slice(2)] = value();
       else if (name === "--source") sources.push(value());
       else if (name === "--job") jobs.push(value());
       else if (name === "--persona") personas.push(value());
+      else if (name === "--dependency") dependsOn.push(value());
       else return false;
       return true;
     }, positional);
@@ -187,6 +190,7 @@ export const add = defineCommand({
     }
     const operation = {
       op: "add", ...fields, ...(sources.length ? { sources } : {}), ...(jobs.length ? { jobs } : {}), ...(personas.length ? { personas } : {}),
+      ...(dependsOn.length ? { dependsOn } : {}),
     } as StoryMapEditOperation;
     return { ...common, operations: [operation] };
   },

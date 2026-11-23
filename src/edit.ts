@@ -24,6 +24,8 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("remove-job"), id: storyId, job: text }).strict(),
   z.object({ op: z.literal("add-persona"), id: storyId, persona: text }).strict(),
   z.object({ op: z.literal("remove-persona"), id: storyId, persona: text }).strict(),
+  z.object({ op: z.literal("add-dependency"), id: storyId, dependency: text }).strict(),
+  z.object({ op: z.literal("remove-dependency"), id: storyId, dependency: text }).strict(),
   z.object({ op: z.literal("customer-title"), id: storyId, title: text }).strict(),
   z.object({ op: z.literal("customer-summary"), id: storyId, summary: text }).strict(),
   z.object({
@@ -39,6 +41,7 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
     sources: z.array(text).optional(),
     jobs: z.array(text).optional(),
     personas: z.array(text).optional(),
+    dependsOn: z.array(text).optional(),
   }).strict(),
   z.object({ op: z.literal("release-impact"), release: text, metric: text, expected: text, solves: text.optional() }).strict(),
 ]);
@@ -89,7 +92,7 @@ export class StoryMapEditError extends Error {
 }
 
 /** The order fields are written in when an edit adds one, following the guide's examples. */
-const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
+const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 
 type Raw = Record<string, unknown>;
@@ -227,14 +230,17 @@ export function nextStoryId(stories: readonly { id: string; release?: string }[]
   return `${prefix}${String(number).padStart(numbered[0][2].length, "0")}`;
 }
 
-type ListOperation = Extract<StoryMapEditOperation, { op: `${"add" | "remove"}-${"source" | "job" | "persona"}` }>;
+type ListOperation = Extract<StoryMapEditOperation, { op: `${"add" | "remove"}-${"source" | "job" | "persona" | "dependency"}` }>;
 
 /** The story field a list edit changes, and the value it adds or removes. */
-function listOperand(operation: ListOperation): ["sources" | "jobs" | "personas", string] {
+function listOperand(operation: ListOperation): ["sources" | "jobs" | "personas" | "dependsOn", string] {
   if ("source" in operation) return ["sources", operation.source];
   if ("job" in operation) return ["jobs", operation.job];
+  if ("dependency" in operation) return ["dependsOn", operation.dependency];
   return ["personas", operation.persona];
 }
+
+const listItemNames = { sources: "source", jobs: "job", personas: "persona", dependsOn: "dependency" } as const;
 
 function unknownStory(id: string, stories: RawStory[], index: number): never {
   const suggestions = closestIds(id, stories.map(story => story.id));
@@ -295,6 +301,7 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
         release: operation.release,
         status,
         ...(operation.reason ? { statusReason: operation.reason } : {}),
+        ...(operation.dependsOn?.length ? { dependsOn: operation.dependsOn } : {}),
         ...(operation.jobs?.length ? { jobs: operation.jobs } : {}),
         ...(operation.personas?.length ? { personas: operation.personas } : {}),
         ...(options.updatedBy ? { updatedBy: options.updatedBy } : {}),
@@ -338,7 +345,8 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
         break;
       case "add-source":
       case "add-job":
-      case "add-persona": {
+      case "add-persona":
+      case "add-dependency": {
         const [key, value] = listOperand(operation);
         const list = (story[key] as string[] | undefined) ?? [];
         if (list.includes(value)) break;
@@ -348,11 +356,12 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       }
       case "remove-source":
       case "remove-job":
-      case "remove-persona": {
+      case "remove-persona":
+      case "remove-dependency": {
         const [key, value] = listOperand(operation);
         const list = (story[key] as string[] | undefined) ?? [];
         const at = list.indexOf(value);
-        if (at === -1) throw new StoryMapEditError(`${story.id} has no ${key === "sources" ? "source" : key === "jobs" ? "job" : "persona"} ${value}.`, index);
+        if (at === -1) throw new StoryMapEditError(`${story.id} has no ${listItemNames[key]} ${value}.`, index);
         const rest = list.filter((_, i) => i !== at);
         if (rest.length) story[key] = rest;
         else delete story[key];

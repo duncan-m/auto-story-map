@@ -31,6 +31,8 @@ export interface StoryUpdate extends StoryDiffRef {
   jobs?: Change<string[]>;
   /** The persona IDs the story lists itself, before and after. Personas that come from its jobs are not repeated here. */
   personas?: Change<string[]>;
+  /** IDs of the stories it depends on, before and after, in the story's order. */
+  dependsOn?: Change<string[]>;
   /** Story points before and after. Absent on one side when the story had no estimate. */
   estimate?: { from?: number; to?: number };
   /** Other fields that changed, such as `summary`, `notes` or `sources`. */
@@ -310,13 +312,13 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
         ...(story.estimate !== undefined ? { to: story.estimate } : {}),
       };
     }
-    for (const field of ["jobs", "personas"] as const) {
+    for (const field of ["dependsOn", "jobs", "personas"] as const) {
       if (!same(previous[field] ?? [], story[field] ?? [])) update[field] = { from: previous[field] ?? [], to: story[field] ?? [] };
     }
     for (const field of ["summary", "statusReason", "notes", "sources", "customer", "updatedBy"] as const) {
       if (!same(previous[field], story[field])) update.details.push(field);
     }
-    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.jobs || update.personas || update.details.length) {
+    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.dependsOn || update.jobs || update.personas || update.details.length) {
       updated.push(update);
     }
   }
@@ -476,6 +478,7 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     if (update.titleChange) changes.push(`Renamed from “${text(update.titleChange.from)}”`);
     if (update.estimate) changes.push(`Estimate: ${update.estimate.from ?? "none"} → ${update.estimate.to ?? "none"}`);
     const ids = (list: string[]) => list.map(code).join(", ") || "none";
+    if (update.dependsOn) changes.push(`Depends on: ${ids(update.dependsOn.from)} → ${ids(update.dependsOn.to)}`);
     if (update.jobs) changes.push(`Jobs: ${ids(update.jobs.from)} → ${ids(update.jobs.to)}`);
     if (update.personas) changes.push(`Personas: ${ids(update.personas.from)} → ${ids(update.personas.to)}`);
     if (update.details.length) changes.push(`Edited ${update.details.map(field => `\`${field}\``).join(", ")}`);
