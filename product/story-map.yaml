@@ -405,7 +405,9 @@ releases:
     title: "0.7.6: PM improvements"
     summary: Activities expand into steps, a scheduled audit proposes map corrections from the code, people confirm drafts and triage stories without editing the YAML, and earlier versions of the map can be read, compared and viewed on the board.
     notes: |
-      Plans: docs/plans/local-triage.md and docs/plans/map-versions.md
+      The Actions tab (ESM-128 to ESM-132) lists what validate warns about on the board, so people who never run the CLI see the drafts, estimates and gaps waiting for them.
+
+      Plans: docs/plans/local-triage.md, docs/plans/map-versions.md and docs/plans/actions-tab.md
     impact:
       - metric: Map changes that are missing from feature PRs
         expected: Found by the weekly audit and proposed in a PR
@@ -418,6 +420,10 @@ releases:
       - metric: Time to see what the map said at an earlier release or review
         expected: One command or one choice in the board's Version picker
         solves: Checking out old commits, or asking an agent, to see a past plan
+        draft: true
+      - metric: Validation warnings only seen by people who run the CLI
+        expected: "None: every warning is listed on the board's Actions tab"
+        solves: Drafts, estimates and gaps waiting on product people who never see them
         draft: true
     customer:
       title: "0.7.6"
@@ -855,6 +861,58 @@ stories:
     notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size. Needs ESM-113 and ESM-114.
     sources:
       - docs/plans/map-versions.md#3-switch-the-board-to-an-earlier-version
+  - id: ESM-128
+    title: Give each validation warning a kind
+    activity: review
+    release: v0-7-6
+    status: planned
+    jobs:
+      - get-oriented
+      - update-the-map
+    summary: Each validate warning carries a kind and whether it needs a person, and getStoryMapActions groups them into the actions the board and CLI list.
+    sources:
+      - docs/plans/actions-tab.md#1-give-each-warning-a-kind
+  - id: ESM-129
+    title: Show outstanding actions on an Actions tab
+    activity: explore
+    release: v0-7-6
+    status: planned
+    jobs:
+      - get-oriented
+      - validate-inherited-map
+    summary: Internal viewers open an Actions tab next to Story map and Personas that lists what the map is waiting for, grouped by kind, with a link to each item and the command that fixes it.
+    sources:
+      - docs/plans/actions-tab.md#2-show-outstanding-actions-on-an-actions-tab
+  - id: ESM-130
+    title: Show an item's actions in its panel
+    activity: explore
+    release: v0-7-6
+    status: planned
+    jobs:
+      - get-oriented
+    summary: The story and release panels and the persona page list that item's outstanding actions, with a link to the Actions tab.
+    sources:
+      - docs/plans/actions-tab.md#3-show-an-items-actions-in-its-panel
+  - id: ESM-131
+    title: Include file checks on the Actions tab
+    activity: review
+    release: v0-7-6
+    status: planned
+    jobs:
+      - validate-inherited-map
+    summary: validate --out writes the checks the board cannot run, such as missing sources, and the host passes them to the view so the Actions tab lists them.
+    sources:
+      - docs/plans/actions-tab.md#4-include-the-file-checks
+  - id: ESM-132
+    title: List actions from the command line
+    activity: review
+    release: v0-7-6
+    status: planned
+    jobs:
+      - update-the-map
+    summary: story-map actions prints the same grouped list as the Actions tab, so agents can pick up actions that do not need a person.
+    sources:
+      - docs/plans/actions-tab.md#5-list-actions-from-the-command-line
   - id: ESM-910
     title: Break a job into steps
     activity: explore
