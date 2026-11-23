@@ -41,6 +41,7 @@ interface Commit {
   committedAt: string;
   authorName: string;
   committerName: string;
+  pullRequest?: number;
 }
 
 async function git(cwd: string, args: string[]) {
@@ -58,10 +59,33 @@ const separator = "\u001f";
 /** Git names have no length limit, so fit each one to the history format. */
 const historyName = (name: string | undefined) => fitHistoryText(name, historyNameMaxLength);
 
+const asPullRequest = (digits: string | undefined) => {
+  const number = Number(digits);
+  return Number.isSafeInteger(number) && number > 0 ? number : undefined;
+};
+
+/**
+ * The pull request or merge request a commit on the main branch came from,
+ * read from its message: a GitHub merge commit (`Merge pull request #70 from
+ * owner/branch`), a squash or rebase commit whose subject ends in `(#67)`, or a
+ * GitLab merge commit whose body has `See merge request group/project!12`.
+ * Returns undefined for any other commit.
+ */
+export function pullRequestNumber(subject: string, body = ""): number | undefined {
+  const line = subject.trim();
+  const merge = /^Merge pull request #(\d+) from \S/.exec(line);
+  if (merge) return asPullRequest(merge[1]);
+  const squash = /\(#(\d+)\)$/.exec(line);
+  if (squash) return asPullRequest(squash[1]);
+  const gitlab = /^See merge request [^\s!]+!(\d+)\s*$/m.exec(body);
+  return gitlab ? asPullRequest(gitlab[1]) : undefined;
+}
+
 function parseCommits(output: string): Commit[] {
-  return output.split("\n").filter(Boolean).map(line => {
-    const [sha, parents, committedAt, authorName, committerName] = line.split(separator);
-    return { sha, parents: parents ? parents.split(" ") : [], committedAt, authorName, committerName };
+  return output.split("\0").map(record => record.replace(/^\n/, "")).filter(Boolean).map(record => {
+    const [sha, parents, committedAt, authorName, committerName, subject = "", ...body] = record.split(separator);
+    const pullRequest = pullRequestNumber(subject, body.join(separator));
+    return { sha, parents: parents ? parents.split(" ") : [], committedAt, authorName, committerName, ...(pullRequest ? { pullRequest } : {}) };
   });
 }
 
@@ -102,8 +126,8 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     );
   }
 
-  const format = ["%H", "%P", "%cI", "%an", "%cn"].join("%x1f");
-  const commits = parseCommits(await git(cwd, ["log", "--first-parent", "--reverse", `--format=${format}`, ref, "--", mapPath]));
+  const format = ["%H", "%P", "%cI", "%an", "%cn", "%s", "%b"].join("%x1f");
+  const commits = parseCommits(await git(cwd, ["log", "-z", "--first-parent", "--reverse", `--format=${format}`, ref, "--", mapPath]));
 
   const bots = new Set((options.botNames ?? []).map(name => name.trim().toLowerCase()).filter(Boolean));
   const isBot = (name: string) => name.toLowerCase().endsWith("[bot]") || bots.has(name.toLowerCase());
@@ -163,6 +187,7 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
     const merger = historyName(rawMerger);
     // Git versions differ in how they print UTC (+00:00 or Z), so store one canonical form.
     const at = new Date(commit.committedAt).toISOString();
+    const pullRequest = commit.pullRequest ? { pullRequest: commit.pullRequest } : {};
     let branchAuthor: string | undefined | null = null;
     const author = async () => {
       if (commit.parents.length < 2) return commit.authorName;
@@ -188,7 +213,7 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
       const reason = story.status === "blocked" || story.status === "cut"
         ? fitHistoryText(story.statusReason, historyReasonMaxLength)
         : undefined;
-      lastEdits.set(story.id, { storyId: story.id, at, ...(by ? { by } : {}), commit: commit.sha });
+      lastEdits.set(story.id, { storyId: story.id, at, ...(by ? { by } : {}), commit: commit.sha, ...pullRequest });
       if (earlier && earlier.status === story.status) continue;
       events.push({
         storyId: story.id,
@@ -200,6 +225,7 @@ export async function buildStoryMapHistory(options: BuildHistoryOptions = {}): P
         ...(by ? { by } : {}),
         ...(merger ? { mergedBy: merger } : {}),
         commit: commit.sha,
+        ...pullRequest,
       });
     }
     previous = current;

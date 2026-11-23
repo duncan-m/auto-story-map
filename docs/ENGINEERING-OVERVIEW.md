@@ -269,6 +269,8 @@ Panel IDs come from `useId()`, so two boards on one page do not collide.
 
 Engineering links open in a new tab with `rel="noopener noreferrer"`, an icon and screen-reader text.
 
+History lines and the “Last updated” time link to their pull request and commit through `repositoryLinker` in `src/react.tsx`. It builds `<repositoryUrl>/commit/<hash>` and `<repositoryUrl>/pull/<number>`, or fills the `{commit}` and `{number}` placeholders in `repositoryLinks` templates, encodes each value, and keeps only `http:` and `https:` results. Without either prop it builds nothing, so the history looks as it did before. Commit messages are never shown, only numbers and hashes.
+
 ### Filter toolbar
 
 The toolbar is a `GET` form with no `action`, so it submits to the current page. `preservedParams` become hidden inputs, so a host can keep its own query parameters (the demo keeps `as`). “Clear filters” links to just the preserved parameters. The **Changed** select appears only for internal views with history. Internal views get **Active** (the default) and **All, including blocked and cut** at the top of the status select; customer views get **All statuses** and `customerStoryStatuses` (planned, in progress and shipped). When `filter.hidden` is set, the results line says how many blocked and cut stories are hidden and links to the same filters with `status=all`.
@@ -307,6 +309,7 @@ Status history shows when each story was added or changed status, who made the c
 4. Compare each version's stories with the previous one by ID. A new ID produces an `added` event. A changed `status` produces a `status` event with `from` and `to`. When the new status is blocked or cut and the story has a `statusReason`, the event records it as `reason`. Moves, renames and other edits produce no event, and removing a story produces no event.
 5. Separately, any difference in a story's fields (compared with `canonical`, which ignores key order), including a move or a new story, updates that story's last edit. Reordering the stories list is not an edit. At the end, `lastEdits` keeps one entry for each story in the newest valid version.
 6. Store `at` as the commit's committer date, normalised with `toISOString()`. Git versions print UTC as either `+00:00` or `Z`, and a canonical form keeps the file stable and comparable.
+7. Record the pull request behind each event and last edit as `pullRequest`, read from the first-parent commit's message by `pullRequestNumber`: a GitHub merge commit (`Merge pull request #70 from …`), a subject ending in `(#67)` from a squash or rebase merge, or a GitLab `See merge request group/project!12` line in the body. Any other commit is a direct commit and has no `pullRequest`. The log is read with `-z`, so the message body cannot break the fields. Files written before 0.7.4 have no `pullRequest`, and still load.
 
 Who is credited:
 

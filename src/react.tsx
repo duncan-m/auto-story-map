@@ -10,10 +10,28 @@ import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaL
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
 
+/**
+ * Link templates for repositories that do not use GitHub's URLs, such as
+ * `{ commit: "https://gitlab.com/g/p/-/commit/{commit}", pullRequest: "https://gitlab.com/g/p/-/merge_requests/{number}" }`.
+ * `{commit}` is the full commit hash and `{number}` the pull request number.
+ */
+export interface StoryMapRepositoryLinks {
+  commit?: string;
+  pullRequest?: string;
+}
+
 export interface StoryMapBoardProps {
   map: StoryMapView;
   /** Base URL for repository-relative sources, such as `https://github.com/org/repo/blob/main/`. */
   sourceBaseUrl?: string;
+  /**
+   * The repository's web address, such as `https://github.com/org/repo`. Internal
+   * boards then link each history line, and the last update, to its commit at
+   * `<repositoryUrl>/commit/<hash>` and its pull request at `<repositoryUrl>/pull/<number>`.
+   */
+  repositoryUrl?: string;
+  /** Templates that replace the `repositoryUrl` links, for GitLab and other hosts. */
+  repositoryLinks?: StoryMapRepositoryLinks;
   /** `light` by default. `auto` follows the viewer's colour scheme preference. */
   theme?: "light" | "dark" | "auto";
   /** Query parameters to keep when the filter form is submitted, such as a host's own page state. */
@@ -180,7 +198,62 @@ function StalledLabel({ since, settings }: { since: string; settings: DateSettin
   );
 }
 
-function HistoryList({ entries, settings, labelledBy }: { entries: StoryHistoryEntry[]; settings: DateSettings; labelledBy: string }) {
+interface RepositoryLinker {
+  commit(hash: string): string | undefined;
+  pullRequest(number: number): string | undefined;
+}
+
+/** Keeps a link only when it is an http(s) URL. */
+function webLink(href: string) {
+  try {
+    const url = new URL(href);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Builds commit and pull request links from `repositoryLinks` templates, or
+ * else from `repositoryUrl`. Each link is dropped unless it is http(s).
+ */
+function repositoryLinker(repositoryUrl?: string, templates?: StoryMapRepositoryLinks): RepositoryLinker {
+  const base = repositoryUrl && webLink(repositoryUrl)?.replace(/[?#].*$/, "").replace(/\/+$/, "");
+  const build = (template: string | undefined, path: string, placeholder: RegExp, value: string) => {
+    if (template) return webLink(template.replace(placeholder, encodeURIComponent(value)));
+    return base ? webLink(`${base}/${path}/${encodeURIComponent(value)}`) : undefined;
+  };
+  return {
+    commit: hash => build(templates?.commit, "commit", /\{commit\}/g, hash),
+    pullRequest: number => build(templates?.pullRequest, "pull", /\{number\}/g, String(number)),
+  };
+}
+
+const shortHash = (hash: string) => hash.slice(0, 7);
+
+/** The pull request and commit behind a history line, as links. Nothing without a repository URL. */
+function ChangeLinks({ entry, links }: { entry: { commit: string; pullRequest?: number }; links: RepositoryLinker }) {
+  const pullRequest = entry.pullRequest ? links.pullRequest(entry.pullRequest) : undefined;
+  const commit = links.commit(entry.commit);
+  return (
+    <>
+      {pullRequest && <>
+        {" · "}
+        <a className="esm-history-link" href={pullRequest} {...newTab}>
+          <span className="esm-visually-hidden">Pull request </span>#{entry.pullRequest}<NewTabHint />
+        </a>
+      </>}
+      {commit && <>
+        {" · "}
+        <a className="esm-history-link" href={commit} title={entry.commit} {...newTab}>
+          <span className="esm-visually-hidden">Commit </span><code className="esm-commit-hash">{shortHash(entry.commit)}</code><NewTabHint />
+        </a>
+      </>}
+    </>
+  );
+}
+
+function HistoryList({ entries, settings, labelledBy, links }: { entries: StoryHistoryEntry[]; settings: DateSettings; labelledBy: string; links: RepositoryLinker }) {
   return (
     <ol className="esm-history" aria-labelledby={labelledBy}>
       {entries.map((entry, index) => {
@@ -197,6 +270,7 @@ function HistoryList({ entries, settings, labelledBy }: { entries: StoryHistoryE
             <span className="esm-history-meta">
               <time dateTime={entry.at}>{formatDate(entry.at, settings)}</time>
               {people && ` · ${people}`}
+              <ChangeLinks entry={entry} links={links} />
             </span>
             {entry.reason && <span className="esm-history-reason">{entry.reason}</span>}
           </li>
@@ -461,8 +535,9 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks, testsIndexed, lookup, personaPanelIds }: {
+function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, lookup, personaPanelIds }: {
   story: InternalStoryCard;
+  links: RepositoryLinker;
   lookup: PersonaLookup;
   /** Each persona's panel, by persona ID, so the For row can open it. */
   personaPanelIds: ReadonlyMap<string, string>;
@@ -554,7 +629,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
       {internal && !!story.history?.length && (
         <section className="esm-detail-section">
           <h4 id={`${panelId}-history`}>History</h4>
-          <HistoryList entries={story.history} settings={settings} labelledBy={`${panelId}-history`} />
+          <HistoryList entries={story.history} settings={settings} labelledBy={`${panelId}-history`} links={links} />
         </section>
       )}
       {internal && (testsIndexed || !!story.tests?.length || !!story.moreTests?.length) && (
@@ -585,13 +660,23 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
       {internal && (story.lastEdit
         ? (
           <p className="esm-updater">
-            Last updated <time dateTime={story.lastEdit.at} title={formatDate(story.lastEdit.at, settings)}>{formatRelative(story.lastEdit.at, settings)}</time>
+            Last updated <LastEditTime edit={story.lastEdit} settings={settings} links={links} />
             {story.lastEdit.by && ` by ${story.lastEdit.by}`}
           </p>
         )
         : story.updatedBy && <p className="esm-updater">Last updated by {story.updatedBy}</p>)}
     </div>
   );
+}
+
+/** The last edit's time, linked to its pull request, or its commit when there is none, when the board has a repository URL. */
+function LastEditTime({ edit, settings, links }: { edit: { at: string; commit: string; pullRequest?: number }; settings: DateSettings; links: RepositoryLinker }) {
+  const time = <time dateTime={edit.at} title={formatDate(edit.at, settings)}>{formatRelative(edit.at, settings)}</time>;
+  const pullRequest = edit.pullRequest ? links.pullRequest(edit.pullRequest) : undefined;
+  const href = pullRequest ?? links.commit(edit.commit);
+  if (!href) return time;
+  const label = pullRequest ? `Pull request ${edit.pullRequest}` : `Commit ${shortHash(edit.commit)}`;
+  return <a className="esm-history-link" href={href} {...newTab}>{time}<span className="esm-visually-hidden">, {label}</span><NewTabHint /></a>;
 }
 
 function storyCount(count: number) {
@@ -1384,6 +1469,8 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
 export function StoryMapBoard({
   map,
   sourceBaseUrl,
+  repositoryUrl,
+  repositoryLinks,
   theme = "light",
   preservedParams,
   locale = defaultLocale,
@@ -1399,6 +1486,7 @@ export function StoryMapBoard({
   const testsIndexed = map.audience === "internal" && map.testsIndexed === true;
   const filtering = isFiltering(map.filter);
   const settings = dateFormatters(locale, timeZone, now ?? new Date());
+  const links = repositoryLinker(repositoryUrl, repositoryLinks);
 
   const activityTitles = new Map(map.activities.map(activity => [activity.id, activity.title]));
   const releaseTitles = new Map(map.releases.map(release => [release.id, release.title]));
@@ -1579,6 +1667,7 @@ export function StoryMapBoard({
           releaseTitle={releaseTitles.get(story.release)!}
           internal={internal}
           sourceBaseUrl={sourceBaseUrl}
+          links={links}
           settings={settings}
           stalledAfterWeeks={stalledAfterWeeks}
           testsIndexed={testsIndexed}

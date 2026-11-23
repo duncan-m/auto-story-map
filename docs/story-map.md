@@ -572,6 +572,7 @@ The command reads every version of the map on the current branch’s first-paren
 - **When** is the time the change reached that branch.
 - **By** is the story’s `updatedBy` when that edit set it, otherwise the author of the commit that made the change. When the author is a bot, such as a coding agent, the person who merged the change is credited instead. Authors whose names end in `[bot]` are bots. Name other bot accounts with `--bot-names "Audit Agent,Release Helper"`. If Git does not record who merged, as with GitHub squash merges, the bot is credited.
 - **Merged by** is the person who merged the pull request. Git records this for merge commits and direct pushes, but not for GitHub squash or rebase merges, so those entries show only the editor.
+- **Pull request** is the number of the pull request or merge request the change came from, read from the commit message on the branch. GitHub merge commits (`Merge pull request #70 from …`), squash and rebase commits whose subject ends in `(#70)`, and GitLab merge commits with a `See merge request group/project!12` line are recognised. Other commits are direct commits, with no number. Keep the default merge messages to get the numbers.
 
 Older versions of the map may use an earlier format. The command reads them leniently, so their changes still count: it ignores fields the format no longer has, and leaves out a story that no longer validates, such as one with a status that has since been removed, until a later version of the map has it again. A version it cannot read at all, because the map was missing or was not valid YAML, is skipped, and the next readable version is compared with the last readable one. The command prints a warning naming the first few skipped commits and still succeeds. The file lists them, oldest first, in `skipped` (up to 100, each with its `commit` and a `reason`) and counts them all in `skippedCount`. Both fields are absent when nothing was skipped.
 
@@ -581,6 +582,20 @@ Load the file on the server and pass it in. Keep it with the map, outside the st
 const history = parseStoryMapHistory(await readFile("build/story-map-history.json", "utf8"));
 const map = getStoryMapPage(document, viewer, { canViewInternal, history, searchParams: url.searchParams });
 ```
+
+Pass `repositoryUrl` to `StoryMapBoard`, such as `https://github.com/your-org/your-product`, to link each history line to its pull request and commit, such as “12 Nov 2026, 15:30 · by Sam Patel, merged by Duncan Malcolm · #70 · 8078905”, and the “Last updated” time to the pull request, or to the commit when there is none. Links go to `<repositoryUrl>/pull/<number>` and `<repositoryUrl>/commit/<hash>`. For GitLab and other hosts, pass `repositoryLinks` with templates instead:
+
+```tsx
+<StoryMapBoard
+  map={map}
+  repositoryLinks={{
+    commit: "https://gitlab.com/your-group/your-product/-/commit/{commit}",
+    pullRequest: "https://gitlab.com/your-group/your-product/-/merge_requests/{number}",
+  }}
+/>
+```
+
+Only `http:` and `https:` links are made. Without either prop, history lines show no numbers or hashes. Customers never see them.
 
 Pass `timeZone`, such as `Europe/London`, and optionally `locale` to `StoryMapBoard` so dates match your team. If the runtime does not recognise either, the board still renders: it uses `en-GB` or the server's time zone instead, and logs a warning once. Without a history file, the board works as before with no dates and no **Changed** filter, and the panel shows the story’s `updatedBy` as “Last updated by …”.
 
