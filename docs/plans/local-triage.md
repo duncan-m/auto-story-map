@@ -1,6 +1,6 @@
 # Plan: confirm drafts and triage from the local preview
 
-Status: proposed. The work is ESM-110, ESM-111 and ESM-112 in the **0.7.6: PM improvements** release of the map. The estimates below are agreed.
+Status: proposed. The work is ESM-110, ESM-111 and ESM-112 in the **0.7.6: Update the map from the board** release of the map. The estimates below are agreed.
 
 A person working alone, or a small team, spends most of their time with the map doing two things: confirming what an agent drafted, and moving stories between releases or statuses while looking at the board. Today both mean editing the YAML or asking an agent. This plan makes both quicker without giving agents a way to confirm drafts and without making the hosted board writable.
 
@@ -60,4 +60,4 @@ ESM-404 stays cut: the hosted board stays read-only, because saving there would 
 | ESM-112: Save status and release changes from the local preview | 5 |
 | **Total** | **11** |
 
-0.7.6 already holds 13 points still to merge (ESM-108 and ESM-109), so these stories nearly double what is left. If the release needs to stay small, ESM-110 fits on its own and ESM-111 and ESM-112 can move to the next release together.
+0.7.6 first also held activity steps (ESM-108), the scheduled audit (ESM-109) and map versions (ESM-113 to ESM-115). When it was split, those moved to 0.7.7, and these stories stayed in 0.7.6 with the Actions tab (ESM-128) that points to them.

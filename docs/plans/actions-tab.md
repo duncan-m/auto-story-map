@@ -1,6 +1,6 @@
 # Plan: an Actions tab for outstanding work on the map
 
-Status: proposed. The work is one story, ESM-128, in the **0.7.6: PM improvements** release of the map. Its estimate is agreed: 8 points, about the size of the triage work in the same release (ESM-111 and ESM-112), because the tab is new board UI and the CLI command and panel rows come with it.
+Status: proposed. The work is one story, ESM-128, in the **0.7.6: Update the map from the board** release of the map. Its estimate is agreed: 8 points, about the size of the triage work in the same release (ESM-111 and ESM-112), because the tab is new board UI and the CLI command and panel rows come with it.
 
 Before this plan, `npm run validate` on this repository printed 44 warnings. Most of them ask a person to do something: confirm a drafted job or impact item, agree an estimate, tag a test. Only people who run the CLI, or read CI logs, ever see them. The people most of them are for, product managers and founders reading the board in the product, never do.
 

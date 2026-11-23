@@ -402,31 +402,49 @@ releases:
         solves: Agents starting work without the plan, the work already built nearby or the repository's rules
         draft: true
   - id: v0-7-6
-    title: "0.7.6: PM improvements"
-    summary: Activities expand into steps, a scheduled audit proposes map corrections from the code, people confirm drafts and triage stories without editing the YAML, and earlier versions of the map can be read, compared and viewed on the board.
+    title: "0.7.6: Update the map from the board"
+    summary: People confirm drafts and triage stories without editing the YAML, see what validate warns about on an Actions tab, and can send the map to Spreo from the Export menu.
     notes: |
-      The Actions tab (ESM-128) lists what validate warns about on the board, so people who never run the CLI see the drafts, estimates and gaps waiting for them.
+      The Actions tab (ESM-128) lists what validate warns about on the board, so people who never run the CLI see the drafts, estimates and gaps waiting for them. It ships with the draft confirmation and triage work it points to (ESM-110, ESM-111 and ESM-112).
 
-      Plans: docs/plans/local-triage.md, docs/plans/map-versions.md and docs/plans/actions-tab.md
+      The Export menu gains a Spreo item (ESM-137), linking to a guide for building an interactive story board in Spreo through its MCP integration from ChatGPT, Claude or Claude Code.
+
+      Split from the original 0.7.6, which held 48 points. Map versions, activity steps and the scheduled audit moved to 0.7.7.
+
+      Plans: docs/plans/local-triage.md and docs/plans/actions-tab.md
     impact:
-      - metric: Map changes that are missing from feature PRs
-        expected: Found by the weekly audit and proposed in a PR
-        solves: The map drifting from the code when a PR forgets to update it
-        draft: true
       - metric: Drafts confirmed or stories moved by editing the YAML by hand
         expected: Done with story-map confirm, or from the story panel in the local preview
         solves: People working alone switching to the YAML or an agent to confirm a draft or move a story
-        draft: true
-      - metric: Time to see what the map said at an earlier release or review
-        expected: One command or one choice in the board's Version picker
-        solves: Checking out old commits, or asking an agent, to see a past plan
         draft: true
       - metric: Validation warnings only seen by people who run the CLI
         expected: "None: every warning is listed on the board's Actions tab"
         solves: Drafts, estimates and gaps waiting on product people who never see them
         draft: true
+      - metric: Time to get the story map into Spreo
+        expected: One click from the Export menu to a guide with a ready-made prompt, instead of working out the steps and prompt by hand
+        solves: People who plan in Spreo not finding a way to move the map there from the Export menu
+        draft: true
     customer:
       title: "0.7.6"
+  - id: v0-7-7
+    title: "0.7.7: Map versions, steps and audit"
+    summary: Earlier versions of the map can be read, compared and viewed on the board, activities expand into steps, and a scheduled audit proposes map corrections from the code.
+    notes: |
+      Split from the original 0.7.6. Reading and comparing versions (ESM-113 and ESM-114) come before the board's Version picker (ESM-115), which depends on both. The audit (ESM-109) uses the evidence from ESM-105 in 0.7.5.
+
+      Plans: docs/plans/map-versions.md and docs/plans/0.4.0-enhancements.md
+    impact:
+      - metric: Map changes that are missing from feature PRs
+        expected: Found by the weekly audit and proposed in a PR
+        solves: The map drifting from the code when a PR forgets to update it
+        draft: true
+      - metric: Time to see what the map said at an earlier release or review
+        expected: One command or one choice in the board's Version picker
+        solves: Checking out old commits, or asking an agent, to see a past plan
+        draft: true
+    customer:
+      title: "0.7.7"
   - id: v0-8-0
     title: "0.8.0: Agents and adoption"
     summary: Agents use the map through an MCP server or an installable skill, a repository that already has months of history gets a survey to draft its first map from, and a tag on a describe block covers every test inside it.
@@ -773,7 +791,7 @@ stories:
   - id: ESM-108
     title: Expand activities into steps
     activity: explore
-    release: v0-7-6
+    release: v0-7-7
     status: planned
     estimate: 8
     jobs:
@@ -786,7 +804,7 @@ stories:
   - id: ESM-109
     title: Audit the map against the code on a schedule
     activity: review
-    release: v0-7-6
+    release: v0-7-7
     status: planned
     estimate: 5
     dependsOn:
@@ -858,7 +876,7 @@ stories:
   - id: ESM-113
     title: Read the map as it was at a version
     activity: explore
-    release: v0-7-6
+    release: v0-7-7
     status: planned
     estimate: 3
     jobs:
@@ -870,7 +888,7 @@ stories:
   - id: ESM-114
     title: List the map's versions and compare any two
     activity: review
-    release: v0-7-6
+    release: v0-7-7
     status: planned
     estimate: 3
     jobs:
@@ -882,7 +900,7 @@ stories:
   - id: ESM-115
     title: Switch the board to an earlier version
     activity: explore
-    release: v0-7-6
+    release: v0-7-7
     status: planned
     estimate: 8
     dependsOn:
@@ -908,6 +926,28 @@ stories:
     summary: Internal viewers open an Actions tab next to Story map and Personas that lists what validate warns about, grouped by kind, with a link to each item and the command that fixes it. Item panels show their own actions, and story-map actions prints the same list for agents.
     sources:
       - docs/plans/actions-tab.md
+  - id: ESM-137
+    title: Add export support for Spreo
+    activity: explore
+    release: v0-7-6
+    status: planned
+    estimate: 2
+    jobs:
+      - share-roadmap
+    summary: Internal viewers choose Spreo from the board's Export menu and get a guide to creating an interactive story board in Spreo from ChatGPT, Claude or Claude Code.
+    notes: |-
+      Spreo's MCP integration has been tested and creates an accurate, interactive story board from the map.
+      Scope:
+      - Add a Spreo item to the board's existing Export menu, next to the Visio, CSV and JSON downloads, so people who click Export see the tool by name. It links to the Spreo section of docs/integrations.md on the public GitHub repo and opens in a new tab.
+      - Add docs/integrations.md with a Spreo section: how to create the board through Spreo's MCP integration from ChatGPT, Claude and Claude Code, with a copyable prompt for each that names the YAML source, release swimlanes, story IDs and estimates.
+      - Explain in the guide that the board is a one-way snapshot, and that the prompt sends the internal map, including estimates and notes, to the AI tool and to Spreo.
+      Acceptance criteria:
+      - Internal viewers see Spreo in the Export menu; customer views never show the Export menu, as now.
+      - The Spreo link opens the guide's Spreo section in a new tab, with rel="noopener", and works without JavaScript.
+      - The Visio, CSV and JSON downloads keep working, and tests cover the new link for internal and customer views.
+      - No Spreo API integration or import format is added to the library.
+    sources:
+      - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
   - id: ESM-910
     title: Break a job into steps
     activity: explore
