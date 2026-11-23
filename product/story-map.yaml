@@ -1843,6 +1843,7 @@ stories:
     activity: explore
     release: v0-8-5
     status: planned
+    estimate: 8
     dependsOn:
       - ESM-142
     jobs:
@@ -1857,6 +1858,7 @@ stories:
     activity: explore
     release: v0-8-5
     status: planned
+    estimate: 5
     dependsOn:
       - ESM-140
     jobs:
