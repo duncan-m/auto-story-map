@@ -34,7 +34,7 @@ export interface ExportRelease {
   /** Stories in the release, counted before the export limit, such as “4 stories · 1 shipped, 3 planned”. */
   countsText: string;
   storyCount: number;
-  /** The release’s points, such as “21 pts · 8 left · 2 unestimated”. Absent when no story in it has an estimate. */
+  /** The release’s points, such as “21 pts · 5 merged · 8 left · 2 unestimated”. Absent when no story in it has an estimate. */
   estimatesText?: string;
   /** Paragraphs of the release notes. */
   notes: string[];
@@ -65,9 +65,9 @@ export function storyCountsText(counts: Record<StoryStatus, number>): string {
   return parts.length ? `${storyWord(total)} · ${parts.join(", ")}` : storyWord(total);
 }
 
-/** “21 pts · 8 left · 2 unestimated”, as on the board’s release lane. */
-export function releaseEstimatesText({ total, left, unestimated }: ReleaseEstimates): string {
-  return `${total} ${total === 1 ? "pt" : "pts"} · ${left} left${unestimated ? ` · ${unestimated} unestimated` : ""}`;
+/** “21 pts · 5 merged · 8 left · 2 unestimated”, as on the board’s release lane. Merged is left out when it is 0. */
+export function releaseEstimatesText({ total, merged, left, unestimated }: ReleaseEstimates): string {
+  return `${total} ${total === 1 ? "pt" : "pts"}${merged ? ` · ${merged} merged` : ""} · ${left} left${unestimated ? ` · ${unestimated} unestimated` : ""}`;
 }
 
 /** Last change time in ms, or -Infinity when the history does not say. */

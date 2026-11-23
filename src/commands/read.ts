@@ -1,4 +1,5 @@
 import type { StoryMapJsonStory } from "../export-json.js";
+import { releaseEstimatesText } from "../export.js";
 import { changedWithinOptions, type ChangedWithinDays } from "../filter.js";
 import { jobStatement } from "../personas.js";
 import { findStories, getStories } from "../read.js";
@@ -235,8 +236,7 @@ function releaseText(release: InternalReleaseLabel): string {
   const lines = [`${escapeText(release.id)}  ${escapeText(release.title)}`];
   field(lines, "Stories", `${total}${counts.length ? ` (${counts.join(", ")})` : ""}`);
   if (release.estimates) {
-    const { total: points, left, unestimated } = release.estimates;
-    field(lines, "Estimate", `${points} pts · ${left} left${unestimated ? ` · ${unestimated} unestimated` : ""}`);
+    field(lines, "Estimate", releaseEstimatesText(release.estimates));
   }
   field(lines, "Summary", release.summary);
   field(lines, "Notes", release.notes);

@@ -1,6 +1,7 @@
 import { Fragment, useId, version } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
+import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
@@ -622,21 +623,22 @@ function CardHead({ story, personas }: { story: InternalStoryCard; personas: rea
   );
 }
 
-/** A release lane’s points and what is left, such as “21 pts · 8 left · 2 unestimated”. */
+/** A release lane’s points and what is left, such as “21 pts · 5 merged · 8 left · 2 unestimated”. */
 function ReleaseEstimate({ estimates }: { estimates: ReleaseEstimates }) {
-  const { total, left, unestimated } = estimates;
-  const label = `Estimate: ${points(total)}, ${left} left to ship${unestimated ? `, ${storyCount(unestimated)} with no estimate` : ""}`;
+  const { total, merged, left, unestimated } = estimates;
+  const label = `Estimate: ${points(total)}${merged ? `, ${merged} merged` : ""}, ${left} left to do${unestimated ? `, ${storyCount(unestimated)} with no estimate` : ""}`;
   return (
     <span className="esm-release-estimate">
-      <span aria-hidden="true">{`${points(total, true)} · ${left} left${unestimated ? ` · ${unestimated} unestimated` : ""}`}</span>
+      <span aria-hidden="true">{releaseEstimatesText(estimates)}</span>
       <span className="esm-visually-hidden">{label}</span>
     </span>
   );
 }
 
-function releaseEstimateNote({ total, left, unestimated }: ReleaseEstimates) {
+function releaseEstimateNote({ total, merged, left, unestimated }: ReleaseEstimates) {
+  const waiting = merged ? `, ${merged} merged and waiting to ship` : "";
   const missing = unestimated ? ` ${storyCount(unestimated)} ${unestimated === 1 ? "has" : "have"} no estimate.` : "";
-  return `${points(total)}, ${left} left to ship.${missing}`;
+  return `${points(total)}${waiting}, ${left} left to do.${missing}`;
 }
 
 function CloseButton({ panelId }: { panelId: string }) {
