@@ -66,7 +66,9 @@ export interface InternalReleaseLabel extends StoryMapLabel {
 export interface ReleaseEstimates {
   /** Points across every story in the release that is not cut. */
   total: number;
-  /** Points on stories that are not shipped yet. Merged stories still count. */
+  /** Points on stories that are merged but not shipped yet: done by the team, waiting to reach users. */
+  merged: number;
+  /** Points on stories that are not merged or shipped yet: the work the team still has to do. */
   left: number;
   /** Stories in the total with no estimate. */
   unestimated: number;
@@ -240,7 +242,7 @@ function projectLabel(item: StoryMapLabel): StoryMapLabel {
 /** Leaves the totals out when nothing in the release is estimated, so “no estimates” differs from “0 points”. */
 function releaseEstimates(totals: (ReleaseEstimates & { estimated: number }) | undefined): { estimates?: ReleaseEstimates } {
   if (!totals?.estimated) return {};
-  return { estimates: { total: totals.total, left: totals.left, unestimated: totals.unestimated } };
+  return { estimates: { total: totals.total, merged: totals.merged, left: totals.left, unestimated: totals.unestimated } };
 }
 
 /** Leaves both out for a story that names no one, so a map without personas projects as before. */
@@ -322,14 +324,15 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       // Cut stories have left the release, so they add nothing, as in release progress.
       if (story.status === "cut") continue;
       let totals = estimates.get(story.release);
-      if (!totals) estimates.set(story.release, totals = { total: 0, left: 0, unestimated: 0, estimated: 0 });
+      if (!totals) estimates.set(story.release, totals = { total: 0, merged: 0, left: 0, unestimated: 0, estimated: 0 });
       if (story.estimate === undefined) {
         totals.unestimated++;
         continue;
       }
       totals.estimated++;
       totals.total += story.estimate;
-      if (story.status !== "shipped") totals.left += story.estimate;
+      if (story.status === "merged") totals.merged += story.estimate;
+      else if (story.status !== "shipped") totals.left += story.estimate;
     }
     // Stalled needs to know when the story became in progress, so it only works with history.
     const stalledAfterWeeks = history ? stalledThreshold(map, options.stalledAfterWeeks) : 0;

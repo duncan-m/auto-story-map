@@ -44,7 +44,7 @@ These are proposals. Each is easy to change during review.
 | A. The field | An optional `estimate` on each story, a number from the scale 1, 2, 3, 5, 8 or 13. Any other value is a validation error. |
 | B. The unit | Story points only, labelled “pts”. No per-map unit setting in this round. |
 | C. What the total counts | Every story in the release except `cut` ones, because cut stories have left the release. This matches release progress. |
-| D. What “left” counts | Stories that are not `shipped` or `cut`. Merged stories still count as left, because their users cannot use them yet. See [open question 1](#open-questions). |
+| D. What “left” counts | Stories that are not `merged`, `shipped` or `cut`. Merged points are counted apart, such as “21 pts · 5 merged · 8 left”, because the team has done them but their users cannot use them yet. See [open question 1](#open-questions). |
 | E. Stories with no estimate | They add nothing to the total, and the total says how many there are, such as “21 pts, 8 left · 2 unestimated”. A release with no estimates shows no total at all. |
 | F. Filters | The lane total always counts the whole release, like release progress, so filtering the board does not change it. |
 | G. Validation | A warning for a `planned` or `in-progress` story with no estimate, but only in a release where at least one other story has one. Maps that do not use estimates get no new warnings. |
@@ -126,7 +126,7 @@ The field is additive and optional, so existing maps stay valid and `migrateStor
 
 ## Open questions
 
-1. Should merged stories count as done for “left”? The effort is spent, but users cannot use the work yet. This plan counts them as left, to match “left to ship”.
+1. Should merged stories count as done for “left”? The effort is spent, but users cannot use the work yet. Answered: they count as done. The first version counted them as left, which made a release whose work was all merged look untouched, so the lane now shows merged points apart from what is left.
 2. Should the lane total change with the board's filters, for example to show the points of one persona's stories?
 3. Should a map be able to choose t-shirt sizes or days instead of points, with a `settings.estimateUnit`?
 4. Should the status history record estimate changes, so the board can show when a story grew?

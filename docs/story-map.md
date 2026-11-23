@@ -162,7 +162,7 @@ The customer view never includes notes, impact or progress. It keeps the release
 
 ## Estimate effort
 
-Each story can carry an optional `estimate` in story points. Each release lane then shows its total and how much is left to ship, so a product manager can see whether a release is too big and how far through it the team is.
+Each story can carry an optional `estimate` in story points. Each release lane then shows its total, how much is merged and how much is left to do, so a product manager can see whether a release is too big and how far through it the team is.
 
 ```yaml
 - id: BUILDER-102
@@ -175,12 +175,13 @@ Each story can carry an optional `estimate` in story points. Each release lane t
 
 - **The scale.** Use 1, 2, 3, 5, 8 or 13. Any other number is a validation error. A story bigger than 13 is a sign to split it.
 - **The total** counts every story in the release except `cut` ones, which have left the release, as release progress does.
-- **What is left** counts stories that are not `shipped`. Merged stories still count, because their users cannot use them yet.
-- **Unestimated stories** add nothing to the total, and the total says how many there are, such as “21 pts · 8 left · 2 unestimated”. A release with no estimated story shows no total at all.
+- **What is merged** counts `merged` stories: the team has finished them, but their users cannot use them yet. It is left out of the text when it is 0.
+- **What is left** counts the work the team still has to do: stories that are not `merged` or `shipped`. Shipped and merged points both count as done.
+- **Unestimated stories** add nothing to the total, and the total says how many there are, such as “21 pts · 5 merged · 8 left · 2 unestimated”. A release with no estimated story shows no total at all.
 - **Filters** do not change the total, which always covers the whole release.
 - **Validation** warns about a `planned` or `in-progress` story with no estimate, but only in a release where another story has one, so maps that do not use estimates get no warnings. The warning fails validation only with `--strict`.
 
-On the internal board, a card shows its estimate at the top right, such as “5 pts”. The release lane shows the total under the story count, and keeps it on its one line when the lane is collapsed. The release panel adds a line under progress, such as “21 points, 8 left to ship. 2 stories have no estimate.”, and the story panel lists the estimate with the activity and release.
+On the internal board, a card shows its estimate at the top right, such as “5 pts”. The release lane shows the total under the story count, and keeps it on its one line when the lane is collapsed. The release panel adds a line under progress, such as “21 points, 5 merged and waiting to ship, 8 left to do. 2 stories have no estimate.”, and the story panel lists the estimate with the activity and release.
 
 `story-map diff` shows a change as “Estimate: 3 → 5”. The Visio file adds the estimate to each card, such as “BUILDER-102 · 3 pts”, and to its shape data, and shows each release's total in its header. The CSV has an `Estimate` column, and the JSON export carries each story's `estimate` and each release's `estimates`.
 
@@ -755,7 +756,7 @@ return new Response(storyMapToCsv(view), {
 ```
 
 - Each story is a row with the columns `Activity`, `Release`, `ID`, `Title` and `Estimate`, using activity and release titles, in board order: by release, then activity, then map order. `Estimate` is the story points, or empty when the story has none. When the map has [personas](#personas-and-jobs-to-be-done), two more columns follow: `Personas`, the titles of the personas the story is for, primary first, and `Jobs`, the IDs of the jobs it serves, each joined by “; ” and empty when it names none. Maps without personas keep the five columns.
-- A collapsed release is one row, with its title in `Release`, “Collapsed · N stories” in `Title` and its points total, such as “21 pts · 8 left”, in `Estimate`.
+- A collapsed release is one row, with its title in `Release`, “Collapsed · N stories” in `Title` and its points total, such as “21 pts · 5 merged · 8 left”, in `Estimate`.
 - Release notes and impact are left out, because they do not fit a row per story. The Visio file has them.
 - The same rules apply as for Visio: the whole map, internal views only, and at most 200 of the most recently changed stories. The CSV cannot say how many were left out, so `story-map export` reports it.
 - Fields are quoted following RFC 4180, with CRLF line endings. A field starting with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front, so spreadsheets do not run it as a formula. The file starts with a UTF-8 byte order mark so Excel reads non-ASCII titles.
