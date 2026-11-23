@@ -595,11 +595,12 @@ function PersonaAvatars({ personas, panelIds }: { personas: readonly PersonaLabe
 
 /**
  * A job statement with its lead words in bold: “When …, I want …, so that ….”
- * With `breaks`, “I want” and “so that” each start a new line, as in the story panel.
+ * With `breaks`, “I want” and “so that” each start a new line, spaced a little apart, as in the story panel.
  */
 function JobStatement({ job, breaks = false }: { job: StoryMapJob; breaks?: boolean }) {
-  const gap = breaks ? <br /> : " ";
-  return <><b>When</b> {job.situation},{gap}<b>I want</b> {job.motivation},{gap}<b>so that</b> {withoutFinalPunctuation(job.outcome)}.</>;
+  const outcome = <><b>so that</b> {withoutFinalPunctuation(job.outcome)}.</>;
+  if (breaks) return <><span className="esm-job-line"><b>When</b> {job.situation},</span><span className="esm-job-line"><b>I want</b> {job.motivation},</span>{outcome}</>;
+  return <><b>When</b> {job.situation}, <b>I want</b> {job.motivation}, {outcome}</>;
 }
 
 /** Marks a persona's core job, the first in their list. */
