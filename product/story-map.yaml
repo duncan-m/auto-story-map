@@ -497,6 +497,26 @@ releases:
         expected: Review lead time, scope change since baseline and observed flow in one place
         solves: Guessing delivery dates from recent commits or individual stories
         draft: true
+  - id: v0-8-4
+    title: "0.8.4: Dependency planning"
+    summary: Explore story prerequisites visually, see what can proceed and identify dependency risks without maintaining another planning system.
+    notes: |
+      Planning proposal only. Internal Dependencies tab backed by the existing dependsOn links. First deliver deterministic readiness and the graph, then focus/filter views and suggested topological delivery order. No editable graph or new dependency storage.
+
+      Plan: docs/plans/visual-dependency-map.md
+    impact:
+      - metric: Time to identify unfinished prerequisites for a story
+        expected: One focused visual review instead of opening each related story
+        solves: Unclear build order across dependent stories
+        draft: true
+      - metric: Time to find a feasible sequence for a release
+        expected: A visible ready set and dependency-respecting ordering
+        solves: Repeated manual tracing of story links
+        draft: true
+      - metric: Release-order conflicts identified before implementation
+        expected: Warnings for dependencies on later releases or cut stories
+        solves: Hidden cross-release and cut-story blockers
+        draft: true
 stories:
   # 0.1.0
   - id: ESM-101
@@ -1722,3 +1742,58 @@ stories:
     summary: Show cumulative status inventory, WIP and blocked ageing to identify delivery bottlenecks.
     sources:
       - docs/plans/delivery-metrics.md#8-display-cumulative-flow-and-bottlenecks
+
+  # Proposed visual dependency map (planning only)
+  - id: ESM-139
+    title: Understand which stories are ready to start
+    activity: track
+    release: v0-8-4
+    status: planned
+    jobs:
+      - triage-backlog
+      - plan-and-build
+      - pick-up-work
+    summary: Derive ready, waiting and at-risk dependency states from existing dependsOn links and expose actual blocking prerequisites without changing story statuses.
+    sources:
+      - docs/plans/visual-dependency-map.md#1-derive-readiness-and-dependency-risks
+  - id: ESM-140
+    title: Explore dependencies as a visual graph
+    activity: explore
+    release: v0-8-4
+    status: planned
+    dependsOn:
+      - ESM-139
+    jobs:
+      - triage-backlog
+      - plan-and-build
+    summary: Show an internal, accessible, read-only dependency graph with arrows from prerequisites to dependents, with nodes opening existing story details.
+    sources:
+      - docs/plans/visual-dependency-map.md#2-explore-dependencies-as-a-graph
+  - id: ESM-141
+    title: Focus dependency views on a release or story
+    activity: explore
+    release: v0-8-4
+    status: planned
+    dependsOn:
+      - ESM-140
+    jobs:
+      - agree-first-release-plan
+      - triage-backlog
+    summary: Filter the graph to a release or story and expand its dependency chain, keeping relevant prerequisites from other releases visible and sharing the selected view by URL.
+    sources:
+      - docs/plans/visual-dependency-map.md#3-focus-on-a-release-or-story
+  - id: ESM-142
+    title: Suggest delivery order and highlight dependency risks
+    activity: track
+    release: v0-8-4
+    status: planned
+    dependsOn:
+      - ESM-139
+      - ESM-141
+    jobs:
+      - plan-and-build
+      - agree-first-release-plan
+      - pick-up-work
+    summary: Show the dependency-ready set and a valid topological delivery sequence, with unfinished and cross-release prerequisites highlighted without implying business priority.
+    sources:
+      - docs/plans/visual-dependency-map.md#4-suggest-delivery-order-and-surface-risks
