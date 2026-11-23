@@ -1052,7 +1052,7 @@ stories:
     title: Copy an agent brief from the story and release panels
     activity: plan
     release: v0-7-5
-    status: planned
+    status: in-progress
     estimate: 2
     dependsOn:
       - ESM-123
@@ -1062,6 +1062,7 @@ stories:
     notes: Works without JavaScript as a closed details block. Never shown in the customer view.
     sources:
       - docs/plans/agent-briefs.md#2-copy-the-brief-from-the-panel
+      - docs/story-map.md#copy-a-brief-from-the-board
   - id: ESM-125
     title: Open an agent brief in Claude or ChatGPT
     activity: plan

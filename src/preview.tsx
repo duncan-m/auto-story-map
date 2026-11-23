@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { relative, sep } from "node:path";
 import type { ReactNode } from "react";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -196,7 +197,9 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
       return;
     }
 
-    const map = getStoryMapPage(document, viewer, { ...access, searchParams: url.searchParams });
+    // The page writes an agent brief for each open story and release panel, naming the map as it is in the repository.
+    const brief = isApi ? undefined : { mapPath: relative(process.cwd(), options.map).split(sep).join("/") || options.map };
+    const map = getStoryMapPage(document, viewer, { ...access, searchParams: url.searchParams, ...(brief ? { brief } : {}) });
     const message = "This map has visibility: internal, so signed-in customers see nothing. Set visibility: all-users and add customer copy to show it to them.";
     if (isApi) {
       response.writeHead(map ? 200 : 403, { ...headers, "Content-Type": "application/json; charset=utf-8" }).end(JSON.stringify(map ?? { error: message }));

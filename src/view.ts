@@ -1,3 +1,4 @@
+import { storyMapBrief, type StoryMapBriefOptions } from "./brief.js";
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
 import type { StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
@@ -34,6 +35,12 @@ export interface StoryMapAccessOptions<Viewer extends StoryMapViewer = StoryMapV
   stalledAfterWeeks?: number;
   /** Time to measure how long stories have been in progress from. Defaults to now. */
   now?: Date;
+  /**
+   * Writes an agent brief, with `storyMapBrief`, for each story still to build and each release
+   * with planned or in-progress stories, for the board's Agent brief section. Pass `true`, or the
+   * brief's options, such as `mapPath` and `readFirst`. Off by default. Internal views only.
+   */
+  brief?: true | StoryMapBriefOptions;
 }
 
 export const defaultInternalRoles: readonly string[] = ["engineer", "super-admin"];
@@ -57,6 +64,8 @@ export interface InternalReleaseLabel extends StoryMapLabel {
   storyCounts: Record<StoryStatus, number>;
   /** Effort totals for the release. Absent when no story in the release has an estimate. */
   estimates?: ReleaseEstimates;
+  /** The release's agent brief, when the view was asked for briefs and the release has planned or in-progress stories. */
+  brief?: string;
 }
 
 /**
@@ -165,6 +174,8 @@ export interface InternalStoryCard extends StoryCard {
   changes?: StoryChangeEntry[];
   /** How many older changes the history left out for this story. */
   moreChanges?: number;
+  /** The story's agent brief, when the view was asked for briefs and the story is planned, in progress or blocked. */
+  brief?: string;
 }
 
 /** A test or group tagged with a story, as internal viewers see it. */
@@ -289,6 +300,22 @@ function storyDependencies(map: StoryMapDocument) {
       ...(dependents.has(story.id) ? { dependents: dependents.get(story.id)! } : {}),
     };
   };
+}
+
+/** Statuses of the stories a brief can hand to an agent: work that is still to do. */
+const briefStatuses: ReadonlySet<StoryStatus> = new Set(["planned", "in-progress", "blocked"]);
+
+/**
+ * Adds the agent briefs to an internal view before any filter, because a brief lists the stories
+ * around its target. Filters keep them on the stories and releases they keep.
+ */
+function attachBriefs(view: StoryMapView, options: StoryMapBriefOptions) {
+  if (view.audience !== "internal") return;
+  const briefs = view.stories.map(story => briefStatuses.has(story.status) ? storyMapBrief(view, { ...options, story: story.id }) : undefined);
+  const releaseBriefs = view.releases.map(release =>
+    release.storyCounts.planned + release.storyCounts["in-progress"] > 0 ? storyMapBrief(view, { ...options, release: release.id }) : undefined);
+  view.stories.forEach((story, index) => { if (briefs[index]) story.brief = briefs[index]; });
+  view.releases.forEach((release, index) => { if (releaseBriefs[index]) release.brief = releaseBriefs[index]; });
 }
 
 /** Leaves the totals out when nothing in the release is estimated, so “no estimates” differs from “0 points”. */
@@ -432,7 +459,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       })),
       activeStories: personaCounts.get(persona.id) ?? 0,
     }));
-    return {
+    const internalView: StoryMapView = {
       audience: "internal",
       title: map.title,
       summary: map.summary,
@@ -479,6 +506,8 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       ...(options.tests ? { testsIndexed: true as const, testsGeneratedAt: options.tests.generatedAt } : {}),
       ...(history?.changes ? { changesIndexed: true as const } : {}),
     };
+    if (options.brief) attachBriefs(internalView, options.brief === true ? {} : options.brief);
+    return internalView;
   }
 
   if (map.visibility !== "all-users" || !map.customer) return null;

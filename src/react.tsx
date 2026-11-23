@@ -832,6 +832,9 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
           )}
         </section>
       )}
+      {internal && story.brief && (
+        <AgentBrief brief={story.brief} panelId={panelId} copied={`Copied brief: ${story.id}`} />
+      )}
       {internal && (story.lastEdit
         ? (
           <p className="esm-updater">
@@ -920,6 +923,33 @@ function CopyLink({ href, label }: { href?: string; label: string }) {
       <LinkIcon /><span data-esm-copy-label="">Copy link</span><span className="esm-visually-hidden"> to {label}</span>
     </a>
   );
+}
+
+/**
+ * The panel's agent brief from `getStoryMapForViewer({ brief })`: a closed `<details>` with
+ * the brief in a `<pre>` to select and copy by hand, and a **Copy brief** button that board.js
+ * shows and wires up. `copied` is what board.js says once it has copied, such as “Copied brief: ESM-111”.
+ */
+function AgentBrief({ brief, panelId, copied }: { brief: string; panelId: string; copied: string }) {
+  const briefId = `${panelId}-brief`;
+  return (
+    <section className="esm-detail-section esm-brief" aria-labelledby={`${panelId}-brief-heading`}>
+      <h4 id={`${panelId}-brief-heading`}>Agent brief</h4>
+      <p className="esm-brief-intro">A prompt to start a coding agent on this work, with the plan, scope and the repository's rules.</p>
+      <button type="button" className="esm-copy-brief" data-esm-copy-brief={briefId} data-esm-copied={copied} hidden>
+        <span data-esm-copy-label="">Copy brief</span>
+      </button>
+      <details className="esm-brief-details">
+        <summary>Show the brief</summary>
+        <pre className="esm-brief-text" id={briefId} tabIndex={0}>{brief}</pre>
+      </details>
+    </section>
+  );
+}
+
+/** “0.7.5” from “0.7.5: Evidence and claims for agents”, or the whole title when it has no version. */
+function releaseShortName(title: string) {
+  return /^\s*(v?\d+(?:\.\d+)*)\s*:/i.exec(title)?.[1] ?? title;
 }
 
 function CloseButton({ panelId }: { panelId: string }) {
@@ -1041,6 +1071,13 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
         ))}
         {filtered && hidden > 0 && <p className="esm-release-hidden">{`${hidden} more hidden by the current filters.`}</p>}
       </section>
+      {release.brief && (
+        <AgentBrief
+          brief={release.brief}
+          panelId={panelId}
+          copied={`Copied brief: ${releaseShortName(release.title)}, ${plural(release.storyCounts.planned + release.storyCounts["in-progress"], "story", "stories")}`}
+        />
+      )}
     </div>
   );
 }

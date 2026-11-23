@@ -4,6 +4,12 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
+### Agent brief on the board
+
+- New `brief` option for `getStoryMapForViewer` and `getStoryMapPage`. Pass `true`, or the options of `storyMapBrief`, and each planned, in-progress or blocked story, and each release with planned or in-progress stories, gets its agent brief as `brief` on the internal view. Briefs are written before the filters, so a search does not change them. Off by default, and never on customer views. The JSON export and the CLI's read commands leave `brief` out, and `StoryMapJsonStory` and `StoryMapJsonRelease` no longer include it.
+- Internal story and release panels with a brief have an **Agent brief** section: a closed **Show the brief** block with the brief to select, and a **Copy brief** button that board.js shows and wires up, saying what it copied, such as “Copied brief: ESM-111”. New board.js export `enhanceStoryMapBriefs`, and classes `esm-brief`, `esm-brief-intro`, `esm-copy-brief`, `esm-brief-details` and `esm-brief-text`. `story-map preview` and the demo turn briefs on. See [Copy a brief from the board](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#copy-a-brief-from-the-board).
+- `storyMapBrief` works out how far to cut a long brief from its lines' sizes, so writing a brief for every story on a 1,000-story map takes about a seventh of the time.
+
 ### Story dependencies
 
 - Stories can list the stories they depend on in a new optional `dependsOn`, up to 10 story IDs. Validation rejects unknown, repeated and self dependencies and cycles, and warns when a story depends on a cut story. See [Record dependencies](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#record-dependencies).

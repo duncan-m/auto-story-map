@@ -246,11 +246,45 @@ export function enhanceStoryMapPermalinks(root: ParentNode = document) {
   }
 }
 
+const enhancedBriefs = new WeakSet<Element>();
+
+/**
+ * Shows each panel's **Copy brief** button and makes it copy the agent brief, saying what it
+ * copied, such as “Copied brief: ESM-111”. Without clipboard access the button stays hidden,
+ * and the brief can still be selected in its details block. Safe to call more than once.
+ */
+export function enhanceStoryMapBriefs(root: ParentNode = document) {
+  if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) return;
+  for (const board of root.querySelectorAll<HTMLElement>(".esm-board")) {
+    if (enhancedBriefs.has(board)) continue;
+    enhancedBriefs.add(board);
+    for (const button of board.querySelectorAll<HTMLButtonElement>("button[data-esm-copy-brief]")) button.hidden = false;
+    board.addEventListener("click", event => {
+      const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button[data-esm-copy-brief]") : null;
+      if (!button) return;
+      const text = document.getElementById(button.dataset.esmCopyBrief ?? "");
+      if (!text || !board.contains(text)) return;
+      navigator.clipboard.writeText(text.textContent ?? "").then(() => {
+        const label = button.querySelector("[data-esm-copy-label]");
+        const copied = button.dataset.esmCopied || "Copied brief";
+        if (label) label.textContent = "Copied";
+        button.dataset.copied = "";
+        announce(board, copied);
+        setTimeout(() => {
+          if (label) label.textContent = "Copy brief";
+          delete button.dataset.copied;
+        }, copiedMs);
+      }, () => announce(board, "Could not copy the brief. Open Show the brief and select it to copy it."));
+    });
+  }
+}
+
 function enhance() {
   enhanceStoryMapFilters();
   enhanceStoryMapReleases();
   enhanceStoryMapMenus();
   enhanceStoryMapPermalinks();
+  enhanceStoryMapBriefs();
 }
 
 if (typeof document !== "undefined") {
