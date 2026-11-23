@@ -1003,6 +1003,8 @@ stories:
     release: v0-7-5
     status: planned
     estimate: 2
+    dependsOn:
+      - ESM-105
     jobs:
       - get-oriented
       - update-the-map
@@ -1030,6 +1032,8 @@ stories:
     release: v0-7-5
     status: planned
     estimate: 2
+    dependsOn:
+      - ESM-123
     jobs:
       - plan-and-build
     summary: Internal story and release panels have an Agent brief section with the brief to read, and a Copy brief button that says what it copied.
@@ -1042,6 +1046,8 @@ stories:
     release: v0-7-5
     status: planned
     estimate: 2
+    dependsOn:
+      - ESM-124
     jobs:
       - plan-and-build
     summary: Hosts can turn on Open in Claude and Open in ChatGPT links in the brief section, which start a new web chat with the brief filled in.
@@ -1469,6 +1475,9 @@ stories:
     release: v0-8-0
     status: planned
     estimate: 5
+    dependsOn:
+      - ESM-105
+      - ESM-106
     jobs:
       - pick-up-work
       - update-the-map
@@ -1494,6 +1503,8 @@ stories:
     release: v0-8-0
     status: planned
     estimate: 5
+    dependsOn:
+      - ESM-105
     jobs:
       - draft-first-map
       - reconstruct-current-product
@@ -1521,6 +1532,7 @@ stories:
     dependsOn:
       - ESM-105
       - ESM-116
+      - ESM-123
     jobs:
       - pick-up-work
       - plan-and-build
@@ -1536,6 +1548,7 @@ stories:
     estimate: 5
     dependsOn:
       - ESM-112
+      - ESM-124
     jobs:
       - plan-and-build
     summary: The writable local preview has a Build button that starts Claude Code or Codex in the repository with the story's or release's brief as its first message.
