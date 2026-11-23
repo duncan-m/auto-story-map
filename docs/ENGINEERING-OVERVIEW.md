@@ -467,6 +467,7 @@ npm run demo
 
 - reads `product/story-map.yaml` on every request, so YAML edits show up on refresh,
 - serves `dist/board.js` at `/story-map-board.js`, which `example/host.mjs` loads, so filters apply as they change,
+- serves `example/favicon.svg` at `/favicon.svg` as the tab icon,
 - builds history from this repository's Git history at startup, allowing a shallow clone, and logs a warning if Git is unavailable,
 - starts as Super admin, and offers Regular user, Product manager, Engineer, Super admin and Guest views. It passes a custom `canViewInternal` that also admits `product-manager`, to show that option in use,
 - links sources to this repository on GitHub with `sourceBaseUrl`.

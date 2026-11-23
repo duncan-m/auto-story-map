@@ -3,10 +3,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { getStoryMapForViewer, getStoryMapPage, storyMapExportResponse, storyMapResponseHeaders } from "auto-story-map";
 import { StoryMapBoard } from "auto-story-map/react";
 
-// The demo's tab icon: a story map's backbone and card columns. A real host keeps its own favicon.
-const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect fill="#5046d5" width="32" height="32" rx="7"/><rect fill="#fff" x="5" y="5" width="22" height="5" rx="1.5"/><g fill="#c9c4f5"><rect x="5" y="12.5" width="6" height="4" rx="1"/><rect x="5" y="18" width="6" height="4" rx="1"/><rect x="13" y="12.5" width="6" height="4" rx="1"/><rect x="13" y="18" width="6" height="4" rx="1"/><rect x="13" y="23.5" width="6" height="4" rx="1"/><rect x="21" y="12.5" width="6" height="4" rx="1"/></g></svg>`;
-const faviconHref = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
-
 // The enclosing app supplies a viewer from its verified session.
 // `target` is the request URL or path, including any `q` and `status` filter parameters.
 export function makeStoryMapResponse(target, document, viewer, options = {}) {
@@ -50,7 +46,8 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
       h("meta", { charSet: "UTF-8" }),
       h("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
       h("title", null, map?.title ?? "Story map"),
-      h("link", { rel: "icon", type: "image/svg+xml", href: faviconHref }),
+      // The demo's tab icon, from example/favicon.svg. A real host keeps its own favicon.
+      h("link", { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }),
       h("link", { rel: "stylesheet", href: "/story-map.css" }),
       h("link", { rel: "stylesheet", href: "/example-host.css" }),
       // Optional: applies the filters as soon as they change, and keeps collapsed lanes in the export links. The board works without it.
