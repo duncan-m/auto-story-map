@@ -163,6 +163,33 @@ test("ESM-129: cards show a count of the stories they depend on, to the right of
   assert.doesNotMatch(renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, engineer) })), /esm-dependency|Dependencies/);
 });
 
+test("ESM-129: cards count only the dependencies not yet merged or shipped, and panels still list them all", () => {
+  const document = parseStoryMap(withDependencies(chained));
+  document.stories.find(story => story.id === "BUILDER-101").status = "merged";
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(document, engineer) }));
+  const card = id => html.match(new RegExp(`<button type="button" class="esm-card" id="esm-story-${id}"[\\s\\S]*?</button>`))[0];
+  const panels = html.match(/<div class="esm-detail" id="[^"]+-story-\d+"[\s\S]*?(?=<div class="esm-detail[" ]|<\/section>$)/g);
+  const panel = id => panels.find(item => item.includes(`<p class="esm-card-id">${id}</p>`));
+
+  // Every dependency delivered: no count on the card.
+  assert.doesNotMatch(card("BUILDER-102"), /esm-dependency-count/);
+  // One of two delivered: the card counts the other, and says so.
+  assert.match(card("BUILDER-103"), /<span class="esm-dependency-count" title="Depends on 1 story not yet merged or shipped: BUILDER-102">[\s\S]*?<span aria-hidden="true">1<\/span>/);
+
+  // The panels keep the full count and list every dependency with its status.
+  assert.match(panel("BUILDER-102"), /title="Depends on 1 story: BUILDER-101"/);
+  assert.match(panel("BUILDER-102"), /Depends on<\/h5>[\s\S]*?BUILDER-101[\s\S]*?data-status="merged"/);
+  assert.match(panel("BUILDER-103"), /title="Depends on 2 stories: BUILDER-101, BUILDER-102"/);
+
+  // Shipped counts as delivered too; blocked and cut do not.
+  for (const [status, shown] of [["shipped", false], ["blocked", true], ["cut", true]]) {
+    document.stories.find(story => story.id === "BUILDER-101").status = status;
+    const board = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(document, engineer) }));
+    const found = board.match(/<button type="button" class="esm-card" id="esm-story-BUILDER-102"[\s\S]*?<\/button>/)[0];
+    assert.equal(/esm-dependency-count/.test(found), shown, status);
+  }
+});
+
 test("ESM-129: story panels list what they depend on and what is waiting for them", () => {
   const view = getStoryMapForViewer(parseStoryMap(withDependencies(chained)), engineer);
   const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
