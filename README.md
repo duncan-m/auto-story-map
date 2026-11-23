@@ -131,8 +131,6 @@ In your host repo:
 2. Keep your existing `product/story-map.yaml`.
 3. Rebuild the app with the updated stylesheet.
 
-**0.7.4 changes the licence from Apache-2.0 to the GNU AGPL version 3 only.**
-
 What each version needs from you:
 
 | Version | What it adds | Upgrade steps |
