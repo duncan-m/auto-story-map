@@ -1067,7 +1067,7 @@ stories:
     title: Open an agent brief in Claude or ChatGPT
     activity: plan
     release: v0-7-5
-    status: planned
+    status: in-progress
     estimate: 2
     dependsOn:
       - ESM-124
@@ -1078,6 +1078,7 @@ stories:
     sources:
       - docs/plans/agent-briefs.md#3-open-the-brief-in-a-web-agent
       - docs/plans/agent-briefs.md#ui-mockup
+      - docs/story-map.md#open-a-brief-in-a-web-agent
   - id: ESM-129
     title: Show a story's dependencies on its card and panel
     activity: explore

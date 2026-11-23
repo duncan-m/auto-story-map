@@ -1325,8 +1325,8 @@ test("ESM-122: board.js opens the permalinked panel, expands its lane and copies
   const collapse = { checked: true };
   const opener = { closest: selector => selector === ".esm-lane" ? { querySelector: () => collapse } : null };
   const status = { textContent: "" };
-  const label = { textContent: "Copy link" };
-  const link = { dataset: {}, getAttribute: () => "?story=BUILDER-103#esm-story-BUILDER-103", querySelector: () => label };
+  const label = { textContent: "Copy link", dataset: {} };
+  const link = { dataset: {}, getAttribute: () => "?story=BUILDER-103#esm-story-BUILDER-103", querySelector: () => label, closest: () => null };
   class FakeElement { closest() { return link; } }
   let click;
   const board = {
@@ -3080,7 +3080,7 @@ test("ESM-414: board.js applies the status filter when its menu closes with a ch
   assert.equal(storage.get("esm-filter-focus"), "status", "focus returns to the status button after the reload");
 
   setOpen(true);
-  listeners.keydown({ key: "Escape" });
+  listeners.keydown({ key: "Escape", preventDefault() {} });
   assert.equal(menu.open, false, "Escape closes the menu");
 });
 
