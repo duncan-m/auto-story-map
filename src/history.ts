@@ -18,6 +18,8 @@ export interface StoryHistoryEvent {
   mergedBy?: string;
   /** Commit that brought the change onto the branch. */
   commit: string;
+  /** Number of the pull request or merge request that commit came from, when its message records one. Absent in files written before 0.7.4. */
+  pullRequest?: number;
 }
 
 /** The latest commit that changed any of a story’s fields, including moving it. */
@@ -28,6 +30,8 @@ export interface StoryLastEdit {
   /** Who to credit: the story’s `updatedBy` when that edit set it, otherwise the commit author, or the merger when the author is a bot. */
   by?: string;
   commit: string;
+  /** Number of the pull request or merge request the commit came from, when its message records one. Absent in files written before 0.7.4. */
+  pullRequest?: number;
 }
 
 /** A version of the map that history could not read, so its changes are missing. */
@@ -36,6 +40,44 @@ export interface SkippedStoryMapVersion {
   /** Why it could not be read, such as the map being missing or not valid YAML. */
   reason: string;
 }
+
+/**
+ * A pull request or direct commit on the history's branch whose title, message
+ * or branch name names one or more stories, found by `story-map history`.
+ */
+export interface StoryChange {
+  /** Stories it names that are still in the map, in map order. */
+  storyIds: string[];
+  /** The pull request or merge request number, when the commit message records one. Absent for a direct commit. */
+  pullRequest?: number;
+  /** The pull request title, or the commit subject for a direct commit. Untrusted text. */
+  title?: string;
+  /** The merged branch, when the merge commit names it. Untrusted text. */
+  branch?: string;
+  /** Commit that brought the change onto the branch: the merge, squash or direct commit. */
+  commit: string;
+  /** UTC time the change reached the branch. */
+  at: string;
+  /** Who wrote it: the commit author, or for a merge the author of the branch's latest commit, or the merger when that is a bot. */
+  by?: string;
+  /** Who merged it, when Git records it. */
+  mergedBy?: string;
+  /** Commits on the merged branch, for a merge commit. */
+  commitCount?: number;
+}
+
+/** Changes a story has beyond the ones listed for it. */
+export interface StoryMoreChanges {
+  storyId: string;
+  count: number;
+}
+
+/** Most changes listed for one story. Older ones are counted in `moreChanges`. */
+export const historyChangesPerStory = 30;
+/** Most changes a history file lists. */
+export const historyChangesMaxItems = 20_000;
+/** The longest change `title` or `branch` a history file can hold, in Unicode code points. */
+export const historyChangeTextMaxLength = 200;
 
 /** Most skipped versions a history file lists. `skippedCount` counts them all. */
 export const historySkippedMaxItems = 100;
@@ -52,6 +94,14 @@ export interface StoryMapHistory {
   skipped?: SkippedStoryMapVersion[];
   /** How many versions were skipped in all, which can be more than `skipped` lists. */
   skippedCount?: number;
+  /**
+   * Pull requests and direct commits that name a story, newest first, at most
+   * `historyChangesPerStory` for each story. Absent in files written before
+   * 0.7.4, so an empty list means none were found.
+   */
+  changes?: StoryChange[];
+  /** Stories with more changes than `changes` lists for them. */
+  moreChanges?: StoryMoreChanges[];
 }
 
 /** The longest `by` or `mergedBy` name a history file can hold, in Unicode code points. */
@@ -82,6 +132,10 @@ const reason = z.string()
   .refine(withinCodePoints(historyReasonMaxLength), `Use at most ${historyReasonMaxLength} characters.`);
 const at = z.iso.datetime({ offset: true });
 const commit = z.string().regex(/^[0-9a-f]{7,64}$/);
+const changeText = z.string().trim().min(1)
+  .refine(withinCodePoints(historyChangeTextMaxLength), `Use at most ${historyChangeTextMaxLength} characters.`);
+const storyId = z.string().min(1).max(64);
+const pullRequest = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
 export const storyMapHistorySchema = z.object({
   version: z.literal(1),
@@ -97,18 +151,35 @@ export const storyMapHistorySchema = z.object({
     by: name.optional(),
     mergedBy: name.optional(),
     commit,
+    pullRequest: pullRequest.optional(),
   })).max(100_000),
   lastEdits: z.array(z.object({
     storyId: z.string().min(1).max(64),
     at,
     by: name.optional(),
     commit,
+    pullRequest: pullRequest.optional(),
   })).max(100_000).optional(),
   skipped: z.array(z.object({
     commit,
     reason: reason.min(1),
   })).max(historySkippedMaxItems).optional(),
   skippedCount: z.number().int().min(0).optional(),
+  changes: z.array(z.object({
+    storyIds: z.array(storyId).min(1).max(1000),
+    pullRequest: pullRequest.optional(),
+    title: changeText.optional(),
+    branch: changeText.optional(),
+    commit,
+    at,
+    by: name.optional(),
+    mergedBy: name.optional(),
+    commitCount: z.number().int().positive().optional(),
+  })).max(historyChangesMaxItems).optional(),
+  moreChanges: z.array(z.object({
+    storyId,
+    count: z.number().int().positive(),
+  })).max(100_000).optional(),
 });
 
 // The interfaces above document the format and the schema checks it. Fail the

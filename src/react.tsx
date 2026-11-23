@@ -5,15 +5,33 @@ import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
+import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
 const changedWithinChoices = [[1, "Last day"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]] as const;
+
+/**
+ * Link templates for repositories that do not use GitHub's URLs, such as
+ * `{ commit: "https://gitlab.com/g/p/-/commit/{commit}", pullRequest: "https://gitlab.com/g/p/-/merge_requests/{number}" }`.
+ * `{commit}` is the full commit hash and `{number}` the pull request number.
+ */
+export interface StoryMapRepositoryLinks {
+  commit?: string;
+  pullRequest?: string;
+}
 
 export interface StoryMapBoardProps {
   map: StoryMapView;
   /** Base URL for repository-relative sources, such as `https://github.com/org/repo/blob/main/`. */
   sourceBaseUrl?: string;
+  /**
+   * The repository's web address, such as `https://github.com/org/repo`. Internal
+   * boards then link each history line, and the last update, to its commit at
+   * `<repositoryUrl>/commit/<hash>` and its pull request at `<repositoryUrl>/pull/<number>`.
+   */
+  repositoryUrl?: string;
+  /** Templates that replace the `repositoryUrl` links, for GitLab and other hosts. */
+  repositoryLinks?: StoryMapRepositoryLinks;
   /** `light` by default. `auto` follows the viewer's colour scheme preference. */
   theme?: "light" | "dark" | "auto";
   /** Query parameters to keep when the filter form is submitted, such as a host's own page state. */
@@ -180,7 +198,67 @@ function StalledLabel({ since, settings }: { since: string; settings: DateSettin
   );
 }
 
-function HistoryList({ entries, settings, labelledBy }: { entries: StoryHistoryEntry[]; settings: DateSettings; labelledBy: string }) {
+interface RepositoryLinker {
+  commit(hash: string): string | undefined;
+  pullRequest(number: number): string | undefined;
+  /** A search of the repository's pull requests, on GitHub only. */
+  searchPullRequests(text: string): string | undefined;
+}
+
+/** Keeps a link only when it is an http(s) URL. */
+function webLink(href: string) {
+  try {
+    const url = new URL(href);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Builds commit and pull request links from `repositoryLinks` templates, or
+ * else from `repositoryUrl`. Each link is dropped unless it is http(s).
+ */
+function repositoryLinker(repositoryUrl?: string, templates?: StoryMapRepositoryLinks): RepositoryLinker {
+  const base = repositoryUrl && webLink(repositoryUrl)?.replace(/[?#].*$/, "").replace(/\/+$/, "");
+  const build = (template: string | undefined, path: string, placeholder: RegExp, value: string) => {
+    if (template) return webLink(template.replace(placeholder, encodeURIComponent(value)));
+    return base ? webLink(`${base}/${path}/${encodeURIComponent(value)}`) : undefined;
+  };
+  return {
+    commit: hash => build(templates?.commit, "commit", /\{commit\}/g, hash),
+    pullRequest: number => build(templates?.pullRequest, "pull", /\{number\}/g, String(number)),
+    searchPullRequests: text => base && !templates?.pullRequest && new URL(base).hostname === "github.com"
+      ? webLink(`${base}/pulls?q=${encodeURIComponent(`is:pr ${text}`)}`)
+      : undefined,
+  };
+}
+
+const shortHash = (hash: string) => hash.slice(0, 7);
+
+/** The pull request and commit behind a history line, as links. Nothing without a repository URL. */
+function ChangeLinks({ entry, links }: { entry: { commit: string; pullRequest?: number }; links: RepositoryLinker }) {
+  const pullRequest = entry.pullRequest ? links.pullRequest(entry.pullRequest) : undefined;
+  const commit = links.commit(entry.commit);
+  return (
+    <>
+      {pullRequest && <>
+        {" · "}
+        <a className="esm-history-link" href={pullRequest} {...newTab}>
+          <span className="esm-visually-hidden">Pull request </span>#{entry.pullRequest}<NewTabHint />
+        </a>
+      </>}
+      {commit && <>
+        {" · "}
+        <a className="esm-history-link" href={commit} title={entry.commit} {...newTab}>
+          <span className="esm-visually-hidden">Commit </span><code className="esm-commit-hash">{shortHash(entry.commit)}</code><NewTabHint />
+        </a>
+      </>}
+    </>
+  );
+}
+
+function HistoryList({ entries, settings, labelledBy, links }: { entries: StoryHistoryEntry[]; settings: DateSettings; labelledBy: string; links: RepositoryLinker }) {
   return (
     <ol className="esm-history" aria-labelledby={labelledBy}>
       {entries.map((entry, index) => {
@@ -197,6 +275,7 @@ function HistoryList({ entries, settings, labelledBy }: { entries: StoryHistoryE
             <span className="esm-history-meta">
               <time dateTime={entry.at}>{formatDate(entry.at, settings)}</time>
               {people && ` · ${people}`}
+              <ChangeLinks entry={entry} links={links} />
             </span>
             {entry.reason && <span className="esm-history-reason">{entry.reason}</span>}
           </li>
@@ -314,6 +393,85 @@ function CardTests({ story }: { story: InternalStoryCard }) {
       <span aria-hidden="true">{count}</span>
       <span className="esm-visually-hidden">{label}</span>
     </span>
+  );
+}
+
+function PullRequestIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="4" cy="3.5" r="1.5" /><circle cx="4" cy="12.5" r="1.5" /><circle cx="12" cy="12.5" r="1.5" />
+      <path d="M4 5v6M12 11V6.5a2 2 0 0 0-2-2H7.5M9 3 7.5 4.5 9 6" />
+    </svg>
+  );
+}
+
+function CommitIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+      <circle cx="8" cy="8" r="2.5" /><path d="M1.5 8h4M10.5 8h4" />
+    </svg>
+  );
+}
+
+const commits = (count: number) => `${count} ${count === 1 ? "commit" : "commits"}`;
+
+/** Pull requests and direct commits that name the story, newest first. Titles are untrusted and rendered as text. */
+function ChangesSection({ story, panelId, settings, links }: { story: InternalStoryCard; panelId: string; settings: DateSettings; links: RepositoryLinker }) {
+  const headingId = `${panelId}-changes`;
+  const changes = story.changes ?? [];
+  const more = story.moreChanges ?? 0;
+  const search = more > 0 ? links.searchPullRequests(story.id) : undefined;
+  return (
+    <section className="esm-detail-section esm-changes" aria-labelledby={headingId}>
+      <h4 id={headingId}>Changes</h4>
+      {changes.length === 0 && more === 0 ? (
+        <p className="esm-changes-empty">
+          No pull requests or commits name {story.id} yet. Put the ID in a branch name, pull request title or commit message, such as <code>{`feat/${story.id.toLowerCase()}-…`}</code>.
+        </p>
+      ) : (
+        <ul className="esm-change-list" aria-labelledby={headingId}>
+          {changes.map(change => <ChangeItem key={change.commit} change={change} settings={settings} links={links} />)}
+        </ul>
+      )}
+      {more > 0 && (
+        <p className="esm-changes-more">
+          {search ? <a href={search} {...newTab}>+{more} more<NewTabHint /></a> : `+${more} more`}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function ChangeItem({ change, settings, links }: { change: StoryChangeEntry; settings: DateSettings; links: RepositoryLinker }) {
+  const pullRequest = change.pullRequest !== undefined;
+  const href = (pullRequest ? links.pullRequest(change.pullRequest!) : undefined) ?? links.commit(change.commit);
+  const label = pullRequest ? `#${change.pullRequest}` : shortHash(change.commit);
+  const title = <>
+    {pullRequest ? <span className="esm-change-number">{label}</span> : <code className="esm-commit-hash">{label}</code>}
+    {" "}
+    <span className="esm-change-title">{change.title ?? (pullRequest ? "Pull request" : "Commit")}</span>
+  </>;
+  const date = <time dateTime={change.at}>{formatDate(change.at, settings)}</time>;
+  const meta = pullRequest
+    ? <>
+      merged {date}{change.mergedBy && ` by ${change.mergedBy}`}
+      {change.by && change.by !== change.mergedBy && ` · by ${change.by}`}
+      {change.commitCount !== undefined && ` · ${commits(change.commitCount)}`}
+    </>
+    : <>
+      {date}{change.by && ` · by ${change.by}`}
+      {change.commitCount !== undefined && ` · ${commits(change.commitCount)}`}
+    </>;
+  return (
+    <li className="esm-change" data-kind={pullRequest ? "pull-request" : "commit"}>
+      {pullRequest ? <PullRequestIcon /> : <CommitIcon />}
+      <span className="esm-change-body">
+        {href
+          ? <a className="esm-change-link" href={href} {...newTab}><span className="esm-visually-hidden">{pullRequest ? "Pull request " : "Commit "}</span>{title}<NewTabHint /></a>
+          : <span><span className="esm-visually-hidden">{pullRequest ? "Pull request " : "Commit "}</span>{title}</span>}
+        <span className="esm-change-meta">{meta}</span>
+      </span>
+    </li>
   );
 }
 
@@ -465,8 +623,9 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, settings, stalledAfterWeeks, testsIndexed, lookup, personaPanelIds }: {
+function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds }: {
   story: InternalStoryCard;
+  links: RepositoryLinker;
   lookup: PersonaLookup;
   /** Each persona's panel, by persona ID, so the For row can open it. */
   personaPanelIds: ReadonlyMap<string, string>;
@@ -479,6 +638,7 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
   stalledAfterWeeks?: number;
   /** True when the view has a tests index, so the empty state can show. */
   testsIndexed?: boolean;
+  changesIndexed?: boolean;
 }) {
   const titleId = `${panelId}-title`;
   const sources = internal ? resolveSources(story.sources, sourceBaseUrl) : [];
@@ -558,8 +718,11 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
       {internal && !!story.history?.length && (
         <section className="esm-detail-section">
           <h4 id={`${panelId}-history`}>History</h4>
-          <HistoryList entries={story.history} settings={settings} labelledBy={`${panelId}-history`} />
+          <HistoryList entries={story.history} settings={settings} labelledBy={`${panelId}-history`} links={links} />
         </section>
+      )}
+      {internal && (changesIndexed || !!story.changes?.length || !!story.moreChanges) && (
+        <ChangesSection story={story} panelId={panelId} settings={settings} links={links} />
       )}
       {internal && (testsIndexed || !!story.tests?.length || !!story.moreTests?.length) && (
         <TestsSection story={story} panelId={panelId} sourceBaseUrl={sourceBaseUrl} />
@@ -589,13 +752,23 @@ function StoryDetail({ story, panelId, activityTitle, releaseTitle, internal, so
       {internal && (story.lastEdit
         ? (
           <p className="esm-updater">
-            Last updated <time dateTime={story.lastEdit.at} title={formatDate(story.lastEdit.at, settings)}>{formatRelative(story.lastEdit.at, settings)}</time>
+            Last updated <LastEditTime edit={story.lastEdit} settings={settings} links={links} />
             {story.lastEdit.by && ` by ${story.lastEdit.by}`}
           </p>
         )
         : story.updatedBy && <p className="esm-updater">Last updated by {story.updatedBy}</p>)}
     </div>
   );
+}
+
+/** The last edit's time, linked to its pull request, or its commit when there is none, when the board has a repository URL. */
+function LastEditTime({ edit, settings, links }: { edit: { at: string; commit: string; pullRequest?: number }; settings: DateSettings; links: RepositoryLinker }) {
+  const time = <time dateTime={edit.at} title={formatDate(edit.at, settings)}>{formatRelative(edit.at, settings)}</time>;
+  const pullRequest = edit.pullRequest ? links.pullRequest(edit.pullRequest) : undefined;
+  const href = pullRequest ?? links.commit(edit.commit);
+  if (!href) return time;
+  const label = pullRequest ? `Pull request ${edit.pullRequest}` : `Commit ${shortHash(edit.commit)}`;
+  return <a className="esm-history-link" href={href} {...newTab}>{time}<span className="esm-visually-hidden">, {label}</span><NewTabHint /></a>;
 }
 
 function storyCount(count: number) {
@@ -1388,6 +1561,8 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
 export function StoryMapBoard({
   map,
   sourceBaseUrl,
+  repositoryUrl,
+  repositoryLinks,
   theme = "light",
   preservedParams,
   locale = defaultLocale,
@@ -1401,8 +1576,10 @@ export function StoryMapBoard({
   const internal = map.audience === "internal";
   const stalledAfterWeeks = map.audience === "internal" ? map.stalledAfterWeeks : undefined;
   const testsIndexed = map.audience === "internal" && map.testsIndexed === true;
+  const changesIndexed = map.audience === "internal" && map.changesIndexed === true;
   const filtering = isFiltering(map.filter);
   const settings = dateFormatters(locale, timeZone, now ?? new Date());
+  const links = repositoryLinker(repositoryUrl, repositoryLinks);
 
   const activityTitles = new Map(map.activities.map(activity => [activity.id, activity.title]));
   const releaseTitles = new Map(map.releases.map(release => [release.id, release.title]));
@@ -1583,9 +1760,11 @@ export function StoryMapBoard({
           releaseTitle={releaseTitles.get(story.release)!}
           internal={internal}
           sourceBaseUrl={sourceBaseUrl}
+          links={links}
           settings={settings}
           stalledAfterWeeks={stalledAfterWeeks}
           testsIndexed={testsIndexed}
+          changesIndexed={changesIndexed}
           lookup={lookup}
           personaPanelIds={personaPanelIds}
         />

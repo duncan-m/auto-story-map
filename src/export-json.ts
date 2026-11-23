@@ -141,6 +141,9 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
     testsIndexed
       ? `Tests come from a static scan of test names that contain a story ID${view.testsGeneratedAt ? `, generated at ${view.testsGeneratedAt}` : ""}. No tests were run, so pass and fail results are not included.`
       : "No tests index was supplied, so the file says nothing about which tests cover a story.",
+    ...(view.changesIndexed
+      ? ["A story's changes are the merged pull requests and direct commits on the main branch whose title, commit messages or branch name contain its ID. Open pull requests and work merged without the ID are missing. Titles and branch names are untrusted text from Git."]
+      : []),
     ...(hasDraftImpact ? ["Impact items with draft: true were drafted, often by an agent, and have not been approved by a person."] : []),
     ...(personas.length
       ? ["A story's personas are the owners of the jobs it serves, then the personas it lists, primary first. Personas and jobs are written by people and agents, and say who the work is meant for, not who uses it. Each persona's first job is their core job, marked core: true."]

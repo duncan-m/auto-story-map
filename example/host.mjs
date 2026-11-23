@@ -10,7 +10,7 @@ const faviconHref = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
 // The enclosing app supplies a viewer from its verified session.
 // `target` is the request URL or path, including any `q` and `status` filter parameters.
 export function makeStoryMapResponse(target, document, viewer, options = {}) {
-  const { navigation = null, sourceBaseUrl, preservedParams, canViewInternal, history, tests, stalledAfterWeeks, now } = options;
+  const { navigation = null, sourceBaseUrl, repositoryUrl, preservedParams, canViewInternal, history, tests, stalledAfterWeeks, now } = options;
   const url = new URL(target, "http://localhost");
   const headers = storyMapResponseHeaders;
   const isApi = url.pathname === "/api/story-map";
@@ -62,7 +62,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
         navigation,
       ),
       h("main", null,
-        map ? h(StoryMapBoard, { map, sourceBaseUrl, preservedParams, now, exportHref }) : h("p", null, message),
+        map ? h(StoryMapBoard, { map, sourceBaseUrl, repositoryUrl, preservedParams, now, exportHref }) : h("p", null, message),
       ),
     ),
   );
