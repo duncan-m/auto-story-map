@@ -51,12 +51,12 @@ Explore the board,0.7.3: Personas,ESM-903,Filter the board by persona,2,Product 
 Explore the board,0.7.3: Personas,ESM-904,Open a persona to see jobs and coverage,3,Product manager,plan-release
 Explore the board,0.7.3: Personas,ESM-905,Share approved personas with customers,2,Product manager; Product customer,share-roadmap; see-whats-coming
 Explore the board,0.7.3: Personas,ESM-906,Include personas in exports,2,Coding agent; Product manager,read-the-map; plan-in-other-tools
-Explore the board,0.7.4: Links to code and stories,ESM-805,Link to a story or release with a permalink,3,Product manager,answer-whats-next
-Track delivery,0.7.4: Links to code and stories,ESM-803,Link history lines to their pull request and commit,3,Engineer,find-the-code
-Track delivery,0.7.4: Links to code and stories,ESM-804,Show the pull requests and commits that name a story,8,Engineer,find-the-code
-Plan the map,0.7.5: Evidence and claims for agents,ESM-745,Claim stories so several agents do not clash,5,Coding agent,update-the-map
-Review changes,0.7.5: Evidence and claims for agents,ESM-743,Look up the evidence for a story,5,Coding agent,read-the-map
-Track delivery,0.7.5: Evidence and claims for agents,ESM-747,Suggest shipped from release tags,2,Product manager; Coding agent,track-progress; update-the-map
+Explore the board,0.7.4: Links to code and stories,ESM-122,Link to a story or release with a permalink,3,Product manager,answer-whats-next
+Track delivery,0.7.4: Links to code and stories,ESM-120,Link history lines to their pull request and commit,3,Engineer,find-the-code
+Track delivery,0.7.4: Links to code and stories,ESM-121,Show the pull requests and commits that name a story,8,Engineer,find-the-code
+Plan the map,0.7.5: Evidence and claims for agents,ESM-106,Claim stories so several agents do not clash,5,Coding agent,update-the-map
+Review changes,0.7.5: Evidence and claims for agents,ESM-105,Look up the evidence for a story,5,Coding agent,read-the-map
+Track delivery,0.7.5: Evidence and claims for agents,ESM-107,Suggest shipped from release tags,2,Product manager; Coding agent,track-progress; update-the-map
 Plan the map,0.7.6: PM improvements,ESM-503,Estimate effort on each story,,Product manager,plan-release; track-progress
-Review changes,0.7.6: PM improvements,ESM-502,Audit the map against the code on a schedule,5,Coding agent; Product manager,update-the-map; track-progress
-Explore the board,0.7.6: PM improvements,ESM-501,Expand activities into steps,8,Product manager,plan-release
+Review changes,0.7.6: PM improvements,ESM-109,Audit the map against the code on a schedule,5,Coding agent; Product manager,update-the-map; track-progress
+Explore the board,0.7.6: PM improvements,ESM-108,Expand activities into steps,8,Product manager,plan-release

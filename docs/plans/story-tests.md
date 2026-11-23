@@ -39,7 +39,7 @@ These are proposals. Each is easy to change during review.
 | D. Which files are scanned | Each `--tests <path>` names a file or folder, and can be repeated. In a folder, the scan reads `*.test.*` and `*.spec.*` files and everything under `test/`, `tests/` and `__tests__/`, with the extensions `.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.mts`, `.cts` and `.tsx`. `node_modules`, `dist`, `build` and dot folders are skipped. `--tests .` scans the whole repository. |
 | E. Where the panel shows tests | A **Tests** section between **History** and **Engineering**, grouped by file. The card face does not change. |
 | F. What the panel shows without a link | Without `sourceBaseUrl`, file names and lines are plain text, like sources. |
-| G. Empty state | When the host supplied an index and a story has no tests, the panel says “No tests are tagged ESM-502 yet” and shows how to tag one. Without an index, the section is left out. |
+| G. Empty state | When the host supplied an index and a story has no tests, the panel says “No tests are tagged ESM-109 yet” and shows how to tag one. Without an index, the section is left out. |
 | H. What validate checks | With `--tests`: an error for a tag naming a story that is not in the map, and a warning for an `in-progress` or `merged` story with no tagged tests. Planned, shipped, blocked and cut stories are not warned about, so existing maps don't fill up with warnings. |
 | I. Search | Test names are not searched. The board's search stays on IDs, titles and summaries. |
 
