@@ -1109,6 +1109,8 @@ stories:
     release: v0-7-5
     status: merged
     estimate: 2
+    tokens: 1824417
+    estimatedCostUsd: 1.45
     dependsOn:
       - ESM-105
     jobs:
