@@ -211,21 +211,20 @@ function splitStoryId(id: string): SplitId | null {
   return start === id.length ? null : [id, id.slice(0, start), id.slice(start)];
 }
 
-/** The next free number for the prefix, after the highest number in the release when it has stories with that prefix. Cut stories count, so an ID is never handed out twice. */
-export function nextStoryId(stories: readonly { id: string; release?: string }[], release: string): string {
-  const inRelease = stories.filter(story => story.release === release).map(story => splitStoryId(story.id)).filter(Boolean) as SplitId[];
+/**
+ * The next number in sequence for the map: one after the highest number with the map's most used prefix, whatever release the story goes in.
+ * Cut stories count, so an ID is never handed out twice. `release` is no longer used and is kept so existing callers still work.
+ */
+export function nextStoryId(stories: readonly { id: string; release?: string }[], _release?: string): string {
   const all = stories.map(story => splitStoryId(story.id)).filter(Boolean) as SplitId[];
-  const pool = inRelease.length ? inRelease : all;
-  if (!pool.length) throw new StoryMapEditError("The map has no numbered story IDs to follow, so choose one with --id.");
-  // The most used prefix in the pool, so a map with one stray ID still follows its own scheme.
+  if (!all.length) throw new StoryMapEditError("The map has no numbered story IDs to follow, so choose one with --id.");
+  // The most used prefix, so a map with one stray ID still follows its own scheme.
   const counts = new Map<string, number>();
-  for (const [, prefix] of pool) counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
+  for (const [, prefix] of all) counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
   const prefix = [...counts].sort((a, b) => b[1] - a[1])[0][0];
-  const sample = pool.find(match => match[1] === prefix)![2];
-  const taken = new Set(all.filter(match => match[1] === prefix).map(match => Number(match[2])));
-  let number = Math.max(...pool.filter(match => match[1] === prefix).map(match => Number(match[2]))) + 1;
-  while (taken.has(number)) number++;
-  return `${prefix}${String(number).padStart(sample.length, "0")}`;
+  const numbered = all.filter(match => match[1] === prefix);
+  const number = Math.max(...numbered.map(match => Number(match[2]))) + 1;
+  return `${prefix}${String(number).padStart(numbered[0][2].length, "0")}`;
 }
 
 type ListOperation = Extract<StoryMapEditOperation, { op: `${"add" | "remove"}-${"source" | "job" | "persona"}` }>;
@@ -283,7 +282,7 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
     }
 
     if (operation.op === "add") {
-      const id = operation.id ?? nextStoryId(intended.stories, operation.release);
+      const id = operation.id ?? nextStoryId(intended.stories);
       if (intended.stories.some(story => story.id === id)) throw new StoryMapEditError(`${id} is already in the map. IDs are never reused, so choose another or leave out --id.`, index);
       const status = operation.status ?? "planned";
       if ((status === "blocked" || status === "cut") !== !!operation.reason) {

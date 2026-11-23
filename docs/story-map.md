@@ -549,7 +549,7 @@ The commands enforce the rules in `AGENTS.md`:
 - **No customer copy by default.** `--customer-title` and `--customer-summary` need `--customer`, once the wording is approved. The summary lists them under customer-facing changes for the PR description.
 - **Drafts stay drafts.** `release-impact` always adds `draft: true`, and nothing removes it. Only a person does, by hand.
 - **No `updatedBy` by default.** Git credits the commit author. `--updated-by <name>` sets it on each story the edit touches, when you edit on someone else's behalf.
-- **IDs are kept.** No edit changes an existing ID. `add` takes the next free number after the highest ID in the story's release, such as `BUILDER-104` after `BUILDER-103`, skipping any number already used, including by cut stories. Pass `--id` to choose one, and an ID already in the map is refused.
+- **IDs are kept.** No edit changes an existing ID. `add` numbers stories in sequence across the whole map, whatever their release: the next ID is one after the highest number in the map, such as `BUILDER-104` after `BUILDER-103`. Cut stories count, and gaps are not filled, so a number is never handed out twice. Pass `--id` to choose one, and an ID already in the map is refused.
 - **Estimates are the team's.** No command sets an estimate. `add` warns when the release uses estimates, so flag the missing one in the PR.
 - The map, and the `--from` file, must be inside the current directory.
 

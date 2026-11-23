@@ -194,8 +194,8 @@ edit
 
 add
   Adds a story, as planned unless --status says otherwise, after the last
-  story in its release. It takes the next free ID after the highest one in the
-  release, counting cut stories so an ID is never reused, or --id. Takes
+  story in its release. It takes the next ID in sequence, one after the highest
+  in the whole map, counting cut stories so an ID is never reused, or --id. Takes
   --source for each source, --job for each job it serves, --persona for each
   persona it helps, and the common edit options in story-map help edit.
 

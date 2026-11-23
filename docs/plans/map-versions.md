@@ -1,14 +1,14 @@
 # Plan: see earlier versions of the map
 
-Status: proposed. The work is ESM-507, ESM-508 and ESM-509 in the **0.7.6: PM improvements** release of the map. The estimates are not agreed yet.
+Status: proposed. The work is ESM-912, ESM-913 and ESM-914 in the **0.7.6: PM improvements** release of the map. The estimates are not agreed yet.
 
 The map already has a version every time it changes, because it lives in Git. But only an agent or someone at ease with Git can use those versions today: `story-map diff` compares the map with one ref, and the history file records each story's status changes. A product manager can't easily answer "what did the plan look like when we agreed 0.7.0?", "what changed in the map last month?" or "which stories did we drop since the last review?" without checking out an old commit.
 
 This plan uses those Git versions as they are, so there's nothing new to record and no second store to keep in sync. Items are numbered in the order they should be built:
 
-1. [Read the map as it was at a version](#1-read-the-map-as-it-was-at-a-version) (ESM-507)
-2. [List the map's versions and compare any two](#2-list-the-maps-versions-and-compare-any-two) (ESM-508)
-3. [Switch the board to an earlier version](#3-switch-the-board-to-an-earlier-version) (ESM-509)
+1. [Read the map as it was at a version](#1-read-the-map-as-it-was-at-a-version) (ESM-912)
+2. [List the map's versions and compare any two](#2-list-the-maps-versions-and-compare-any-two) (ESM-913)
+3. [Switch the board to an earlier version](#3-switch-the-board-to-an-earlier-version) (ESM-914)
 
 ## What counts as a version
 
@@ -78,6 +78,6 @@ The team hasn't agreed estimates for these stories. They fit 0.7.6 because ESM-5
 
 | Story | Points |
 | --- | --- |
-| ESM-507: Read the map as it was at a version | Not agreed |
-| ESM-508: List the map's versions and compare any two | Not agreed |
-| ESM-509: Switch the board to an earlier version | Not agreed |
+| ESM-912: Read the map as it was at a version | Not agreed |
+| ESM-913: List the map's versions and compare any two | Not agreed |
+| ESM-914: Switch the board to an earlier version | Not agreed |

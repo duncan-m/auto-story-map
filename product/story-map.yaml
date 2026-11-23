@@ -791,7 +791,7 @@ stories:
     notes: Local only, on the loopback address, with an Origin check, a start-up token and a refusal when the file changed since the page loaded. The hosted board stays read-only (ESM-404).
     sources:
       - docs/plans/local-triage.md#3-save-changes-from-the-local-preview
-  - id: ESM-507
+  - id: ESM-912
     title: Read the map as it was at a version
     activity: explore
     release: v0-7-6
@@ -802,7 +802,7 @@ stories:
     summary: story-map stories, story, releases, export and preview take --at with a Git ref or a date, and show the map as it was then. Preview adds a banner naming the version.
     sources:
       - docs/plans/map-versions.md#1-read-the-map-as-it-was-at-a-version
-  - id: ESM-508
+  - id: ESM-913
     title: List the map's versions and compare any two
     activity: review
     release: v0-7-6
@@ -813,7 +813,7 @@ stories:
     summary: story-map versions lists each commit that changed the map, newest first, with its tags, date, who to credit, pull request and a one-line count of what changed. story-map diff takes a second ref to compare two versions.
     sources:
       - docs/plans/map-versions.md#2-list-the-maps-versions-and-compare-any-two
-  - id: ESM-509
+  - id: ESM-914
     title: Switch the board to an earlier version
     activity: explore
     release: v0-7-6
@@ -822,7 +822,7 @@ stories:
       - agree-first-release-plan
       - share-roadmap
     summary: The internal board's Version picker shows the map as it was at each named version, from snapshots in the history file, with a banner and a summary of what changed since.
-    notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size. Needs ESM-507 and ESM-508.
+    notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size. Needs ESM-912 and ESM-913.
     sources:
       - docs/plans/map-versions.md#3-switch-the-board-to-an-earlier-version
   - id: ESM-910
@@ -907,7 +907,7 @@ stories:
     jobs:
       - update-the-map
     summary: story-map edit and add change statuses, releases, sources and impact as named operations, printing the diff and validation as a dry run until --write.
-    notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft.
+    notes: Keeps comments and untouched lines as they are, and refuses deletes, customer copy without --customer and removing draft. add numbers new stories in sequence across the whole map, after its highest ID.
     sources:
       - docs/plans/native-cli.md#5-propose-edits
       - docs/story-map.md#change-the-map-from-the-command-line
