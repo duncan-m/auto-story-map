@@ -47,13 +47,13 @@ function onlyStoryChanged(before, after, id) {
 test("ESM-744: each edit operation changes only its story's lines", async () => {
   const cases = [
     [{ op: "status", id: "ESM-744", status: newStatus }, `status: ${newStatus}`],
-    [{ op: "status", id: "ESM-745", status: "cut", reason: "Teams run one agent at a time." }, "statusReason: Teams run one agent at a time."],
-    [{ op: "release", id: "ESM-743", release: "v0-7-6" }, "release: v0-7-6"],
-    [{ op: "activity", id: "ESM-743", activity: "track" }, "activity: track"],
+    [{ op: "status", id: "ESM-106", status: "cut", reason: "Teams run one agent at a time." }, "statusReason: Teams run one agent at a time."],
+    [{ op: "release", id: "ESM-105", release: "v0-7-6" }, "release: v0-7-6"],
+    [{ op: "activity", id: "ESM-105", activity: "track" }, "activity: track"],
     [{ op: "title", id: "ESM-741", title: "Read the map: stories, releases" }, 'title: "Read the map: stories, releases"'],
     [{ op: "summary", id: "ESM-741", summary: "A new summary." }, "summary: A new summary."],
     [{ op: "notes", id: "ESM-741", notes: "First line.\nSecond line." }, "notes: |-\n      First line.\n      Second line."],
-    [{ op: "add-source", id: "ESM-744", source: "docs/story-map.md#propose-edits" }, "\n      - docs/story-map.md#propose-edits\n  - id: ESM-745\n"],
+    [{ op: "add-source", id: "ESM-744", source: "docs/story-map.md#propose-edits" }, "\n      - docs/story-map.md#propose-edits\n  - id: ESM-106\n"],
   ];
   for (const [operation, expected] of cases) {
     const result = await proposeStoryMapEdit(ownMap, [operation]);

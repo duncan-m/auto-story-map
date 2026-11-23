@@ -373,7 +373,7 @@ releases:
     title: "0.7.5: Evidence and claims for agents"
     summary: Agents look up the evidence for each story, including release tags that show merged work has shipped, and can claim stories when several agents work at once.
     notes: |
-      The second half of the native CLI plan. It comes before the scheduled audit (ESM-502), which uses the evidence from ESM-743.
+      The second half of the native CLI plan. It comes before the scheduled audit (ESM-502), which uses the evidence from ESM-105.
     impact:
       - metric: Agents starting the same story at the same time
         expected: None, for teams that use claims
@@ -885,7 +885,7 @@ stories:
     sources:
       - docs/plans/native-cli.md#3-validation-as-json
       - docs/story-map.md#validate-a-change
-  - id: ESM-743
+  - id: ESM-105
     title: Look up the evidence for a story
     activity: review
     release: v0-7-5
@@ -911,7 +911,7 @@ stories:
     sources:
       - docs/plans/native-cli.md#5-propose-edits
       - docs/story-map.md#change-the-map-from-the-command-line
-  - id: ESM-745
+  - id: ESM-106
     title: Claim stories so several agents do not clash
     activity: plan
     release: v0-7-5
@@ -937,7 +937,7 @@ stories:
     sources:
       - docs/plans/native-cli.md#7-preview-the-map-locally
       - docs/story-map.md#preview-the-map-locally
-  - id: ESM-747
+  - id: ESM-107
     title: Suggest shipped from release tags
     activity: track
     release: v0-7-5
