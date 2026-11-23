@@ -1343,7 +1343,7 @@ stories:
     sources:
       - docs/story-map.md#blocked-and-cut-stories
       - docs/ENGINEERING-OVERVIEW.md#filter-toolbar
-  - id: ESM-748
+  - id: ESM-116
     title: Serve the CLI over MCP
     activity: plan
     release: v0-8-0
@@ -1356,7 +1356,7 @@ stories:
     notes: Edits stay dry runs unless the call asks to write, and there is no tool to confirm drafts. Whether to use the MCP SDK as a runtime dependency is open.
     sources:
       - docs/plans/0.8.0-agents-and-adoption.md#1-serve-the-cli-over-mcp
-  - id: ESM-749
+  - id: ESM-117
     title: Install a story map skill
     activity: set-up
     release: v0-8-0
@@ -1368,7 +1368,7 @@ stories:
     summary: story-map init --skill writes a SKILL.md with the story map rules and common commands, from the same template as the AGENTS.md section.
     sources:
       - docs/plans/0.8.0-agents-and-adoption.md#2-install-a-story-map-skill
-  - id: ESM-750
+  - id: ESM-118
     title: Survey a repository for its first map
     activity: set-up
     release: v0-8-0
@@ -1381,7 +1381,7 @@ stories:
     notes: Reads and suggests only. The agent still drafts the stories, following the first-run workflow (ESM-202).
     sources:
       - docs/plans/0.8.0-agents-and-adoption.md#3-survey-a-repository-for-its-first-map
-  - id: ESM-806
+  - id: ESM-119
     title: Tag a describe block for all its tests
     activity: explore
     release: v0-8-0
