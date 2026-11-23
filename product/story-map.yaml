@@ -1178,8 +1178,8 @@ stories:
     activity: review
     release: v0-7-5
     status: merged
-    tokens: 12413036
-    estimatedCostUsd: 5.7
+    tokens: 14864321
+    estimatedCostUsd: 6.34
     jobs:
       - plan-and-build
     summary: story-map tokens counts the model tokens Claude Code used on a story from its session logs, by branch or session, estimates their cost at API list prices, and prints a Tokens used section for the pull request that finishes it. story-map edit --tokens and --estimated-cost record both on the story, shown in the internal story panel.
