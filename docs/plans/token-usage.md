@@ -26,7 +26,7 @@ Claude Code writes every session to `~/.claude/projects/<folder>/<session>.jsonl
 
 `story-map tokens <ID>` reads those files and counts a response when:
 
-- its branch contains the story ID as a whole word, such as `feat/esm-145-record-tokens-used` for ESM-145 but not a longer number that starts with 144, as the repository's branch rules already ask;
+- its branch contains the story ID as a whole word, such as `feat/esm-145-record-tokens-used` for ESM-145 but not a longer number that starts with 145, as the repository's branch rules already ask;
 - or its branch is one given with `--branch`, such as the generated branch a cloud session started on before it was renamed;
 - or its session is one given with `--session`.
 
