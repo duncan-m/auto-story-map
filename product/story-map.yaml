@@ -1002,6 +1002,7 @@ stories:
     activity: plan
     release: v0-7-5
     status: planned
+    estimate: 5
     jobs:
       - plan-and-build
       - pick-up-work
@@ -1014,6 +1015,7 @@ stories:
     activity: plan
     release: v0-7-5
     status: planned
+    estimate: 2
     jobs:
       - plan-and-build
     summary: Internal story and release panels have an Agent brief section with the brief to read, and a Copy brief button that says what it copied.
@@ -1025,6 +1027,7 @@ stories:
     activity: plan
     release: v0-7-5
     status: planned
+    estimate: 2
     jobs:
       - plan-and-build
     summary: Hosts can turn on Open in Claude and Open in ChatGPT links in the brief section, which start a new web chat with the brief filled in.
