@@ -1540,6 +1540,33 @@ stories:
     notes: Adds what story-map evidence (ESM-105) finds, such as branches and claims, to the in-flight section, using the evidence code rather than reading Git again. Adds a get_brief tool to the MCP server from ESM-116.
     sources:
       - docs/plans/agent-briefs.md#4-write-briefs-from-the-command-line
+  - id: ESM-130
+    title: Explain how to export the map to other tools
+    activity: explore
+    release: v0-7-6
+    status: planned
+    estimate: 3
+    jobs:
+      - share-roadmap
+    summary: Internal viewers can find destination-specific export instructions from the board's Export menu, including a Spreo guide covering ChatGPT, Claude and Claude Code.
+    notes: |
+      Scope:
+      - Add docs/integrations.md covering Spreo, Miro, Lucidchart, Visio, spreadsheets and agent workflows.
+      - Add a README link to the integration guide.
+      - Extend the existing Export menu with a Spreo option that opens instructions, plus an All integration guides help link. Keep the existing JSON, CSV and Visio downloads working.
+      - Spreo instructions cover ChatGPT, Claude and Claude Code, distinguish supported connector-based board creation from preparing a specification when a connector is unavailable, and explain that exports are one-way snapshots.
+      - Include copyable destination-specific prompts on the integration guide (P2, if feasible in the same slice); prompts specify the YAML source, planned-only filtering, source order, release swimlanes, story IDs and estimates.
+      - Make clear that the Spreo entry opens a guide, not a native JSON import or an automated sync. Do not claim Spreo supports JSON import without verifying it.
+      Acceptance criteria:
+      - Internal Export menu displays Spreo and an integrations-help link; customer views do not expose these options or internal exports.
+      - Spreo link opens the documented ChatGPT, Claude and Claude Code workflows.
+      - Documentation covers current downloads, supported tool destinations, privacy, lack of write-back and limitations.
+      - Copyable prompts are supplied for the three Spreo-assisted workflows and avoid claiming that a board was created unless the connected tool confirms it.
+      - Existing export paths and non-JavaScript board behaviour continue to work, with coverage added for the menu links.
+      - The implementation remains documentation and UI only; no Spreo API integration or import format is added.
+    customer:
+      title: Export your map to other tools
+      summary: Find practical instructions for moving your map into tools like Spreo, Miro and Lucidchart.
   - id: ESM-127
     title: Start Claude Code or Codex on a brief from the local preview
     activity: plan
