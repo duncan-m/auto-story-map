@@ -27,6 +27,11 @@ export function isActiveStatus(status: StoryStatus): boolean {
   return (activeStoryStatuses as readonly StoryStatus[]).includes(status);
 }
 
+/** Statuses for delivered work: on the default branch, so work that depends on it can build on it. */
+export function isDeliveredStatus(status: StoryStatus): boolean {
+  return status === "merged" || status === "shipped";
+}
+
 export const storyStatusLabels: Record<StoryStatus, string> = {
   planned: "Planned",
   "in-progress": "In progress",
