@@ -330,7 +330,9 @@ releases:
     title: "0.7.2: CLI to read, edit and preview the map"
     summary: Agents read the map, validate it and propose edits with story-map commands that print JSON, and anyone can preview their own map locally before adding the board to their product.
     notes: |
-      The first half of the native CLI plan, moved ahead of personas so agents can tag the existing stories with story-map edit instead of editing the YAML by hand. Evidence and claims follow in 0.7.5.
+      Agents and scripts read the map with story-map story, stories and releases, get validation results as JSON, and change the map with story-map edit, add and release-impact, which show a dry run and only write a valid map. story-map preview shows any map as a board on your own computer before a product adds the board.
+
+      The first half of the native CLI plan, moved ahead of personas so agents could tag stories with story-map edit instead of editing the YAML by hand. Evidence and claims follow in 0.7.5. Not published on its own: it goes to npm in 0.7.4.
     impact:
       - metric: Map edits made by hand in the YAML file by agents
         expected: Made with story-map edit, which checks the change before writing it
@@ -345,6 +347,8 @@ releases:
     summary: Say who each story is for, and read the map one persona at a time.
     notes: |
       The map names the people the product serves and their jobs to be done, and each story says which jobs it serves. The board shows personas on cards and activities, filters by persona and job, and opens a panel with each persona's jobs and the stories that serve them. A Personas tab beside the map gives each persona a page, with their context and their jobs as lanes, core job first, each with its steps in order and the gaps marked.
+
+      Not published on its own: it goes to npm in 0.7.4.
 
       Mockup: docs/plans/personas.md#ui-mockup
       Personas tab mockup: docs/plans/personas.md#personas-tab-mockup
@@ -364,6 +368,12 @@ releases:
   - id: v0-7-4
     title: "0.7.4: Links to code and stories"
     summary: Internal viewers follow a story to its code, from the pull request and commit behind each history line and a list of the pull requests and commits that name it, and anyone can share a permalink to a story or release.
+    notes: |
+      Each line in a story's History links to the pull request and commit behind it, and a Changes section lists the merged pull requests and commits whose title, message or branch name names the story. Story, release and persona details open in a panel from the right, and each story and release panel has a Copy link button for a permalink that opens the board on it.
+
+      Goes to npm together with 0.7.2 and 0.7.3, which were not published on their own, and the estimates from 0.7.6 (ESM-503). The first version under the GNU AGPL.
+
+      Plan: docs/plans/story-changes.md
     impact:
       - metric: Time to find the pull requests that delivered a story
         expected: One click from the story panel, instead of searching the repository for its ID
