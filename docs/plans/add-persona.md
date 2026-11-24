@@ -1,10 +1,10 @@
 # Plan: add a persona on the local Personas tab
 
-Status: in progress. The work is ESM-150 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
+Status: merged. The work is ESM-150 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
 
 ESM-149 lets a person add and delete a persona's jobs on the local Personas tab, but a new persona still has to be typed into the YAML first. This adds a button for it, so a builder can sketch who the product serves without leaving the board, and an empty Personas tab can be filled in from the tab itself.
 
-It builds on **ESM-149**, [Add and delete jobs on the local Personas tab](add-delete-jobs.md#change), in progress, which it follows straight on from: a new persona opens ready for **Add job**. It also builds on **ESM-146**, Show how to set up personas on an empty Personas tab, merged, whose YAML steps stay beside the new button. The operation goes through the same save handler as the other persona edits, so a host board that sets up that handler gets it too.
+It builds on **ESM-149**, [Add and delete jobs on the local Personas tab](add-delete-jobs.md#change), merged, which it follows straight on from: a new persona opens ready for **Add job**. It also builds on **ESM-146**, Show how to set up personas on an empty Personas tab, merged, whose YAML steps stay beside the new button. The operation goes through the same save handler as the other persona edits, so a host board that sets up that handler gets it too.
 
 ## UI mockup
 

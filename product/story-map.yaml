@@ -1039,7 +1039,9 @@ stories:
     title: Add and delete jobs on the local Personas tab
     activity: explore
     release: v0-7-6
-    status: in-progress
+    status: merged
+    tokens: 24200001
+    estimatedCostUsd: 8.23
     dependsOn:
       - ESM-147
     jobs:
@@ -1060,7 +1062,7 @@ stories:
     title: Add a persona on the local Personas tab
     activity: explore
     release: v0-7-6
-    status: in-progress
+    status: merged
     dependsOn:
       - ESM-149
     jobs:

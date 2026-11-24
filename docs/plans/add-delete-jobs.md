@@ -1,6 +1,6 @@
 # Plan: add and delete jobs on the local Personas tab
 
-Status: in progress. The work is ESM-149 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
+Status: merged. The work is ESM-149 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
 
 ESM-147 lets a person reword a persona's jobs on the local Personas tab, but adding a job or removing one still means editing the YAML. Reviewing an agent's drafted persona often ends with "this job is not real" or "they also need to…", so the tab should handle both.
 
