@@ -1040,6 +1040,22 @@ stories:
       - test/persona-editing.test.mjs
       - src/edit-server.ts
       - example/demo.mjs
+  - id: ESM-156
+    title: Turn on persona editing in a host app running locally
+    activity: explore
+    release: v0-7-6
+    status: planned
+    dependsOn:
+      - ESM-147
+    jobs:
+      - ground-work-in-customer-needs
+    personas:
+      - founder
+    summary: A host product's own board, run on the builder's machine, edits personas the same way as story-map preview, with two small additions to the host's routes and no flag to remember.
+    notes: From testing in a vinext host. Adds a Fetch handler, editor.read() to read the map per request, a required authorize check, local detection from the request Host with editing off in production, and a note on the Personas tab when a local board has no save route. Deployed boards stay read-only (ESM-404).
+    sources:
+      - docs/plans/host-persona-editing.md
+      - docs/plans/host-persona-editing.md#ui-mockup
   - id: ESM-910
     title: Break a job into steps
     activity: explore
