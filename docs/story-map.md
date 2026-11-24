@@ -413,9 +413,11 @@ In the view, internal maps with personas gain `personas`, each with its `initial
 
 ### Personas tab
 
-When the host uses [search and filters](#integrate-with-a-product) and the map has personas, internal boards show **Story map** and **Personas** tabs at the top of the frame. They are links, `?view=personas` for the Personas tab, so they work without JavaScript, and each keeps the search and other filters, so going back to the map keeps them.
+When the host uses [search and filters](#integrate-with-a-product), internal boards show **Story map** and **Personas** tabs at the top of the frame. They are links, `?view=personas` for the Personas tab, so they work without JavaScript, and each keeps the search and other filters, so going back to the map keeps them.
 
-The Personas tab replaces the map with a page for one persona, beside a list of every persona. The list shows each persona's active stories and gaps, the steps with an activity but no stories, and each entry links to that persona's page with `?view=personas&persona=<ID>`. With no `persona`, or an unknown one, the page shows the first persona. On narrow screens, the list becomes a menu above the page.
+When the map has no personas, the tab shows how to add them: an example `personas` list, how to tag stories with their jobs, and a link to this guide.
+
+Otherwise, the Personas tab replaces the map with a page for one persona, beside a list of every persona. The list shows each persona's active stories and gaps, the steps with an activity but no stories, and each entry links to that persona's page with `?view=personas&persona=<ID>`. With no `persona`, or an unknown one, the page shows the first persona. On narrow screens, the list becomes a menu above the page.
 
 The page shows:
 

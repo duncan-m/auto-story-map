@@ -1565,6 +1565,7 @@ function PersonasPage({ personas, filter, preservedParams, baseId }: {
   preservedParams?: Readonly<Record<string, string>>;
   baseId: string;
 }) {
+  if (!personas.length) return <PersonasSetup baseId={baseId} />;
   const persona = personas.find(item => item.id === filter.persona?.[0]) ?? personas[0];
   const base = filterParams(filter, preservedParams);
   const titleId = `${baseId}-persona-title`;
@@ -1611,6 +1612,42 @@ function PersonasPage({ personas, filter, preservedParams, baseId }: {
         </section>
       </article>
     </div>
+  );
+}
+
+/** The YAML the Personas tab suggests for a map with no personas. */
+const personasExample = `personas:
+  - id: pm
+    title: Product manager
+    summary: Owns the roadmap and decides what goes in each release.
+    jobs:
+      - id: plan-release      # the first job is the core job
+        situation: a release is being planned and its scope is spread across tickets
+        motivation: to agree its scope in the PR that changes the map
+        outcome: engineers and product start from the same list`;
+
+/**
+ * The Personas tab of a map with no personas: how to add them, so the tab is
+ * where the team finds out about personas rather than a feature they never see.
+ */
+function PersonasSetup({ baseId }: { baseId: string }) {
+  const titleId = `${baseId}-persona-setup`;
+  const guide = `${storyMapRepositoryUrl}/blob/main/docs/story-map.md#personas-and-jobs-to-be-done`;
+  return (
+    <article className="esm-persona-setup" aria-labelledby={titleId}>
+      <h3 id={titleId}>No personas yet</h3>
+      <p>Personas name the people the product serves and the jobs each of them is trying to get done. Tag stories with those jobs to see who each story is for, and which needs have no stories yet.</p>
+      <ol>
+        <li>
+          Add a <code>personas</code> list to <code>product/story-map.yaml</code>, each with an <code>id</code>, a <code>title</code> and their jobs to be done. The first job is the persona’s core job.
+          <pre><code>{personasExample}</code></pre>
+        </li>
+        <li>Tag the stories that serve each job, with <code>story-map edit &lt;ID&gt; --add-job &lt;job ID&gt;</code>, or <code>--add-persona &lt;persona ID&gt;</code> for a story that helps a persona without serving one of their jobs.</li>
+        <li>Run <code>story-map validate</code>, then open this tab again to see each persona’s jobs and gaps.</li>
+      </ol>
+      <p>A coding agent can draft personas and jobs from the product’s docs, issues and research. Ask it to mark each job <code>draft: true</code> until someone on the team confirms it.</p>
+      <p><a href={guide} {...newTab}>Read the guide to personas and jobs to be done<NewTabHint /></a></p>
+    </article>
   );
 }
 
@@ -1959,9 +1996,10 @@ export function StoryMapBoard({
   const hideInactive = !map.filter && (inactive.blocked > 0 || inactive.cut > 0);
   const toggleId = `${baseId}-show-inactive`;
   const showGrid = releases.length > 0 && (placed.length > 0 || (internal && !filtering));
-  // The Personas tab needs the host to read the board's parameters, and is for internal viewers of maps with personas.
+  // The Personas tab needs the host to read the board's parameters, and is for internal viewers.
+  // A map without personas still gets it, showing how to add them.
   const personaList = [...lookup.personas.values()];
-  const tabs = internal && map.filter && personaList.length > 0 ? map.filter : undefined;
+  const tabs = internal && map.filter ? map.filter : undefined;
   const personasTab = !!tabs && tabs.view === "personas";
   // The panel a permalink opens, which board.js shows on load. Customers have no release panels, so their release links only scroll.
   const linkedStory = !personasTab && map.filter?.story ? placed.find(story => story.id === map.filter!.story) : undefined;
