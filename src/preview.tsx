@@ -1,11 +1,10 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { relative, sep } from "node:path";
 import type { ReactNode } from "react";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { renderToStaticMarkup } from "react-dom/server";
 import { checkStoryMap, type StoryMapCheckIssue } from "./check.js";
-import { personaEditOperations, proposeStoryMapEdit, StoryMapEditError } from "./edit.js";
+import { createStoryMapEditServer, storyMapEditPath } from "./edit-server.js";
 import { storyMapExportResponse } from "./export-response.js";
 import { parseStoryMapHistory } from "./history.js";
 import { StoryMapBoard } from "./react.js";
@@ -25,24 +24,16 @@ export interface StoryMapPreviewOptions {
   sourceBaseUrl?: string;
   /**
    * Lets the Personas tab save edits to the map file, through `POST /api/story-map/edit`.
-   * Off by default. Each save needs the page's start-up token, a matching `Origin`, and the
-   * hash of the file the page was rendered from, so a stale page cannot overwrite newer edits.
+   * On by default, because the preview only runs on this machine. Pass `false` for a
+   * read-only preview. Saves are checked as `createStoryMapEditServer` describes.
    */
   writable?: boolean;
 }
 
+export { storyMapEditTokenHeader as previewTokenHeader, storyMapRevision } from "./edit-server.js";
+
 /** The route the writable preview saves edits to. */
-export const previewEditPath = "/api/story-map/edit";
-
-/** The header that carries the writable preview's start-up token. */
-export const previewTokenHeader = "x-story-map-token";
-
-/** A short hash of the map's text, so a save can tell whether the file changed since the page loaded. */
-export function storyMapRevision(source: string) {
-  return createHash("sha256").update(source).digest("hex").slice(0, 32);
-}
-
-const maxEditBody = 64 * 1024;
+export const previewEditPath = storyMapEditPath;
 
 /** The only addresses the preview answers to. It refuses other `Host` headers, so a web page cannot reach it through DNS rebinding. */
 export const previewHost = "127.0.0.1";
@@ -151,102 +142,8 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
   // Catch here so a missing asset fails its request, not the process.
   for (const asset of assets.values()) asset.catch(() => {});
   const headers = { ...storyMapResponseHeaders };
-  // A new token each time the preview starts. The page carries it, so only pages this server rendered can save.
-  const token = randomBytes(24).toString("base64url");
-
-  function json(response: ServerResponse, status: number, body: unknown) {
-    response.writeHead(status, { ...headers, "Content-Type": "application/json; charset=utf-8" }).end(JSON.stringify(body));
-  }
-
-  function readBody(request: IncomingMessage) {
-    return new Promise<string | null>((resolve, reject) => {
-      let size = 0;
-      const chunks: Buffer[] = [];
-      request.on("data", (chunk: Buffer) => {
-        size += chunk.length;
-        if (size > maxEditBody) {
-          resolve(null);
-          request.destroy();
-          return;
-        }
-        chunks.push(chunk);
-      });
-      request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-      request.on("error", reject);
-    });
-  }
-
-  /**
-   * Saves persona edits from the Personas tab. Only with `writable`, only from a page this
-   * server rendered (same Origin, JSON, the start-up token), and only when the file has not
-   * changed since that page loaded. The edit goes through `proposeStoryMapEdit`, so it keeps
-   * comments and untouched lines, and is written only when the map stays valid.
-   */
-  async function handleEdit(request: IncomingMessage, response: ServerResponse) {
-    if (request.method !== "POST") {
-      response.writeHead(405, { ...headers, Allow: "POST" }).end();
-      return;
-    }
-    if (!options.writable) {
-      json(response, 403, { error: "The preview is read-only. Start it with story-map preview --writable to save edits." });
-      return;
-    }
-    if (request.headers.origin !== `http://${request.headers.host}`) {
-      json(response, 403, { error: "Edits are only accepted from the preview's own pages." });
-      return;
-    }
-    if (!/^application\/json(;|$)/i.test(request.headers["content-type"] ?? "")) {
-      json(response, 415, { error: "Send the edit as application/json." });
-      return;
-    }
-    const sent = Buffer.from(String(request.headers[previewTokenHeader] ?? ""));
-    const expected = Buffer.from(token);
-    if (sent.length !== expected.length || !timingSafeEqual(sent, expected)) {
-      json(response, 403, { error: "This page is from an earlier preview. Reload it, then make the edit again." });
-      return;
-    }
-    const text = await readBody(request);
-    if (text === null) {
-      json(response, 413, { error: "The edit is too large." });
-      return;
-    }
-    let body: { revision?: unknown; operations?: unknown };
-    try {
-      body = JSON.parse(text);
-    } catch {
-      json(response, 400, { error: "The edit is not valid JSON." });
-      return;
-    }
-    const operations = body?.operations;
-    if (!Array.isArray(operations) || !operations.length) {
-      json(response, 400, { error: "Send a list of operations." });
-      return;
-    }
-    if (!operations.every(operation => (personaEditOperations as readonly unknown[]).includes((operation as { op?: unknown })?.op))) {
-      json(response, 400, { error: `The preview saves only ${personaEditOperations.join(", ")} edits.` });
-      return;
-    }
-    const source = await readFile(options.map, "utf8");
-    if (body.revision !== storyMapRevision(source)) {
-      json(response, 409, { error: "The map file changed on disk since this page loaded. Reload to see the latest version, then make the edit again. Nothing was saved." });
-      return;
-    }
-    let result;
-    try {
-      result = await proposeStoryMapEdit(source, operations);
-    } catch (error) {
-      if (!(error instanceof StoryMapEditError)) throw error;
-      json(response, 422, { error: error.message.replace(/^Edit \d+: /, "") });
-      return;
-    }
-    if (!result.valid) {
-      const errors = result.check.issues.filter(issue => issue.severity === "error");
-      json(response, 422, { error: errors.map(issue => issue.message).join(" ") || "The edit would make the map invalid.", issues: errors });
-      return;
-    }
-    if (result.changed) await writeFile(options.map, result.source, "utf8");
-    json(response, 200, { changed: result.changed, revision: storyMapRevision(result.source), summary: result.summary ?? "" });
-  }
+  const writable = options.writable !== false;
+  const editor = writable ? createStoryMapEditServer({ map: options.map }) : undefined;
 
   async function handle(request: IncomingMessage, response: ServerResponse) {
     const address = server.address();
@@ -257,7 +154,11 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
     }
     const url = new URL(request.url ?? "/", `http://${previewHost}`);
     if (url.pathname === previewEditPath) {
-      await handleEdit(request, response);
+      if (editor) {
+        await editor.handle(request, response);
+      } else {
+        response.writeHead(403, { ...headers, "Content-Type": "application/json; charset=utf-8" }).end(JSON.stringify({ error: "This preview is read-only. Start it without --read-only to save edits." }));
+      }
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -330,11 +231,11 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
       <>
         {internal ? <Issues issues={checked.issues} kind="warning" /> : null}
         {map
-          ? <StoryMapBoard map={map} sourceBaseUrl={options.sourceBaseUrl} preservedParams={{ view }} exportHref={internal ? "/story-map/export?view=internal" : undefined} personaEditing={internal && options.writable ? { endpoint: previewEditPath, token, revision: storyMapRevision(source) } : undefined} />
+          ? <StoryMapBoard map={map} sourceBaseUrl={options.sourceBaseUrl} preservedParams={{ view }} exportHref={internal ? "/story-map/export?view=internal" : undefined} personaEditing={internal && editor ? editor.editing(source) : undefined} />
           : <p>{message}</p>}
       </>
     );
-    response.writeHead(200, { ...headers, "Content-Type": "text/html; charset=utf-8" }).end(page(document.title, view, options.map, body, options.writable));
+    response.writeHead(200, { ...headers, "Content-Type": "text/html; charset=utf-8" }).end(page(document.title, view, options.map, body, writable));
   }
 
   const server = createServer((request, response) => {
