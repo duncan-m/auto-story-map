@@ -424,7 +424,9 @@ releases:
 
       Split from the original 0.7.6, which held 48 points. Map versions, activity steps and the scheduled audit moved to 0.7.7.
 
-      Plans: docs/plans/local-triage.md and docs/plans/actions-tab.md
+      Hosts can opt in to delivery plans (ESM-148 to ESM-151 and ESM-153): agents ask, linking to the guide.
+
+      Plans: docs/plans/local-triage.md, docs/plans/actions-tab.md, docs/plans/host-planning-guidance.md
     impact:
       - metric: Drafts confirmed or stories moved by editing the YAML by hand
         expected: Done with story-map confirm, or from the story panel in the local preview
@@ -437,6 +439,14 @@ releases:
       - metric: Time to get the story map into Spreo
         expected: One click from the Export menu to a guide with a ready-made prompt, instead of working out the steps and prompt by hand
         solves: People who plan in Spreo not finding a way to move the map there from the Export menu
+        draft: true
+      - metric: Hosts that have chosen whether to use delivery plans
+        expected: Every host that upgrades, asked once by its agent with a link to the guide
+        solves: Hosts getting the map mechanics but never hearing about the planning approach behind them
+        draft: true
+      - metric: Host plans that name what they build on and what they leave out
+        expected: Plans written from the guide's structure, with builds-on, Not now and effort sections, in hosts that opt in
+        solves: Plans that leave reviewers guessing what is new and agents rebuilding what exists
         draft: true
     customer:
       title: "0.7.6"
@@ -465,7 +475,8 @@ releases:
       Comes after 0.7.5, because the MCP server wraps the evidence and claim commands and the survey reuses their Git and tag reading.
 
       Plan: docs/plans/0.8.0-agents-and-adoption.md
-      Plan for host planning guidance (ESM-148 to ESM-153): docs/plans/host-planning-guidance.md
+
+      ESM-152 adds the delivery planning rules from 0.7.6 to the skill (ESM-117): docs/plans/host-planning-guidance.md#6-carry-the-planning-rules-in-the-skill
     impact:
       - metric: Agent sessions that load the story map rules
         expected: Only sessions that work on the map, through the skill or the MCP server
@@ -474,10 +485,6 @@ releases:
       - metric: Time to draft a first map for a repository with months of history
         expected: One survey and one agent pass, citing the survey
         solves: Agents piecing together tags, changelogs and docs by hand
-        draft: true
-      - metric: Host plans that name what they build on and what they leave out
-        expected: Plans written from the guide's structure, with builds-on, Not now and effort sections
-        solves: Hosts getting the map mechanics but not the planning discipline behind them
         draft: true
     customer:
       title: "0.8.0"
@@ -1727,7 +1734,7 @@ stories:
   - id: ESM-148
     title: Show hosts how to write a delivery plan
     activity: plan
-    release: v0-8-0
+    release: v0-7-6
     status: planned
     jobs:
       - agree-first-release-plan
@@ -1739,7 +1746,7 @@ stories:
   - id: ESM-149
     title: Ship an example delivery plan that follows the guide
     activity: plan
-    release: v0-8-0
+    release: v0-7-6
     status: planned
     dependsOn:
       - ESM-148
@@ -1752,7 +1759,7 @@ stories:
   - id: ESM-150
     title: Tell host agents how to plan work in AGENTS.md
     activity: set-up
-    release: v0-8-0
+    release: v0-7-6
     status: planned
     dependsOn:
       - ESM-148
@@ -1766,7 +1773,7 @@ stories:
   - id: ESM-151
     title: Scaffold a delivery plan from the map
     activity: plan
-    release: v0-8-0
+    release: v0-7-6
     status: planned
     dependsOn:
       - ESM-148
@@ -1793,7 +1800,7 @@ stories:
   - id: ESM-153
     title: Ask each host whether to use delivery plans
     activity: set-up
-    release: v0-8-0
+    release: v0-7-6
     status: planned
     dependsOn:
       - ESM-148
