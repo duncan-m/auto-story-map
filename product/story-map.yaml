@@ -1058,7 +1058,7 @@ stories:
     title: Look up the evidence for a story
     activity: review
     release: v0-7-5
-    status: merged
+    status: shipped
     estimate: 5
     tokens: 9365533
     estimatedCostUsd: 4.16
@@ -1085,7 +1085,7 @@ stories:
     title: Claim stories so several agents do not clash
     activity: plan
     release: v0-7-5
-    status: merged
+    status: shipped
     estimate: 5
     tokens: 5497279
     estimatedCostUsd: 3.46
@@ -1114,7 +1114,7 @@ stories:
     title: Suggest shipped from release tags
     activity: track
     release: v0-7-5
-    status: merged
+    status: shipped
     estimate: 2
     tokens: 1824417
     estimatedCostUsd: 1.45
@@ -1131,7 +1131,7 @@ stories:
     title: Write a handoff brief for a story or release
     activity: plan
     release: v0-7-5
-    status: merged
+    status: shipped
     estimate: 5
     jobs:
       - plan-and-build
@@ -1145,7 +1145,7 @@ stories:
     title: Copy an agent brief from the story and release panels
     activity: plan
     release: v0-7-5
-    status: merged
+    status: shipped
     estimate: 2
     dependsOn:
       - ESM-123
@@ -1160,7 +1160,7 @@ stories:
     title: Open an agent brief in Claude or ChatGPT
     activity: plan
     release: v0-7-5
-    status: merged
+    status: shipped
     estimate: 2
     tokens: 16995603
     estimatedCostUsd: 6.23
@@ -1178,7 +1178,7 @@ stories:
     title: Show a story's dependencies on its card and panel
     activity: explore
     release: v0-7-5
-    status: merged
+    status: shipped
     estimate: 8
     jobs:
       - triage-backlog
@@ -1194,7 +1194,7 @@ stories:
     title: Open an agent brief in Claude Code on the web
     activity: plan
     release: v0-7-5
-    status: merged
+    status: shipped
     estimate: 1
     dependsOn:
       - ESM-125
@@ -1210,7 +1210,7 @@ stories:
     title: Record the tokens used to deliver a story
     activity: review
     release: v0-7-5
-    status: merged
+    status: shipped
     tokens: 20293097
     estimatedCostUsd: 7.71
     jobs:
