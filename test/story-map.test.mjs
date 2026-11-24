@@ -1553,7 +1553,7 @@ test("boards rendered without filters hide blocked and cut stories behind a chec
   assert.match(cut, /data-inactive=""/);
   assert.equal(cardsIn(html).filter(card => card.includes("data-inactive")).length, 1);
   assert.match(html, /<div class="esm-cell" role="cell" data-inactive-only="">/);
-  assert.match(html, /Reconciliation discovery<\/button><\/span><span class="esm-release-count esm-count-active">0 stories<\/span><span class="esm-release-count esm-count-all">1 story<\/span>/);
+  assert.match(html, /Reconciliation discovery<\/button><\/span><\/div><span class="esm-release-count esm-count-active">0 stories<\/span><span class="esm-release-count esm-count-all">1 story<\/span>/);
 
   // Filtered boards use the toolbar instead, and maps with nothing to hide get no checkbox.
   assert.doesNotMatch(board(filterStoryMapView(getStoryMapForViewer(map, engineer))), /esm-inactive-toggle|data-hide-inactive/);
@@ -3606,6 +3606,83 @@ test("ESM-503: exports carry story estimates and release totals", () => {
   assert.match(page(files), /8 pts · 3 merged · 0 left · 1 unestimated/);
   const collapsedVsdx = page(readStoredZip(storyMapToVsdx(view, { collapsedReleases: ["builder-mvp"], now: exportNow })));
   assert.match(collapsedVsdx, /Collapsed · 4 stories[\s\S]*8 pts · 3 merged · 0 left · 1 unestimated/);
+});
+
+test("ESM-157: the sticky release heading holds only the toggle and name", () => {
+  for (const props of [{ map: getStoryMapForViewer(map, engineer) }, { map: getStoryMapForViewer(map, regular) }]) {
+    const html = renderToStaticMarkup(createElement(StoryMapBoard, props));
+    const headers = [...html.matchAll(/role="rowheader">(.*?)<div class="esm-cell"/g)].map(match => match[1]);
+    assert.ok(headers.length > 0);
+    for (const header of headers) {
+      const [, heading, rest] = header.match(/^<div class="esm-release-heading">(.*?)<\/div>(.*)$/);
+      assert.match(heading, /esm-collapse-input.*esm-release-name/);
+      assert.doesNotMatch(heading, /esm-release-(summary|count|impact)/);
+      assert.match(rest, /esm-release-count/);
+    }
+  }
+});
+
+test("ESM-157: the grid scrolls in a box only on screens with room for sticky headings", async () => {
+  const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+  const start = css.indexOf("@media screen and (min-width: 651px) and (min-height: 480px) {");
+  assert.ok(start > 0);
+  const block = css.slice(start, css.indexOf("\n}", start));
+  assert.match(block, /\.esm-scroll \{ position: relative; max-height: var\(--esm-board-height, calc\(100dvh - 7\.5rem\)\); overflow: auto;/);
+  for (const name of ["activities", "corner", "release", "release-heading"]) {
+    assert.match(block, new RegExp(`\\.esm-${name} \\{ position: sticky; [^}]*background:`), `${name} sticks and is opaque`);
+  }
+  assert.doesNotMatch(css.slice(0, start), /max-height: var\(--esm-board-height/);
+});
+
+test("ESM-157: board.js shrinks the activity row once its descriptions scroll past", async t => {
+  const saved = Object.getOwnPropertyDescriptor(globalThis, "document");
+  const page = { readyState: "complete", activeElement: null, querySelectorAll: () => [] };
+  Object.defineProperty(globalThis, "document", { value: page, configurable: true, writable: true });
+  t.after(() => {
+    if (saved) Object.defineProperty(globalThis, "document", saved);
+    else delete globalThis.document;
+  });
+  const attributes = new Set();
+  const styles = new Map();
+  const listeners = [];
+  const avatar = {};
+  const row = {
+    getBoundingClientRect: () => ({ height: attributes.has("data-esm-stuck") ? 90 : 200 }),
+    contains: element => element === avatar,
+    addEventListener() {},
+    querySelector: () => null,
+  };
+  const corner = { getBoundingClientRect: () => ({ width: 180 }) };
+  const box = {
+    scrollTop: 0,
+    style: { setProperty: (name, value) => styles.set(name, value) },
+    querySelector: selector => selector === ".esm-activities" ? row : corner,
+    hasAttribute: name => attributes.has(name),
+    setAttribute: name => attributes.add(name),
+    removeAttribute: name => attributes.delete(name),
+    toggleAttribute: (name, on) => on ? attributes.add(name) : attributes.delete(name),
+    addEventListener: (type, handler) => listeners.push(handler),
+  };
+  const scroll = top => { box.scrollTop = top; listeners[0](); return attributes.has("data-esm-stuck"); };
+  const { enhanceStoryMapHeadings } = await import("auto-story-map/board.js");
+  const root = { querySelectorAll: () => [box] };
+  enhanceStoryMapHeadings(root);
+  enhanceStoryMapHeadings(root);
+  assert.equal(listeners.length, 1, "enhancing twice adds one listener");
+  assert.equal(attributes.size, 0, "full size at the top");
+  assert.equal(styles.get("--esm-activities-height"), "200px");
+  assert.equal(styles.get("--esm-activities-saved"), "110px");
+  assert.equal(styles.get("--esm-labels-width"), "180px");
+
+  assert.equal(scroll(109), false);
+  assert.equal(scroll(110), true);
+  assert.equal(styles.get("--esm-activities-height"), "90px");
+  assert.equal(scroll(0), false);
+  page.activeElement = avatar;
+  assert.equal(scroll(500), false, "stays full size while an avatar has focus");
+
+  // A page without a grid, such as the Personas tab, is left alone.
+  enhanceStoryMapHeadings({ querySelectorAll: () => [] });
 });
 
 test("ESM-912: detail panels slide in from the right as a full-height sheet", async () => {

@@ -2329,13 +2329,15 @@ export function StoryMapBoard({
               {releases.map((release, laneIndex) => (
                 <div className="esm-row esm-lane" role="row" id={storyMapAnchorId({ release: release.id })} data-lane={laneIndex % 3} key={release.id}>
                   <div className="esm-release" role="rowheader">
-                    <ReleaseCollapse releaseId={release.id} title={release.title} />
-                    <span className="esm-release-name">
-                      <span className="esm-release-dot" aria-hidden="true" />
-                      {internalReleases
-                        ? <button type="button" className="esm-release-button" aria-haspopup="dialog" {...popoverTarget(`${baseId}-release-${laneIndex}`)}>{release.title}</button>
-                        : release.title}
-                    </span>
+                    <div className="esm-release-heading">
+                      <ReleaseCollapse releaseId={release.id} title={release.title} />
+                      <span className="esm-release-name">
+                        <span className="esm-release-dot" aria-hidden="true" />
+                        {internalReleases
+                          ? <button type="button" className="esm-release-button" aria-haspopup="dialog" {...popoverTarget(`${baseId}-release-${laneIndex}`)}>{release.title}</button>
+                          : release.title}
+                      </span>
+                    </div>
                     {release.summary && <span className="esm-release-summary">{release.summary}</span>}
                     {!!internalReleases?.get(release.id)?.impact?.length && <ImpactLine impact={internalReleases.get(release.id)!.impact!} />}
                     {hideInactive && (activeCounts.get(release.id) ?? 0) !== (releaseCounts.get(release.id) ?? 0) ? <>

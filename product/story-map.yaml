@@ -978,7 +978,7 @@ stories:
     title: Keep activity and release titles in view while scrolling
     activity: explore
     release: v0-7-7
-    status: planned
+    status: in-progress
     jobs:
       - get-oriented
       - triage-backlog
