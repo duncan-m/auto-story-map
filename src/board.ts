@@ -353,6 +353,11 @@ function updateAddRow(list: HTMLElement) {
   if (add) add.disabled = list.querySelectorAll(".esm-field-row").length >= Number(list.dataset.esmMaxItems || Infinity);
 }
 
+/** The first element that is laid out, so focus never goes to a button hidden by a narrow screen. */
+function visible<T extends HTMLElement>(elements: T[]) {
+  return elements.find(element => element.getClientRects().length > 0) ?? elements[0];
+}
+
 function caretToEnd(field: HTMLElement) {
   const selection = getSelection();
   if (!selection) return;
@@ -372,7 +377,7 @@ function caretToEnd(field: HTMLElement) {
  * hidden and the page is read-only.
  */
 export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
-  for (const page of root.querySelectorAll<HTMLElement>(".esm-persona-page[data-esm-edit-endpoint]")) {
+  for (const page of root.querySelectorAll<HTMLElement>(":is(.esm-persona-page, .esm-persona-setup)[data-esm-edit-endpoint]")) {
     if (enhancedEditing.has(page)) continue;
     enhancedEditing.add(page);
     const { esmEditEndpoint: endpoint, esmEditToken: token, esmEditRevision: revision } = page.dataset;
@@ -380,7 +385,22 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
       const editor = id ? document.getElementById(id) : null;
       return editor && page.contains(editor) && editor.dataset.esmEdit ? editor : null;
     };
-    const buttonFor = (editor: HTMLElement) => page.querySelector<HTMLButtonElement>(`[data-esm-edit-open="${editor.id}"]`);
+    // Each list's rows as the page loaded them, so Cancel puts back rows that were added or removed.
+    const initialRows = new Map<HTMLElement, HTMLElement[]>();
+    for (const list of page.querySelectorAll<HTMLElement>("[data-esm-list]")) {
+      initialRows.set(list, [...list.querySelectorAll<HTMLElement>(".esm-field-row")].map(row => row.cloneNode(true) as HTMLElement));
+    }
+    const restoreRows = (form: HTMLFormElement) => {
+      for (const list of form.querySelectorAll<HTMLElement>("[data-esm-list]")) {
+        const rows = initialRows.get(list);
+        if (!rows) continue;
+        for (const row of list.querySelectorAll(".esm-field-row")) row.remove();
+        const add = list.querySelector("[data-esm-add-row]")!;
+        for (const row of rows) add.before(row.cloneNode(true));
+      }
+    };
+    // An editor can have more than one opener, such as Add persona in the list and in the picker on small screens.
+    const buttonsFor = (editor: HTMLElement) => [...page.querySelectorAll<HTMLButtonElement>(`[data-esm-edit-open="${editor.id}"]`)];
     const fieldsOf = (editor: HTMLElement) => [...page.querySelectorAll<HTMLElement>(`[data-esm-editor="${editor.id}"]`)];
     for (const button of page.querySelectorAll<HTMLButtonElement>("[data-esm-edit-open]")) button.hidden = false;
     // Plain text only. Browsers without plaintext-only get true, and pastes are made plain below.
@@ -403,6 +423,7 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
       const error = editor.querySelector<HTMLElement>(".esm-form-error");
       if (error) error.hidden = true;
       if (editor instanceof HTMLFormElement) {
+        restoreRows(editor);
         editor.reset();
         const view = page.querySelector<HTMLElement>(`[data-esm-edit-view="${editor.id}"]`);
         if (view) view.hidden = false;
@@ -412,25 +433,28 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
           for (const name of ["contenteditable", "role", "aria-label", "aria-multiline", "tabindex", "data-esm-editing"]) field.removeAttribute(name);
         }
       }
-      const button = buttonFor(editor);
-      if (button) {
+      const buttons = buttonsFor(editor);
+      for (const button of buttons) {
         button.hidden = false;
         button.setAttribute("aria-expanded", "false");
-        if (focus) button.focus();
       }
+      if (focus) visible(buttons)?.focus();
     };
 
     const open = (editor: HTMLElement) => {
       for (const other of page.querySelectorAll<HTMLElement>("[data-esm-edit]:not([hidden])")) close(other, false);
-      const button = buttonFor(editor);
-      if (button) {
+      for (const button of buttonsFor(editor)) {
         button.setAttribute("aria-expanded", "true");
         button.hidden = true;
+        // A menu that held the opener closes, so it does not cover the form.
+        const menu = button.closest("details");
+        if (menu) menu.open = false;
       }
       editor.hidden = false;
       if (editor instanceof HTMLFormElement) {
         const view = page.querySelector<HTMLElement>(`[data-esm-edit-view="${editor.id}"]`);
         if (view) view.hidden = true;
+        for (const list of editor.querySelectorAll<HTMLElement>("[data-esm-list]")) updateAddRow(list);
         editor.dataset.esmSnapshot = JSON.stringify(formOperation(editor));
         editor.querySelector<HTMLElement>("input, textarea")?.focus();
         return;
@@ -455,8 +479,40 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
       const error = editor.querySelector<HTMLElement>(".esm-form-error")!;
       error.textContent = message;
       error.hidden = false;
-      const save = editor.querySelector<HTMLButtonElement>(".esm-save");
-      if (save) save.disabled = false;
+      for (const button of editor.querySelectorAll<HTMLButtonElement>(".esm-save, .esm-delete")) button.disabled = false;
+    };
+
+    /** Asks before deleting what `button` deletes, saying what else changes, then posts the delete. */
+    const confirmDelete = (editor: HTMLElement, button: HTMLElement) => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "esm-unsaved-dialog";
+      dialog.setAttribute("aria-labelledby", `${editor.id}-delete`);
+      const heading = document.createElement("h3");
+      heading.id = `${editor.id}-delete`;
+      heading.textContent = `Delete ${button.dataset.esmDelete}?`;
+      const text = document.createElement("p");
+      text.textContent = `${button.dataset.esmDeleteConsequence ?? ""} The map file changes, so you can undo it with Git.`.trim();
+      const form = document.createElement("form");
+      form.method = "dialog";
+      const keep = document.createElement("button");
+      keep.value = "keep";
+      keep.textContent = "Keep it";
+      keep.className = "esm-cancel esm-unsaved-keep";
+      const remove = document.createElement("button");
+      remove.value = "delete";
+      remove.textContent = "Delete";
+      remove.className = "esm-save esm-danger";
+      form.append(keep, remove);
+      dialog.append(heading, text, form);
+      page.append(dialog);
+      dialog.addEventListener("close", () => {
+        const action = dialog.returnValue;
+        dialog.remove();
+        if (action === "delete") post(editor, { op: "delete-job", job: editor.dataset.esmJob });
+        else button.focus();
+      });
+      dialog.showModal();
+      keep.focus();
     };
 
     /** True when the open editor holds text that differs from what the page loaded with. */
@@ -544,8 +600,12 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
           return;
         }
       }
-      const button = editor.querySelector<HTMLButtonElement>(".esm-save");
-      if (button) button.disabled = true;
+      post(editor, operation, next);
+    };
+
+    /** Posts one edit operation and reloads the tab, or shows why it failed in `editor`. */
+    const post = (editor: HTMLElement, operation: Record<string, unknown>, next?: HTMLElement) => {
+      for (const button of editor.querySelectorAll<HTMLButtonElement>(".esm-save, .esm-delete")) button.disabled = true;
       editor.querySelector<HTMLElement>(".esm-form-error")!.hidden = true;
       fetch(endpoint!, {
         method: "POST",
@@ -553,8 +613,9 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
         body: JSON.stringify({ revision, operations: [operation] }),
       })
         .then(async response => {
-          const body = await response.json().catch(() => ({})) as { error?: string };
+          const body = await response.json().catch(() => ({})) as { error?: string; addedPersonaIds?: string[] };
           if (!response.ok) throw new Error(body.error || `The preview could not save the edit (${response.status}).`);
+          const added = body.addedPersonaIds?.[0];
           try {
             sessionStorage.setItem(editFocusKey, editor.id);
             if (next) sessionStorage.setItem(editNextKey, next.id);
@@ -562,7 +623,16 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
             // Focus then starts at the top after the reload.
           }
           leaving = true;
-          location.reload();
+          if (added) {
+            // Open the new persona, keeping the other filters.
+            const url = new URL(location.href);
+            url.searchParams.delete("persona");
+            url.searchParams.delete("job");
+            url.searchParams.set("persona", added);
+            location.assign(url);
+          } else {
+            location.reload();
+          }
         })
         .catch((failure: unknown) => {
           fail(editor, failure instanceof Error && failure.message !== "Failed to fetch" ? failure.message : "Could not reach the preview. Check it is still running, then try again.");
@@ -590,11 +660,17 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
         save(editor);
         return;
       }
+      const remove = target!.closest<HTMLElement>("[data-esm-delete]");
+      if (remove) {
+        confirmDelete(editor, remove);
+        return;
+      }
       const list = target!.closest<HTMLElement>("[data-esm-list]");
       if (list && target!.closest("[data-esm-add-row]")) {
-        const template = list.querySelector("template");
-        const row = template?.content.firstElementChild?.cloneNode(true) as HTMLElement | undefined;
-        if (!row) return;
+        const rows = list.querySelectorAll<HTMLElement>(".esm-field-row");
+        if (!rows.length || rows.length >= Number(list.dataset.esmMaxItems || Infinity)) return;
+        const row = rows[rows.length - 1].cloneNode(true) as HTMLElement;
+        row.querySelector("input")!.value = "";
         list.querySelector("[data-esm-add-row]")!.before(row);
         row.querySelector("input")?.focus();
         updateAddRow(list);
@@ -680,7 +756,7 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
     if (saved) {
       const following = editorById(next ?? undefined);
       if (following) open(following);
-      else page.querySelector<HTMLButtonElement>(`[data-esm-edit-open="${saved}"]`)?.focus();
+      else visible([...page.querySelectorAll<HTMLButtonElement>(`[data-esm-edit-open="${saved}"]`)])?.focus();
       const board = page.closest(".esm-board");
       if (board) announce(board, "Saved to the map file.");
     }

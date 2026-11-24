@@ -1035,6 +1035,49 @@ stories:
       - test/persona-editing.test.mjs
       - src/edit-server.ts
       - example/demo.mjs
+  - id: ESM-149
+    title: Add and delete jobs on the local Personas tab
+    activity: explore
+    release: v0-7-6
+    status: in-progress
+    dependsOn:
+      - ESM-147
+    jobs:
+      - ground-work-in-customer-needs
+    personas:
+      - founder
+    summary: On a local board, the Personas tab adds a job to a persona and deletes one, so reviewing a drafted persona no longer needs the YAML.
+    notes: "Adds create-job and delete-job edits. A new job goes last, so the core job stays, and gets its ID from I want. Deleting a job removes its steps and its tag from stories, which stay. Also fixes two ESM-147 bugs from a host app: Add in Uses today and Constraints did nothing, and constraint bullets could be hidden by a host's CSS."
+    sources:
+      - docs/plans/add-delete-jobs.md#change
+      - docs/plans/add-delete-jobs.md#ui-mockup
+      - docs/story-map.md#edit-personas-on-the-local-preview
+      - src/edit.ts
+      - src/react.tsx
+      - src/board.ts
+      - test/persona-editing.test.mjs
+  - id: ESM-150
+    title: Add a persona on the local Personas tab
+    activity: explore
+    release: v0-7-6
+    status: in-progress
+    dependsOn:
+      - ESM-149
+    jobs:
+      - ground-work-in-customer-needs
+    personas:
+      - founder
+    summary: On a local board, the Personas tab adds a persona with a title and summary and opens them, ready for their jobs, including on a map with no personas yet.
+    notes: Adds a create-persona edit. The persona goes last, so colours stay, and gets its ID from the title. The save response names the new ID so the tab opens it. Deleting and reordering personas stay in the YAML.
+    sources:
+      - docs/plans/add-persona.md#change
+      - docs/plans/add-persona.md#ui-mockup
+      - docs/story-map.md#edit-personas-on-the-local-preview
+      - src/edit.ts
+      - src/edit-server.ts
+      - src/react.tsx
+      - src/board.ts
+      - test/persona-editing.test.mjs
   - id: ESM-910
     title: Break a job into steps
     activity: explore

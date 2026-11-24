@@ -302,7 +302,7 @@ The weak version says when, but not why it is hard, so no story can be judged ag
 | `personas[].jobs[].situation`, `motivation`, `outcome` | Required, up to 200 characters each. |
 | `personas[].jobs[].draft` | Optional. `true` while an agent's draft waits for a person to confirm it. |
 | `personas[].jobs[].steps` | Optional, up to 6 steps in order, each with a `title` of up to 60 characters, an optional `summary` and an optional `activity` ID. See [Break a job into steps](#break-a-job-into-steps). |
-| `personas[].context` | Optional and internal: `success`, up to 200 characters, `usesToday`, up to 8 entries of up to 60 characters, and `constraints`, up to 6 of up to 200 characters. Needs at least one of the three. See [Describe a persona's context](#describe-a-personas-context). |
+| `personas[].context` | Optional and internal: `success`, up to 400 characters, `usesToday`, up to 8 entries of up to 60 characters, and `constraints`, up to 6 of up to 200 characters. Needs at least one of the three. See [Describe a persona's context](#describe-a-personas-context). |
 | `personas[].context.draft` | Optional. `true` while an agent's draft waits for a person to confirm it. |
 | `personas[].customer` | Optional customer-facing `title` and `summary`. Add them only after the wording is approved. See [Share personas with customers](#share-personas-with-customers). |
 | `stories[].jobs` | Optional, up to 4 job IDs, most important first. |
@@ -435,8 +435,11 @@ Each job lane collapses to one line, like a release lane, with its stories and n
 On the [local preview](#preview-the-map-locally), the Personas tab lets you reword a persona without opening the YAML. Each part has an **Edit** button:
 
 - The persona's title and summary, **Success means**, and each job's statement become editable where they are, keeping their look, with **Save** and **Cancel** below. The text grows as you type, so all of it stays in view. A job's **When**, **I want** and **so that** parts are edited separately, each without its lead word. In the title and job parts, **Enter** saves. The summary and **Success means** can have more than one line: **Enter** adds a line and **Ctrl+Enter**, or **⌘+Enter** on a Mac, saves, and the board shows the lines as typed. **Escape** cancels. The count below shows the field you are in against its limit.
-- **Uses today** and **Constraints** open a short form with one row per entry, and **Add** and remove buttons.
+- **Uses today** and **Constraints** open a short form with one row per entry, and **Add** and remove buttons. **Add** stops at the list's limit.
 - Context cards with nothing in them show **Not set yet**, so you can fill them in.
+- **Add job**, below the jobs, opens a form for a new job's **When**, **I want** and **so that**. The job goes after the persona's other jobs, so the core job stays the same. Its ID comes from **I want**, such as `see-which-tests-cover-it` from “to see which tests cover it before I start”, with a number added if another job has it. A person wrote it, so it is not a draft. A persona can have up to 8 jobs.
+- **+ Add persona**, at the end of the persona list, or of the persona picker on a narrow screen, opens a form for a new persona's title and optional summary. The persona goes after the others, so everyone keeps their colour, and **Save** opens their page, ready for **Add job**. The ID comes from the title, such as `release-manager` from “Release manager”, with a number added if another persona has it. A map can have up to 12 personas. On a map with no personas yet, the button sits above the steps for adding them in the YAML.
+- **Delete job** is in a job's edit bar. The board asks first and says what else changes: the job's steps go with it, the stories that serve it lose its tag but stay on the map, and deleting the core job makes the next job the core job. The change is in the map file, so Git can undo it.
 
 One part is edited at a time. If you press **Edit** on another part with changes still unsaved, the board asks whether to **Save** them, then opens the part you chose after the page reloads, **Discard** them, or **Keep editing**. Leaving the page with unsaved changes asks too.
 
@@ -448,7 +451,7 @@ What it leaves alone:
 - **Order**, because reordering jobs changes the [core job](#mark-a-core-job) and reordering personas changes their colours.
 - **Customer copy**, which needs approval.
 - **`draft`**. Rewording a drafted job or context keeps it a draft. A person confirms it by removing `draft: true` in a PR.
-- Adding or removing personas, jobs and steps, which you do in the YAML.
+- Deleting or reordering personas, and adding or removing steps, which you do in the YAML.
 
 The saved file is an ordinary change, so review it with `git diff` or `story-map diff` and commit it like any other map edit.
 

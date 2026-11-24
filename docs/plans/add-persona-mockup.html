@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add a persona mockup</title>
+<!-- Static mockup for docs/plans/add-persona.md (ESM-150). The board markup is copied from the real Personas tab, rendered by story-map preview from product/story-map.yaml, with the new persona form open. -->
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 32px 40px 48px; background: #f4f5fa; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mock-label { margin: 0 0 10px; color: #5046d5; font: 700 .75rem/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  .mock-note { margin: 0 0 18px; max-width: 80ch; color: #52617a; font-size: .875rem; line-height: 1.5; }
+  .mock-callout { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; background: #e2366d; color: #fff; font: 700 .7rem/1 system-ui, sans-serif; letter-spacing: 0; text-transform: none; vertical-align: middle; }
+  .mock-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 24px; margin: 20px 0 0; padding: 0; list-style: none; color: #19223a; font-size: .8125rem; line-height: 1.45; }
+  .mock-legend li { display: flex; gap: 6px; }
+  .mock-legend .mock-callout { margin: 0; }
+  .esm-edit-button[hidden] { display: inline-flex; }
+</style>
+</head>
+<body>
+
+<p class="mock-label">Add a persona on the local Personas tab</p>
+<p class="mock-note">This repository's map on <code>story-map preview</code>, with <strong>+ Add persona</strong> pressed. On a deployed board and for customers there is no button, as today.</p>
+
+<section class="esm-board" data-theme="light">
+  <div class="esm-frame">
+    <nav class="esm-tabs" aria-label="Board views"><a class="esm-tab" href="#">Story map<span class="esm-tab-count"><span aria-hidden="true">105</span></span></a><a class="esm-tab" href="#" aria-current="page">Personas<span class="esm-tab-count"><span aria-hidden="true">4</span></span></a><span class="esm-tabs-end">Internal only. Customers see the story map.</span></nav>
+    <div class="esm-persona-page">
+      <nav class="esm-persona-list" aria-label="Personas">
+        <p class="esm-persona-list-label">Personas</p>
+        <ul>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="0" aria-hidden="true">SB</span><span class="esm-persona-link-title">Solo Builder</span><span class="esm-persona-link-meta">88 stories · no gaps</span></a></li>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="1" aria-hidden="true">PM</span><span class="esm-persona-link-title">Product Manager Inheriting an Existing Project</span><span class="esm-persona-link-meta">18 stories · <span class="esm-job-gap">1 gap</span></span></a></li>
+          <li><a class="esm-persona-link" href="#" aria-current="page"><span class="esm-avatar" data-persona="2" aria-hidden="true">CA</span><span class="esm-persona-link-title">Coding Agent</span><span class="esm-persona-link-meta">25 stories · no gaps</span></a></li>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="3" aria-hidden="true">PC</span><span class="esm-persona-link-title">Product Customer / Evaluator</span><span class="esm-persona-link-meta">3 stories · no gaps</span></a></li>
+        </ul>
+        <p class="esm-add-persona"><button type="button" class="esm-edit-button" aria-expanded="true">+ Add persona</button><span class="mock-callout">1</span></p>
+      </nav>
+      <article class="esm-persona-main">
+        <form class="esm-inline-form" data-esm-edit="create-persona" aria-label="Add a persona">
+          <label class="esm-field"><span class="esm-field-label"><span>Title<span class="mock-callout">2</span></span><span class="esm-field-count">Up to 120 characters</span></span><input name="title" value="Release manager"></label>
+          <label class="esm-field"><span class="esm-field-label">Summary<span class="esm-field-count">Optional, up to 500 characters</span></span><textarea name="summary" rows="3">Decides when a release goes out and tells support what changed.</textarea></label>
+          <div class="esm-form-foot"><span class="esm-form-hint">It goes after the other personas. Add their jobs next.<span class="mock-callout">3</span></span><button type="button" class="esm-cancel">Cancel</button><button type="submit" class="esm-save">Save</button></div>
+        </form>
+        <div class="esm-persona-title"><span class="esm-avatar esm-avatar-lg" data-persona="2" aria-hidden="true">CA</span>
+          <div class="esm-persona-title-text">
+            <div class="esm-persona-heading"><h3>Coding Agent</h3><button type="button" class="esm-edit-button">Edit</button></div>
+            <p>Picks up an agreed release slice, uses the target customer's job to guide implementation, and records delivery evidence for review.</p>
+          </div>
+          <p class="esm-persona-title-end"><a href="#">Show their stories on the map<span aria-hidden="true"> →</span></a><span>4 jobs · 25 active stories</span></p>
+        </div>
+        <section class="esm-persona-jobs">
+          <h4 class="esm-section-title">Jobs to be done <span>Core job first, each with its steps in order</span></h4>
+          <ul class="esm-job-lanes">
+            <li class="esm-job-lane" data-core="">
+              <div class="esm-job-cell">
+                <p class="esm-job-labels"><span class="esm-core-label">Core job</span><span class="esm-draft">Draft</span><button type="button" class="esm-edit-button">Edit</button></p>
+                <p class="esm-job-statement esm-job-lines"><b>When</b> <span>I start a new session or receive a request to work on a release slice,</span> <b>I want</b> <span>to retrieve the smallest useful brief for the slice, including the target customer and job, agreed scope, prerequisites, and open decisions,</span> <b>so that</b> <span>I can see what to work on now, what needs to land first, and which supporting detail to fetch when I need it.</span></p>
+                <p class="esm-job-meta"><span class="esm-bar" aria-hidden="true"><span data-status="shipped" style="width:45%"></span><span data-status="planned" style="width:55%"></span></span><a href="#">11 stories: 5 shipped, 6 planned</a></p>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </article>
+    </div>
+  </div>
+</section>
+
+<ul class="mock-legend">
+  <li><span class="mock-callout">1</span><span><strong>+ Add persona</strong> ends the persona list. On small screens it ends the persona picker instead, and the picker closes when it opens the form. It is hidden once the map has 12 personas. A map with no personas shows it above the YAML steps.</span></li>
+  <li><span class="mock-callout">2</span><span><strong>Title</strong> is required, and <strong>Summary</strong> is optional. The ID comes from the title, such as <code>release-manager</code>, with a number added if another persona has it.</span></li>
+  <li><span class="mock-callout">3</span><span>The new persona goes <strong>last</strong>, so everyone keeps their colour. <strong>Save</strong> opens it, ready for <strong>Add job</strong> and its context.</span></li>
+</ul>
+
+</body>
+</html>

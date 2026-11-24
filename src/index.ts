@@ -7,7 +7,7 @@ export {
   storyMapWarnings,
   storyStatuses,
 } from "./schema.js";
-export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, jobStepsMaxItems, jobStepTitleMaxLength, personaConstraintsMaxItems, personaContextMaxLength, personaJobsMaxItems, personasMaxItems, personaUsesTodayMaxItems, personaUsesTodayMaxLength, releaseImpactMaxItems, releaseNotesMaxLength, storyDependsOnMaxItems, storyPersonasMaxItems } from "./schema.js";
+export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, jobStepsMaxItems, jobStepTitleMaxLength, personaConstraintsMaxItems, personaContextMaxLength, personaJobsMaxItems, personaSuccessMaxLength, personasMaxItems, personaUsesTodayMaxItems, personaUsesTodayMaxLength, releaseImpactMaxItems, releaseNotesMaxLength, storyDependsOnMaxItems, storyPersonasMaxItems } from "./schema.js";
 export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapJobStep, StoryMapPersona, StoryMapPersonaContext, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
 export { activeStoryStatuses, customerStatus, customerStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
 export type { CustomerStoryStatus, StoryStatusFilter } from "./status.js";

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { checkStoryMap, type StoryMapCheckIssue, type StoryMapCheckOptions, type StoryMapCheckResult } from "./check.js";
 import { diffStoryMaps, formatStoryMapDiff, type StoryMapDiff } from "./diff.js";
 import { closestIds } from "./read.js";
-import { parseStoryMap } from "./schema.js";
+import { parseStoryMap, personaJobsMaxItems, personasMaxItems } from "./schema.js";
 import { storyStatuses } from "./status.js";
 
 const text = z.string().trim().min(1);
@@ -56,10 +56,16 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
     constraints: z.array(z.string().trim()).optional(),
   }).strict(),
   z.object({ op: z.literal("set-job"), job: text, situation: text.optional(), motivation: text.optional(), outcome: text.optional() }).strict(),
+  // A new job goes after the persona's other jobs, so it never becomes the core job. Its ID comes from “I want” unless one is given.
+  z.object({ op: z.literal("create-job"), persona: text, id: storyId.optional(), situation: text, motivation: text, outcome: text }).strict(),
+  // Removes the job, its steps and its ID from every story that served it. The stories stay.
+  z.object({ op: z.literal("delete-job"), job: text }).strict(),
+  // A new persona goes after the others, so every persona keeps its colour. Its ID comes from the title unless one is given.
+  z.object({ op: z.literal("create-persona"), id: storyId.optional(), title: text, summary: z.string().trim().optional() }).strict(),
 ]);
 
 /** The operations that change a persona or one of their jobs. */
-export const personaEditOperations = ["set-persona", "set-persona-context", "set-job"] as const;
+export const personaEditOperations = ["set-persona", "set-persona-context", "set-job", "create-job", "delete-job", "create-persona"] as const;
 
 export type StoryMapEditOperation = z.infer<typeof storyMapEditOperationSchema>;
 
@@ -81,6 +87,8 @@ export interface StoryMapEditResult {
   changed: boolean;
   /** IDs given to stories added by `add`, in order. */
   addedIds: string[];
+  /** IDs given to personas added by `create-persona`, in order. */
+  addedPersonaIds: string[];
   /** A unified diff of the YAML, with three lines of context. Empty when nothing changed. */
   lineDiff: string;
   /** The `story-map diff` comparison of the old and new map. Absent when the new map is not valid. */
@@ -110,6 +118,7 @@ export class StoryMapEditError extends Error {
 const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "tokens", "estimatedCostUsd", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 const personaKeyOrder = ["id", "title", "summary", "context", "jobs", "customer"];
+const mapKeyOrder = ["version", "id", "title", "summary", "visibility", "customer", "personas", "activities", "releases", "stories"];
 const contextKeyOrder = ["success", "usesToday", "constraints", "draft"];
 const jobKeyOrder = ["id", "situation", "motivation", "outcome", "draft", "steps"];
 
@@ -168,9 +177,7 @@ class TextEditor {
 
   /** Sets, replaces or removes one field of the block mapping at `path`, such as `["personas", 0, "jobs", 2]`. */
   setFieldAt(path: readonly (string | number)[], key: string, value: unknown, order: readonly string[]) {
-    const item = this.document().getIn(path, true);
-    if (!isMap(item) || item.flow) throw new StoryMapEditError(`Could not edit ${path.join(".")} without changing other parts of the file. Make it by hand.`);
-    this.setOnMap(item, key, value, order);
+    this.setOnMap(this.mapAt(path), key, value, order);
   }
 
   private setOnMap(item: YAMLMap, key: string, value: unknown, order: readonly string[]) {
@@ -195,9 +202,18 @@ class TextEditor {
 
   /** Adds an item to the end of a list field, such as a story's sources, creating the field when it is missing. */
   appendToList(list: "stories" | "releases", id: string, key: string, item: unknown, whole: unknown[]) {
-    const seq = this.item(list, id).get(key, true);
+    this.appendOnMap(this.item(list, id), key, item, whole, list === "stories" ? storyKeyOrder : releaseKeyOrder);
+  }
+
+  /** Adds an item to the end of a list field of the block mapping at `path`, or of the map itself when `path` is empty, creating the field when it is missing. */
+  appendToListAt(path: readonly (string | number)[], key: string, item: unknown, whole: unknown[], order: readonly string[]) {
+    this.appendOnMap(this.mapAt(path), key, item, whole, order);
+  }
+
+  private appendOnMap(map: YAMLMap, key: string, item: unknown, whole: unknown[], order: readonly string[]) {
+    const seq = map.get(key, true);
     if (!isSeq(seq) || !seq.items.length || seq.flow) {
-      this.setField(list, id, key, whole);
+      this.setOnMap(map, key, whole, order);
       return;
     }
     const last = seq.items.at(-1) as Node;
@@ -207,13 +223,29 @@ class TextEditor {
 
   /** Removes the item at `index` from a list field, or the whole field when it was the last item. */
   removeFromList(list: "stories" | "releases", id: string, key: string, index: number) {
-    const seq = this.item(list, id).get(key, true) as unknown as YAMLSeq<Node>;
+    this.removeOnMap(this.item(list, id), key, index, list === "stories" ? storyKeyOrder : releaseKeyOrder);
+  }
+
+  /** Removes the item at `index` from a list field of the block mapping at `path`, or the whole field when it was the last item. */
+  removeFromListAt(path: readonly (string | number)[], key: string, index: number, order: readonly string[]) {
+    this.removeOnMap(this.mapAt(path), key, index, order);
+  }
+
+  private removeOnMap(map: YAMLMap, key: string, index: number, order: readonly string[]) {
+    const seq = map.get(key, true) as unknown as YAMLSeq<Node>;
     if (seq.items.length === 1 || seq.flow) {
-      this.setField(list, id, key, seq.items.length === 1 ? undefined : (seq.toJSON() as unknown[]).filter((_, i) => i !== index));
+      this.setOnMap(map, key, seq.items.length === 1 ? undefined : (seq.toJSON() as unknown[]).filter((_, i) => i !== index), order);
       return;
     }
     const node = seq.items[index];
     this.splice(lineStart(this.source, node.range![0]), lineEnd(this.source, node.range![1]), "");
+  }
+
+  private mapAt(path: readonly (string | number)[]): YAMLMap {
+    const document = this.document();
+    const item = path.length ? document.getIn(path, true) : document.contents;
+    if (!isMap(item) || item.flow) throw new StoryMapEditError(`Could not edit ${path.join(".")} without changing other parts of the file. Make it by hand.`);
+    return item;
   }
 
   /** Inserts a story after `afterId`, or at the end of the stories list. */
@@ -284,15 +316,88 @@ function unknownPersona(id: string, personas: RawPersona[], index: number, kind:
   throw new StoryMapEditError(`There is no ${kind} ${id}.${suggestions.length ? ` Did you mean ${suggestions.join(", ")}?` : ""}`, index);
 }
 
+/** A job ID from its “I want” text, such as `agree-its-scope-in-the` from “to agree its scope in the PR”, not used by another job. */
+export function jobIdFor(motivation: string, taken: readonly string[]): string {
+  return slugId(motivation.replace(/^\s*to\s+/i, ""), taken, "job");
+}
+
+/** A persona ID from their title, such as `product-manager` from “Product manager”, not used by another persona. */
+export function personaIdFor(title: string, taken: readonly string[]): string {
+  return slugId(title, taken, "persona");
+}
+
+/** Up to five words of `text`, and 40 characters, joined by hyphens, with `-2`, `-3` and so on when the ID is taken. */
+function slugId(text: string, taken: readonly string[], fallback: string): string {
+  const words = text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  let base = "";
+  for (const word of words) {
+    const next = base ? `${base}-${word}` : word;
+    if (next.length > 40) break;
+    base = next;
+    if (base.split("-").length === 5) break;
+  }
+  base ||= fallback;
+  let id = base;
+  for (let n = 2; taken.includes(id); n++) id = `${base}-${n}`;
+  return id;
+}
+
 /**
  * Rewords a persona, their context or one of their jobs. Only the fields given
  * change. An empty summary or success removes it, and an empty list removes the
  * list. `draft` is kept as it is, so an edit never confirms a draft.
  */
-function applyPersonaEdit(intended: Raw, editor: TextEditor, operation: PersonaOperation, index: number) {
+/** Applies one persona edit. Returns the new persona's ID for `create-persona`. */
+function applyPersonaEdit(intended: Raw & { stories: RawStory[] }, editor: TextEditor, operation: PersonaOperation, index: number): string | undefined {
   const personas = (intended.personas as RawPersona[] | undefined) ?? [];
   const fields = Object.keys(operation).filter(key => key !== "op" && key !== "persona" && key !== "job");
-  if (!fields.length) throw new StoryMapEditError("Give at least one field to change.", index);
+  if (!fields.length && operation.op !== "delete-job") throw new StoryMapEditError("Give at least one field to change.", index);
+  const jobIds = personas.flatMap(persona => (persona.jobs ?? []).map(job => job.id));
+
+  if (operation.op === "create-persona") {
+    if (personas.length >= personasMaxItems) throw new StoryMapEditError(`The map already has ${personasMaxItems} personas, the most it can have.`, index);
+    const taken = personas.map(persona => persona.id);
+    if (operation.id && taken.includes(operation.id)) throw new StoryMapEditError(`There is already a persona ${operation.id}.`, index);
+    const id = operation.id ?? personaIdFor(operation.title, taken);
+    const persona: RawPersona = { id, title: operation.title, ...(operation.summary ? { summary: operation.summary } : {}) };
+    intended.personas = [...personas, persona];
+    editor.appendToListAt([], "personas", persona, intended.personas as RawPersona[], mapKeyOrder);
+    return id;
+  }
+
+  if (operation.op === "delete-job") {
+    const personaIndex = personas.findIndex(persona => persona.jobs?.some(job => job.id === operation.job));
+    if (personaIndex === -1) unknownPersona(operation.job, personas, index, "job");
+    const jobs = personas[personaIndex].jobs!;
+    const jobIndex = jobs.findIndex(job => job.id === operation.job);
+    jobs.splice(jobIndex, 1);
+    if (!jobs.length) delete personas[personaIndex].jobs;
+    editor.removeFromListAt(["personas", personaIndex], "jobs", jobIndex, personaKeyOrder);
+    // Stories that served the job keep everything else, so none is lost.
+    for (const story of intended.stories) {
+      const list = story.jobs as string[] | undefined;
+      const at = list?.indexOf(operation.job) ?? -1;
+      if (at === -1) continue;
+      const rest = list!.filter((_, i) => i !== at);
+      if (rest.length) story.jobs = rest;
+      else delete story.jobs;
+      editor.removeFromList("stories", story.id, "jobs", at);
+    }
+    return;
+  }
+
+  if (operation.op === "create-job") {
+    const personaIndex = personas.findIndex(persona => persona.id === operation.persona);
+    if (personaIndex === -1) unknownPersona(operation.persona, personas, index, "persona");
+    const persona = personas[personaIndex];
+    if ((persona.jobs?.length ?? 0) >= personaJobsMaxItems) throw new StoryMapEditError(`${persona.title ?? persona.id} already has ${personaJobsMaxItems} jobs, the most a persona can have. Remove one first.`, index);
+    if (operation.id && jobIds.includes(operation.id)) throw new StoryMapEditError(`There is already a job ${operation.id}. Job IDs are unique across the map.`, index);
+    const id = operation.id ?? jobIdFor(operation.motivation, jobIds);
+    const job = { id, situation: operation.situation, motivation: operation.motivation, outcome: operation.outcome };
+    persona.jobs = [...(persona.jobs ?? []), job];
+    editor.appendToListAt(["personas", personaIndex], "jobs", job, persona.jobs, personaKeyOrder);
+    return;
+  }
 
   const setAt = (target: Raw, path: (string | number)[], key: string, value: unknown, order: readonly string[]) => {
     if (isDeepStrictEqual(target[key], value)) return;
@@ -367,6 +472,7 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
   const editor = new TextEditor(source);
   const touched = new Set<string>();
   const addedIds: string[] = [];
+  const addedPersonaIds: string[] = [];
 
   operations.forEach((raw, index) => {
     const parsed = storyMapEditOperationSchema.safeParse(raw);
@@ -384,8 +490,9 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       return;
     }
 
-    if (operation.op === "set-persona" || operation.op === "set-persona-context" || operation.op === "set-job") {
-      applyPersonaEdit(intended, editor, operation, index);
+    if (operation.op === "set-persona" || operation.op === "set-persona-context" || operation.op === "set-job" || operation.op === "create-job" || operation.op === "delete-job" || operation.op === "create-persona") {
+      const created = applyPersonaEdit(intended, editor, operation, index);
+      if (created) addedPersonaIds.push(created);
       return;
     }
 
@@ -521,6 +628,7 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
     source: editor.source,
     changed: editor.source !== source,
     addedIds,
+    addedPersonaIds,
     lineDiff: unifiedDiff(source, editor.source),
     ...(diff ? { diff, summary: formatStoryMapDiff(diff) } : {}),
     check,
