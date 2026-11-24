@@ -37,6 +37,7 @@ It uses the story permalinks from ESM-122, in 0.7.4. This is the UI that item 3 
 
 `story-map preview --writable` lets the **Change** section from item 2 save straight to the map file, through the same checks as `story-map edit --write`.
 
+- **Already there:** ESM-147 added `--writable`, the endpoint and the security and stale-page checks below, for persona edits. This item adds the status, reason and release operations to it and the save to the **Change** section.
 - **Endpoint:** the preview accepts one `POST /api/story-map/edit` with a list of edit operations, and only with `--writable`. It runs `proposeStoryMapEdit` and writes the file only when the result is valid, then the board reloads. Operations are limited to status, reason and release, so the panel cannot do what `edit` refuses, such as removing `draft`.
 - **Security:** the preview already refuses other `Host` headers, which stops DNS rebinding, but a page on another site can still post a form to `127.0.0.1`. So the endpoint also needs an `Origin` header that matches the preview, a JSON content type, and a random token generated at start-up and put in the page. The server still listens on the loopback address only.
 - **Stale page:** each request carries a hash of the file the page was rendered from. If the file has changed on disk since, the save is refused and the page asks the person to reload, so an agent's edit or a `git pull` is not overwritten.

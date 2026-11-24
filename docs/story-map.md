@@ -430,6 +430,28 @@ Each job lane collapses to one line, like a release lane, with its stories and n
 
 `activity=<ID>` keeps the stories under an activity. Like `job`, it has no control of its own: the step links set it, and the filter summary names the activity with a **Show every activity** link. Customers never get the tab, and `view` changes nothing for them, because jobs never reach them.
 
+### Edit personas on the local preview
+
+On the [local preview](#preview-the-map-locally) started with `--writable`, the Personas tab lets you reword a persona without opening the YAML. Each part has an **Edit** button:
+
+- The persona's title and summary, **Success means**, and each job's statement become editable where they are, keeping their look, with **Save** and **Cancel** below. The text grows as you type, so all of it stays in view. A job's **When**, **I want** and **so that** parts are edited separately, each without its lead word. In the title and job parts, **Enter** saves. The summary and **Success means** can have more than one line: **Enter** adds a line and **Ctrl+Enter**, or **⌘+Enter** on a Mac, saves, and the board shows the lines as typed. **Escape** cancels. The count below shows the field you are in against its limit.
+- **Uses today** and **Constraints** open a short form with one row per entry, and **Add** and remove buttons.
+- Context cards with nothing in them show **Not set yet**, so you can fill them in.
+
+One part is edited at a time. If you press **Edit** on another part with changes still unsaved, the board asks whether to **Save** them, then opens the part you chose after the page reloads, **Discard** them, or **Keep editing**. Leaving the page with unsaved changes asks too.
+
+**Save** writes only the fields you changed to the map file, through the same edit as `story-map edit`, keeping comments and every untouched line, and reloads the tab. A title or job part cannot be left empty, and a change that would make the map invalid is refused with the reason, writing nothing.
+
+What it leaves alone:
+
+- **IDs**, so stories keep following their persona and jobs.
+- **Order**, because reordering jobs changes the [core job](#mark-a-core-job) and reordering personas changes their colours.
+- **Customer copy**, which needs approval.
+- **`draft`**. Rewording a drafted job or context keeps it a draft. A person confirms it by removing `draft: true` in a PR.
+- Adding or removing personas, jobs and steps, which you do in the YAML.
+
+The saved file is an ordinary change, so review it with `git diff` or `story-map diff` and commit it like any other map edit. The hosted board, and the preview without `--writable`, stay read-only and show no **Edit** buttons. Hosts can pass `personaEditing` to `StoryMapBoard` to render the forms against their own endpoint, but `story-map preview --writable` is the only writer the package ships.
+
 ### Share personas with customers
 
 Signed-in customers see a persona only when it has approved `customer` copy and at least one story in their view is for it, from the story's jobs or its own `personas`. The customer view lists those personas in map order, with their `customer.title` and `customer.summary` and public IDs such as `persona-1`, like activities and releases, and each story lists the public IDs of its customer-facing personas. Internal persona IDs, titles and summaries, and every job, never reach customers, even for a customer-facing persona, and a story that is only for internal personas shows nothing about who it is for.
@@ -821,6 +843,7 @@ Open the address it prints, `http://127.0.0.1:4173/story-map`. **Internal** show
 
 - Pass the map's path when it is not `product/story-map.yaml`, `--port <n>` for another port, and `--history <file>` and `--tests-index <file>` for dates, changes and tagged tests.
 - Add `--source-base-url https://github.com/<owner>/<repo>/blob/main/` to turn repository-relative sources into links.
+- Add `--writable` to [edit personas in place](#edit-personas-on-the-local-preview) on the Personas tab and save them to the map file. Saves need the token the preview puts in its own pages, an `Origin` of the preview itself, and a JSON body, so another site cannot post to it. A save from a page older than the file, such as after an agent's edit or a `git pull`, is refused and nothing is overwritten.
 - The board's search, filters, panels and export menu work as they will in your product. The JSON view is at `/api/story-map`.
 - It renders the React board, so it needs `react` and `react-dom` installed. If they are missing, it says how to add them.
 

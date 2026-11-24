@@ -3,7 +3,7 @@ import { ArgumentError, defineCommand, escapeText, optionValue } from "./shared.
 
 export default defineCommand({
   parse(rest: string[]) {
-    const options = { map: "product/story-map.yaml", port: 4173, history: undefined as string | undefined, tests: undefined as string | undefined, sourceBaseUrl: undefined as string | undefined };
+    const options = { map: "product/story-map.yaml", port: 4173, history: undefined as string | undefined, tests: undefined as string | undefined, sourceBaseUrl: undefined as string | undefined, writable: false };
     const paths: string[] = [];
     for (let index = 0; index < rest.length; index++) {
       const arg = rest[index];
@@ -22,6 +22,8 @@ export default defineCommand({
           if (!/^https?:\/\//.test(value)) throw new ArgumentError(`--source-base-url must be an http or https URL, not ${value}`);
           options.sourceBaseUrl = value;
         }
+      } else if (arg === "--writable") {
+        options.writable = true;
       } else if (arg.startsWith("-")) {
         return null;
       } else {
@@ -49,7 +51,7 @@ export default defineCommand({
       process.exitCode = 1;
       return;
     }
-    const server = preview.createStoryMapPreviewServer({ map: options.map, history: options.history, tests: options.tests, sourceBaseUrl: options.sourceBaseUrl });
+    const server = preview.createStoryMapPreviewServer({ map: options.map, history: options.history, tests: options.tests, sourceBaseUrl: options.sourceBaseUrl, writable: options.writable });
     await new Promise<void>(resolve => {
       server.once("error", (error: NodeJS.ErrnoException) => {
         console.error(error.code === "EADDRINUSE" ? `Port ${options.port} is in use. Choose another with --port.` : error.message);
@@ -61,6 +63,7 @@ export default defineCommand({
         const port = typeof address === "object" && address ? address.port : options.port;
         console.log(`Previewing ${options.map} at http://${preview.previewHost}:${port}/story-map`);
         console.log("It reads the map on every request, so reload after an edit. Press Ctrl+C to stop.");
+        if (options.writable) console.log("Writable: edits on the Personas tab save to the map file.");
       });
     });
   },

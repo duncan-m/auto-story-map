@@ -11,6 +11,7 @@
  * the board's export links so the downloaded file matches, and which job lanes
  * they collapsed on the Personas tab. It opens the panel a permalink names, and
  * turns each panel's **Copy link** into a button that copies the permalink.
+ * On `story-map preview --writable` it lets the Personas tab edit personas in place.
  */
 
 const focusKey = "esm-filter-focus";
@@ -314,12 +315,385 @@ export function enhanceStoryMapBriefs(root: ParentNode = document) {
   }
 }
 
+const editFocusKey = "esm-edit-focus";
+const editNextKey = "esm-edit-next";
+const enhancedEditing = new WeakSet<Element>();
+
+/** The fields of a list form, such as Uses today, as one persona edit operation. */
+function formOperation(form: HTMLFormElement): Record<string, unknown> {
+  const operation = targetOf(form);
+  const lists = new Set([...form.querySelectorAll<HTMLElement>("[data-esm-list]")].map(list => list.dataset.esmList!));
+  const data = new FormData(form);
+  for (const name of new Set(data.keys())) {
+    operation[name] = lists.has(name)
+      ? data.getAll(name).map(value => String(value).trim()).filter(Boolean)
+      : String(data.get(name) ?? "").trim();
+  }
+  return operation;
+}
+
+function targetOf(editor: HTMLElement): Record<string, unknown> {
+  const operation: Record<string, unknown> = { op: editor.dataset.esmEdit };
+  if (editor.dataset.esmPersona) operation.persona = editor.dataset.esmPersona;
+  if (editor.dataset.esmJob) operation.job = editor.dataset.esmJob;
+  return operation;
+}
+
+/**
+ * Text typed into an editable element, with single spaces. A multi-line field keeps
+ * its line breaks, with at most one blank line between paragraphs. Others are one line.
+ */
+function typed(field: HTMLElement, text = field.innerText ?? field.textContent ?? "") {
+  if (!field.hasAttribute("data-esm-multiline")) return text.replace(/\s+/g, " ").trim();
+  return text.replace(/\r\n?/g, "\n").split("\n").map(line => line.replace(/[^\S\n]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function updateAddRow(list: HTMLElement) {
+  const add = list.querySelector<HTMLButtonElement>("[data-esm-add-row]");
+  if (add) add.disabled = list.querySelectorAll(".esm-field-row").length >= Number(list.dataset.esmMaxItems || Infinity);
+}
+
+function caretToEnd(field: HTMLElement) {
+  const selection = getSelection();
+  if (!selection) return;
+  const range = document.createRange();
+  range.selectNodeContents(field);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+/**
+ * Lets internal viewers edit personas in place on the Personas tab, when the page
+ * was rendered with `personaEditing`, as `story-map preview --writable` does. **Edit**
+ * makes the title, summary, success or job statement editable where it is, with
+ * Save and Cancel below it. Uses today and Constraints open a form with one row per
+ * entry. Save posts the edit and reloads the tab. Without this script the buttons stay
+ * hidden and the page is read-only.
+ */
+export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
+  for (const page of root.querySelectorAll<HTMLElement>(".esm-persona-page[data-esm-edit-endpoint]")) {
+    if (enhancedEditing.has(page)) continue;
+    enhancedEditing.add(page);
+    const { esmEditEndpoint: endpoint, esmEditToken: token, esmEditRevision: revision } = page.dataset;
+    const editorById = (id: string | undefined) => {
+      const editor = id ? document.getElementById(id) : null;
+      return editor && page.contains(editor) && editor.dataset.esmEdit ? editor : null;
+    };
+    const buttonFor = (editor: HTMLElement) => page.querySelector<HTMLButtonElement>(`[data-esm-edit-open="${editor.id}"]`);
+    const fieldsOf = (editor: HTMLElement) => [...page.querySelectorAll<HTMLElement>(`[data-esm-editor="${editor.id}"]`)];
+    for (const button of page.querySelectorAll<HTMLButtonElement>("[data-esm-edit-open]")) button.hidden = false;
+    // Plain text only. Browsers without plaintext-only get true, and pastes are made plain below.
+    const probe = document.createElement("span");
+    probe.contentEditable = "plaintext-only";
+    const editable = probe.contentEditable === "plaintext-only" ? "plaintext-only" : "true";
+
+    const showCount = (editor: HTMLElement, field: HTMLElement) => {
+      const count = editor.querySelector<HTMLElement>("[data-esm-live-count]");
+      if (!count) return;
+      const length = typed(field).length;
+      const max = Number(field.dataset.esmMax);
+      const saveKey = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
+      count.textContent = `${field.dataset.esmLabel}: ${length} / ${max}${field.hasAttribute("data-esm-multiline") ? ` · Enter adds a line, ${saveKey}+Enter saves` : ""}`;
+      count.toggleAttribute("data-over", length > max);
+    };
+
+    const close = (editor: HTMLElement, focus = true) => {
+      editor.hidden = true;
+      const error = editor.querySelector<HTMLElement>(".esm-form-error");
+      if (error) error.hidden = true;
+      if (editor instanceof HTMLFormElement) {
+        editor.reset();
+        const view = page.querySelector<HTMLElement>(`[data-esm-edit-view="${editor.id}"]`);
+        if (view) view.hidden = false;
+      } else {
+        for (const field of fieldsOf(editor)) {
+          field.textContent = field.dataset.esmOriginal ?? field.textContent;
+          for (const name of ["contenteditable", "role", "aria-label", "aria-multiline", "tabindex", "data-esm-editing"]) field.removeAttribute(name);
+        }
+      }
+      const button = buttonFor(editor);
+      if (button) {
+        button.hidden = false;
+        button.setAttribute("aria-expanded", "false");
+        if (focus) button.focus();
+      }
+    };
+
+    const open = (editor: HTMLElement) => {
+      for (const other of page.querySelectorAll<HTMLElement>("[data-esm-edit]:not([hidden])")) close(other, false);
+      const button = buttonFor(editor);
+      if (button) {
+        button.setAttribute("aria-expanded", "true");
+        button.hidden = true;
+      }
+      editor.hidden = false;
+      if (editor instanceof HTMLFormElement) {
+        const view = page.querySelector<HTMLElement>(`[data-esm-edit-view="${editor.id}"]`);
+        if (view) view.hidden = true;
+        editor.dataset.esmSnapshot = JSON.stringify(formOperation(editor));
+        editor.querySelector<HTMLElement>("input, textarea")?.focus();
+        return;
+      }
+      const fields = fieldsOf(editor);
+      for (const field of fields) {
+        field.dataset.esmOriginal = field.textContent ?? "";
+        field.contentEditable = editable;
+        field.setAttribute("role", "textbox");
+        field.setAttribute("aria-label", field.dataset.esmLabel ?? "");
+        field.setAttribute("aria-multiline", field.hasAttribute("data-esm-multiline") ? "true" : "false");
+        field.dataset.esmEditing = "";
+      }
+      if (fields[0]) {
+        fields[0].focus();
+        caretToEnd(fields[0]);
+        showCount(editor, fields[0]);
+      }
+    };
+
+    const fail = (editor: HTMLElement, message: string) => {
+      const error = editor.querySelector<HTMLElement>(".esm-form-error")!;
+      error.textContent = message;
+      error.hidden = false;
+      const save = editor.querySelector<HTMLButtonElement>(".esm-save");
+      if (save) save.disabled = false;
+    };
+
+    /** True when the open editor holds text that differs from what the page loaded with. */
+    const isDirty = (editor: HTMLElement) => {
+      if (editor.hidden) return false;
+      if (editor instanceof HTMLFormElement) return JSON.stringify(formOperation(editor)) !== editor.dataset.esmSnapshot;
+      return fieldsOf(editor).some(field => typed(field) !== typed(field, field.dataset.esmOriginal ?? ""));
+    };
+    const nameOf = (editor: HTMLElement) => (editor.getAttribute("aria-label") ?? "").replace(/^Edit /, "");
+
+    /**
+     * Asks what to do with unsaved changes in `current` before `next` opens: save them
+     * (then `next` opens after the reload), discard them, or keep editing.
+     */
+    const askUnsaved = (current: HTMLElement, next: HTMLElement) => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "esm-unsaved-dialog";
+      const titleId = `${current.id}-unsaved`;
+      dialog.setAttribute("aria-labelledby", titleId);
+      const heading = document.createElement("h3");
+      heading.id = titleId;
+      heading.textContent = "Save your changes?";
+      const text = document.createElement("p");
+      text.textContent = `Your changes to ${nameOf(current)} are not saved yet.`;
+      const form = document.createElement("form");
+      form.method = "dialog";
+      const choice = (value: string, label: string, className: string) => {
+        const button = document.createElement("button");
+        button.value = value;
+        button.textContent = label;
+        button.className = className;
+        return button;
+      };
+      const saveButton = choice("save", "Save", "esm-save");
+      form.append(choice("keep", "Keep editing", "esm-cancel esm-unsaved-keep"), choice("discard", "Discard", "esm-cancel"), saveButton);
+      dialog.append(heading, text, form);
+      page.append(dialog);
+      dialog.addEventListener("close", () => {
+        const action = dialog.returnValue;
+        dialog.remove();
+        if (action === "save") {
+          save(current, next);
+        } else if (action === "discard") {
+          close(current, false);
+          open(next);
+        } else {
+          (fieldsOf(current)[0] ?? current.querySelector<HTMLElement>("input, textarea"))?.focus();
+        }
+      });
+      dialog.showModal();
+      saveButton.focus();
+    };
+
+    // Leaving the page, by a link or a reload, also warns about unsaved changes.
+    let leaving = false;
+    addEventListener("beforeunload", event => {
+      if (leaving) return;
+      if ([...page.querySelectorAll<HTMLElement>("[data-esm-edit]:not([hidden])")].some(isDirty)) event.preventDefault();
+    });
+
+    const save = (editor: HTMLElement, next?: HTMLElement) => {
+      let operation: Record<string, unknown>;
+      if (editor instanceof HTMLFormElement) {
+        operation = formOperation(editor);
+      } else {
+        operation = targetOf(editor);
+        for (const field of fieldsOf(editor)) {
+          const value = typed(field);
+          if (field.hasAttribute("data-esm-required") && !value) {
+            field.focus();
+            fail(editor, `${field.dataset.esmLabel} cannot be empty.`);
+            return;
+          }
+          const max = Number(field.dataset.esmMax);
+          if (value.length > max) {
+            field.focus();
+            fail(editor, `${field.dataset.esmLabel} is ${value.length} characters. Keep it to ${max}.`);
+            return;
+          }
+          // Only fields that changed, so text the board shortens, such as an outcome's full stop, is kept.
+          if (value !== typed(field, field.dataset.esmOriginal ?? "")) operation[field.dataset.esmEditField!] = value;
+        }
+        if (Object.keys(operation).length === 1 + (operation.persona ? 1 : 0) + (operation.job ? 1 : 0)) {
+          close(editor);
+          return;
+        }
+      }
+      const button = editor.querySelector<HTMLButtonElement>(".esm-save");
+      if (button) button.disabled = true;
+      editor.querySelector<HTMLElement>(".esm-form-error")!.hidden = true;
+      fetch(endpoint!, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Story-Map-Token": token ?? "" },
+        body: JSON.stringify({ revision, operations: [operation] }),
+      })
+        .then(async response => {
+          const body = await response.json().catch(() => ({})) as { error?: string };
+          if (!response.ok) throw new Error(body.error || `The preview could not save the edit (${response.status}).`);
+          try {
+            sessionStorage.setItem(editFocusKey, editor.id);
+            if (next) sessionStorage.setItem(editNextKey, next.id);
+          } catch {
+            // Focus then starts at the top after the reload.
+          }
+          leaving = true;
+          location.reload();
+        })
+        .catch((failure: unknown) => {
+          fail(editor, failure instanceof Error && failure.message !== "Failed to fetch" ? failure.message : "Could not reach the preview. Check it is still running, then try again.");
+        });
+    };
+
+    page.addEventListener("click", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const opener = target?.closest<HTMLButtonElement>("[data-esm-edit-open]");
+      if (opener) {
+        const editor = editorById(opener.dataset.esmEditOpen);
+        if (!editor) return;
+        const current = [...page.querySelectorAll<HTMLElement>("[data-esm-edit]:not([hidden])")].find(other => other !== editor && isDirty(other));
+        if (current) askUnsaved(current, editor);
+        else open(editor);
+        return;
+      }
+      const editor = target?.closest<HTMLElement>("[data-esm-edit]");
+      if (!editor) return;
+      if (target!.closest("[data-esm-edit-cancel]")) {
+        close(editor);
+        return;
+      }
+      if (target!.closest("[data-esm-edit-save]")) {
+        save(editor);
+        return;
+      }
+      const list = target!.closest<HTMLElement>("[data-esm-list]");
+      if (list && target!.closest("[data-esm-add-row]")) {
+        const template = list.querySelector("template");
+        const row = template?.content.firstElementChild?.cloneNode(true) as HTMLElement | undefined;
+        if (!row) return;
+        list.querySelector("[data-esm-add-row]")!.before(row);
+        row.querySelector("input")?.focus();
+        updateAddRow(list);
+        return;
+      }
+      if (list && target!.closest("[data-esm-remove-row]")) {
+        const row = target!.closest<HTMLElement>(".esm-field-row")!;
+        if (list.querySelectorAll(".esm-field-row").length > 1) {
+          const next = row.nextElementSibling?.matches(".esm-field-row") ? row.nextElementSibling : row.previousElementSibling;
+          row.remove();
+          next?.querySelector("input")?.focus();
+        } else {
+          row.querySelector("input")!.value = "";
+          row.querySelector("input")!.focus();
+        }
+        updateAddRow(list);
+      }
+    });
+
+    const inlineEditorOf = (target: EventTarget | null) => {
+      const field = target instanceof HTMLElement && target.hasAttribute("data-esm-editing") ? target : null;
+      return field ? { field, editor: editorById(field.dataset.esmEditor) } : null;
+    };
+
+    page.addEventListener("input", event => {
+      const inline = inlineEditorOf(event.target);
+      if (inline?.editor) showCount(inline.editor, inline.field);
+    });
+    page.addEventListener("focusin", event => {
+      const inline = inlineEditorOf(event.target);
+      if (inline?.editor) showCount(inline.editor, inline.field);
+    });
+    page.addEventListener("paste", event => {
+      const inline = inlineEditorOf(event.target);
+      if (!inline || editable === "plaintext-only") return;
+      event.preventDefault();
+      document.execCommand("insertText", false, event.clipboardData?.getData("text/plain") ?? "");
+    });
+
+    page.addEventListener("keydown", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const inline = inlineEditorOf(target);
+      const editor = inline?.editor ?? target?.closest<HTMLElement>("[data-esm-edit]") ?? null;
+      if (!editor) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        close(editor);
+      } else if (event.key === "Enter" && inline) {
+        // Enter saves a one-line field. In a multi-line one it adds a line, and Ctrl or Cmd with Enter saves.
+        const multiline = inline.field.hasAttribute("data-esm-multiline");
+        if (multiline && !event.ctrlKey && !event.metaKey) {
+          if (editable === "true") {
+            event.preventDefault();
+            document.execCommand("insertText", false, "\n");
+          }
+          return;
+        }
+        event.preventDefault();
+        save(editor);
+      }
+    });
+
+    page.addEventListener("submit", event => {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement) || !form.dataset.esmEdit) return;
+      event.preventDefault();
+      save(form);
+    });
+
+    // After a save reloads the page, focus goes back to the Edit button that opened the editor,
+    // or the editor the person chose next opens.
+    let saved: string | null = null;
+    let next: string | null = null;
+    try {
+      saved = sessionStorage.getItem(editFocusKey);
+      next = sessionStorage.getItem(editNextKey);
+      sessionStorage.removeItem(editFocusKey);
+      sessionStorage.removeItem(editNextKey);
+    } catch {
+      // Storage can be unavailable.
+    }
+    if (saved) {
+      const following = editorById(next ?? undefined);
+      if (following) open(following);
+      else page.querySelector<HTMLButtonElement>(`[data-esm-edit-open="${saved}"]`)?.focus();
+      const board = page.closest(".esm-board");
+      if (board) announce(board, "Saved to the map file.");
+    }
+  }
+}
+
 function enhance() {
   enhanceStoryMapFilters();
   enhanceStoryMapReleases();
   enhanceStoryMapMenus();
   enhanceStoryMapPermalinks();
   enhanceStoryMapBriefs();
+  enhanceStoryMapPersonaEditing();
 }
 
 if (typeof document !== "undefined") {

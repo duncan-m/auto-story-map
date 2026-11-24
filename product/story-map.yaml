@@ -13,7 +13,10 @@ personas:
     title: Solo Builder
     summary: Owns the product direction, chooses and builds the next release slice, and reviews changes made by coding agents in the repository.
     context:
-      success: I can see what is in progress, what is next, and why it comes in that order. An agent can pick up the slice with the target customer, agreed scope, dependencies, and open decisions in a short brief.
+      success: |-
+        I can see what is in progress, what is next, and why it comes in that order.
+
+        An agent can pick up the slice with the target customer, agreed scope, dependencies, and open decisions in a short brief.
       usesToday:
         - GitHub pull requests and diffs
         - Coding agents
@@ -912,6 +915,7 @@ stories:
     estimate: 5
     dependsOn:
       - ESM-111
+      - ESM-147
     jobs:
       - triage-backlog
       - get-oriented
@@ -1009,6 +1013,26 @@ stories:
       - docs/story-map.md#personas-tab
       - src/react.tsx
       - test/personas.test.mjs
+  - id: ESM-147
+    title: Edit a persona in place on the local preview
+    activity: explore
+    release: v0-7-6
+    status: merged
+    tokens: 42175625
+    estimatedCostUsd: 12.91
+    jobs:
+      - ground-work-in-customer-needs
+    summary: On story-map preview --writable, the Personas tab edits a persona's title, summary, context and job statements in place and saves them to the map file. Drafts stay drafts.
+    notes: Adds story-map preview --writable and its POST /api/story-map/edit endpoint, with the Origin, token and stale-file checks from the ESM-112 plan, accepting persona edits only. IDs, order, customer copy and draft are not editable here. The hosted board stays read-only (ESM-404).
+    sources:
+      - docs/story-map.md#edit-personas-on-the-local-preview
+      - docs/plans/edit-personas.md#change
+      - docs/plans/edit-personas.md#ui-mockup
+      - src/edit.ts
+      - src/preview.tsx
+      - src/react.tsx
+      - src/board.ts
+      - test/persona-editing.test.mjs
   - id: ESM-910
     title: Break a job into steps
     activity: explore
