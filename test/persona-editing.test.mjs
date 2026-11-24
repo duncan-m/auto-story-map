@@ -132,13 +132,124 @@ test("ESM-147: the Personas tab renders edit forms only with personaEditing", ()
   assert.match(editable, /<p data-esm-editor="[^"]+" data-esm-edit-field="success"[^>]*data-esm-multiline=""[^>]*data-esm-placeholder="Not set yet\.">Releases land on time<\/p>/);
   assert.match(editable, /data-esm-edit-field="summary"[^>]*data-esm-multiline=""/, "summaries can have more than one line");
   assert.doesNotMatch(editable, /data-esm-edit-field="(title|situation|motivation|outcome)"[^>]*data-esm-multiline/, "titles and job parts are one line");
-  assert.doesNotMatch(editable, /<textarea/);
+  assert.doesNotMatch(editable.replace(/<form[^>]*data-esm-edit="create-(job|persona)"[\s\S]*?<\/form>/g, ""), /<textarea/, "only the forms for a new job or persona have text areas");
   // Uses today and Constraints keep a form, with one row per entry.
   assert.match(editable, /<form class="esm-inline-form"[^>]*data-esm-edit="set-persona-context" data-esm-persona="pm"[^>]*hidden=""><fieldset[^>]*data-esm-list="usesToday"/);
   assert.match(editable, /Stays a draft until a person confirms it\./);
   // Empty context cards appear so they can be filled in.
   assert.match(editable, />Constraints<\/h4>/);
   assert.match(editable, /Not set yet\./);
+});
+
+test("ESM-147: list fields add rows by copying one, with no template React would leave empty", () => {
+  const editable = render({ endpoint: "/e", token: "t", revision: "r" });
+  assert.doesNotMatch(editable, /<template/);
+  assert.match(editable, /data-esm-list="constraints" data-esm-max-items="6">[\s\S]*?<div class="esm-field-row"><input [^>]*name="constraints"/, "an empty list still has one row to copy");
+});
+
+test("ESM-154: create-job adds a job after the others, with an ID from I want", async () => {
+  const result = await edit([{ op: "create-job", persona: "pm", situation: "a release slips", motivation: "to tell customers what moved and why", outcome: "they can plan around it" }]);
+  assert.equal(result.valid, true);
+  assert.match(result.source, /        draft: true\n      - id: tell-customers-what-moved-and\n        situation: a release slips\n        motivation: to tell customers what moved and why\n        outcome: they can plan around it\n  - id: dev\n/);
+  const jobs = parseStoryMap(result.source).personas[0].jobs;
+  assert.deepEqual(jobs.map(job => job.id), ["plan-release", "tell-customers-what-moved-and"], "the core job stays first");
+  assert.equal(jobs[1].draft, undefined, "a person wrote it, so it is not a draft");
+});
+
+test("ESM-154: create-job gives a persona their first job, and never reuses an ID", async () => {
+  const first = await edit([{ op: "create-job", persona: "dev", situation: "a story is ready", motivation: "to agree its scope", outcome: "I build the right thing" }]);
+  const dev = parseStoryMap(first.source).personas[1];
+  assert.deepEqual(dev.jobs.map(job => job.id), ["agree-its-scope"]);
+  const clash = await edit([{ op: "create-job", persona: "dev", situation: "a story is ready", motivation: "to plan release", outcome: "it ships" }]);
+  assert.equal(parseStoryMap(clash.source).personas[1].jobs[0].id, "plan-release-2");
+  await assert.rejects(edit([{ op: "create-job", persona: "dev", id: "plan-release", situation: "a", motivation: "b", outcome: "c" }]), /already a job plan-release/);
+  await assert.rejects(edit([{ op: "create-job", persona: "pm", situation: "a", motivation: "", outcome: "c" }]), StoryMapEditError);
+});
+
+test("ESM-154: create-job refuses a ninth job", async () => {
+  const jobs = Array.from({ length: 7 }, (_, index) => ({ op: "create-job", persona: "pm", situation: "a", motivation: `to do thing ${index}`, outcome: "c" }));
+  const full = (await edit(jobs)).source;
+  await assert.rejects(proposeStoryMapEdit(full, [{ op: "create-job", persona: "pm", situation: "a", motivation: "to do one more", outcome: "c" }]), /already has 8 jobs/);
+});
+
+test("ESM-154: delete-job removes the job and its tag from stories, and keeps the stories", async () => {
+  const result = await edit([{ op: "delete-job", job: "plan-release" }]);
+  assert.equal(result.valid, true);
+  const after = parseStoryMap(result.source);
+  assert.equal(after.personas[0].jobs, undefined);
+  assert.equal(after.stories[0].id, "S-1");
+  assert.equal(after.stories[0].jobs, undefined);
+  assert.match(result.source, /    status: planned\n$/);
+  await assert.rejects(edit([{ op: "delete-job", job: "plan-releas" }]), /There is no job plan-releas\. Did you mean plan-release\?/);
+});
+
+test("ESM-154: delete-job keeps a story's other jobs, and the next job becomes core", async () => {
+  const added = (await edit([{ op: "create-job", persona: "pm", situation: "a release slips", motivation: "to tell customers", outcome: "they can plan" }])).source;
+  const tagged = (await proposeStoryMapEdit(added, [{ op: "add-job", id: "S-1", job: "tell-customers" }])).source;
+  const result = await proposeStoryMapEdit(tagged, [{ op: "delete-job", job: "plan-release" }]);
+  const after = parseStoryMap(result.source);
+  assert.deepEqual(after.personas[0].jobs.map(job => job.id), ["tell-customers"]);
+  assert.deepEqual(after.stories[0].jobs, ["tell-customers"]);
+});
+
+test("ESM-154: the Personas tab offers Add job and Delete job only with personaEditing", () => {
+  assert.doesNotMatch(render(undefined), /create-job|data-esm-delete/);
+  const editable = render({ endpoint: "/e", token: "t", revision: "r" });
+  assert.match(editable, /<button type="button" class="esm-edit-button" data-esm-edit-open="([^"]+)" aria-label="Add a job for Product manager"[^>]*hidden="">\+ Add job<\/button><form class="esm-inline-form" id="\1" data-esm-edit="create-job" data-esm-persona="pm"/);
+  for (const name of ["situation", "motivation", "outcome"]) assert.match(editable, new RegExp(`<textarea name="${name}" rows="2" maxLength="200" required=""`));
+  assert.match(editable, /<button type="button" class="esm-delete" data-esm-delete="the core job" data-esm-delete-consequence="1 story that serves it loses the tag, and stays on the map\. The next job becomes the core job\.">Delete job<\/button>/);
+});
+
+test("ESM-155: create-persona adds a persona after the others, with an ID from the title", async () => {
+  const result = await edit([{ op: "create-persona", title: "Release Manager", summary: "Decides when a release goes out." }]);
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.addedPersonaIds, ["release-manager"]);
+  assert.match(result.source, /  - id: dev\n    title: Developer\n  - id: release-manager\n    title: Release Manager\n    summary: Decides when a release goes out\.\nstories:\n/);
+  const personas = parseStoryMap(result.source).personas;
+  assert.deepEqual(personas.map(persona => persona.id), ["pm", "dev", "release-manager"], "everyone keeps their place and colour");
+  assert.equal(personas[2].jobs, undefined);
+});
+
+test("ESM-155: create-persona leaves out an empty summary, and never reuses an ID", async () => {
+  const result = await edit([{ op: "create-persona", title: "Developer", summary: "" }]);
+  assert.deepEqual(result.addedPersonaIds, ["developer"]);
+  assert.match(result.source, /  - id: developer\n    title: Developer\nstories:\n/);
+  const clash = await edit([{ op: "create-persona", title: "PM" }]);
+  assert.deepEqual(clash.addedPersonaIds, ["pm-2"]);
+  await assert.rejects(edit([{ op: "create-persona", id: "dev", title: "Dev" }]), /already a persona dev/);
+  await assert.rejects(edit([{ op: "create-persona", title: " " }]), StoryMapEditError);
+});
+
+test("ESM-155: create-persona adds the first persona to a map with none, before the activities", async () => {
+  const bare = map.replace(/personas:\n[\s\S]*?(?=stories:)/, "").replace("    jobs: [plan-release]\n", "");
+  const result = await proposeStoryMapEdit(bare, [{ op: "create-persona", title: "Product manager" }]);
+  assert.equal(result.valid, true);
+  assert.match(result.source, /  title: Roadmap\npersonas:\n  - id: product-manager\n    title: Product manager\nactivities:\n/);
+});
+
+test("ESM-155: create-persona refuses a thirteenth persona", async () => {
+  const full = (await edit(Array.from({ length: 10 }, (_, index) => ({ op: "create-persona", title: `Persona ${index}` })))).source;
+  await assert.rejects(proposeStoryMapEdit(full, [{ op: "create-persona", title: "One more" }]), /already has 12 personas/);
+});
+
+test("ESM-155: the Personas tab offers Add persona only with personaEditing, in the list and the picker", () => {
+  assert.doesNotMatch(render(undefined), /create-persona|Add a persona/);
+  const editable = render({ endpoint: "/e", token: "t", revision: "r" });
+  const openers = editable.match(/<button type="button" class="esm-edit-button" data-esm-edit-open="([^"]+-add-persona)" aria-label="Add a persona"[^>]*hidden="">\+ Add persona<\/button>/g);
+  assert.equal(openers.length, 2, "one in the persona list, one in the picker for small screens");
+  assert.match(editable, /<article class="esm-persona-main"[^>]*><form class="esm-inline-form" id="[^"]+-add-persona" data-esm-edit="create-persona" aria-label="Add a persona" hidden="">/);
+  assert.match(editable, /<input maxLength="120" required=""[^>]*name="title"\/>/);
+  assert.match(editable, /<textarea name="summary" rows="3" maxLength="500"/);
+});
+
+test("ESM-155: an empty Personas tab offers Add persona beside the YAML steps", () => {
+  const bare = map.replace(/personas:\n[\s\S]*?(?=stories:)/, "").replace("    jobs: [plan-release]\n", "");
+  const page = getStoryMapPage(parseStoryMap(bare), { roles: [] }, { canViewInternal: () => true, searchParams: new URLSearchParams("view=personas") });
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: page, personaEditing: { endpoint: "/e", token: "t", revision: "r" } }));
+  assert.match(html, /<article class="esm-persona-setup"[^>]*data-esm-edit-endpoint="\/e"/);
+  assert.match(html, /No personas yet[\s\S]*data-esm-edit="create-persona"[\s\S]*Or add them to the map file:[\s\S]*<pre>/);
+  const readOnly = renderToStaticMarkup(createElement(StoryMapBoard, { map: page }));
+  assert.doesNotMatch(readOnly, /create-persona|data-esm-edit-endpoint/);
 });
 
 test("ESM-147: customers never get the forms, even with personaEditing", () => {

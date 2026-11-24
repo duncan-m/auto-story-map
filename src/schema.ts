@@ -33,7 +33,9 @@ export const jobStepsMaxItems = 6;
 export const jobStepTitleMaxLength = 60;
 /** Longest part of a job statement, in characters. */
 export const jobStatementMaxLength = 200;
-/** Longest `success` or constraint in a persona's context, in characters. */
+/** Longest `success` in a persona's context, in characters. */
+export const personaSuccessMaxLength = 400;
+/** Longest constraint in a persona's context, in characters. */
 export const personaContextMaxLength = 200;
 /** Most entries in a persona's `usesToday`. */
 export const personaUsesTodayMaxItems = 8;
@@ -103,7 +105,7 @@ function formatSchemas(strict: boolean) {
 
   const contextLine = z.string().trim().min(1).max(personaContextMaxLength);
   const personaContext = object({
-    success: contextLine.optional()
+    success: z.string().trim().min(1).max(personaSuccessMaxLength).optional()
       .describe("Optional. What a good result looks like to them, such as “Weekly forecast accuracy, judged by the VP of Sales” or “Every bill paid on time”."),
     usesToday: z.array(z.string().trim().min(1).max(personaUsesTodayMaxLength)).max(personaUsesTodayMaxItems).optional()
       .describe(`Optional. Up to ${personaUsesTodayMaxItems} products, tools and workarounds they rely on now, which a story competes with.`),

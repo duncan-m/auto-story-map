@@ -134,7 +134,7 @@ export function createStoryMapEditServer({ map }: { map: string }): StoryMapEdit
         return;
       }
       if (result.changed) await writeFile(map, result.source, "utf8");
-      json(response, 200, { changed: result.changed, revision: storyMapRevision(result.source), summary: result.summary ?? "" });
+      json(response, 200, { changed: result.changed, revision: storyMapRevision(result.source), summary: result.summary ?? "", addedPersonaIds: result.addedPersonaIds });
     },
   };
 }

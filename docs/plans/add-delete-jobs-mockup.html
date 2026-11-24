@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add and delete jobs mockup</title>
+<!-- Static mockup for docs/plans/add-delete-jobs.md (ESM-154). The board markup is copied from the real Personas tab, rendered by story-map preview from product/story-map.yaml, with an editor and the new job form open. -->
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 32px 40px 48px; background: #f4f5fa; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mock-label { margin: 0 0 10px; color: #5046d5; font: 700 .75rem/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  .mock-note { margin: 0 0 18px; max-width: 80ch; color: #52617a; font-size: .875rem; line-height: 1.5; }
+  .mock-callout { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; background: #e2366d; color: #fff; font: 700 .7rem/1 system-ui, sans-serif; letter-spacing: 0; text-transform: none; vertical-align: middle; }
+  .mock-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 24px; margin: 20px 0 0; padding: 0; list-style: none; color: #19223a; font-size: .8125rem; line-height: 1.45; }
+  .mock-legend li { display: flex; gap: 6px; }
+  .mock-legend .mock-callout { margin: 0; }
+  .mock-row { display: grid; grid-template-columns: minmax(0, 1fr) 26rem; gap: 28px; align-items: start; }
+  .mock-dialog { position: static; display: block; margin: 0; }
+  .esm-persona-main { max-width: none; }
+</style>
+</head>
+<body>
+
+<p class="mock-label">Add and delete jobs on the local Personas tab</p>
+<p class="mock-note">The Coding Agent from this repository's map, on <code>story-map preview</code>. A job is open for editing, showing <strong>Delete job</strong>, with the confirmation beside it, and the <strong>Add job</strong> form is open below the jobs. On a deployed board and for customers there are no buttons, as today.</p>
+
+<section class="esm-board" data-theme="light">
+  <div class="esm-frame">
+    <div class="mock-row">
+      <article class="esm-persona-main">
+        <div class="esm-persona-title"><span class="esm-avatar esm-avatar-lg" data-persona="2" aria-hidden="true">CA</span>
+          <div class="esm-persona-title-text">
+            <div class="esm-persona-heading"><h3>Coding Agent</h3><button type="button" class="esm-edit-button">Edit</button></div>
+            <p>Picks up an agreed release slice, uses the target customer's job to guide implementation, and records delivery evidence for review.</p>
+          </div>
+          <p class="esm-persona-title-end"><a href="#">Show their stories on the map<span aria-hidden="true"> →</span></a><span>4 jobs · 25 active stories</span></p>
+        </div>
+        <section class="esm-persona-jobs">
+          <h4 class="esm-section-title">Jobs to be done <span>Core job first, each with its steps in order</span></h4>
+          <ul class="esm-job-lanes">
+            <li class="esm-job-lane" data-core="">
+              <div class="esm-job-cell">
+                <p class="esm-job-labels"><span class="esm-core-label">Core job</span><span class="esm-draft">Draft</span><button type="button" class="esm-edit-button">Edit</button></p>
+                <p class="esm-job-statement esm-job-lines"><b>When</b> <span>I start a new session or receive a request to work on a release slice,</span> <b>I want</b> <span>to retrieve the smallest useful brief for the slice, including the target customer and job, agreed scope, prerequisites, and open decisions,</span> <b>so that</b> <span>I can see what to work on now, what needs to land first, and which supporting detail to fetch when I need it.</span></p>
+                <p class="esm-job-meta"><span class="esm-bar" aria-hidden="true"><span data-status="shipped" style="width:45%"></span><span data-status="planned" style="width:55%"></span></span><a href="#">11 stories: 5 shipped, 6 planned</a></p>
+              </div>
+            </li>
+            <li class="esm-job-lane">
+              <div class="esm-job-cell">
+                <p class="esm-job-labels"><span class="esm-draft">Draft</span></p>
+                <p class="esm-job-statement esm-job-lines"><b>When</b> <span><span data-esm-editing="">a change I am delivering affects a story's implementation or delivery status</span>,</span> <b>I want</b> <span><span data-esm-editing="">to make a focused, valid edit and link the evidence that supports it</span>,</span> <b>so that</b> <span><span data-esm-editing="">reviewers can see what changed beside the code and distinguish merged work from work that has shipped</span>.</span></p>
+                <div class="esm-inline-bar"><div class="esm-form-foot"><button type="button" class="esm-delete">Delete job</button><span class="mock-callout">1</span><span class="esm-form-hint">Stays a draft until a person confirms it.<span class="esm-field-count">When: 76 / 200</span></span><button type="button" class="esm-cancel">Cancel</button><button type="button" class="esm-save">Save</button></div></div>
+                <p class="esm-job-meta"><span class="esm-bar" aria-hidden="true"><span data-status="shipped" style="width:67%"></span><span data-status="planned" style="width:33%"></span></span><a href="#">12 stories: 8 shipped, 4 planned</a></p>
+              </div>
+            </li>
+            <li class="esm-job-lane">
+              <div class="esm-job-cell">
+                <p class="esm-job-labels"><span class="esm-draft">Draft</span><button type="button" class="esm-edit-button">Edit</button></p>
+                <p class="esm-job-statement esm-job-lines"><b>When</b> <span>a project has existing product behaviour or repository history and little reliable documentation,</span> <b>I want</b> <span>to draft journeys from the available sources and flag gaps or conflicts in customer context, dependencies, and delivery evidence,</span> <b>so that</b> <span>the product manager or builder can review each material claim with its source, see which parts are inferred, and decide what still needs to be checked.</span></p>
+                <p class="esm-job-meta"><span class="esm-bar" aria-hidden="true"><span data-status="shipped" style="width:75%"></span><span data-status="planned" style="width:25%"></span></span><a href="#">4 stories: 3 shipped, 1 planned</a></p>
+              </div>
+            </li>
+          </ul>
+          <div class="esm-add-job">
+            <form class="esm-inline-form" aria-label="Add a job for Coding Agent">
+              <label class="esm-field"><span class="esm-field-label"><span>When<span class="mock-callout">3</span></span><span class="esm-field-count">Up to 200 characters</span></span><textarea name="situation" rows="2">a story is ready but its tests are flaky</textarea></label>
+              <label class="esm-field"><span class="esm-field-label">I want<span class="esm-field-count">Up to 200 characters</span></span><textarea name="motivation" rows="2">to see which tests cover it before I start</textarea></label>
+              <label class="esm-field"><span class="esm-field-label">so that<span class="esm-field-count">Up to 200 characters</span></span><textarea name="outcome" rows="2">I do not break what already works</textarea></label>
+              <div class="esm-form-foot"><span class="esm-form-hint">It goes after the other jobs.</span><button type="button" class="esm-cancel">Cancel</button><button type="submit" class="esm-save">Save</button></div>
+            </form>
+          </div>
+        </section>
+      </article>
+      <dialog class="esm-unsaved-dialog mock-dialog" open>
+        <h3>Delete this job?<span class="mock-callout">2</span></h3>
+        <p>12 stories that serve it lose the tag, and stay on the map. The map file changes, so you can undo it with Git.</p>
+        <form method="dialog"><button class="esm-cancel esm-unsaved-keep">Keep it</button><button class="esm-save esm-danger">Delete</button></form>
+      </dialog>
+    </div>
+  </div>
+</section>
+
+<ul class="mock-legend">
+  <li><span class="mock-callout">1</span><span><strong>Delete job</strong> sits in a job's edit bar, away from Save, so it is never the default action. The core job can be deleted too, and the next job becomes the core job.</span></li>
+  <li><span class="mock-callout">2</span><span><strong>Confirm</strong>: the dialog says what else changes: steps that go with the job, how many stories lose the tag, and whether the core job changes. <strong>Keep it</strong> has focus.</span></li>
+  <li><span class="mock-callout">3</span><span><strong>Add job</strong> opens a form with the three parts of the statement, each required and up to 200 characters. The new job goes last, gets an ID from <strong>I want</strong>, and is not a draft, because a person wrote it.</span></li>
+</ul>
+
+</body>
+</html>

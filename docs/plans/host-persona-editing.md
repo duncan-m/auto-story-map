@@ -10,7 +10,7 @@ A solo builder runs their own product on their machine, opens its board, and wan
 4. **Who may edit is unstated.** The token proves the page came from this server, not that the person may edit. A route mounted without the board's own `canViewInternal` check lets any signed-in user of the local app edit the map.
 5. **No safe way to know "this is local".** The snippet does not say how to keep editing off in production, so each host invents a check.
 
-It builds on **ESM-147**, [Edit personas in place on the local preview](edit-personas.md#change), merged, and changes none of its editing. It overlaps **ESM-112**, [Save changes from the local preview](local-triage.md#3-save-changes-from-the-local-preview), planned, which will add status and release edits to the same handler, so they reach host boards through this work too. **ESM-404**, editing on a deployed board, stays cut.
+It builds on **ESM-147**, [Edit personas in place on the local preview](edit-personas.md#change), merged, and changes none of its editing. It overlaps **ESM-112**, [Save changes from the local preview](local-triage.md#3-save-changes-from-the-local-preview), planned, which will add status and release edits to the same handler, so they reach host boards through this work too. It also overlaps **ESM-154**, [Add and delete jobs on the local Personas tab](add-delete-jobs.md#change), and **ESM-155**, [Add a persona on the local Personas tab](add-persona.md#change), both merged, whose `create-job`, `delete-job` and `create-persona` edits go through the same handler and so reach host boards once this lands. **ESM-404**, editing on a deployed board, stays cut.
 
 ## Why the server writes the file
 

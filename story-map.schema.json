@@ -97,7 +97,7 @@
                 "description": "Optional. What a good result looks like to them, such as “Weekly forecast accuracy, judged by the VP of Sales” or “Every bill paid on time”.",
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 400
               },
               "usesToday": {
                 "description": "Optional. Up to 8 products, tools and workarounds they rely on now, which a story competes with.",

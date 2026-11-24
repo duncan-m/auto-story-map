@@ -123,9 +123,12 @@ const personaTitleMax = 120;
 const personaSummaryMax = 500;
 const jobPartMax = 200;
 const contextLineMax = 200;
+const successMax = 400;
 const usesTodayMax = 60;
 const usesTodayItems = 8;
 const constraintsItems = 6;
+const personaJobsMax = 8;
+const personasMax = 12;
 
 interface DateSettings {
   now: Date;
@@ -1423,9 +1426,9 @@ function personaGaps(persona: PersonaLabel) {
 }
 
 /** A job statement with each part on its own line on the Personas tab: When, I want, so that. */
-function EditButton({ label, form }: { label: string; form: string }) {
+function EditButton({ label, form, text = "Edit" }: { label: string; form: string; text?: string }) {
   // Hidden until board.js runs, because the form needs it to save.
-  return <button type="button" className="esm-edit-button" data-esm-edit-open={form} aria-label={label} aria-expanded="false" aria-controls={form} hidden>Edit</button>;
+  return <button type="button" className="esm-edit-button" data-esm-edit-open={form} aria-label={label} aria-expanded="false" aria-controls={form} hidden>{text}</button>;
 }
 
 /**
@@ -1454,17 +1457,20 @@ function InlineText({ as: Tag = "span", editor, field, label, max, required, mul
 }
 
 /** Save and Cancel under text being edited in place, with its character count and any error. */
-function InlineBar({ id, op, target, label, hint }: {
+function InlineBar({ id, op, target, label, hint, remove }: {
   id: string;
   op: "set-persona" | "set-persona-context" | "set-job";
   target: { persona: string } | { job: string };
   label: string;
   hint: ReactNode;
+  /** A Delete button before Cancel, which board.js confirms before it posts `delete-job`. */
+  remove?: { label: string; what: string; consequence: string };
 }) {
   return (
     <div className="esm-inline-bar" id={id} role="group" aria-label={label} data-esm-edit={op} data-esm-inline="" data-esm-persona={"persona" in target ? target.persona : undefined} data-esm-job={"job" in target ? target.job : undefined} hidden>
       <p className="esm-form-error" role="alert" hidden />
       <div className="esm-form-foot">
+        {remove && <button type="button" className="esm-delete" data-esm-delete={remove.what} data-esm-delete-consequence={remove.consequence}>{remove.label}</button>}
         <span className="esm-form-hint">{hint}<span className="esm-field-count" data-esm-live-count="" /></span>
         <button type="button" className="esm-cancel" data-esm-edit-cancel="">Cancel</button>
         <button type="button" className="esm-save" data-esm-edit-save="">Save</button>
@@ -1473,7 +1479,11 @@ function InlineBar({ id, op, target, label, hint }: {
   );
 }
 
-/** One input per entry, with Add and remove, for a context list such as Uses today. */
+/**
+ * One input per entry, with Add and remove, for a context list such as Uses today.
+ * Add copies a row already there rather than a `<template>`, because React puts a
+ * template's children in the DOM, not its content, when a host renders it in the browser.
+ */
 function ListField({ label, name, values, max, items }: { label: string; name: string; values?: readonly string[]; max: number; items: number }) {
   const row = (value: string, key: number) => (
     <div className="esm-field-row" key={key}>
@@ -1486,7 +1496,6 @@ function ListField({ label, name, values, max, items }: { label: string; name: s
       <legend className="esm-visually-hidden">{label}</legend>
       <p className="esm-field-count">{`Up to ${items}, ${max} characters each`}</p>
       {(values?.length ? values : [""]).map(row)}
-      <template>{row("", 0)}</template>
       <button type="button" className="esm-add-row" data-esm-add-row="">+ Add</button>
     </fieldset>
   );
@@ -1498,14 +1507,15 @@ function ListField({ label, name, values, max, items }: { label: string; name: s
  */
 function EditForm({ id, op, target, label, hint, children }: {
   id: string;
-  op: "set-persona" | "set-persona-context" | "set-job";
-  target: { persona: string } | { job: string };
+  op: "set-persona" | "set-persona-context" | "set-job" | "create-job" | "create-persona";
+  /** The persona or job it changes. A new persona has none. */
+  target?: { persona: string } | { job: string };
   label: string;
   hint: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <form className="esm-inline-form" id={id} data-esm-edit={op} data-esm-persona={"persona" in target ? target.persona : undefined} data-esm-job={"job" in target ? target.job : undefined} aria-label={label} hidden>
+    <form className="esm-inline-form" id={id} data-esm-edit={op} data-esm-persona={target && "persona" in target ? target.persona : undefined} data-esm-job={target && "job" in target ? target.job : undefined} aria-label={label} hidden>
       {children}
       <p className="esm-form-error" role="alert" hidden />
       <div className="esm-form-foot">
@@ -1568,7 +1578,7 @@ function JobLane({ job, laneId, base, editing }: { job: PersonaJobLabel; laneId:
           </p>
         )}
         <JobStatementLines job={job} id={statementId} editor={editing ? formId : undefined} />
-        {editing && <InlineBar id={formId} op="set-job" target={{ job: job.id }} label={`Edit job ${job.id}`} hint={draftHint(job.draft)} />}
+        {editing && <InlineBar id={formId} op="set-job" target={{ job: job.id }} label={`Edit job ${job.id}`} hint={draftHint(job.draft)} remove={{ label: "Delete job", what: job.core ? "the core job" : "this job", consequence: deleteJobConsequence(job) }} />}
         <p className="esm-job-meta">
           {coverage
             ? <>
@@ -1609,6 +1619,61 @@ function JobLane({ job, laneId, base, editing }: { job: PersonaJobLabel; laneId:
   );
 }
 
+/** What deleting a job also changes, for the confirmation: its steps, the stories that lose its tag and the next core job. */
+function deleteJobConsequence(job: PersonaJobLabel) {
+  const stories = Object.values(job.storyCounts).reduce((sum, count) => sum + count, 0);
+  const steps = job.steps?.length ?? 0;
+  return [
+    steps ? `Its ${plural(steps, "step")} ${steps === 1 ? "goes" : "go"} with it.` : "",
+    stories ? `${plural(stories, "story", "stories")} that ${stories === 1 ? "serves" : "serve"} it ${stories === 1 ? "loses" : "lose"} the tag, and ${stories === 1 ? "stays" : "stay"} on the map.` : "No stories serve it.",
+    job.core ? "The next job becomes the core job." : "",
+  ].filter(Boolean).join(" ");
+}
+
+/** A form for a new job, with each part of its statement. It goes after the other jobs, so the core job stays the same. */
+function AddJob({ persona, formId }: { persona: PersonaLabel; formId: string }) {
+  const part = (name: "situation" | "motivation" | "outcome", label: string, placeholder: string) => (
+    <label className="esm-field">
+      <span className="esm-field-label">{label}<span className="esm-field-count">{`Up to ${jobPartMax} characters`}</span></span>
+      <textarea name={name} rows={2} maxLength={jobPartMax} required placeholder={placeholder} />
+    </label>
+  );
+  return (
+    <div className="esm-add-job">
+      <EditButton label={`Add a job for ${persona.title}`} form={formId} text="+ Add job" />
+      <EditForm id={formId} op="create-job" target={{ persona: persona.id }} label={`Add a job for ${persona.title}`} hint={<>It goes after the other jobs.</>}>
+        {part("situation", "When", "the trigger, and what makes it hard")}
+        {part("motivation", "I want", "to …, in their words")}
+        {part("outcome", "so that", "what gets better, and what is at stake")}
+      </EditForm>
+    </div>
+  );
+}
+
+/** Opens the form for a new persona. Hidden until board.js runs, like Edit. */
+function AddPersonaButton({ formId }: { formId: string }) {
+  return <EditButton label="Add a persona" form={formId} text="+ Add persona" />;
+}
+
+/**
+ * The form for a new persona: a title and an optional summary. The persona goes after
+ * the others, so everyone keeps their colour, and the tab opens it so jobs can be added.
+ */
+function AddPersonaForm({ formId }: { formId: string }) {
+  return (
+    <EditForm id={formId} op="create-persona" label="Add a persona" hint={<>It goes after the other personas. Add their jobs next.</>}>
+      <label className="esm-field">
+        <span className="esm-field-label">Title<span className="esm-field-count">{`Up to ${personaTitleMax} characters`}</span></span>
+        <input name="title" maxLength={personaTitleMax} required placeholder="Who they are, such as Product manager" />
+      </label>
+      <label className="esm-field">
+        <span className="esm-field-label">Summary<span className="esm-field-count">{`Optional, up to ${personaSummaryMax} characters`}</span></span>
+        <textarea name="summary" rows={3} maxLength={personaSummaryMax} placeholder="What they own and decide" />
+      </label>
+    </EditForm>
+  );
+}
+
 /** What the persona is judged on, what they use today and their constraints, side by side. */
 function PersonaContext({ persona, baseId, editing }: { persona: PersonaLabel; baseId: string; editing?: boolean }) {
   const context = persona.context;
@@ -1620,7 +1685,7 @@ function PersonaContext({ persona, baseId, editing }: { persona: PersonaLabel; b
       key: "success",
       title: "Success means",
       body: editing
-        ? <InlineText as="p" editor={successEditor} field="success" label="Success means" max={contextLineMax} multiline placeholder="Not set yet.">{context?.success ?? ""}</InlineText>
+        ? <InlineText as="p" editor={successEditor} field="success" label="Success means" max={successMax} multiline placeholder="Not set yet.">{context?.success ?? ""}</InlineText>
         : <p>{context!.success}</p>,
     },
     (context?.usesToday?.length || editing) && {
@@ -1735,12 +1800,13 @@ function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
   baseId: string;
   editing?: StoryMapPersonaEditing;
 }) {
-  if (!personas.length) return <PersonasSetup baseId={baseId} />;
+  if (!personas.length) return <PersonasSetup baseId={baseId} editing={editing} />;
   const persona = personas.find(item => item.id === filter.persona?.[0]) ?? personas[0];
   const base = filterParams(filter, preservedParams);
   const titleId = `${baseId}-persona-title`;
   const jobsId = `${baseId}-persona-jobs`;
   const links = personas.map(item => ({ item, href: personaPageHref(filter, item.id, preservedParams) }));
+  const addPersona = editing && personas.length < personasMax ? `${baseId}-add-persona` : undefined;
   return (
     <div className="esm-persona-page" data-esm-edit-endpoint={editing?.endpoint} data-esm-edit-token={editing?.token} data-esm-edit-revision={editing?.revision}>
       <details className="esm-menu esm-persona-picker">
@@ -1749,6 +1815,7 @@ function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
         </summary>
         <ul className="esm-menu-panel">
           {links.map(({ item, href }) => <li key={item.id}><PersonaLink persona={item} href={href} current={item === persona} /></li>)}
+          {addPersona && <li className="esm-add-persona"><AddPersonaButton formId={addPersona} /></li>}
         </ul>
       </details>
       <nav className="esm-persona-list" aria-labelledby={`${baseId}-persona-list`}>
@@ -1756,8 +1823,10 @@ function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
         <ul>
           {links.map(({ item, href }) => <li key={item.id}><PersonaLink persona={item} href={href} current={item === persona} /></li>)}
         </ul>
+        {addPersona && <p className="esm-add-persona"><AddPersonaButton formId={addPersona} /></p>}
       </nav>
       <article className="esm-persona-main" aria-labelledby={titleId}>
+        {addPersona && <AddPersonaForm formId={addPersona} />}
         <div className="esm-persona-title">
           <span className="esm-avatar esm-avatar-lg" data-persona={persona.colour} aria-hidden="true">{persona.initials}</span>
           <div className="esm-persona-title-text">
@@ -1790,6 +1859,7 @@ function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
               </ul>
             )
             : <p className="esm-release-hidden">No jobs to be done yet.</p>}
+          {editing && persona.jobs.length < personaJobsMax && <AddJob persona={persona} formId={`${baseId}-add-job`} />}
         </section>
       </article>
     </div>
@@ -1811,13 +1881,15 @@ const personasExample = `personas:
  * The Personas tab of a map with no personas: how to add them, so the tab is
  * where the team finds out about personas rather than a feature they never see.
  */
-function PersonasSetup({ baseId }: { baseId: string }) {
+function PersonasSetup({ baseId, editing }: { baseId: string; editing?: StoryMapPersonaEditing }) {
   const titleId = `${baseId}-persona-setup`;
   const guide = `${storyMapRepositoryUrl}/blob/main/docs/story-map.md#personas-and-jobs-to-be-done`;
+  const formId = `${baseId}-add-persona`;
   return (
-    <article className="esm-persona-setup" aria-labelledby={titleId}>
+    <article className="esm-persona-setup" aria-labelledby={titleId} data-esm-edit-endpoint={editing?.endpoint} data-esm-edit-token={editing?.token} data-esm-edit-revision={editing?.revision}>
       <h3 id={titleId}>No personas yet</h3>
       <p>Personas name the people the product serves and the jobs each of them is trying to get done. Tag stories with those jobs to see who each story is for, and which needs have no stories yet.</p>
+      {editing && <div className="esm-add-persona"><AddPersonaButton formId={formId} /><AddPersonaForm formId={formId} /><p>Or add them to the map file:</p></div>}
       <ol>
         <li>
           Add a <code>personas</code> list to <code>product/story-map.yaml</code>, each with an <code>id</code>, a <code>title</code> and their jobs to be done. The first job is the persona’s core job.

@@ -806,7 +806,7 @@ test("ESM-907: rejects empty context, unknown fields and parts over their limits
 
   const issues = issuesOf(withContext(document => {
     Object.assign(document.personas[0].context, {
-      success: "x".repeat(201),
+      success: "x".repeat(401),
       usesToday: Array.from({ length: 9 }, (_, index) => `Tool ${index}`),
       constraints: Array.from({ length: 7 }, (_, index) => `Constraint ${index}`),
       pains: ["Not a context field"],
@@ -816,6 +816,9 @@ test("ESM-907: rejects empty context, unknown fields and parts over their limits
   for (const path of ["personas.0.context.success", "personas.0.context.usesToday", "personas.0.context.constraints", "personas.0.context.pains", "personas.1.context.usesToday.0", "personas.1.context.constraints.0"]) {
     assert.ok(issues.some(issue => issue.startsWith(`${path}: `)), `${path} in ${issues.join("\n")}`);
   }
+
+  const longest = parse(withContext(document => { document.personas[0].context.success = "x".repeat(400); }));
+  assert.equal(longest.personas[0].context.success.length, 400);
 });
 
 test("ESM-907: warns about drafted context on a persona that a shipped story is for", () => {
