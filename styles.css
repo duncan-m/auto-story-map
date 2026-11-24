@@ -614,6 +614,14 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-persona-link .esm-avatar { grid-row: span 2; width: 30px; height: 30px; box-shadow: none; font-size: .6875rem; }
 .esm-persona-link-title { font-size: .875rem; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
 .esm-persona-link-meta { color: var(--esm-muted); font-size: .75rem; }
+.esm-persona-setup { display: grid; gap: 12px; max-width: 72ch; padding: 22px 24px 24px; font-size: .9375rem; line-height: 1.5; }
+.esm-persona-setup h3 { margin: 0; font-size: 1.25rem; letter-spacing: -.01em; }
+.esm-persona-setup p, .esm-persona-setup ol { margin: 0; }
+.esm-persona-setup ol { display: grid; gap: 10px; padding-left: 1.4em; }
+.esm-persona-setup code { font-size: .8125rem; overflow-wrap: anywhere; }
+.esm-persona-setup pre { margin: 8px 0 0; padding: 12px 14px; overflow-x: auto; border: 1px solid var(--esm-line); border-radius: 8px; background: var(--esm-canvas); line-height: 1.45; }
+.esm-persona-setup pre code { overflow-wrap: normal; white-space: pre; }
+.esm-persona-setup a { color: var(--esm-accent-ink); font-weight: 650; }
 .esm-persona-picker { display: none; }
 .esm-persona-picker .esm-avatar { box-shadow: none; }
 .esm-persona-main { display: grid; align-content: start; gap: 32px; min-width: 0; padding: 22px 24px 24px; }
@@ -710,7 +718,7 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
   .esm-persona-picker { display: block; padding: 12px 12px 0; }
   .esm-persona-picker > .esm-select { display: flex; align-items: center; gap: 8px; width: 100%; }
   .esm-persona-picker .esm-menu-panel { right: 12px; left: 12px; min-width: 0; }
-  .esm-persona-main { padding: 16px 12px 20px; }
+  .esm-persona-main, .esm-persona-setup { padding: 16px 12px 20px; }
   .esm-persona-title { flex-wrap: wrap; }
   .esm-persona-title-text { flex: 1 1 0; }
   .esm-persona-title-end { flex-basis: 100%; align-items: flex-start; margin-left: 0; white-space: normal; }

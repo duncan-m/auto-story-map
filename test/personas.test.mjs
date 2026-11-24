@@ -1118,7 +1118,7 @@ const personasTab = html => html.slice(html.indexOf('<nav class="esm-tabs"'), ht
 /** The job lane whose statement starts with `situation`. */
 const laneFor = (html, situation) => html.match(new RegExp(`<li class="esm-job-lane"(?:(?!<li class="esm-job-lane").)*${situation}(?:(?!<li class="esm-job-lane").)*`))?.[0];
 
-test("ESM-911: reads the view and activity parameters, and keeps the Personas tab for internal viewers of maps with personas", () => {
+test("ESM-911: reads the view and activity parameters, and keeps the Personas tab for internal viewers", () => {
   const filters = readStoryMapFilters(new URLSearchParams("view=personas&activity=submit&activity=bad%20id&activity=submit"));
   assert.equal(filters.view, "personas");
   assert.deepEqual(filters.activity, ["submit"]);
@@ -1126,9 +1126,9 @@ test("ESM-911: reads the view and activity parameters, and keeps the Personas ta
 
   const map = parse(withSteps());
   assert.equal(page(map, "view=personas").filter.view, "personas");
-  // Customers and maps without personas never get the tab, so view is ignored.
+  // Customers never get the tab, so view is ignored. A map without personas keeps it, to show how to add them (ESM-146).
   assert.equal(page(map, "view=personas", member).filter.view, undefined);
-  assert.equal(page(plain, "view=personas").filter.view, undefined);
+  assert.equal(page(plain, "view=personas").filter.view, "personas");
 
   // The activity filter keeps stories under the chosen activities, and ignores unknown ones.
   const submit = page(map, "activity=submit&activity=nowhere");
@@ -1137,7 +1137,7 @@ test("ESM-911: reads the view and activity parameters, and keeps the Personas ta
   assert.deepEqual(page(map, "job=price-materials&activity=prepare").stories.map(story => story.id), ["BUILDER-101", "BUILDER-102"]);
 });
 
-test("ESM-911: the tabs show only for internal viewers of maps with personas, and keep the filters", () => {
+test("ESM-911: the tabs show only for internal viewers, and keep the filters", () => {
   const map = parse(withSteps());
   const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: page(map, "q=estimate&persona=finance&view=personas"), preservedParams: { tab: "roadmap" } }));
   const tabs = html.match(/<nav class="esm-tabs" aria-label="Board views">.*?<\/nav>/)?.[0];
@@ -1148,7 +1148,6 @@ test("ESM-911: the tabs show only for internal viewers of maps with personas, an
   assert.match(render(page(map, "")), /<a class="esm-tab" href="\?" aria-current="page">Story map.*<a class="esm-tab" href="\?view=personas">Personas/);
 
   assert.doesNotMatch(render(page(map, "view=personas", member)), /esm-tabs|esm-persona-page/);
-  assert.doesNotMatch(render(page(plain, "view=personas")), /esm-tabs|esm-persona-page/);
   // Without the host's filters the tab's links would not work, so there are none.
   assert.doesNotMatch(render(getStoryMapForViewer(map, engineer)), /esm-tabs/);
 });
@@ -1277,4 +1276,21 @@ test("ESM-911: the step links' activity filter is kept by the form and named in 
   const html = render(page(parse(withSteps()), "job=price-materials&activity=prepare"));
   assert.match(html, /<input type="hidden" name="activity" value="prepare"\/>/);
   assert.match(html, /Showing 2 of 5 stories\. Stories serving the job .*?\. <a href="\?activity=prepare">Show every job<\/a> · Stories in Prepare estimate\. <a href="\?job=price-materials">Show every activity<\/a> · <a href="\?">Clear filters<\/a>/);
+});
+
+test("ESM-146: a map without personas keeps the Personas tab, which shows how to set them up", () => {
+  // The map page offers the tab, counting no personas.
+  assert.match(render(page(plain, "")), /<a class="esm-tab" href="\?view=personas">Personas<span class="esm-tab-count"><span aria-hidden="true">0<\/span><span class="esm-visually-hidden">, 0 personas<\/span>/);
+  const html = personasTab(render(page(plain, "view=personas")));
+  assert.match(html, /<a class="esm-tab" href="\?view=personas" aria-current="page">Personas/);
+  // The tab replaces the map with instructions: no toolbar, grid, story panels or empty persona page.
+  assert.doesNotMatch(html, /esm-toolbar|esm-grid|esm-detail|esm-persona-page/);
+  assert.match(html, /<article class="esm-persona-setup"[^>]*><h3[^>]*>No personas yet<\/h3>/);
+  assert.match(html, /<code>personas<\/code> list to <code>product\/story-map.yaml<\/code>/);
+  assert.match(html, /<pre><code>personas:\n  - id: pm/);
+  assert.match(html, /story-map edit &lt;ID&gt; --add-job &lt;job ID&gt;/);
+  assert.match(html, /draft: true/);
+  assert.match(html, /href="https:\/\/github.com\/duncan-m\/auto-story-map\/blob\/main\/docs\/story-map.md#personas-and-jobs-to-be-done" target="_blank"/);
+  // Customers still never get the tab.
+  assert.doesNotMatch(render(page(plain, "view=personas", member)), /esm-tabs|esm-persona-setup/);
 });

@@ -25,7 +25,7 @@ export interface StoryMapFilters {
   activity?: string | readonly string[];
   /**
    * `personas` shows the Personas tab instead of the story map, with the first chosen `persona`
-   * as its page. Internal views of maps with personas only; otherwise it is ignored.
+   * as its page, or how to add personas when the map has none. Internal views only; otherwise it is ignored.
    */
   view?: StoryMapPage;
   /**
@@ -142,8 +142,8 @@ export function filterStoryMapView<View extends StoryMapView>(
   const wantedActivities = listed(filters.activity);
   const activity = view.activities.filter(item => wantedActivities.has(item.id)).map(item => item.id);
   const activitySet = new Set(activity);
-  // Only internal viewers of a map with personas get the Personas tab. Customers never do, because jobs never reach them.
-  const personasPage = filters.view === "personas" && internalPersonas.length > 0;
+  // Only internal viewers get the Personas tab, which shows how to add personas when the map has none. Customers never do, because jobs never reach them.
+  const personasPage = filters.view === "personas" && internal;
   // Search also matches the titles of a story's personas and the statements of its jobs, for internal viewers.
   const personaTitles = new Map(internalPersonas.map(item => [item.id, item.title]));
   const statements = new Map(internalPersonas.flatMap(item => item.jobs.map(entry => [entry.id, jobStatement(entry)] as const)));

@@ -994,6 +994,21 @@ stories:
       - No Spreo API integration or import format is added to the library.
     sources:
       - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
+  - id: ESM-146
+    title: Show how to set up personas on an empty Personas tab
+    activity: explore
+    release: v0-7-6
+    status: merged
+    tokens: 3490162
+    estimatedCostUsd: 1.43
+    jobs:
+      - ground-work-in-customer-needs
+    summary: "A map without personas keeps the Personas tab for internal viewers. The tab shows how to add personas and jobs to be done: an example personas list, how to tag stories with their jobs, and a link to the guide."
+    notes: Internal viewers only, as for ESM-911. Before this, the tab was hidden until the map had personas, so teams never found it.
+    sources:
+      - docs/story-map.md#personas-tab
+      - src/react.tsx
+      - test/personas.test.mjs
   - id: ESM-910
     title: Break a job into steps
     activity: explore
