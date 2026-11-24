@@ -2,7 +2,15 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
-## Unreleased
+## 0.7.5
+
+Adds story evidence, multi-agent claims, agent briefs, story dependencies and token tracking. Nothing breaks: existing maps, history files and host code need no change. Hosts that pass the new `brief` prop get agent brief sections in internal story and release panels; `webAgents` adds **Open in Claude**, **Open in Claude Code** and **Open in ChatGPT** to those panels.
+
+### Evidence for a story
+
+- New `story-map evidence [<ID> ...]` reports, for each story or every active story, the branches whose names contain its ID, the commits on the default branch that mention it, the Markdown lines that mention it, its tagged tests, its broken sources and, with `--history`, whether it is stalled. It suggests a status with its reasons and changes nothing. A commit suggests `merged` only when its title names the story and it changes more than Markdown, the map and files under `--plans`. It never suggests moving a story back from merged or shipped, never changes a cut story and never suggests shipped. Takes `--format json`, `--default-branch`, `--plans`, `--tests`, `--history`, `--map` and `--root`. See [Look up the evidence for a story](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#look-up-the-evidence-for-a-story).
+- `story-map evidence --shipped-tags <pattern>`, such as `--shipped-tags 'v*'`, suggests `shipped` for a merged story whose merging commit is in a Git tag that matches the pattern, and names the earliest such tag as `shippedIn`, so stories stop waiting in merged after a release goes out. Opt-in: without it, evidence never suggests shipped. The pattern goes to `git tag --list` as an argument, never through a shell. New option `shippedTags` for `gatherStoryEvidence` and type `EvidenceTag`. See [Suggest shipped from release tags](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#suggest-shipped-from-release-tags).
+- New export `gatherStoryEvidence(source, options)`, which takes the map's source text and throws `StoryMapValidationError` for an invalid map, with `StoryEvidenceError`, `evidenceItemsMaxItems`, `evidenceTextMaxLength` and types `StoryEvidence`, `StoryEvidenceOptions`, `StoryEvidenceResult`, `EvidenceBranch`, `EvidenceCommit`, `EvidenceMention` and `EvidenceTest`.
 
 ### Claims for several agents
 
@@ -22,12 +30,6 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 - `story-map edit` takes `--tokens <n>` and `--estimated-cost <usd>`, and `--from` takes the `tokens` and `estimated-cost` ops.
 - New exports `countStoryTokens`, `branchNamesStory`, `defaultClaudeLogs`, `defaultTokenPrices` and `defaultTokenPricesDate`, and types `StoryTokenOptions`, `StoryTokenUsage`, `TokenCounts`, `TokenCost`, `TokenPrice` and `TokenPrices`.
 - The agent instructions from `story-map init` ask agents to record the tokens and estimated cost in the pull request that finishes a story.
-
-### Evidence for a story
-
-- New `story-map evidence [<ID> ...]` reports, for each story or every active story, the branches whose names contain its ID, the commits on the default branch that mention it, the Markdown lines that mention it, its tagged tests, its broken sources and, with `--history`, whether it is stalled. It suggests a status with its reasons and changes nothing. A commit suggests `merged` only when its title names the story and it changes more than Markdown, the map and files under `--plans`. It never suggests moving a story back from merged or shipped, never changes a cut story and never suggests shipped. Takes `--format json`, `--default-branch`, `--plans`, `--tests`, `--history`, `--map` and `--root`. See [Look up the evidence for a story](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#look-up-the-evidence-for-a-story).
-- `story-map evidence --shipped-tags <pattern>`, such as `--shipped-tags 'v*'`, suggests `shipped` for a merged story whose merging commit is in a Git tag that matches the pattern, and names the earliest such tag as `shippedIn`, so stories stop waiting in merged after a release goes out. Opt-in: without it, evidence never suggests shipped. The pattern goes to `git tag --list` as an argument, never through a shell. New option `shippedTags` for `gatherStoryEvidence` and type `EvidenceTag`. See [Suggest shipped from release tags](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#suggest-shipped-from-release-tags).
-- New export `gatherStoryEvidence(source, options)`, which takes the map's source text and throws `StoryMapValidationError` for an invalid map, with `StoryEvidenceError`, `evidenceItemsMaxItems`, `evidenceTextMaxLength` and types `StoryEvidence`, `StoryEvidenceOptions`, `StoryEvidenceResult`, `EvidenceBranch`, `EvidenceCommit`, `EvidenceMention` and `EvidenceTest`.
 
 ### Agent brief on the board
 
