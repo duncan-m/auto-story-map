@@ -1040,7 +1040,7 @@ stories:
       - test/persona-editing.test.mjs
       - src/edit-server.ts
       - example/demo.mjs
-  - id: ESM-149
+  - id: ESM-154
     title: Add and delete jobs on the local Personas tab
     activity: explore
     release: v0-7-6
@@ -1063,13 +1063,13 @@ stories:
       - src/react.tsx
       - src/board.ts
       - test/persona-editing.test.mjs
-  - id: ESM-150
+  - id: ESM-155
     title: Add a persona on the local Personas tab
     activity: explore
     release: v0-7-6
     status: merged
     dependsOn:
-      - ESM-149
+      - ESM-154
     jobs:
       - ground-work-in-customer-needs
     personas:

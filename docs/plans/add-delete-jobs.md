@@ -1,10 +1,10 @@
 # Plan: add and delete jobs on the local Personas tab
 
-Status: merged. The work is ESM-149 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
+Status: merged. The work is ESM-154 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
 
 ESM-147 lets a person reword a persona's jobs on the local Personas tab, but adding a job or removing one still means editing the YAML. Reviewing an agent's drafted persona often ends with "this job is not real" or "they also need to…", so the tab should handle both.
 
-It builds on **ESM-147**, [Edit personas in place on the local preview](edit-personas.md#change), merged, whose plan left adding and removing jobs for a later story. The new operations go through the same save handler as the other persona edits. **ESM-150**, [Add a persona on the local Personas tab](add-persona.md#change), follows on with new personas. Deleting personas and adding or removing steps stay in the YAML.
+It builds on **ESM-147**, [Edit personas in place on the local preview](edit-personas.md#change), merged, whose plan left adding and removing jobs for a later story. The new operations go through the same save handler as the other persona edits. **ESM-155**, [Add a persona on the local Personas tab](add-persona.md#change), follows on with new personas. Deleting personas and adding or removing steps stay in the YAML.
 
 It also fixes two ESM-147 bugs found while testing in a host app:
 
@@ -15,7 +15,7 @@ It also fixes two ESM-147 bugs found while testing in a host app:
 
 ![Mockup of the Coding Agent's Personas tab with a job open for editing, showing Delete job and its confirmation, and the Add job form open below the jobs](add-delete-jobs-mockup.png)
 
-The mockup is [add-delete-jobs-mockup.html](add-delete-jobs-mockup.html), built on the real `styles.css` with the Personas tab markup the preview renders for this repository's map. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-149 links to this section from its `sources`.
+The mockup is [add-delete-jobs-mockup.html](add-delete-jobs-mockup.html), built on the real `styles.css` with the Personas tab markup the preview renders for this repository's map. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-154 links to this section from its `sources`.
 
 What it shows:
 

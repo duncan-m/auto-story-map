@@ -1,16 +1,16 @@
 # Plan: add a persona on the local Personas tab
 
-Status: merged. The work is ESM-150 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
+Status: merged. The work is ESM-155 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
 
-ESM-149 lets a person add and delete a persona's jobs on the local Personas tab, but a new persona still has to be typed into the YAML first. This adds a button for it, so a builder can sketch who the product serves without leaving the board, and an empty Personas tab can be filled in from the tab itself.
+ESM-154 lets a person add and delete a persona's jobs on the local Personas tab, but a new persona still has to be typed into the YAML first. This adds a button for it, so a builder can sketch who the product serves without leaving the board, and an empty Personas tab can be filled in from the tab itself.
 
-It builds on **ESM-149**, [Add and delete jobs on the local Personas tab](add-delete-jobs.md#change), merged, which it follows straight on from: a new persona opens ready for **Add job**. It also builds on **ESM-146**, Show how to set up personas on an empty Personas tab, merged, whose YAML steps stay beside the new button. The operation goes through the same save handler as the other persona edits, so a host board that sets up that handler gets it too.
+It builds on **ESM-154**, [Add and delete jobs on the local Personas tab](add-delete-jobs.md#change), merged, which it follows straight on from: a new persona opens ready for **Add job**. It also builds on **ESM-146**, Show how to set up personas on an empty Personas tab, merged, whose YAML steps stay beside the new button. The operation goes through the same save handler as the other persona edits, so a host board that sets up that handler gets it too.
 
 ## UI mockup
 
 ![Mockup of the Personas tab with the Add persona button at the end of the persona list and the new persona form open above the current persona](add-persona-mockup.png)
 
-The mockup is [add-persona-mockup.html](add-persona-mockup.html), built on the real `styles.css` with the Personas tab markup the preview renders for this repository's map. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-150 links to this section from its `sources`.
+The mockup is [add-persona-mockup.html](add-persona-mockup.html), built on the real `styles.css` with the Personas tab markup the preview renders for this repository's map. To refresh the image, open it in a browser at 1360 px wide and take a full-page screenshot. ESM-155 links to this section from its `sources`.
 
 What it shows:
 
