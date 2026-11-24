@@ -33,7 +33,7 @@ const usage = `Usage:
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
-  story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--writable] [<map.yaml>]
+  story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--read-only] [<map.yaml>]
   story-map help [<command>]
 
 init
@@ -337,9 +337,10 @@ preview
   --source-base-url <url>
                      Base URL for repository-relative sources, such as
                      https://github.com/<owner>/<repo>/blob/main/
-  --writable         Lets you edit personas, their context and job
-                     statements in place on the Personas tab, and saves
-                     them to the map file. Drafts stay drafts.
+  --read-only        Turns off editing. By default you can edit personas,
+                     their context and job statements in place on the
+                     Personas tab, and the edits save to the map file.
+                     Drafts stay drafts.
 
 help
   Prints this text, or just the section for <command>.`;

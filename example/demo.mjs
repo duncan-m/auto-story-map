@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { createElement as h } from "react";
-import { parseStoryMap } from "auto-story-map";
+import { createStoryMapEditServer, parseStoryMap, storyMapEditPath } from "auto-story-map";
 import { buildStoryMapHistory } from "../dist/history-git.js";
 import { loadStoryMap } from "../dist/schema.js";
 import { buildStoryMapTests, findStoryTests } from "../dist/tests.js";
@@ -53,18 +53,27 @@ try {
   console.warn(`Tests are unavailable: ${error.message}`);
 }
 
+// The demo runs on this machine, so internal viewers can edit personas on the Personas tab
+// and the edits save to product/story-map.yaml. A deployed product would not do this: its copy
+// of the map is not the repository, so edits there would never reach Git.
+const editor = createStoryMapEditServer({ map: fileURLToPath(mapFile) });
+
 // Set STORY_MAP_DEMO_NOW to a later date, such as 2027-01-15, to see in-progress stories flagged as stalled.
 const now = process.env.STORY_MAP_DEMO_NOW ? new Date(process.env.STORY_MAP_DEMO_NOW) : undefined;
 if (now && Number.isNaN(now.getTime())) throw new Error("STORY_MAP_DEMO_NOW must be a date, such as 2027-01-15.");
 
 const server = createServer(async (request, response) => {
   try {
+    const url = new URL(request.url ?? "/", "http://localhost");
+    if (url.pathname === storyMapEditPath) {
+      await editor.handle(request, response);
+      return;
+    }
     if (request.method !== "GET") {
       response.writeHead(405, { Allow: "GET" }).end();
       return;
     }
 
-    const url = new URL(request.url ?? "/", "http://localhost");
     if (url.pathname === "/") {
       response.writeHead(302, { Location: "/story-map" }).end();
       return;
@@ -94,7 +103,8 @@ const server = createServer(async (request, response) => {
       }, label)),
     );
 
-    const map = parseStoryMap(await readFile(mapFile, "utf8"));
+    const source = await readFile(mapFile, "utf8");
+    const map = parseStoryMap(source);
     const result = makeStoryMapResponse(url, map, viewer, {
       navigation,
       brief: {
@@ -113,6 +123,7 @@ const server = createServer(async (request, response) => {
       tests,
       now,
       preservedParams: { as: selected },
+      personaEditing: editor.editing(source),
     });
     response.writeHead(result.status, Object.fromEntries(result.headers)).end(Buffer.from(await result.arrayBuffer()));
   } catch (error) {

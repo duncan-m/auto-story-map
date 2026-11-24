@@ -181,8 +181,8 @@ function post(base, body, { token, origin = base, type = "application/json" } = 
 
 const rename = [{ op: "set-persona", persona: "pm", title: "Product lead" }];
 
-test("ESM-147: preview --writable saves a persona edit to the map file", async t => {
-  const { base, file, token, revision } = await startPreview(t, "--writable");
+test("ESM-147: preview is editable by default and saves a persona edit to the map file", async t => {
+  const { base, file, token, revision } = await startPreview(t);
   assert.ok(token && revision, "the page carries the token and revision");
   const response = await post(base, { revision, operations: rename }, { token });
   assert.equal(response.status, 200);
@@ -194,16 +194,21 @@ test("ESM-147: preview --writable saves a persona edit to the map file", async t
   assert.match(await (await fetch(`${base}/story-map?view=personas&persona=pm`)).text(), />Product lead</);
 });
 
-test("ESM-147: the read-only preview has no forms and refuses edits", async t => {
-  const { base, file, page } = await startPreview(t);
+test("ESM-147: preview --writable still works, for commands written for it", async t => {
+  const { token, revision } = await startPreview(t, "--writable");
+  assert.ok(token && revision);
+});
+
+test("ESM-147: preview --read-only has no forms and refuses edits", async t => {
+  const { base, file, page } = await startPreview(t, "--read-only");
   assert.doesNotMatch(page, /esm-inline-form|data-esm-edit-token/);
   const response = await post(base, { revision: "x", operations: rename }, { token: "x" });
   assert.equal(response.status, 403);
   assert.equal(await readFile(file, "utf8"), map);
 });
 
-test("ESM-147: preview --writable refuses edits from other origins, without JSON or the token", async t => {
-  const { base, file, token, revision } = await startPreview(t, "--writable");
+test("ESM-147: preview refuses edits from other origins, without JSON or the token", async t => {
+  const { base, file, token, revision } = await startPreview(t);
   assert.equal((await post(base, { revision, operations: rename }, { token, origin: "http://evil.test" })).status, 403);
   assert.equal((await post(base, { revision, operations: rename }, { token, type: "text/plain" })).status, 415);
   assert.equal((await post(base, { revision, operations: rename }, { token: "wrong-token" })).status, 403);
@@ -212,8 +217,8 @@ test("ESM-147: preview --writable refuses edits from other origins, without JSON
   assert.equal(await readFile(file, "utf8"), map);
 });
 
-test("ESM-147: preview --writable refuses a save from a page older than the file", async t => {
-  const { base, file, token, revision } = await startPreview(t, "--writable");
+test("ESM-147: preview refuses a save from a page older than the file", async t => {
+  const { base, file, token, revision } = await startPreview(t);
   await writeFile(file, `${map}# edited elsewhere\n`);
   const response = await post(base, { revision, operations: rename }, { token });
   assert.equal(response.status, 409);
@@ -221,10 +226,35 @@ test("ESM-147: preview --writable refuses a save from a page older than the file
   assert.doesNotMatch(await readFile(file, "utf8"), /Product lead/);
 });
 
-test("ESM-147: preview --writable explains an edit that would make the map invalid", async t => {
-  const { base, file, token, revision } = await startPreview(t, "--writable");
+test("ESM-147: preview explains an edit that would make the map invalid", async t => {
+  const { base, file, token, revision } = await startPreview(t);
   const response = await post(base, { revision, operations: [{ op: "set-job", job: "plan-release", outcome: "x".repeat(201) }] }, { token });
   assert.equal(response.status, 422);
   assert.ok((await response.json()).error);
   assert.equal(await readFile(file, "utf8"), map);
+});
+
+test("ESM-147: the edit server refuses a non-loopback Host, which stops DNS rebinding", async t => {
+  const { base, file, token, revision } = await startPreview(t);
+  const { request } = await import("node:http");
+  const target = new URL(`${base}/api/story-map/edit`);
+  const status = await new Promise((resolve, reject) => {
+    const req = request({ host: target.hostname, port: target.port, path: target.pathname, method: "POST", headers: { Host: `evil.test:${target.port}`, Origin: `http://evil.test:${target.port}`, "Content-Type": "application/json", "X-Story-Map-Token": token } }, response => {
+      response.resume();
+      resolve(response.statusCode);
+    });
+    req.on("error", reject);
+    req.end(JSON.stringify({ revision, operations: rename }));
+  });
+  assert.notEqual(status, 200);
+  assert.equal(await readFile(file, "utf8"), map);
+});
+
+test("ESM-147: createStoryMapEditServer gives the props the board needs", async () => {
+  const { createStoryMapEditServer, storyMapRevision } = await import("auto-story-map");
+  const server = createStoryMapEditServer({ map: "unused.yaml" });
+  const props = server.editing(map);
+  assert.equal(props.endpoint, "/api/story-map/edit");
+  assert.equal(props.revision, storyMapRevision(map));
+  assert.ok(props.token.length >= 32);
 });

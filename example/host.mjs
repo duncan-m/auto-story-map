@@ -6,7 +6,7 @@ import { StoryMapBoard } from "auto-story-map/react";
 // The enclosing app supplies a viewer from its verified session.
 // `target` is the request URL or path, including any `q` and `status` filter parameters.
 export function makeStoryMapResponse(target, document, viewer, options = {}) {
-  const { navigation = null, sourceBaseUrl, repositoryUrl, preservedParams, canViewInternal, history, tests, stalledAfterWeeks, now, brief, webAgents } = options;
+  const { navigation = null, sourceBaseUrl, repositoryUrl, preservedParams, canViewInternal, history, tests, stalledAfterWeeks, now, brief, webAgents, personaEditing } = options;
   const url = new URL(target, "http://localhost");
   const headers = storyMapResponseHeaders;
   const isApi = url.pathname === "/api/story-map";
@@ -60,7 +60,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
         navigation,
       ),
       h("main", null,
-        map ? h(StoryMapBoard, { map, sourceBaseUrl, repositoryUrl, preservedParams, now, exportHref, webAgents }) : h("p", null, message),
+        map ? h(StoryMapBoard, { map, sourceBaseUrl, repositoryUrl, preservedParams, now, exportHref, webAgents, personaEditing }) : h("p", null, message),
       ),
     ),
   );

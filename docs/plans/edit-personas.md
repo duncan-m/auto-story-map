@@ -19,7 +19,7 @@ The mockup is [edit-personas-mockup.html](edit-personas-mockup.html), built on t
 
 What it shows:
 
-1. **Writable preview only.** Edit buttons appear only when the preview runs with `--writable`. The default preview and the hosted board render exactly as today.
+1. **Local boards only.** Edit buttons appear on `story-map preview` and the example host, which run on your machine against your checkout. A deployed product's board stays read-only.
 2. **Title and summary** become editable where they are, keeping their look, with **Save** and **Cancel** below and a count against the schema limits (120 and 500 characters). The ID is shown but not editable.
 3. **Context**: each card has its own **Edit**. **Success means** is edited in place like the summary. **Uses today** and **Constraints** are lists, so they open a short form with one row per entry, and **Add** and remove, up to the schema's limits.
 4. **Job statements** are edited in place too: the **When**, **I want** and **so that** parts each become editable, up to 200 characters, written without its lead word.
@@ -47,10 +47,14 @@ Left out on purpose, so this stays one small story:
 ## Change
 
 - **Edit operations** in `src/edit.ts`: `set-persona` (`persona`, optional `title`, `summary`), `set-persona-context` (`persona`, optional `success`, `usesToday`, `constraints`) and `set-job` (`job`, optional `situation`, `motivation`, `outcome`). `proposeStoryMapEdit` applies them like the story operations: it keeps comments and untouched lines, keeps `draft` as it was, and returns a validation error rather than a file when a field is empty or over its limit. An empty `usesToday` or `constraints` list removes the key, and a context left with none of the three is refused, since validation needs at least one.
-- **Endpoint**: `story-map preview --writable` adds `POST /api/story-map/edit`, as ESM-112 describes: it needs an `Origin` matching the preview, a JSON content type, the start-up token in an `X-Story-Map-Token` header, and the hash of the file the page was rendered from. It listens on the loopback address only, and accepts only `set-persona`, `set-persona-context` and `set-job` until ESM-112 adds its operations.
+- **Endpoint**: `story-map preview` adds `POST /api/story-map/edit`, as ESM-112 describes: it needs an `Origin` matching the preview, a JSON content type, the start-up token in an `X-Story-Map-Token` header, and the hash of the file the page was rendered from. It listens on the loopback address only, and accepts only `set-persona`, `set-persona-context` and `set-job` until ESM-112 adds its operations.
 - **Board** (`src/react.tsx`, `board.js`): with `personaEditing` set, the Personas tab renders an **Edit** button on the persona heading, each context card and each job lane. For the title, summary, success and job parts, board.js makes the text itself `contenteditable` (plain text only), labelled as a text box, with **Save** and **Cancel** below and a live count for the focused field. In the title and job parts **Enter** saves. The summary and success can have more than one line, so there **Enter** adds a line and Ctrl or ⌘ with **Enter** saves, and the tab shows their line breaks. **Escape** cancels. There is no outline on text being edited: the caret and the **Save** bar show where you are. Only changed fields are sent, so text the board shortens, such as an outcome's final full stop, is kept when it is not edited. Uses today and Constraints open a form with one input per entry. One editor is open at a time: pressing **Edit** elsewhere with unsaved changes opens a dialog to **Save** (and open the next part after the reload), **Discard** or **Keep editing**, and leaving the page with unsaved changes uses the browser's own warning. **Save** reloads the tab at the same persona and puts focus back on the **Edit** button. Without JavaScript, or without `--writable`, there are no buttons.
 - **Errors**: a validation error shows under the form with the field it names, and the stale-file refusal says to reload. Neither writes the file.
 - **Credit**: nothing new. The edit is a normal change to the file, credited to whoever commits it, and `story-map diff` already reports reworded jobs with their full statement and changed context under **Personas and jobs**.
+
+## On by default
+
+The first version needed `story-map preview --writable`. People ran the preview or the example host and found no edit controls, so editing is now on by default wherever the board runs locally: `story-map preview` (with `--read-only` to turn it off, and `--writable` still accepted) and the example host. The save handler moved to `createStoryMapEditServer` in `src/edit-server.ts`, so the preview, the example host and a host's own development server share one set of checks. It now also refuses a non-loopback `Host`, because a host server may not check `Host` itself as the preview does. A deployed product's board stays read-only, because the map file on a server is not the repository.
 
 ## Docs
 
@@ -62,8 +66,8 @@ Name each `ESM-147: …`.
 
 - Each operation changes only its fields, keeps comments and `draft`, and is refused for an unknown persona or job, an empty field or one over its limit.
 - Clearing every context field is refused.
-- The endpoint refuses persona operations without `--writable`, with the wrong Origin or token, and when the file hash is stale, and writes nothing in each case.
-- The Personas tab renders no **Edit** buttons without `--writable`, for customers, or on the hosted board.
+- The endpoint refuses persona operations with `--read-only`, a non-loopback `Host`, the wrong Origin or token, and when the file hash is stale, and writes nothing in each case.
+- The Personas tab renders no **Edit** buttons with `--read-only`, for customers, or without `personaEditing`.
 - Editing a job's statement and saving reloads the tab with the new wording, still labelled **Draft**.
 
 ## Estimate

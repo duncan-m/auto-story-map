@@ -1022,8 +1022,8 @@ stories:
     estimatedCostUsd: 12.91
     jobs:
       - ground-work-in-customer-needs
-    summary: On story-map preview --writable, the Personas tab edits a persona's title, summary, context and job statements in place and saves them to the map file. Drafts stay drafts.
-    notes: Adds story-map preview --writable and its POST /api/story-map/edit endpoint, with the Origin, token and stale-file checks from the ESM-112 plan, accepting persona edits only. IDs, order, customer copy and draft are not editable here. The hosted board stays read-only (ESM-404).
+    summary: On the local preview and the example host, the Personas tab edits a persona's title, summary, context and job statements in place and saves them to the map file. Drafts stay drafts.
+    notes: Makes story-map preview writable by default, with --read-only to turn it off, and turns editing on in the example host. The save handler, createStoryMapEditServer, checks a loopback Host, a matching Origin, JSON, a start-up token and the file's revision, and accepts persona edits only. IDs, order, customer copy and draft are not editable here. A deployed product's board stays read-only (ESM-404).
     sources:
       - docs/story-map.md#edit-personas-on-the-local-preview
       - docs/plans/edit-personas.md#change
@@ -1033,6 +1033,8 @@ stories:
       - src/react.tsx
       - src/board.ts
       - test/persona-editing.test.mjs
+      - src/edit-server.ts
+      - example/demo.mjs
   - id: ESM-910
     title: Break a job into steps
     activity: explore

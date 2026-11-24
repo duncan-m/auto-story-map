@@ -432,7 +432,7 @@ Each job lane collapses to one line, like a release lane, with its stories and n
 
 ### Edit personas on the local preview
 
-On the [local preview](#preview-the-map-locally) started with `--writable`, the Personas tab lets you reword a persona without opening the YAML. Each part has an **Edit** button:
+On the [local preview](#preview-the-map-locally), the Personas tab lets you reword a persona without opening the YAML. Each part has an **Edit** button:
 
 - The persona's title and summary, **Success means**, and each job's statement become editable where they are, keeping their look, with **Save** and **Cancel** below. The text grows as you type, so all of it stays in view. A job's **When**, **I want** and **so that** parts are edited separately, each without its lead word. In the title and job parts, **Enter** saves. The summary and **Success means** can have more than one line: **Enter** adds a line and **Ctrl+Enter**, or **⌘+Enter** on a Mac, saves, and the board shows the lines as typed. **Escape** cancels. The count below shows the field you are in against its limit.
 - **Uses today** and **Constraints** open a short form with one row per entry, and **Add** and remove buttons.
@@ -450,7 +450,19 @@ What it leaves alone:
 - **`draft`**. Rewording a drafted job or context keeps it a draft. A person confirms it by removing `draft: true` in a PR.
 - Adding or removing personas, jobs and steps, which you do in the YAML.
 
-The saved file is an ordinary change, so review it with `git diff` or `story-map diff` and commit it like any other map edit. The hosted board, and the preview without `--writable`, stay read-only and show no **Edit** buttons. Hosts can pass `personaEditing` to `StoryMapBoard` to render the forms against their own endpoint, but `story-map preview --writable` is the only writer the package ships.
+The saved file is an ordinary change, so review it with `git diff` or `story-map diff` and commit it like any other map edit.
+
+Editing is on wherever the board runs on your own machine against your checkout: `story-map preview`, unless you pass `--read-only`, and the [example host](https://github.com/duncan-m/auto-story-map/blob/main/example/demo.mjs). A host's local development server can turn it on the same way:
+
+```js
+import { createStoryMapEditServer, storyMapEditPath } from "auto-story-map";
+
+const editor = createStoryMapEditServer({ map: "product/story-map.yaml" });
+// Route POST storyMapEditPath to editor.handle(request, response), and render the
+// board with personaEditing: editor.editing(mapSource), where mapSource is the text the page shows.
+```
+
+Keep it off a deployed product's board. The map file on a server is not the repository, so edits there would never reach Git and would be lost on the next deploy. Change the map through a PR instead. The handler also refuses any request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]`.
 
 ### Share personas with customers
 
@@ -843,7 +855,7 @@ Open the address it prints, `http://127.0.0.1:4173/story-map`. **Internal** show
 
 - Pass the map's path when it is not `product/story-map.yaml`, `--port <n>` for another port, and `--history <file>` and `--tests-index <file>` for dates, changes and tagged tests.
 - Add `--source-base-url https://github.com/<owner>/<repo>/blob/main/` to turn repository-relative sources into links.
-- Add `--writable` to [edit personas in place](#edit-personas-on-the-local-preview) on the Personas tab and save them to the map file. Saves need the token the preview puts in its own pages, an `Origin` of the preview itself, and a JSON body, so another site cannot post to it. A save from a page older than the file, such as after an agent's edit or a `git pull`, is refused and nothing is overwritten.
+- You can [edit personas in place](#edit-personas-on-the-local-preview) on the Personas tab, and the edits save to the map file. Pass `--read-only` to turn that off. Saves need the token the preview puts in its own pages, an `Origin` of the preview itself, and a JSON body, so another site cannot post to it. A save from a page older than the file, such as after an agent's edit or a `git pull`, is refused and nothing is overwritten.
 - The board's search, filters, panels and export menu work as they will in your product. The JSON view is at `/api/story-map`.
 - It renders the React board, so it needs `react` and `react-dom` installed. If they are missing, it says how to add them.
 
