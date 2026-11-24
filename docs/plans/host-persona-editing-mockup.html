@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Host persona editing mockup</title>
+<!-- Static mockup for docs/plans/host-persona-editing.md (ESM-156). The board markup is copied from the real Personas tab, rendered by story-map preview from product/story-map.yaml. New styles are proposed below. -->
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 32px 40px 48px; background: #f4f5fa; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mock-label { margin: 0 0 10px; color: #5046d5; font: 700 .75rem/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  .mock-note { margin: 0 0 18px; max-width: 80ch; color: #52617a; font-size: .875rem; line-height: 1.5; }
+  .mock-callout { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; background: #e2366d; color: #fff; font: 700 .7rem/1 system-ui, sans-serif; letter-spacing: 0; text-transform: none; vertical-align: middle; }
+  .mock-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 24px; margin: 20px 0 0; padding: 0; list-style: none; color: #19223a; font-size: .8125rem; line-height: 1.45; }
+  .mock-legend li { display: flex; gap: 6px; }
+  .mock-legend .mock-callout { margin: 0; }
+  .mock-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 16px; padding: 9px 14px; border: 1px solid #dfe4ed; border-radius: 10px; background: #fff; color: #52617a; font-size: .875rem; }
+  .mock-preview-bar strong { color: #19223a; }
+
+  /* Proposed: shown by board.js on an internal board served from a loopback host when the page has no personaEditing. */
+  .esm-edit-setup-note { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0 0 18px; padding: 10px 12px; border-radius: 8px; background: var(--esm-activity-bg); color: var(--esm-accent-ink); font-size: .875rem; line-height: 1.5; }
+  .esm-edit-setup-note a { color: inherit; font-weight: 700; }
+  .esm-edit-setup-note code { font-size: .8125rem; }
+</style>
+</head>
+<body>
+
+<p class="mock-label">Persona editing in a host app running locally</p>
+<p class="mock-note">The Personas tab as a host product renders it on <code>localhost</code> before the save route is added. The page is read-only, as today, with a note saying why and how to turn editing on. Once the host adds the route, the note goes and the edit buttons from ESM-147 appear. Deployed boards never show either.</p>
+
+<div class="mock-preview-bar"><span><strong>localhost:3000</strong>/story-map?view=personas</span><span>Your app's dev server<span class="mock-callout">2</span></span></div>
+
+<section class="esm-board" data-theme="light">
+  <header class="esm-header">
+    <p class="esm-eyebrow">User story map</p>
+    <h2>Auto Story Map Demo</h2>
+    <p class="esm-goal">How product teams set up, plan, review and follow their story map, from the first release to what comes next.</p>
+  </header>
+  <div class="esm-frame">
+    <nav class="esm-tabs" aria-label="Board views"><a class="esm-tab" href="#">Story map<span class="esm-tab-count"><span aria-hidden="true">101</span></span></a><a class="esm-tab" href="#" aria-current="page">Personas<span class="esm-tab-count"><span aria-hidden="true">4</span></span></a><span class="esm-tabs-end">Internal only. Customers see the story map.</span></nav>
+    <div class="esm-persona-page">
+      <nav class="esm-persona-list" aria-label="Personas">
+        <p class="esm-persona-list-label">Personas</p>
+        <ul>
+          <li><a class="esm-persona-link" href="#" aria-current="page"><span class="esm-avatar" data-persona="0" aria-hidden="true">SB</span><span class="esm-persona-link-title">Solo Builder</span><span class="esm-persona-link-meta">85 stories · no gaps</span></a></li>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="1" aria-hidden="true">PM</span><span class="esm-persona-link-title">Product Manager Inheriting an Existing Project</span><span class="esm-persona-link-meta">18 stories · <span class="esm-job-gap">1 gap</span></span></a></li>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="2" aria-hidden="true">CA</span><span class="esm-persona-link-title">Coding Agent</span><span class="esm-persona-link-meta">25 stories · no gaps</span></a></li>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="3" aria-hidden="true">PC</span><span class="esm-persona-link-title">Product Customer / Evaluator</span><span class="esm-persona-link-meta">3 stories · no gaps</span></a></li>
+        </ul>
+      </nav>
+      <article class="esm-persona-main">
+        <aside class="esm-edit-setup-note" role="note"><span><strong>Editing is not set up in this app.</strong> This board runs on your machine, but the app has no save route, so the edit buttons are hidden. Add two lines to your routes to save edits to <code>product/story-map.yaml</code>. <a href="#">Set up editing</a><span class="mock-callout">1</span></span><button class="esm-cancel" type="button" aria-label="Hide this note">Hide</button></aside>
+      
+        <div class="esm-persona-title"><span class="esm-avatar esm-avatar-lg" data-persona="0" aria-hidden="true">SB</span>
+          <div class="esm-persona-title-text">
+            <div class="esm-persona-heading"><h3>Solo Builder</h3></div>
+            <p>Owns the product direction, chooses and builds the next release slice, and reviews changes made by coding agents in the repository.</p>
+                      </div>
+          <p class="esm-persona-title-end"><a href="#">Show their stories on the map<span aria-hidden="true"> →</span></a><span>5 jobs · 85 active stories</span></p>
+        </div>
+
+        <div class="esm-context-band">
+          <section class="esm-context-card">
+            <div class="esm-context-head"><h4>Success means<span class="esm-draft">Draft</span></h4></div>
+            <p>I can see what is in progress, what is next, and why it comes in that order. An agent can pick up the slice with the target customer, agreed scope, dependencies, and open decisions in a short brief.</p>
+          </section>
+          <section class="esm-context-card">
+            <div class="esm-context-head"><h4>Uses today</h4></div>
+            <ul class="esm-uses"><li>GitHub pull requests and diffs</li><li>Coding agents</li><li>Local story map preview</li><li>Story map CLI</li></ul>
+          </section>
+          <section class="esm-context-card">
+            <div class="esm-context-head"><h4>Constraints</h4></div>
+            <ul>
+              <li>Switches between product decisions, implementation, and review with limited time for administration.</li>
+              <li>Needs the agent to use the actual target customer, their situation, and the intended outcome when making implementation and UX decisions.</li>
+              <li>Wants material unknowns surfaced early. Low-impact, reversible decisions can proceed with the assumption recorded when it affects the work.</li>
+            </ul>
+          </section>
+        </div>
+
+        <section class="esm-persona-jobs">
+          <h4 class="esm-section-title">Jobs to be done <span>Core job first, each with its steps in order</span></h4>
+          <ul class="esm-job-lanes">
+            <li class="esm-job-lane" data-core="">
+              <div class="esm-job-cell">
+                <p class="esm-job-labels"><span class="esm-core-label">Core job</span><span class="esm-draft">Draft</span></p>
+                <p class="esm-job-statement esm-job-lines"><b>When</b> <span><span>I return to my project after a break or start a fresh coding agent session</span>,</span> <b>I want</b> <span><span>to recover my current plan, see what is in progress or blocked, and decide where to pick up</span>,</span> <b>so that</b> <span><span>I can resume work from a board that shows the current plan at a glance and lets me open the stories, dependencies, and evidence I need</span>.</span></p>
+              </div>
+              <ol class="esm-job-steps" aria-label="Steps">
+                <li class="esm-step-card"><span class="esm-step-title"><span class="esm-step-num" aria-hidden="true">1</span>Open the map</span><span class="esm-step-text">Open my project's map in the local preview or retrieve the current release slice through the CLI.</span><span class="esm-step-cov"><a href="#">3 stories</a></span></li>
+                <li class="esm-step-card"><span class="esm-step-title"><span class="esm-step-num" aria-hidden="true">2</span>Find the next available work</span><span class="esm-step-text">Read the current and next release slices, see what is blocked and why, and open delivery evidence when needed.</span><span class="esm-step-cov"><a href="#">15 stories</a></span></li>
+              </ol>
+            </li>
+          </ul>
+        </section>
+      </article>
+    </div>
+  </div>
+</section>
+
+<ol class="mock-legend">
+  <li><span class="mock-callout">1</span><span><strong>Why there are no edit buttons.</strong> board.js shows this note only on an internal board served from <code>localhost</code>, <code>127.0.0.1</code> or <code>[::1]</code> whose page has no save route. It links to the setup steps, and <strong>Hide</strong> keeps it hidden in this browser.</span></li>
+  <li><span class="mock-callout">2</span><span><strong>Local is the request, not a flag.</strong> <code>editor.read(request)</code> returns edit props only for a loopback <code>Host</code> outside production, and the save route checks the same again with the Origin and token. Behind a deployed domain the board is read-only with no note.</span></li>
+  <li><span class="mock-callout" style="background:#5046d5">✓</span><span><strong>After setup</strong> the tab is the ESM-147 editor: Edit on each part, saved to the file the app read, then shown straight away because the app reads the file on each request.</span></li>
+</ol>
+
+</body>
+</html>
