@@ -465,7 +465,7 @@ releases:
       Comes after 0.7.5, because the MCP server wraps the evidence and claim commands and the survey reuses their Git and tag reading.
 
       Plan: docs/plans/0.8.0-agents-and-adoption.md
-      Plan for host planning guidance (ESM-148 to ESM-152): docs/plans/host-planning-guidance.md
+      Plan for host planning guidance (ESM-148 to ESM-153): docs/plans/host-planning-guidance.md
     impact:
       - metric: Agent sessions that load the story map rules
         expected: Only sessions that work on the map, through the skill or the MCP server
@@ -1733,7 +1733,7 @@ stories:
       - agree-first-release-plan
       - plan-and-build
       - pick-up-work
-    summary: "The guide gains a Write a delivery plan section with the plan structure this repository uses: a status line, numbered items in build order, what the work builds on, a UI mockup, decisions, Not now and an effort table."
+    summary: The guide gains a Write a delivery plan section with the plan structure this repository uses, the question an agent asks before a host adopts it, and matching steps in the first-run workflow and upgrade notes.
     sources:
       - docs/plans/host-planning-guidance.md#1-write-a-delivery-plan-section-in-the-guide
   - id: ESM-149
@@ -1748,7 +1748,7 @@ stories:
       - pick-up-work
     summary: Replaces the short builder estimate example with a full plan for the sample map, shipped in the package so the guide's links work in a host.
     sources:
-      - docs/plans/host-planning-guidance.md#2-ship-an-example-plan
+      - docs/plans/host-planning-guidance.md#4-ship-an-example-plan
   - id: ESM-150
     title: Tell host agents how to plan work in AGENTS.md
     activity: set-up
@@ -1756,10 +1756,11 @@ stories:
     status: planned
     dependsOn:
       - ESM-148
+      - ESM-153
     jobs:
       - pick-up-work
       - plan-and-build
-    summary: The AGENTS.md template gains a short Plan the work paragraph inside its markers, with the builds-on and UI mockup rules, and init says when a host's section is out of date.
+    summary: The AGENTS.md template gains an Ask about delivery plans paragraph and, for hosts that opt in, a short Plan the work paragraph with the builds-on and UI mockup rules. init says when a host's section is out of date.
     sources:
       - docs/plans/host-planning-guidance.md#3-plan-the-work-in-agentsmd
   - id: ESM-151
@@ -1775,7 +1776,7 @@ stories:
       - agree-first-release-plan
     summary: story-map plan <ID...> prints a plan skeleton for the chosen stories with their titles, release, the stories the work builds on and overlaps, and an effort table, ready to fill in.
     sources:
-      - docs/plans/host-planning-guidance.md#4-scaffold-a-plan-from-the-map
+      - docs/plans/host-planning-guidance.md#5-scaffold-a-plan-from-the-map
   - id: ESM-152
     title: Carry the planning rules in the story map skill
     activity: set-up
@@ -1786,9 +1787,22 @@ stories:
       - ESM-148
     jobs:
       - pick-up-work
-    summary: The skill from ESM-117 carries the planning rules and points to the guide section, so agents load them only when they plan.
+    summary: For hosts that opt in to delivery plans, the skill from ESM-117 carries the planning rules and points to the guide section, so agents load them only when they plan.
     sources:
-      - docs/plans/host-planning-guidance.md#5-carry-the-planning-rules-in-the-skill
+      - docs/plans/host-planning-guidance.md#6-carry-the-planning-rules-in-the-skill
+  - id: ESM-153
+    title: Ask each host whether to use delivery plans
+    activity: set-up
+    release: v0-8-0
+    status: planned
+    dependsOn:
+      - ESM-148
+    jobs:
+      - plan-and-build
+      - pick-up-work
+    summary: Delivery plans are opt in. init, validate and the AGENTS.md section prompt the agent to ask the person whether to use them, with a link to the guide, and the answer is kept in settings.plans so it is asked once.
+    sources:
+      - docs/plans/host-planning-guidance.md#2-ask-whether-to-use-delivery-plans
   - id: ESM-126
     title: Write agent briefs from the command line
     activity: plan
