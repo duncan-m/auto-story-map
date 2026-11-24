@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit personas mockup</title>
+<!-- Static mockup for docs/plans/edit-personas.md (ESM-147). The board markup is copied from the real Personas tab, rendered by story-map preview from product/story-map.yaml. New styles are proposed below. -->
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 32px 40px 48px; background: #f4f5fa; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mock-label { margin: 0 0 10px; color: #5046d5; font: 700 .75rem/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  .mock-note { margin: 0 0 18px; max-width: 80ch; color: #52617a; font-size: .875rem; line-height: 1.5; }
+  .mock-callout { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; background: #e2366d; color: #fff; font: 700 .7rem/1 system-ui, sans-serif; letter-spacing: 0; text-transform: none; vertical-align: middle; }
+  .mock-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 24px; margin: 20px 0 0; padding: 0; list-style: none; color: #19223a; font-size: .8125rem; line-height: 1.45; }
+  .mock-legend li { display: flex; gap: 6px; }
+  .mock-legend .mock-callout { margin: 0; }
+  .mock-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 16px; padding: 9px 14px; border: 1px solid #dfe4ed; border-radius: 10px; background: #fff; color: #52617a; font-size: .875rem; }
+  .mock-preview-bar strong { color: #19223a; }
+
+  .esm-writable-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: var(--esm-activity-bg); color: var(--esm-accent-ink); font-size: .75rem; font-weight: 700; }
+  /* The editing styles are in styles.css. data-esm-editing marks text being edited, as board.js sets it. */
+</style>
+</head>
+<body>
+
+<p class="mock-label">Edit a persona in place on the local preview</p>
+<p class="mock-note">The Personas tab from this repository's map, served by <code>story-map preview --writable</code>. The persona's title and summary and the core job are being edited in place. Without <code>--writable</code>, and on the hosted board, the page looks exactly as it does today, with no edit buttons.</p>
+
+<div class="mock-preview-bar"><span><strong>Preview</strong> · product/story-map.yaml</span><span class="esm-writable-badge">Writable: saves to the map file<span class="mock-callout">1</span></span></div>
+
+<section class="esm-board" data-theme="light">
+  <header class="esm-header">
+    <p class="esm-eyebrow">User story map</p>
+    <h2>Auto Story Map Demo</h2>
+    <p class="esm-goal">How product teams set up, plan, review and follow their story map, from the first release to what comes next.</p>
+  </header>
+  <div class="esm-frame">
+    <nav class="esm-tabs" aria-label="Board views"><a class="esm-tab" href="#">Story map<span class="esm-tab-count"><span aria-hidden="true">101</span></span></a><a class="esm-tab" href="#" aria-current="page">Personas<span class="esm-tab-count"><span aria-hidden="true">4</span></span></a><span class="esm-tabs-end">Internal only. Customers see the story map.</span></nav>
+    <div class="esm-persona-page">
+      <nav class="esm-persona-list" aria-label="Personas">
+        <p class="esm-persona-list-label">Personas</p>
+        <ul>
+          <li><a class="esm-persona-link" href="#" aria-current="page"><span class="esm-avatar" data-persona="0" aria-hidden="true">SB</span><span class="esm-persona-link-title">Solo Builder</span><span class="esm-persona-link-meta">85 stories · no gaps</span></a></li>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="1" aria-hidden="true">PM</span><span class="esm-persona-link-title">Product Manager Inheriting an Existing Project</span><span class="esm-persona-link-meta">18 stories · <span class="esm-job-gap">1 gap</span></span></a></li>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="2" aria-hidden="true">CA</span><span class="esm-persona-link-title">Coding Agent</span><span class="esm-persona-link-meta">25 stories · no gaps</span></a></li>
+          <li><a class="esm-persona-link" href="#"><span class="esm-avatar" data-persona="3" aria-hidden="true">PC</span><span class="esm-persona-link-title">Product Customer / Evaluator</span><span class="esm-persona-link-meta">3 stories · no gaps</span></a></li>
+        </ul>
+      </nav>
+      <article class="esm-persona-main">
+        <div class="esm-persona-title"><span class="esm-avatar esm-avatar-lg" data-persona="0" aria-hidden="true">SB</span>
+          <div class="esm-persona-title-text">
+            <div class="esm-persona-heading"><h3 data-esm-editing role="textbox" aria-label="Title">Solo Builder</h3></div>
+            <p data-esm-editing role="textbox" aria-label="Summary">Owns the product direction, chooses and builds the next release slice, and reviews changes made by coding agents in the repository.</p>
+            <div class="esm-inline-bar"><div class="esm-form-foot"><span class="esm-form-hint">ID <code>founder</code> stays the same.<span class="esm-field-count">Title: 12 / 120</span><span class="mock-callout">2</span></span><button class="esm-cancel" type="button">Cancel</button><button class="esm-save" type="button">Save</button></div></div>
+          </div>
+          <p class="esm-persona-title-end"><a href="#">Show their stories on the map<span aria-hidden="true"> →</span></a><span>5 jobs · 85 active stories</span></p>
+        </div>
+
+        <div class="esm-context-band">
+          <section class="esm-context-card">
+            <div class="esm-context-head"><h4>Success means<span class="esm-draft">Draft</span></h4><button class="esm-edit-button" type="button">Edit<span class="mock-callout">3</span></button></div>
+            <p>I can see what is in progress, what is next, and why it comes in that order. An agent can pick up the slice with the target customer, agreed scope, dependencies, and open decisions in a short brief.</p>
+          </section>
+          <section class="esm-context-card">
+            <div class="esm-context-head"><h4>Uses today</h4><button class="esm-edit-button" type="button">Edit</button></div>
+            <ul class="esm-uses"><li>GitHub pull requests and diffs</li><li>Coding agents</li><li>Local story map preview</li><li>Story map CLI</li></ul>
+          </section>
+          <section class="esm-context-card">
+            <div class="esm-context-head"><h4>Constraints</h4><button class="esm-edit-button" type="button">Edit</button></div>
+            <ul>
+              <li>Switches between product decisions, implementation, and review with limited time for administration.</li>
+              <li>Needs the agent to use the actual target customer, their situation, and the intended outcome when making implementation and UX decisions.</li>
+              <li>Wants material unknowns surfaced early. Low-impact, reversible decisions can proceed with the assumption recorded when it affects the work.</li>
+            </ul>
+          </section>
+        </div>
+
+        <section class="esm-persona-jobs">
+          <h4 class="esm-section-title">Jobs to be done <span>Core job first, each with its steps in order</span></h4>
+          <ul class="esm-job-lanes">
+            <li class="esm-job-lane" data-core="">
+              <div class="esm-job-cell">
+                <p class="esm-job-labels"><span class="esm-core-label">Core job</span><span class="esm-draft">Draft</span><span class="mock-callout">4</span></p>
+                <p class="esm-job-statement esm-job-lines"><b>When</b> <span><span data-esm-editing role="textbox" aria-label="When">I return to my project after a break or start a fresh coding agent session</span>,</span> <b>I want</b> <span><span data-esm-editing role="textbox" aria-label="I want">to recover my current plan, see what is in progress or blocked, and decide where to pick up</span>,</span> <b>so that</b> <span><span data-esm-editing role="textbox" aria-label="so that">I can resume work from a board that shows the current plan at a glance and lets me open the stories, dependencies, and evidence I need</span>.</span></p>
+                <div class="esm-inline-bar">
+                  <p class="esm-form-error" role="alert">The map file changed on disk since this page loaded. Reload to see the latest version, then make the edit again. Nothing was saved.<span class="mock-callout">5</span></p>
+                  <div class="esm-form-foot"><span class="esm-form-hint">Stays a draft until a person confirms it.<span class="esm-field-count">When: 74 / 200</span><span class="mock-callout">6</span></span><button class="esm-cancel" type="button">Cancel</button><button class="esm-save" type="button">Save</button></div>
+                </div>
+              </div>
+              <ol class="esm-job-steps" aria-label="Steps">
+                <li class="esm-step-card"><span class="esm-step-title"><span class="esm-step-num" aria-hidden="true">1</span>Open the map</span><span class="esm-step-text">Open my project's map in the local preview or retrieve the current release slice through the CLI.</span><span class="esm-step-cov"><a href="#">3 stories</a></span></li>
+                <li class="esm-step-card"><span class="esm-step-title"><span class="esm-step-num" aria-hidden="true">2</span>Find the next available work</span><span class="esm-step-text">Read the current and next release slices, see what is blocked and why, and open delivery evidence when needed.</span><span class="esm-step-cov"><a href="#">15 stories</a></span></li>
+              </ol>
+            </li>
+            <li class="esm-job-lane">
+              <div class="esm-job-cell">
+                <p class="esm-job-labels"><span class="esm-draft">Draft</span><button class="esm-edit-button" type="button">Edit</button></p>
+                <p class="esm-job-statement esm-job-lines"><b>When</b> <span>I need to decide what to build next or change the order of planned work,</span> <b>I want</b> <span>to see the next valuable customer outcome and the dependencies that determine a workable build order within and across release slices,</span> <b>so that</b> <span>the agent and I share an ordered plan. I can move a slice in the board, see affected prerequisites, and review a focused Git patch.</span></p>
+                <p class="esm-job-meta"><span class="esm-bar" aria-hidden="true"><span data-status="shipped" style="width:43%"></span><span data-status="planned" style="width:57%"></span></span><a href="#">14 stories: 6 shipped, 8 planned</a><span class="esm-job-step-count">2 steps</span></p>
+              </div>
+              <ol class="esm-job-steps" aria-label="Steps">
+                <li class="esm-step-card"><span class="esm-step-title"><span class="esm-step-num" aria-hidden="true">1</span>Choose the next slice</span><span class="esm-step-text">Review the release rows, choose the next outcome, and see which work needs to land first.</span><span class="esm-step-cov"><a href="#">3 stories</a></span></li>
+                <li class="esm-step-card"><span class="esm-step-title"><span class="esm-step-num" aria-hidden="true">2</span>Review the proposed move</span><span class="esm-step-text">Check which dependencies the move affects, then inspect the Git diff before applying it.</span><span class="esm-step-cov"><a href="#">1 story</a></span></li>
+              </ol>
+            </li>
+          </ul>
+        </section>
+      </article>
+    </div>
+  </div>
+</section>
+
+<ol class="mock-legend">
+  <li><span class="mock-callout">1</span><span><strong>Writable preview only.</strong> Edit buttons appear only with <code>story-map preview --writable</code>. The hosted board and the default preview stay read-only.</span></li>
+  <li><span class="mock-callout">2</span><span><strong>Title and summary</strong> become editable where they are, keeping their look and growing as you type, with no outline, and Save and Cancel below with a count for the field you are in. The summary and Success means take new lines: Enter adds one and Ctrl or ⌘ with Enter saves. The ID is not editable.</span></li>
+  <li><span class="mock-callout">3</span><span><strong>Context</strong>: each card has its own Edit. Success means is edited in place. Uses today and Constraints open a short form with one row per entry, with Add and remove.</span></li>
+  <li><span class="mock-callout">4</span><span><strong>Job statements</strong> are edited in place: When, I want and so that each become editable, up to 200 characters, written without its lead word.</span></li>
+  <li><span class="mock-callout">5</span><span><strong>Stale page</strong>: if the file changed since the page loaded, from an agent's edit or a <code>git pull</code>, the save is refused and nothing is overwritten.</span></li>
+  <li><span class="mock-callout">6</span><span><strong>Drafts stay drafts.</strong> Saving never removes <code>draft: true</code>. A person confirms it by removing it in a PR, or with <code>story-map confirm</code> once ESM-110 ships.</span></li>
+</ol>
+
+</body>
+</html>

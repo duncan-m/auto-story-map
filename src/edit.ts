@@ -46,7 +46,20 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
     dependsOn: z.array(text).optional(),
   }).strict(),
   z.object({ op: z.literal("release-impact"), release: text, metric: text, expected: text, solves: text.optional() }).strict(),
+  // Persona edits reword what is there. IDs, order, customer copy and draft are left alone.
+  z.object({ op: z.literal("set-persona"), persona: text, title: text.optional(), summary: z.string().trim().optional() }).strict(),
+  z.object({
+    op: z.literal("set-persona-context"),
+    persona: text,
+    success: z.string().trim().optional(),
+    usesToday: z.array(z.string().trim()).optional(),
+    constraints: z.array(z.string().trim()).optional(),
+  }).strict(),
+  z.object({ op: z.literal("set-job"), job: text, situation: text.optional(), motivation: text.optional(), outcome: text.optional() }).strict(),
 ]);
+
+/** The operations that change a persona or one of their jobs. */
+export const personaEditOperations = ["set-persona", "set-persona-context", "set-job"] as const;
 
 export type StoryMapEditOperation = z.infer<typeof storyMapEditOperationSchema>;
 
@@ -96,6 +109,9 @@ export class StoryMapEditError extends Error {
 /** The order fields are written in when an edit adds one, following the guide's examples. */
 const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "tokens", "estimatedCostUsd", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
+const personaKeyOrder = ["id", "title", "summary", "context", "jobs", "customer"];
+const contextKeyOrder = ["success", "usesToday", "constraints", "draft"];
+const jobKeyOrder = ["id", "situation", "motivation", "outcome", "draft", "steps"];
 
 type Raw = Record<string, unknown>;
 type RawStory = Raw & { id: string; release?: string };
@@ -147,7 +163,17 @@ class TextEditor {
 
   /** Sets, replaces or removes one field of a story or release, keeping its other lines. */
   setField(list: "stories" | "releases", id: string, key: string, value: unknown) {
-    const item = this.item(list, id);
+    this.setOnMap(this.item(list, id), key, value, list === "stories" ? storyKeyOrder : releaseKeyOrder);
+  }
+
+  /** Sets, replaces or removes one field of the block mapping at `path`, such as `["personas", 0, "jobs", 2]`. */
+  setFieldAt(path: readonly (string | number)[], key: string, value: unknown, order: readonly string[]) {
+    const item = this.document().getIn(path, true);
+    if (!isMap(item) || item.flow) throw new StoryMapEditError(`Could not edit ${path.join(".")} without changing other parts of the file. Make it by hand.`);
+    this.setOnMap(item, key, value, order);
+  }
+
+  private setOnMap(item: YAMLMap, key: string, value: unknown, order: readonly string[]) {
     const pair = item.items.find(entry => (entry.key as { value?: unknown })?.value === key) as Pair<Node, Node> | undefined;
     if (pair) {
       const start = lineStart(this.source, pair.key.range![0]);
@@ -160,7 +186,6 @@ class TextEditor {
       return;
     }
     if (value === undefined) return;
-    const order = list === "stories" ? storyKeyOrder : releaseKeyOrder;
     const rank = (name: string) => (order.includes(name) ? order.indexOf(name) : order.length);
     const pairs = item.items as Pair<Node, Node>[];
     const before = pairs.filter(entry => rank(String((entry.key as { value?: unknown }).value)) <= rank(key)).at(-1) ?? pairs[0];
@@ -249,6 +274,76 @@ function unknownStory(id: string, stories: RawStory[], index: number): never {
   throw new StoryMapEditError(`There is no story ${id}.${suggestions.length ? ` Did you mean ${suggestions.join(", ")}?` : ""}`, index);
 }
 
+
+type RawPersona = Raw & { id: string; context?: Raw; jobs?: (Raw & { id: string })[] };
+type PersonaOperation = Extract<StoryMapEditOperation, { op: (typeof personaEditOperations)[number] }>;
+
+function unknownPersona(id: string, personas: RawPersona[], index: number, kind: "persona" | "job"): never {
+  const ids = kind === "persona" ? personas.map(item => item.id) : personas.flatMap(item => (item.jobs ?? []).map(job => job.id));
+  const suggestions = closestIds(id, ids);
+  throw new StoryMapEditError(`There is no ${kind} ${id}.${suggestions.length ? ` Did you mean ${suggestions.join(", ")}?` : ""}`, index);
+}
+
+/**
+ * Rewords a persona, their context or one of their jobs. Only the fields given
+ * change. An empty summary or success removes it, and an empty list removes the
+ * list. `draft` is kept as it is, so an edit never confirms a draft.
+ */
+function applyPersonaEdit(intended: Raw, editor: TextEditor, operation: PersonaOperation, index: number) {
+  const personas = (intended.personas as RawPersona[] | undefined) ?? [];
+  const fields = Object.keys(operation).filter(key => key !== "op" && key !== "persona" && key !== "job");
+  if (!fields.length) throw new StoryMapEditError("Give at least one field to change.", index);
+
+  const setAt = (target: Raw, path: (string | number)[], key: string, value: unknown, order: readonly string[]) => {
+    if (isDeepStrictEqual(target[key], value)) return;
+    if (value === undefined) delete target[key];
+    else target[key] = value;
+    editor.setFieldAt(path, key, value, order);
+  };
+
+  if (operation.op === "set-job") {
+    const personaIndex = personas.findIndex(persona => persona.jobs?.some(job => job.id === operation.job));
+    if (personaIndex === -1) unknownPersona(operation.job, personas, index, "job");
+    const jobIndex = personas[personaIndex].jobs!.findIndex(job => job.id === operation.job);
+    const job = personas[personaIndex].jobs![jobIndex];
+    for (const key of ["situation", "motivation", "outcome"] as const) {
+      if (operation[key] !== undefined) setAt(job, ["personas", personaIndex, "jobs", jobIndex], key, operation[key], jobKeyOrder);
+    }
+    return;
+  }
+
+  const personaIndex = personas.findIndex(persona => persona.id === operation.persona);
+  if (personaIndex === -1) unknownPersona(operation.persona, personas, index, "persona");
+  const persona = personas[personaIndex];
+  const path = ["personas", personaIndex];
+
+  if (operation.op === "set-persona") {
+    if (operation.title !== undefined) setAt(persona, path, "title", operation.title, personaKeyOrder);
+    if (operation.summary !== undefined) setAt(persona, path, "summary", operation.summary || undefined, personaKeyOrder);
+    return;
+  }
+
+  const lines = (list: string[] | undefined) => list?.filter(Boolean);
+  const next: Raw = { ...(persona.context ?? {}) };
+  if (operation.success !== undefined) next.success = operation.success || undefined;
+  const uses = lines(operation.usesToday);
+  if (uses !== undefined) next.usesToday = uses.length ? uses : undefined;
+  const constraints = lines(operation.constraints);
+  if (constraints !== undefined) next.constraints = constraints.length ? constraints : undefined;
+  for (const key of Object.keys(next)) if (next[key] === undefined) delete next[key];
+  if (!next.success && !next.usesToday && !next.constraints) {
+    throw new StoryMapEditError("A persona's context needs at least one of success, uses today and constraints. Keep one, or remove the context by hand.", index);
+  }
+  if (!persona.context) {
+    setAt(persona, path, "context", next, personaKeyOrder);
+    return;
+  }
+  const context = persona.context;
+  for (const key of ["success", "usesToday", "constraints"] as const) {
+    setAt(context, [...path, "context"], key, next[key], contextKeyOrder);
+  }
+}
+
 /**
  * Applies named edits to the map's YAML text, all or none, and returns the new
  * text with its line diff, `story-map diff` summary and validation. Nothing is
@@ -286,6 +381,11 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       const impact = [...((release.impact as unknown[] | undefined) ?? []), item];
       release.impact = impact;
       editor.appendToList("releases", release.id, "impact", item, impact);
+      return;
+    }
+
+    if (operation.op === "set-persona" || operation.op === "set-persona-context" || operation.op === "set-job") {
+      applyPersonaEdit(intended, editor, operation, index);
       return;
     }
 

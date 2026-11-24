@@ -99,7 +99,33 @@ export interface StoryMapBoardProps {
    * starts in the repository from `repositoryUrl` when that is a GitHub address. None by default.
    */
   webAgents?: readonly StoryMapWebAgent[];
+  /**
+   * Lets internal viewers edit personas, their context and job statements in place
+   * on the Personas tab. `story-map preview --writable` sets it. Each form posts the
+   * edit to `endpoint` with the `token` header and the `revision` the page was rendered
+   * from. Leave it unset on hosted boards, which stay read-only.
+   */
+  personaEditing?: StoryMapPersonaEditing;
 }
+
+/** Where the Personas tab saves edits, for `personaEditing`. */
+export interface StoryMapPersonaEditing {
+  /** The route that takes `{ revision, operations }` as JSON, such as `/api/story-map/edit`. */
+  endpoint: string;
+  /** Sent in the `x-story-map-token` header. */
+  token: string;
+  /** The hash of the map text the page was rendered from. */
+  revision: string;
+}
+
+// The schema's limits, repeated here so the board does not load the schema.
+const personaTitleMax = 120;
+const personaSummaryMax = 500;
+const jobPartMax = 200;
+const contextLineMax = 200;
+const usesTodayMax = 60;
+const usesTodayItems = 8;
+const constraintsItems = 6;
 
 interface DateSettings {
   now: Date;
@@ -1397,7 +1423,115 @@ function personaGaps(persona: PersonaLabel) {
 }
 
 /** A job statement with each part on its own line on the Personas tab: When, I want, so that. */
-function JobStatementLines({ job, id }: { job: StoryMapJob; id: string }) {
+function EditButton({ label, form }: { label: string; form: string }) {
+  // Hidden until board.js runs, because the form needs it to save.
+  return <button type="button" className="esm-edit-button" data-esm-edit-open={form} aria-label={label} aria-expanded="false" aria-controls={form} hidden>Edit</button>;
+}
+
+/**
+ * Text that becomes editable where it is when its Edit button is pressed, so it keeps
+ * its look and shows all its text as it grows. board.js makes it editable and saves it.
+ */
+function InlineText({ as: Tag = "span", editor, field, label, max, required, multiline, placeholder, className, id, children }: {
+  as?: "span" | "p" | "h3";
+  editor: string;
+  field: string;
+  label: string;
+  max: number;
+  required?: boolean;
+  /** Enter adds a line, and Ctrl or Cmd with Enter saves. */
+  multiline?: boolean;
+  placeholder?: string;
+  className?: string;
+  id?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <Tag className={className} id={id} data-esm-editor={editor} data-esm-edit-field={field} data-esm-label={label} data-esm-max={max} data-esm-required={required ? "" : undefined} data-esm-multiline={multiline ? "" : undefined} data-esm-placeholder={placeholder}>
+      {children}
+    </Tag>
+  );
+}
+
+/** Save and Cancel under text being edited in place, with its character count and any error. */
+function InlineBar({ id, op, target, label, hint }: {
+  id: string;
+  op: "set-persona" | "set-persona-context" | "set-job";
+  target: { persona: string } | { job: string };
+  label: string;
+  hint: ReactNode;
+}) {
+  return (
+    <div className="esm-inline-bar" id={id} role="group" aria-label={label} data-esm-edit={op} data-esm-inline="" data-esm-persona={"persona" in target ? target.persona : undefined} data-esm-job={"job" in target ? target.job : undefined} hidden>
+      <p className="esm-form-error" role="alert" hidden />
+      <div className="esm-form-foot">
+        <span className="esm-form-hint">{hint}<span className="esm-field-count" data-esm-live-count="" /></span>
+        <button type="button" className="esm-cancel" data-esm-edit-cancel="">Cancel</button>
+        <button type="button" className="esm-save" data-esm-edit-save="">Save</button>
+      </div>
+    </div>
+  );
+}
+
+/** One input per entry, with Add and remove, for a context list such as Uses today. */
+function ListField({ label, name, values, max, items }: { label: string; name: string; values?: readonly string[]; max: number; items: number }) {
+  const row = (value: string, key: number) => (
+    <div className="esm-field-row" key={key}>
+      <input name={name} maxLength={max} defaultValue={value} aria-label={label} />
+      <button type="button" className="esm-remove" data-esm-remove-row="" aria-label="Remove">✕</button>
+    </div>
+  );
+  return (
+    <fieldset className="esm-field esm-list-field" data-esm-list={name} data-esm-max-items={items}>
+      <legend className="esm-visually-hidden">{label}</legend>
+      <p className="esm-field-count">{`Up to ${items}, ${max} characters each`}</p>
+      {(values?.length ? values : [""]).map(row)}
+      <template>{row("", 0)}</template>
+      <button type="button" className="esm-add-row" data-esm-add-row="">+ Add</button>
+    </fieldset>
+  );
+}
+
+/**
+ * A form that replaces the text it edits, hidden until its Edit button opens it.
+ * board.js posts its fields as one persona edit operation and reloads the tab.
+ */
+function EditForm({ id, op, target, label, hint, children }: {
+  id: string;
+  op: "set-persona" | "set-persona-context" | "set-job";
+  target: { persona: string } | { job: string };
+  label: string;
+  hint: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <form className="esm-inline-form" id={id} data-esm-edit={op} data-esm-persona={"persona" in target ? target.persona : undefined} data-esm-job={"job" in target ? target.job : undefined} aria-label={label} hidden>
+      {children}
+      <p className="esm-form-error" role="alert" hidden />
+      <div className="esm-form-foot">
+        <span className="esm-form-hint">{hint}</span>
+        <button type="button" className="esm-cancel" data-esm-edit-cancel="">Cancel</button>
+        <button type="submit" className="esm-save">Save</button>
+      </div>
+    </form>
+  );
+}
+
+function draftHint(draft: boolean | undefined) {
+  return draft ? <>Stays a draft until a person confirms it.</> : null;
+}
+
+function JobStatementLines({ job, id, editor }: { job: StoryMapJob; id: string; editor?: string }) {
+  if (editor) {
+    const part = (field: "situation" | "motivation" | "outcome", label: string, text: string) => (
+      <InlineText editor={editor} field={field} label={label} max={jobPartMax} required>{text}</InlineText>
+    );
+    return (
+      <p className="esm-job-statement esm-job-lines" id={id}>
+        <b>When</b> <span>{part("situation", "When", job.situation)},</span> <b>I want</b> <span>{part("motivation", "I want", job.motivation)},</span> <b>so that</b> <span>{part("outcome", "so that", withoutFinalPunctuation(job.outcome))}.</span>
+      </p>
+    );
+  }
   return (
     <p className="esm-job-statement esm-job-lines" id={id}>
       <b>When</b> <span>{job.situation},</span> <b>I want</b> <span>{job.motivation},</span> <b>so that</b> <span>{withoutFinalPunctuation(job.outcome)}.</span>
@@ -1411,8 +1545,9 @@ function JobStatementLines({ job, id }: { job: StoryMapJob; id: string }) {
  * to one line, like a release lane: CSS does it with :has(), so it needs no JavaScript,
  * and browsers without :has() keep every lane open. board.js remembers it.
  */
-function JobLane({ job, laneId, base }: { job: PersonaJobLabel; laneId: string; base?: URLSearchParams }) {
+function JobLane({ job, laneId, base, editing }: { job: PersonaJobLabel; laneId: string; base?: URLSearchParams; editing?: boolean }) {
   const statementId = `${laneId}-statement`;
+  const formId = `${laneId}-edit`;
   const coverage = jobCoverage(job.storyCounts);
   const left = hiddenSummary(job.storyCounts);
   const steps = job.steps ?? [];
@@ -1425,13 +1560,15 @@ function JobLane({ job, laneId, base }: { job: PersonaJobLabel; laneId: string; 
             <path d="m4 6 4 4 4-4" />
           </svg>
         </label>
-        {(job.core || job.draft) && (
+        {(job.core || job.draft || editing) && (
           <p className="esm-job-labels">
             {job.core && <CoreJobLabel />}
             {job.draft && <DraftLabel />}
+            {editing && <EditButton label={job.core ? "Edit the core job" : "Edit this job"} form={formId} />}
           </p>
         )}
-        <JobStatementLines job={job} id={statementId} />
+        <JobStatementLines job={job} id={statementId} editor={editing ? formId : undefined} />
+        {editing && <InlineBar id={formId} op="set-job" target={{ job: job.id }} label={`Edit job ${job.id}`} hint={draftHint(job.draft)} />}
         <p className="esm-job-meta">
           {coverage
             ? <>
@@ -1473,22 +1610,54 @@ function JobLane({ job, laneId, base }: { job: PersonaJobLabel; laneId: string; 
 }
 
 /** What the persona is judged on, what they use today and their constraints, side by side. */
-function PersonaContext({ persona, baseId }: { persona: PersonaLabel; baseId: string }) {
+function PersonaContext({ persona, baseId, editing }: { persona: PersonaLabel; baseId: string; editing?: boolean }) {
   const context = persona.context;
-  if (!context) return null;
+  if (!context && !editing) return null;
+  const empty = <p className="esm-release-hidden">Not set yet.</p>;
+  const successEditor = `${baseId}-success-edit`;
   const parts = [
-    context.success && { key: "success", title: "Success means", body: <p>{context.success}</p> },
-    context.usesToday?.length && { key: "uses", title: "Uses today", body: <ul className="esm-uses">{context.usesToday.map((item, index) => <li key={index}>{item}</li>)}</ul> },
-    context.constraints?.length && { key: "constraints", title: "Constraints", body: <ul>{context.constraints.map((item, index) => <li key={index}>{item}</li>)}</ul> },
-  ].filter(part => !!part) as { key: string; title: string; body: ReactNode }[];
+    (context?.success || editing) && {
+      key: "success",
+      title: "Success means",
+      body: editing
+        ? <InlineText as="p" editor={successEditor} field="success" label="Success means" max={contextLineMax} multiline placeholder="Not set yet.">{context?.success ?? ""}</InlineText>
+        : <p>{context!.success}</p>,
+    },
+    (context?.usesToday?.length || editing) && {
+      key: "uses",
+      title: "Uses today",
+      body: context?.usesToday?.length ? <ul className="esm-uses">{context.usesToday.map((item, index) => <li key={index}>{item}</li>)}</ul> : empty,
+      fields: <ListField label="Uses today" name="usesToday" values={context?.usesToday} max={usesTodayMax} items={usesTodayItems} />,
+    },
+    (context?.constraints?.length || editing) && {
+      key: "constraints",
+      title: "Constraints",
+      body: context?.constraints?.length ? <ul>{context.constraints.map((item, index) => <li key={index}>{item}</li>)}</ul> : empty,
+      fields: <ListField label="Constraints" name="constraints" values={context?.constraints} max={contextLineMax} items={constraintsItems} />,
+    },
+  ].filter(part => !!part) as { key: string; title: string; body: ReactNode; fields?: ReactNode }[];
   return (
     <div className="esm-context-band">
-      {parts.map((part, index) => (
-        <section className="esm-context-card" key={part.key} aria-labelledby={`${baseId}-${part.key}`}>
-          <h4 id={`${baseId}-${part.key}`}>{part.title}{index === 0 && context.draft && <DraftLabel />}</h4>
-          {part.body}
-        </section>
-      ))}
+      {parts.map((part, index) => {
+        const formId = part.fields ? `${baseId}-${part.key}-edit` : successEditor;
+        const label = `Edit ${part.title.toLowerCase()} for ${persona.title}`;
+        return (
+          <section className="esm-context-card" key={part.key} aria-labelledby={`${baseId}-${part.key}`}>
+            {editing
+              ? (
+                <div className="esm-context-head">
+                  <h4 id={`${baseId}-${part.key}`}>{part.title}{index === 0 && context?.draft && <DraftLabel />}</h4>
+                  <EditButton label={`Edit ${part.title.toLowerCase()}`} form={formId} />
+                </div>
+              )
+              : <h4 id={`${baseId}-${part.key}`}>{part.title}{index === 0 && context?.draft && <DraftLabel />}</h4>}
+            {editing && part.fields ? <div data-esm-edit-view={formId}>{part.body}</div> : part.body}
+            {editing && (part.fields
+              ? <EditForm id={formId} op="set-persona-context" target={{ persona: persona.id }} label={label} hint={draftHint(context?.draft)}>{part.fields}</EditForm>
+              : <InlineBar id={formId} op="set-persona-context" target={{ persona: persona.id }} label={label} hint={draftHint(context?.draft)} />)}
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -1559,11 +1728,12 @@ function PersonaLink({ persona, href, current }: { persona: PersonaLabel; href: 
  * their context and their jobs as lanes, core job first, each with its steps in order.
  * Counts come from the whole map, so they do not change with the filters.
  */
-function PersonasPage({ personas, filter, preservedParams, baseId }: {
+function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
   personas: readonly PersonaLabel[];
   filter: NonNullable<StoryMapView["filter"]>;
   preservedParams?: Readonly<Record<string, string>>;
   baseId: string;
+  editing?: StoryMapPersonaEditing;
 }) {
   if (!personas.length) return <PersonasSetup baseId={baseId} />;
   const persona = personas.find(item => item.id === filter.persona?.[0]) ?? personas[0];
@@ -1572,7 +1742,7 @@ function PersonasPage({ personas, filter, preservedParams, baseId }: {
   const jobsId = `${baseId}-persona-jobs`;
   const links = personas.map(item => ({ item, href: personaPageHref(filter, item.id, preservedParams) }));
   return (
-    <div className="esm-persona-page">
+    <div className="esm-persona-page" data-esm-edit-endpoint={editing?.endpoint} data-esm-edit-token={editing?.token} data-esm-edit-revision={editing?.revision}>
       <details className="esm-menu esm-persona-picker">
         <summary className="esm-select esm-menu-button">
           <span className="esm-visually-hidden">Persona: </span><PersonaAvatar persona={persona} />{persona.title}
@@ -1591,21 +1761,32 @@ function PersonasPage({ personas, filter, preservedParams, baseId }: {
         <div className="esm-persona-title">
           <span className="esm-avatar esm-avatar-lg" data-persona={persona.colour} aria-hidden="true">{persona.initials}</span>
           <div className="esm-persona-title-text">
-            <h3 id={titleId}>{persona.title}</h3>
-            {persona.summary && <p>{persona.summary}</p>}
+            {editing
+              ? <>
+                <div className="esm-persona-heading">
+                  <InlineText as="h3" id={titleId} editor={`${baseId}-persona-edit`} field="title" label="Title" max={personaTitleMax} required>{persona.title}</InlineText>
+                  <EditButton label={`Edit ${persona.title}`} form={`${baseId}-persona-edit`} />
+                </div>
+                <InlineText as="p" className="esm-optional" editor={`${baseId}-persona-edit`} field="summary" label="Summary" max={personaSummaryMax} multiline placeholder="Add a summary">{persona.summary ?? ""}</InlineText>
+                <InlineBar id={`${baseId}-persona-edit`} op="set-persona" target={{ persona: persona.id }} label={`Edit ${persona.title}`} hint={<>ID <code>{persona.id}</code> stays the same.</>} />
+              </>
+              : <>
+                <h3 id={titleId}>{persona.title}</h3>
+                {persona.summary && <p>{persona.summary}</p>}
+              </>}
           </div>
           <p className="esm-persona-title-end">
             <a href={withIds(base, "persona", [persona.id])}>Show their stories on the map<span aria-hidden="true"> →</span></a>
             <span>{`${plural(persona.jobs.length, "job")} · ${plural(persona.activeStories, "active story", "active stories")}`}</span>
           </p>
         </div>
-        <PersonaContext persona={persona} baseId={`${baseId}-context`} />
+        <PersonaContext persona={persona} baseId={`${baseId}-context`} editing={!!editing} />
         <section className="esm-persona-jobs" aria-labelledby={jobsId}>
           <h4 className="esm-section-title" id={jobsId}>Jobs to be done {persona.jobs.length > 0 && <span>Core job first, each with its steps in order</span>}</h4>
           {persona.jobs.length
             ? (
               <ul className="esm-job-lanes">
-                {persona.jobs.map((job, index) => <JobLane key={job.id} job={job} laneId={`${baseId}-job-${index}`} base={base} />)}
+                {persona.jobs.map((job, index) => <JobLane key={job.id} job={job} laneId={`${baseId}-job-${index}`} base={base} editing={!!editing} />)}
               </ul>
             )
             : <p className="esm-release-hidden">No jobs to be done yet.</p>}
@@ -1941,6 +2122,7 @@ export function StoryMapBoard({
   showVersion = true,
   exportHref,
   webAgents,
+  personaEditing,
 }: StoryMapBoardProps) {
   const baseId = useId();
   const headingId = `${baseId}-heading`;
@@ -2028,7 +2210,7 @@ export function StoryMapBoard({
             personas={personaList.length}
           />
         )}
-        {personasTab && <PersonasPage personas={personaList} filter={tabs!} preservedParams={preservedParams} baseId={baseId} />}
+        {personasTab && <PersonasPage personas={personaList} filter={tabs!} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} />}
         {!personasTab && map.filter && (
           <FilterToolbar
             filter={map.filter}
