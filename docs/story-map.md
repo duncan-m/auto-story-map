@@ -765,6 +765,29 @@ Claims are shared with everyone who can read the remote. `--agent` names the age
 
 In code, `claimStory(source, id, options)`, `listStoryClaims(options)` and `releaseStoryClaim(id, options)` do the same, and throw `StoryClaimHeldError`, with the `claim` in the way, when someone else holds it.
 
+## Serve the map over MCP
+
+`story-map mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server over standard input and output, for agents that call tools rather than run commands. It needs the MCP SDK, an optional peer dependency that only this command loads:
+
+```bash
+npm install --save-dev @modelcontextprotocol/sdk
+claude mcp add story-map -- npx --no-install story-map mcp
+```
+
+Other clients take the same command, `npx --no-install story-map mcp`, in their MCP settings. Each tool wraps a command and returns the JSON that command prints with `--format json`:
+
+| Tool | Wraps |
+| --- | --- |
+| `list_stories`, `get_story`, `list_releases` | `story-map stories`, `story` and `releases` |
+| `validate_map` | `story-map validate --format json` |
+| `get_evidence` | `story-map evidence` |
+| `propose_edit` | `story-map edit --from`, as a dry run unless the call sets `write` |
+| `claim_story` | `story-map claim` |
+
+It keeps the CLI's safeguards. `propose_edit` refuses what `edit` refuses, such as customer copy without `customer: true` and `cut` without a reason, writes only a valid map, and adds impact items as drafts. It offers no persona or job edits, which a person makes on the [Personas tab](#edit-personas-on-the-local-preview), so it cannot delete a job or add one that is not a draft. There is no tool for `story-map confirm`, because only a person confirms drafts. Every path a tool is given must stay inside the repository root, `--root` or the current directory, and the map defaults to `product/story-map.yaml` or `--map`. It reads the map on every call and has no network listener. Only `claim_story`, and `get_evidence` with `claims`, reach the remote, as the commands do. `--read-only` leaves out `propose_edit` and `claim_story`.
+
+Results are untrusted data, as for the commands: map text, branch names and commit subjects come from whoever can push. A refused call returns an error result with the same JSON the command prints. In code, `createStoryMapMcpServer({ root, map, readOnly })` from `auto-story-map/mcp` returns the server, to connect to another transport.
+
 ## Show status history
 
 Internal viewers can see when each story was added or changed status, who made the change and who merged it. The board shows the time since the last change on each card, such as “Shipped · 2 days ago”, and the full history in the story panel. The panel also says who last edited the story and when, such as “Last updated 3 days ago by Sam Patel”, counting any change to the story, including notes, sources and moves. A **Changed** filter in the toolbar narrows the board to stories added or changed in the last day, 7, 14 or 30 days. Moving a story to another activity or release does not count as a change. The customer view never includes history.

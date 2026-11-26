@@ -44,6 +44,7 @@ Export the map as JSON and an agent can review your stories and tests and sugges
 - `story-map init` sets up the map, the guide, the rules in `AGENTS.md` and a GitHub Actions check that summarises story changes on each PR.
 - A JSON export, with notes on its provenance and completeness, lets an agent review the map against the code.
 - `story-map preview` shows your own map as a board on your computer.
+- `story-map mcp` serves the read, validate, evidence, edit and claim commands as MCP tools, with the same safeguards.
 
 **Export**: JSON, Visio (`.vsdx`, for Lucidchart, Miro or Visio) and CSV.
 
@@ -190,6 +191,8 @@ npx story-map add --activity review --release v0-7-5 --title "Check claims in CI
 ```
 
 See [Change the map from the command line](docs/story-map.md#change-the-map-from-the-command-line).
+
+Agents that call tools rather than run commands can use the same reads, edits and claims over MCP with `npx story-map mcp`, after installing `@modelcontextprotocol/sdk`. See [Serve the map over MCP](docs/story-map.md#serve-the-map-over-mcp).
 
 ## Export the map
 
