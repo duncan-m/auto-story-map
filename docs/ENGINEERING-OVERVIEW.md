@@ -105,6 +105,7 @@ The tests and the demo import the package by its own name (`import … from "aut
 | `templates/` | Files `init` copies into a host: starter `story-map.yaml`, `AGENTS.md` section and `story-map-ci.yml` |
 | `docs/story-map.md` | The user guide. **It is also shipped in the package and copied into hosts by `init`.** |
 | `docs/plans/` | Delivery plans. `0.4.0-enhancements.md` records what 0.4.0 built and the items still proposed. |
+| `docs/integrations.md` | Guides to taking the map into other tools, such as Spreo. The board's Export menu links to it on GitHub, so it is not shipped in the package. |
 | `docs/releasing.md` | How to publish a version |
 | `product/story-map.yaml` | This library's own story map, with `ESM-` story IDs: one release per version, the 0.4.0 work as `merged` until it is on npm, one cut story and the proposed next items. The demo shows it, and CI validates it with `--check-sources`, so its doc links must stay valid. Keep it up to date like any product's map. |
 | `test/fixtures/builder-estimates.yaml` | The builder estimates sample map, including one cut story (`FINANCE-202`). It is test data with stable IDs that the tests and the guide's examples rely on. Tests that need FINANCE-202 still planned use the `planningMap` copy. |

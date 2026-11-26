@@ -2,6 +2,10 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+- **Take the map into Spreo:** The board's **Export** menu has a new item, *Spreo, guide to an interactive board*. It opens a guide, in a new tab, to building an interactive Spreo board from the map through Spreo's MCP server, from ChatGPT, Claude or Claude Code, with a prompt you can copy. Internal viewers only, as for the rest of the menu. See [Spreo](https://github.com/duncan-m/auto-story-map/blob/main/docs/integrations.md#spreo).
+
 ## 0.7.5
 
 0.7.5 makes it easier to hand work to coding agents and to keep the map in step with what they deliver.
