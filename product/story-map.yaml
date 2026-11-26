@@ -1785,8 +1785,10 @@ stories:
     title: Install a story map skill
     activity: set-up
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 2
+    tokens: 1567683
+    estimatedCostUsd: 1.07
     jobs:
       - pick-up-work
       - update-the-map

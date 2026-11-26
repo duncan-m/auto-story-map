@@ -157,6 +157,8 @@ Run `npx story-map init` in the host repo. It creates:
 - a story map section at the end of `AGENTS.md`, keeping any existing instructions,
 - a GitHub Actions workflow in `.github/workflows/story-map.yml` that validates the map and its sources on each PR and adds a summary of the story changes, starting with what customers will see. Pass `--no-ci` to skip it. The workflow is written only when the repo uses npm.
 
+Pass `--skill` to put the rules and common commands in a skill at `.claude/skills/story-map/SKILL.md` instead. `AGENTS.md` then gets a short pointer to the skill, so agents read the full rules only when a task needs them. The skill and the full section come from the same template.
+
 It never overwrites an existing file, so it is safe to run again. [This library’s own map][example-map] shows a fuller map.
 
 Start an agent in the host repo and give it this task.

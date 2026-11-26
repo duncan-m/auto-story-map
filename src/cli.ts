@@ -16,7 +16,7 @@ import validate from "./commands/validate.js";
 import { defaultExportMaxStories } from "./export.js";
 
 const usage = `Usage:
-  story-map init [--no-ci] [--dir <path>]
+  story-map init [--no-ci] [--skill] [--dir <path>]
   story-map validate [--format text|github|json] [--strict] [--check-sources] [--plans <path>] [--tests <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
@@ -42,6 +42,8 @@ init
   Sets up a host repository: a starter product/story-map.yaml, the story map
   guide in docs/story-map.md, a story map section in AGENTS.md and a GitHub
   Actions workflow that validates the map. Existing files are never overwritten.
+  --skill writes the rules to .claude/skills/story-map/SKILL.md instead, with a
+  short pointer to it in AGENTS.md.
 
   --no-ci          Skip the GitHub Actions workflow.
   --dir <path>     Repository root. Defaults to the current directory.

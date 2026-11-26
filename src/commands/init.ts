@@ -5,20 +5,22 @@ import { defineCommand, optionValue } from "./shared.js";
 export default defineCommand({
   parse(rest: string[]) {
     let ci = true;
+    let skill = false;
     let dir = ".";
     for (let index = 0; index < rest.length; index++) {
       const arg = rest[index];
       if (arg === "--no-ci") ci = false;
+      else if (arg === "--skill") skill = true;
       else if (arg.split("=")[0] === "--dir") [dir, index] = optionValue(rest, index, "--dir");
       else return null;
     }
-    return { ci, dir: resolve(dir) };
+    return { ci, skill, dir: resolve(dir) };
   },
 
   async run(options) {
     let steps;
     try {
-      steps = await initStoryMap(options.dir, { ci: options.ci });
+      steps = await initStoryMap(options.dir, { ci: options.ci, skill: options.skill });
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
       process.exitCode = 1;
