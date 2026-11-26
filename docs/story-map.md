@@ -9,7 +9,7 @@ Run this workflow in the host product repository when `product/story-map.yaml` i
 1. **Find the primary user journey.** Read the product README, user documentation, key screens or routes, and end-to-end tests. Check available delivery plans, release notes, and agreed issues for scope and status. Identify who uses the product, what they are trying to accomplish, and where that journey starts and ends. If the journey is unclear, ask the product owner which workflow to map first.
 2. **Draft the map structure.** If `product/story-map.yaml` is missing, run `npx story-map init` to create a starter map, adding `--skill` to put the agent rules in a skill rather than `AGENTS.md`, or create the file by hand starting with the [schema comment](#check-the-map-as-you-edit). Replace the starter content. Use `version: 1`, a product-specific `id`, a `title` in the form “[App Name] Story Map”, such as “Acme Story Map”, `visibility: internal`, and the `activities`, `releases`, and `stories` lists. Give each activity and release a stable `id` and a short `title`. Order activities by the steps the user takes and releases by the documented delivery order. If a story has no confirmed release, group it under an internal release such as `unassigned` with the title “Release unassigned” and flag it for review.
 3. **Write the first set of stories.** Start with the outcomes needed to cover the primary journey. Give each story a stable `id`, an outcome-focused `title`, and the `activity` and `release` IDs it belongs to. Use `planned` for agreed work awaiting implementation, `in-progress` when there is evidence work has started, `merged` when the work is on the default branch but not yet available to its users, and `shipped` when the intended users can use it. Use [`blocked` or `cut`](#blocked-and-cut-stories) only with evidence, and give the reason in `statusReason`. Flag uncertain statuses for review. For each release with stories, draft its expected [`impact`](#release-notes-and-impact) from the evidence and mark each item `draft: true`. Draft the [personas](#personas-and-jobs-to-be-done) the product serves from its roles, sign-in roles and docs, and their jobs to be done from docs, issues and research. Put each persona's [core job](#mark-a-core-job) first, and [write each statement](#write-a-job-statement) with its trigger and what is at stake. Mark each job `draft: true`, cite in the PR the doc, issue or research each one comes from, keep them internal, tag each story with the jobs it serves, and ask a person to confirm them. Draft each persona's [`context`](#describe-a-personas-context) from the product's docs and research, mark it `draft: true`, and leave out what you cannot support with a source. Cite supporting docs or tests in `sources`. When a Markdown section explains the implementation, use its [heading link](#link-an-engineering-overview) as the first Markdown reference with a fragment. When a plan has a mockup or design, [link it](#link-mockups-and-designs) from the stories it shows. Set `updatedBy` only to credit someone other than the commit author, such as the person you are drafting the map for. Add customer-facing copy only after approval.
-4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo, and `npx --no-install story-map stories` to read the stories back as a list. Suggest the person runs `npx --no-install story-map preview` to [see the map as a board](#preview-the-map-locally) before wiring up the host route. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
+4. **Validate and hand off.** Run `npx --no-install story-map validate --check-sources product/story-map.yaml` from the host repo, and `npx --no-install story-map stories` to read the stories back as a list. Suggest the person runs `npx --no-install story-map preview` to [see the map as a board](#preview-the-map-locally) before wiring up the host route. Resolve validation errors and review the activity and release order against the evidence. If the host renders the React board, [turn on persona editing](#in-your-own-app): add the save route and switch the board's route to `editor.read()`, using the host's existing internal-viewer rule for `authorize`. Then start the host app, open a card as an engineer, and follow its overview link where one is configured. Check the signed-in customer view when customer-facing content is enabled. In the PR or handoff, list the journey covered, the main sources, and any unresolved scope, release, or status decisions.
 
 ## Upgrade to 0.7.0
 
@@ -20,7 +20,8 @@ These steps work from 0.4.0 or later. Existing maps and history files stay valid
 3. The board's status filter is a menu of checkboxes (`details.esm-status-menu`) in place of the `<select name="status">`, and the **All, including blocked and cut** choice is gone. Update host CSS or end-to-end tests that target the old dropdown.
 4. Optional: to let internal viewers download the map as a Visio, CSV or JSON file, add an export route and pass it to the board as `exportHref`. See [Download from the board](#download-from-the-board).
 5. Optional: to show the tests that cover each story, put story IDs in test names and pass the index from `story-map tests` to the view. Add `--tests <folder>` to the CI validate step. See [Link tests to stories](#link-tests-to-stories).
-6. Run `npx --no-install story-map validate product/story-map.yaml`, open the board as an internal viewer, and try the status filter with two choices.
+6. Optional: to edit personas on your app's board while it runs on your machine, add the save route and read the map with `editor.read()`, using your internal-viewer rule for `authorize`. If the host already mounts `createStoryMapEditServer`, pass it `authorize`, which is now required. See [In your own app](#in-your-own-app).
+7. Run `npx --no-install story-map validate product/story-map.yaml`, open the board as an internal viewer, and try the status filter with two choices.
 
 ## Upgrade to 0.4.0
 
@@ -444,9 +445,9 @@ Each job lane collapses to one line, like a release lane, with its stories and n
 
 `activity=<ID>` keeps the stories under an activity. Like `job`, it has no control of its own: the step links set it, and the filter summary names the activity with a **Show every activity** link. Customers never get the tab, and `view` changes nothing for them, because jobs never reach them.
 
-### Edit personas on the local preview
+### Edit personas on your machine
 
-On the [local preview](#preview-the-map-locally), the Personas tab lets you reword a persona without opening the YAML. Each part has an **Edit** button:
+On a board running on your own machine against your checkout, the Personas tab lets you reword a persona without opening the YAML. Each part has an **Edit** button:
 
 - The persona's title and summary, **Success means**, and each job's statement become editable where they are, keeping their look, with **Save** and **Cancel** below. The text grows as you type, so all of it stays in view. A job's **When**, **I want** and **so that** parts are edited separately, each without its lead word. In the title and job parts, **Enter** saves. The summary and **Success means** can have more than one line: **Enter** adds a line and **Ctrl+Enter**, or **⌘+Enter** on a Mac, saves, and the board shows the lines as typed. **Escape** cancels. The count below shows the field you are in against its limit.
 - **Uses today** and **Constraints** open a short form with one row per entry, and **Add** and remove buttons. **Add** stops at the list's limit.
@@ -469,17 +470,41 @@ What it leaves alone:
 
 The saved file is an ordinary change, so review it with `git diff` or `story-map diff` and commit it like any other map edit.
 
-Editing is on wherever the board runs on your own machine against your checkout: `story-map preview`, unless you pass `--read-only`, and the [example host](https://github.com/duncan-m/auto-story-map/blob/main/example/demo.mjs). A host's local development server can turn it on the same way:
+Deployed boards stay read-only. The map file on a server is not the repository, so edits there would never reach Git and would be lost on the next deploy. Change the map through a PR instead.
 
-```js
-import { createStoryMapEditServer, storyMapEditPath } from "auto-story-map";
+#### On the preview
 
-const editor = createStoryMapEditServer({ map: "product/story-map.yaml" });
-// Route POST storyMapEditPath to editor.handle(request, response), and render the
-// board with personaEditing: editor.editing(mapSource), where mapSource is the text the page shows.
+`story-map preview` edits with no set-up, unless you pass `--read-only`. So does the [example host](https://github.com/duncan-m/auto-story-map/blob/main/example/demo.mjs).
+
+#### In your own app
+
+A host's own board is read-only until the host adds a save route, even on your machine. Until then, its internal Personas tab opened from `localhost`, `127.0.0.1` or `[::1]` shows a note that editing is not set up, with a link here. **Hide** keeps it hidden in that browser. `board.js` adds the note, so a deployed page never mentions editing.
+
+To turn editing on, create one editor, read the map through it on each request for the board, and route saves to it:
+
+```ts
+import { createStoryMapEditServer, getStoryMapPage, storyMapEditPath } from "auto-story-map";
+
+const editor = createStoryMapEditServer({
+  map: "product/story-map.yaml",
+  // The same rule as the board's canViewInternal.
+  authorize: async request => canViewInternal(await viewerFrom(request)),
+});
+
+// The board's route: read the file on each request instead of importing it.
+const { document, editing } = await editor.read(request);
+const map = getStoryMapPage(document, viewer, { canViewInternal, searchParams: url.searchParams });
+// <StoryMapBoard map={map} personaEditing={editing} />
+
+// The save route, at storyMapEditPath:
+export const POST = (request: Request) => editor.handleRequest(request);
 ```
 
-Keep it off a deployed product's board. The map file on a server is not the repository, so edits there would never reach Git and would be lost on the next deploy. Change the map through a PR instead. The handler also refuses any request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]`.
+- **Read the file on each request.** A board that imports the map at build time, such as with `story-map.yaml?raw`, keeps showing the old map after a save, and the next save is refused as stale. `editor.read(request)` returns the file's text, the parsed `document` and the `editing` props, so a save shows on the next load.
+- **`authorize` is required** and must match the board's internal check. The token only proves the page came from this server, not that the person may edit, so without it any signed-in user of the local app could edit the map. It gets the request passed to `read`, `handle` or `handleRequest`.
+- **Editing turns itself off** in a production build, when `NODE_ENV` is `production`, and for any request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]`. `read` then returns no `editing` and saves get 403, so a deployed app stays read-only with nothing to remember. Pass `enabled: false` to turn it off yourself.
+- **Fetch or Node.** `handleRequest(request)` takes a Fetch `Request` and returns a `Response`, for App Router, vinext, Remix, Hono or Workers routes. `handle(request, response)` does the same for a Node server. Both check the `Origin`, the token, the file's revision and the size, and accept persona edits only.
+- **Editing off on purpose.** Pass `personaEditing={false}` to an internal board to skip the set-up note, as `story-map preview --read-only` does.
 
 ### Share personas with customers
 
@@ -912,7 +937,7 @@ Open the address it prints, `http://127.0.0.1:4173/story-map`. **Internal** show
 
 - Pass the map's path when it is not `product/story-map.yaml`, `--port <n>` for another port, and `--history <file>` and `--tests-index <file>` for dates, changes and tagged tests.
 - Add `--source-base-url https://github.com/<owner>/<repo>/blob/main/` to turn repository-relative sources into links.
-- You can [edit personas in place](#edit-personas-on-the-local-preview) on the Personas tab, and the edits save to the map file. Pass `--read-only` to turn that off. Saves need the token the preview puts in its own pages, an `Origin` of the preview itself, and a JSON body, so another site cannot post to it. A save from a page older than the file, such as after an agent's edit or a `git pull`, is refused and nothing is overwritten.
+- You can [edit personas in place](#edit-personas-on-your-machine) on the Personas tab, and the edits save to the map file. Pass `--read-only` to turn that off. Saves need the token the preview puts in its own pages, an `Origin` of the preview itself, and a JSON body, so another site cannot post to it. A save from a page older than the file, such as after an agent's edit or a `git pull`, is refused and nothing is overwritten.
 - The board's search, filters, panels and export menu work as they will in your product. The JSON view is at `/api/story-map`.
 - It renders the React board, so it needs `react` and `react-dom` installed. If they are missing, it says how to add them.
 

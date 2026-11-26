@@ -769,6 +769,11 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-persona-setup .esm-add-persona { display: grid; justify-items: start; gap: 12px; padding: 0; }
 .esm-persona-setup .esm-add-persona .esm-inline-form { justify-self: stretch; }
 :is(.esm-persona-main, .esm-add-persona) > .esm-inline-form[data-esm-edit="create-persona"] { margin-bottom: 18px; padding: 14px 16px; border: 1px solid var(--esm-line); border-radius: 10px; background: var(--esm-paper); }
+/* Added by board.js on a host's internal Personas tab opened from localhost with no save route. */
+.esm-edit-setup-note { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--esm-activity-bg); color: var(--esm-accent-ink); font-size: .875rem; line-height: 1.5; }
+.esm-edit-setup-note a { color: inherit; font-weight: 700; }
+.esm-edit-setup-note .esm-cancel { flex: none; }
+.esm-persona-setup > .esm-edit-setup-note { margin: 0 0 14px; }
 .esm-add-job .esm-inline-form { padding: 14px 16px; border: 1px solid var(--esm-line); border-radius: 10px; background: var(--esm-paper); }
 .esm-form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .esm-form-hint { margin-right: auto; color: var(--esm-muted); font-size: .75rem; }

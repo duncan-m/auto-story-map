@@ -31,7 +31,7 @@ What it shows:
   Both keep comments and untouched lines, like the other edits.
 - **Endpoint**: `personaEditOperations` gains both, so `createStoryMapEditServer` accepts them with its existing checks.
 - **Board** (`src/react.tsx`, `board.js`): with `personaEditing`, the jobs section ends with **+ Add job**, which opens a form posting `create-job`. Each job's edit bar starts with **Delete job**, which opens the confirmation and posts `delete-job`. Both reload the tab like other edits.
-- **Docs**: the guide's [Edit personas on the local preview](../story-map.md#edit-personas-on-the-local-preview) describes both.
+- **Docs**: the guide's [Edit personas on your machine](../story-map.md#edit-personas-on-your-machine) describes both.
 
 ## Left out
 

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { createElement as h } from "react";
-import { createStoryMapEditServer, parseStoryMap, storyMapEditPath } from "auto-story-map";
+import { createStoryMapEditServer, storyMapEditPath } from "auto-story-map";
 import { buildStoryMapHistory } from "../dist/history-git.js";
 import { loadStoryMap } from "../dist/schema.js";
 import { buildStoryMapTests, findStoryTests } from "../dist/tests.js";
@@ -53,10 +53,23 @@ try {
   console.warn(`Tests are unavailable: ${error.message}`);
 }
 
-// The demo runs on this machine, so internal viewers can edit personas on the Personas tab
-// and the edits save to product/story-map.yaml. A deployed product would not do this: its copy
-// of the map is not the repository, so edits there would never reach Git.
-const editor = createStoryMapEditServer({ map: fileURLToPath(mapFile) });
+// The demo's viewer comes from ?as= on the page. A save posts from that page, so its Referer carries it.
+function viewerFrom(request) {
+  const page = new URL(request.url ?? "/", "http://localhost").pathname === storyMapEditPath ? request.headers.referer : request.url;
+  const roles = demoRoles.get(new URL(page ?? "/", "http://localhost").searchParams.get("as") ?? "super-admin");
+  return roles ? { roles } : null;
+}
+
+// Internal viewers can edit personas on the Personas tab, and the edits save to
+// product/story-map.yaml. Editing turns itself off in a production build and for any Host
+// that is not this machine, so a deployed copy, which is not the repository, stays read-only.
+const editor = createStoryMapEditServer({
+  map: fileURLToPath(mapFile),
+  authorize: request => {
+    const viewer = viewerFrom(request);
+    return !!viewer && canViewInternal(viewer);
+  },
+});
 
 // Set STORY_MAP_DEMO_NOW to a later date, such as 2027-01-15, to see in-progress stories flagged as stalled.
 const now = process.env.STORY_MAP_DEMO_NOW ? new Date(process.env.STORY_MAP_DEMO_NOW) : undefined;
@@ -92,8 +105,7 @@ const server = createServer(async (request, response) => {
     }
 
     const selected = url.searchParams.get("as") ?? "super-admin";
-    const roles = demoRoles.get(selected);
-    const viewer = roles ? { roles } : null;
+    const viewer = viewerFrom(request);
     const views = [["user", "Regular user"], ["product", "Product manager"], ["engineer", "Engineer"], ["super-admin", "Super admin"], ["guest", "Guest"]];
     const navigation = h("nav", { "aria-label": "Demo roles" },
       views.map(([role, label]) => h("a", {
@@ -103,8 +115,8 @@ const server = createServer(async (request, response) => {
       }, label)),
     );
 
-    const source = await readFile(mapFile, "utf8");
-    const map = parseStoryMap(source);
+    // Read the file on each request, so a save shows on the next load and the next save matches it.
+    const { document: map, editing } = await editor.read(request);
     const result = makeStoryMapResponse(url, map, viewer, {
       navigation,
       brief: {
@@ -123,7 +135,7 @@ const server = createServer(async (request, response) => {
       tests,
       now,
       preservedParams: { as: selected },
-      personaEditing: editor.editing(source),
+      personaEditing: editing,
     });
     response.writeHead(result.status, Object.fromEntries(result.headers)).end(Buffer.from(await result.arrayBuffer()));
   } catch (error) {
