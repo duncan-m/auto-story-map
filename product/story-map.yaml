@@ -1769,7 +1769,7 @@ stories:
     title: Serve the CLI over MCP
     activity: plan
     release: v0-7-6
-    status: planned
+    status: in-progress
     estimate: 5
     dependsOn:
       - ESM-105

@@ -7,6 +7,7 @@ import evidence from "./commands/evidence.js";
 import exportMap from "./commands/export.js";
 import history from "./commands/history.js";
 import init from "./commands/init.js";
+import mcp from "./commands/mcp.js";
 import preview from "./commands/preview.js";
 import { releases, stories, story } from "./commands/read.js";
 import { ArgumentError, type Command } from "./commands/shared.js";
@@ -36,6 +37,7 @@ const usage = `Usage:
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
   story-map confirm [--format text|json] [--map <path>] [--write] <job ID> | <persona ID> | <release ID> --impact <n> | --all-in <persona ID>
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--read-only] [<map.yaml>]
+  story-map mcp [--root <path>] [--map <path>] [--read-only]
   story-map help [<command>]
 
 init
@@ -371,10 +373,23 @@ preview
                      Personas tab, and the edits save to the map file.
                      Drafts stay drafts.
 
+mcp
+  Runs a Model Context Protocol server over standard input and output, for
+  agents that call tools rather than run commands. Its tools wrap story,
+  stories, releases, validate, evidence, edit --from and claim, with the same
+  safeguards: edits are dry runs unless the call sets write, there is no
+  delete and no tool to confirm drafts, and every path stays inside the root.
+  It has no network listener. Needs @modelcontextprotocol/sdk.
+
+  --root <path>      Repository root. Defaults to the current directory.
+  --map <path>       Map the tools read, relative to the root. Defaults to
+                     product/story-map.yaml.
+  --read-only        Leaves out propose_edit and claim_story.
+
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, claim, claims, unclaim, tokens, preview, edit, add, "release-impact": releaseImpact, confirm };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {

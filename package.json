@@ -37,6 +37,10 @@
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
     },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js"
+    },
     "./board.js": {
       "types": "./dist/board.d.ts",
       "default": "./dist/board.js"
@@ -67,10 +71,14 @@
     "zod": "^4.6.7"
   },
   "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "react": "^18.2.0 || ^19.0.0",
     "react-dom": "^18.2.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
@@ -79,6 +87,7 @@
     }
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.3.0",
