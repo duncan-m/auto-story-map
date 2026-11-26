@@ -186,6 +186,9 @@ export function buildStoryMapJsonExport(view: StoryMapView, options: StoryMapJso
     ...(testsIndexed
       ? ["Only tests whose names include a story ID are linked. A story with a testCount of 0 has no tagged tests, but untagged tests may still cover it."]
       : []),
+    ...(view.stories.some(story => story.readiness)
+      ? ["A planned or in-progress story's readiness is worked out from the recorded dependsOn links only: ready when every prerequisite is merged or shipped, waiting when one is not, and at-risk when one is cut, blocked or unfinished in a later release. readiness.blocking lists the unfinished direct prerequisites. Links nobody recorded are unknown, so ready does not prove a story is independent. Readiness is not a status and is never written to the map."]
+      : []),
     "Customer-facing copy is not included, and sources are recorded by authors without being checked by the export.",
   ];
 

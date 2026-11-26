@@ -2050,7 +2050,7 @@ stories:
     title: Understand which stories are ready to start
     activity: track
     release: v0-7-6
-    status: planned
+    status: in-progress
     estimate: 5
     jobs:
       - triage-backlog

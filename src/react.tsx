@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, isDeliveredStatus, storyStatusLabels, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
+import { storyReadinessLabels, storyReadinessText } from "./readiness.js";
 import { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
@@ -516,7 +517,18 @@ function DependencyCount({ story, outstanding = false }: { story: InternalStoryC
 }
 
 /**
- * The stories a story depends on and the stories waiting for it. A story on the board
+ * True when the story records a dependency or another story depends on it. Its panel shows its
+ * readiness only then, so a map that does not use `dependsOn` gets no “Ready to start” on every story.
+ */
+const hasDependencies = (story: InternalStoryCard) => !!story.dependsOn?.length || !!story.dependents?.length;
+
+/** “Ready to start”, “Waiting” or “At risk” beside a story's status on its panel. */
+function ReadinessLabel({ readiness }: { readiness: NonNullable<InternalStoryCard["readiness"]> }) {
+  return <span className="esm-readiness" data-readiness={readiness.state}>{storyReadinessLabels[readiness.state]}</span>;
+}
+
+/**
+ * The stories a story depends on and the stories waiting for it, after the story's readiness. A story on the board
  * opens its panel. One a filter hides is still listed, as text.
  */
 function DependenciesSection({ story, panelId, storyPanelIds, releaseTitles }: {
@@ -551,6 +563,12 @@ function DependenciesSection({ story, panelId, storyPanelIds, releaseTitles }: {
   return (
     <section className="esm-detail-section" aria-labelledby={headingId}>
       <h4 id={headingId}>Dependencies</h4>
+      {story.readiness && (
+        <p className="esm-readiness-note" data-readiness={story.readiness.state}>
+          {storyReadinessText(story.readiness, id => releaseTitles.get(id) ?? id)}
+          {" "}<span className="esm-readiness-caveat">Only recorded dependencies are checked.</span>
+        </p>
+      )}
       {!!story.dependsOn?.length && list(story.dependsOn, "on", "Depends on")}
       {!!story.dependents?.length && list(story.dependents, "waiting", "Waiting for this story")}
     </section>
@@ -840,6 +858,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
       </div>
       <Status status={story.status} />
       {internal && <DependencyCount story={story} />}
+      {internal && story.readiness && hasDependencies(story) && <ReadinessLabel readiness={story.readiness} />}
       {internal && story.statusReason && <p className="esm-status-reason">{story.statusReason}</p>}
       {internal && story.inProgressSince && (
         <p className="esm-progress-since">
@@ -897,7 +916,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         {internal && story.tokens !== undefined && <><dt>Tokens used</dt><dd>{story.tokens.toLocaleString("en-US")}</dd></>}
         {internal && story.estimatedCostUsd !== undefined && <><dt>Estimated cost</dt><dd>{`$${story.estimatedCostUsd.toFixed(2)}`}</dd></>}
       </dl>
-      {internal && (!!story.dependsOn?.length || !!story.dependents?.length) && (
+      {internal && hasDependencies(story) && (
         <DependenciesSection story={story} panelId={panelId} storyPanelIds={storyPanelIds} releaseTitles={releaseTitles} />
       )}
       {internal && !!story.history?.length && (

@@ -2,6 +2,7 @@ import { storyMapBrief, type StoryMapBriefOptions } from "./brief.js";
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
 import type { StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
+import { storyMapReadiness, type StoryReadiness } from "./readiness.js";
 import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
@@ -155,6 +156,11 @@ export interface InternalStoryCard extends StoryCard {
   dependsOn?: StoryDependency[];
   /** The stories whose `dependsOn` names this one, in map order. Absent when none do. */
   dependents?: StoryDependency[];
+  /**
+   * Whether a planned or in-progress story can start, and the prerequisites that are not merged or
+   * shipped yet, worked out from the map's `dependsOn` links. Absent on other statuses.
+   */
+  readiness?: StoryReadiness;
   /** IDs of the jobs to be done the story serves, most important first. Absent when it names none. */
   jobs?: string[];
   updatedBy?: string;
@@ -428,6 +434,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       else if (story.status !== "shipped") totals.left += story.estimate;
     }
     const dependencies = storyDependencies(map);
+    const readiness = storyMapReadiness(map);
     // Stalled needs to know when the story became in progress, so it only works with history.
     const stalledAfterWeeks = history ? stalledThreshold(map, options.stalledAfterWeeks) : 0;
     const stalledBefore = (options.now ?? new Date()).getTime() - stalledAfterWeeks * weekMs;
@@ -492,6 +499,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           ...(story.tokens !== undefined ? { tokens: story.tokens } : {}),
           ...(story.estimatedCostUsd !== undefined ? { estimatedCostUsd: story.estimatedCostUsd } : {}),
           ...dependencies(story),
+          ...(readiness.get(story.id)?.readiness ? { readiness: readiness.get(story.id)!.readiness } : {}),
           ...personaFields(resolvePersonas(story), story.jobs),
           updatedBy: story.updatedBy,
           notes: story.notes,

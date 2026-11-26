@@ -200,7 +200,8 @@ test("ESM-129: story panels list what they depend on and what is waiting for the
   const middle = panel("BUILDER-103");
   // The same count beside the status, then the section before History.
   assert.match(middle, /Planned<\/span><span class="esm-dependency-count" title="Depends on 2 stories: BUILDER-101, BUILDER-102">/);
-  assert.match(middle, /<h4 id="[^"]+-dependencies">Dependencies<\/h4><h5 class="esm-dependencies-heading" id="[^"]+-dependencies-on">Depends on<\/h5>/);
+  // The readiness line from ESM-139 comes first, then the lists.
+  assert.match(middle, /<h4 id="[^"]+-dependencies">Dependencies<\/h4><p class="esm-readiness-note"[\s\S]*?<\/p><h5 class="esm-dependencies-heading" id="[^"]+-dependencies-on">Depends on<\/h5>/);
   assert.ok(middle.indexOf("Dependencies</h4>") < middle.indexOf("History</h4>") || !middle.includes("History</h4>"));
   // Each story opens its own panel, with its status and release.
   assert.match(middle, new RegExp(`<button type="button" class="esm-dependency-link" aria-haspopup="dialog" popoverTarget="${panelId("BUILDER-101")}"><span class="esm-card-id">BUILDER-101</span><span class="esm-dependency-title">Draft an estimate against a project</span></button><span class="esm-dependency-meta"><span class="esm-status" data-status="in-progress">[\\s\\S]*?In progress</span><span class="esm-dependency-release">Builder workflow</span></span>`));

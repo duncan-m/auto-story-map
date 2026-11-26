@@ -211,7 +211,21 @@ On the internal board, a card shows how many stories it depends on to the right 
 
 Set dependencies with `story-map edit <ID> --add-dependency <ID>` and `--remove-dependency <ID>`, and on a new story with `story-map add --dependency <ID>`, repeated for each one. `story-map diff` shows a change as “Depends on: `BUILDER-101` → `BUILDER-101`, `BUILDER-102`”. `story-map story` lists both directions, and the JSON export carries each story's `dependsOn` and `dependents`, each with its ID, title, status and release.
 
-Dependencies are internal only. Customers never see them, on the board or in the JSON.
+### See which stories are ready to start
+
+The board and the CLI work out each planned or in-progress story's readiness from the `dependsOn` links. Readiness is never saved: nothing writes it to the map, and it never changes a status.
+
+- **Done:** a prerequisite that is `merged` or `shipped`, because its code is on the default branch.
+- **Ready to start:** a `planned` or `in-progress` story whose prerequisites are all done, or that has none recorded.
+- **Waiting:** a story with one or more prerequisites that are not done yet. An in-progress story that is waiting is flagged as having started before its prerequisites landed, but is never set to `blocked`.
+- **At risk:** a story with an unfinished prerequisite that is `cut`, `blocked` or in a later release than the story. At risk takes precedence over waiting.
+- Merged, shipped, blocked and cut stories have no readiness.
+
+Only the links you record are checked. A missing link is unknown, not proof that a story is independent, so “ready” means no unfinished prerequisites are on record.
+
+The story panel shows the readiness beside the status, and a line such as “Waiting for 2 stories: BUILDER-101 and BUILDER-102 are not merged yet.” at the top of its **Dependencies** section. Only stories with a dependency, or a story waiting for them, show it. `story-map story` prints the same line as **Readiness**. `story-map stories --readiness ready`, `waiting` or `at-risk`, repeated or comma-separated, keeps only planned and in-progress stories in those states, after the other filters. The JSON export and `--format json` carry each story's `readiness`, with its `state` and the unfinished direct prerequisites in `blocking`, each with its ID, title, status, release, whether it is in the same release and, when it puts the story at risk, why. Hosts can call `storyMapReadiness(map)` for the same projection, with each story's direct and transitive prerequisites.
+
+Dependencies and readiness are internal only. Customers never see them, on the board or in the JSON.
 
 ## Record the tokens used on a story
 
@@ -608,7 +622,7 @@ npx --no-install story-map stories --query "export" --status all
 ```
 
 - `story-map story <ID> [...]` prints stories in full: status, reason, release, activity, estimate, the personas it is for, the jobs it serves with their statements, a `[core job]` mark on a persona's core job and a `[draft]` mark on drafts, summary, notes and sources, with history and tests when their files are given. An ID that is not in the map exits 1 and suggests close matches, such as `ESM-742` for `esm-742`.
-- `story-map stories` lists stories one per line, with ID, status, release and title. It takes the board's filters: `--status`, repeated or comma-separated, with `stalled` and `all`; `--release`, `--activity`, `--persona` and `--job`, repeated or comma-separated; `--query`; and `--changed-within 1`, `7`, `14` or `30` days. As on the board, blocked and cut stories are hidden unless `--status` chooses them, and the count of hidden stories is printed on stderr. `stalled` and `--changed-within` need `--history`. An unknown release, activity, persona or job ID exits 1. `--persona` keeps stories for any chosen persona, from their jobs or their own `personas`, and `--job` the stories that serve any chosen job, as on the board's [persona filter](#filter-by-persona).
+- `story-map stories` lists stories one per line, with ID, status, release and title. It takes the board's filters: `--status`, repeated or comma-separated, with `stalled` and `all`; `--release`, `--activity`, `--persona` and `--job`, repeated or comma-separated; `--query`; `--readiness ready`, `waiting` or `at-risk`, repeated or comma-separated, for planned and in-progress stories in those [readiness](#see-which-stories-are-ready-to-start) states; and `--changed-within 1`, `7`, `14` or `30` days. As on the board, blocked and cut stories are hidden unless `--status` chooses them, and the count of hidden stories is printed on stderr. `stalled` and `--changed-within` need `--history`. An unknown release, activity, persona or job ID exits 1. `--persona` keeps stories for any chosen persona, from their jobs or their own `personas`, and `--job` the stories that serve any chosen job, as on the board's [persona filter](#filter-by-persona).
 - `story-map releases [<release ID> ...]` lists releases with their story counts by status, estimates, notes and expected impact. Impact items an agent drafted are marked `[draft]`.
 - `story-map help <command>` prints just that command's options.
 
