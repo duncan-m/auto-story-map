@@ -1799,7 +1799,7 @@ stories:
     title: Survey a repository for its first map
     activity: set-up
     release: v0-7-6
-    status: planned
+    status: in-progress
     estimate: 5
     dependsOn:
       - ESM-105
