@@ -415,16 +415,19 @@ releases:
         solves: Not knowing what agent work on a story used
         draft: true
   - id: v0-7-6
-    title: "0.7.6: Update the map from the board"
-    summary: People confirm drafts and triage stories without editing the YAML, see what validate warns about on an Actions tab, and can send the map to Spreo from the Export menu.
+    title: "0.7.6: Triage, readiness and agent access"
+    summary: People confirm drafts and triage stories without editing the YAML, see what validate warns about on an Actions tab, and see which stories are ready to start. Agents use the map through an MCP server or an installable skill, a repository with months of history gets a survey to draft its first map from, and the map can go to Spreo from the Export menu.
     notes: |
-      The Actions tab (ESM-128) lists what validate warns about on the board, so people who never run the CLI see the drafts, estimates and gaps waiting for them. It ships with the draft confirmation and triage work it points to (ESM-110, ESM-111 and ESM-112).
+      The Actions tab (ESM-128) lists validate warnings on the board, beside the draft confirmation and triage work it points to (ESM-110 to ESM-112).
 
-      The Export menu gains a Spreo item (ESM-137), linking to a guide for building an interactive story board in Spreo through its MCP integration from ChatGPT, Claude or Claude Code.
+      From 0.8.4, readiness (ESM-139) says what can start now. ESM-142 and ESM-143 stay there.
 
-      Split from the original 0.7.6, which held 48 points. Map versions, activity steps and the scheduled audit moved to 0.7.7.
+      From 0.8.0, the skill, MCP server and survey (ESM-116 to ESM-118). They reuse the evidence and claim commands from 0.7.5.
 
-      Plans: docs/plans/local-triage.md and docs/plans/actions-tab.md. The Spreo menu item is shown in the mockup at docs/plans/export-to-external-tools.md#ui-mockup.
+      The Export menu gains a Spreo item (ESM-137) with a guide to building a story board in Spreo through its MCP integration.
+
+      Plans: docs/plans/local-triage.md, docs/plans/actions-tab.md, docs/plans/0.8.0-agents-and-adoption.md and docs/plans/visual-dependency-map.md
+      Mockups: docs/plans/export-to-external-tools.md#ui-mockup for the Spreo item, and docs/plans/visual-dependency-map.md#ui-mockup for readiness
     impact:
       - metric: Drafts confirmed or stories moved by editing the YAML by hand
         expected: Done with story-map confirm, or from the story panel in the local preview
@@ -437,6 +440,18 @@ releases:
       - metric: Time to get the story map into Spreo
         expected: One click from the Export menu to a guide with a ready-made prompt, instead of working out the steps and prompt by hand
         solves: People who plan in Spreo not finding a way to move the map there from the Export menu
+        draft: true
+      - metric: Agent sessions that load the story map rules
+        expected: Only sessions that work on the map, through the skill or the MCP server
+        solves: Every agent session reading the story map section of AGENTS.md
+        draft: true
+      - metric: Time to draft a first map for a repository with months of history
+        expected: One survey and one agent pass, citing the survey
+        solves: Agents piecing together tags, changelogs and docs by hand
+        draft: true
+      - metric: Time to identify unfinished prerequisites for a story
+        expected: Shown on the story panel and from the CLI instead of opening each related story
+        solves: Unclear build order across dependent stories
         draft: true
     customer:
       title: "0.7.6"
@@ -465,22 +480,14 @@ releases:
     customer:
       title: "0.7.7"
   - id: v0-8-0
-    title: "0.8.0: Agents and adoption"
-    summary: Agents use the map through an MCP server or an installable skill, a repository that already has months of history gets a survey to draft its first map from, and a tag on a describe block covers every test inside it.
+    title: "0.8.0: Delivery plans and test tags"
+    summary: Hosts learn to write delivery plans from the guide, an example and a plan skeleton, with the rules in AGENTS.md and the story map skill, and a tag on a describe block covers every test inside it.
     notes: |
-      Comes after 0.7.5, because the MCP server wraps the evidence and claim commands and the survey reuses their Git and tag reading.
+      The skill, the MCP server and the survey (ESM-116 to ESM-118) moved to 0.7.6. ESM-152 adds the planning rules to the skill from ESM-117.
 
       Plan: docs/plans/0.8.0-agents-and-adoption.md
       Plan for host planning guidance (ESM-148 to ESM-153): docs/plans/host-planning-guidance.md
     impact:
-      - metric: Agent sessions that load the story map rules
-        expected: Only sessions that work on the map, through the skill or the MCP server
-        solves: Every agent session reading the story map section of AGENTS.md
-        draft: true
-      - metric: Time to draft a first map for a repository with months of history
-        expected: One survey and one agent pass, citing the survey
-        solves: Agents piecing together tags, changelogs and docs by hand
-        draft: true
       - metric: Host plans that name what they build on and what they leave out
         expected: Plans written from the guide's structure, with builds-on, Not now and effort sections
         solves: Hosts getting the map mechanics but not the planning discipline behind them
@@ -491,7 +498,7 @@ releases:
     title: "0.8.1: Agent briefs"
     summary: Agents and scripts print a brief for a story, release or activity with story-map brief, and the local preview starts Claude Code or Codex on a brief in the repository.
     notes: |
-      Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.8.0, which gets a get_brief tool. Starting an agent needs the writable preview from 0.7.6 (ESM-112).
+      Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting an agent needs the writable preview from 0.7.6 (ESM-112).
 
       Plan: docs/plans/agent-briefs.md
     impact:
@@ -523,17 +530,13 @@ releases:
         draft: true
   - id: v0-8-4
     title: "0.8.4: Dependency planning"
-    summary: See which stories can start, a dependency-respecting build order and dependency risks, in the panels, CLI and agent briefs, without maintaining another planning system.
+    summary: See a dependency-respecting build order and dependency risks, in the release panel, CLI and agent briefs, without maintaining another planning system.
     notes: |
-      Planning proposal only, built on the existing dependsOn links from ESM-129. First readiness on the story panel, CLI and JSON (ESM-139), then a suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). The internal Dependencies tab and its focus views (ESM-140, ESM-141) follow in 0.8.5. No new dependency storage.
+      Planning proposal only, built on the existing dependsOn links from ESM-129 and the readiness from ESM-139, which moved to 0.7.6. A suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). The internal Dependencies tab and its focus views (ESM-140, ESM-141) follow in 0.8.5. No new dependency storage.
 
       Plan: docs/plans/visual-dependency-map.md
       Mockup: docs/plans/visual-dependency-map.md#ui-mockup
     impact:
-      - metric: Time to identify unfinished prerequisites for a story
-        expected: Shown on the story panel and from the CLI instead of opening each related story
-        solves: Unclear build order across dependent stories
-        draft: true
       - metric: Time to find a feasible sequence for a release
         expected: A ready set and dependency-respecting order in the release panel and CLI
         solves: Repeated manual tracing of story links
@@ -1034,6 +1037,7 @@ stories:
     activity: explore
     release: v0-7-6
     status: merged
+    estimate: 1
     tokens: 3490162
     estimatedCostUsd: 1.43
     jobs:
@@ -1049,6 +1053,7 @@ stories:
     activity: explore
     release: v0-7-6
     status: merged
+    estimate: 8
     tokens: 42175625
     estimatedCostUsd: 12.91
     jobs:
@@ -1071,6 +1076,7 @@ stories:
     activity: explore
     release: v0-7-6
     status: merged
+    estimate: 3
     tokens: 24200001
     estimatedCostUsd: 8.23
     dependsOn:
@@ -1094,6 +1100,7 @@ stories:
     activity: explore
     release: v0-7-6
     status: merged
+    estimate: 3
     dependsOn:
       - ESM-154
     jobs:
@@ -1116,6 +1123,7 @@ stories:
     activity: explore
     release: v0-7-6
     status: planned
+    estimate: 5
     dependsOn:
       - ESM-147
     jobs:
@@ -1760,7 +1768,7 @@ stories:
   - id: ESM-116
     title: Serve the CLI over MCP
     activity: plan
-    release: v0-8-0
+    release: v0-7-6
     status: planned
     estimate: 5
     dependsOn:
@@ -1776,7 +1784,7 @@ stories:
   - id: ESM-117
     title: Install a story map skill
     activity: set-up
-    release: v0-8-0
+    release: v0-7-6
     status: planned
     estimate: 2
     jobs:
@@ -1788,7 +1796,7 @@ stories:
   - id: ESM-118
     title: Survey a repository for its first map
     activity: set-up
-    release: v0-8-0
+    release: v0-7-6
     status: planned
     estimate: 5
     dependsOn:
@@ -2039,7 +2047,7 @@ stories:
   - id: ESM-139
     title: Understand which stories are ready to start
     activity: track
-    release: v0-8-4
+    release: v0-7-6
     status: planned
     estimate: 5
     jobs:

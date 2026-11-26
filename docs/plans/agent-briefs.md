@@ -186,7 +186,7 @@ npx story-map brief --activity explore
 - **In flight from Git.** The `<in_flight>` section adds what `story-map evidence` (ESM-105) finds for each target: branches that name it, commits on the default branch, claims (ESM-106) and broken sources. The brief calls the evidence code rather than reading Git a second time, so the two stay consistent.
 - When the MCP server from ESM-116 exists, it gets a `get_brief` tool that wraps this command.
 
-This is why this item is in 0.8.1: it comes after evidence and claims in 0.7.5, after the MCP server in 0.8.0, and after the brief format has been tested from the panel in 0.7.5.
+This is why this item is in 0.8.1: it comes after evidence and claims in 0.7.5, after the MCP server in 0.7.6, and after the brief format has been tested from the panel in 0.7.5.
 
 Estimate: 3 points, agreed.
 

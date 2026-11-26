@@ -219,7 +219,7 @@ npx --no-install story-map evidence --shipped-tags 'v*'
 
 ## Not now
 
-- **An MCP server.** A thin wrapper over the same functions once the commands settle. Now planned as ESM-116 in 0.8.0, after this plan's commands ship. See [the 0.8.0 plan](0.8.0-agents-and-adoption.md#1-serve-the-cli-over-mcp).
+- **An MCP server.** A thin wrapper over the same functions once the commands settle. Now planned as ESM-116 in 0.7.6, after this plan's commands ship. See [the 0.8.0 plan](0.8.0-agents-and-adoption.md#1-serve-the-cli-over-mcp).
 - **Open PRs as evidence.** Needs a token and each host's API. The audit agent (ESM-109) can look them up itself.
 - **Claims on the board.** Showing “claimed by audit-bot” on a card needs the board to reach the remote at request time.
 - **Editing releases and activities** beyond release impact.
