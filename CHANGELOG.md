@@ -4,6 +4,7 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
+- **Install the rules as a skill:** `story-map init --skill` writes the story map rules and common commands to `.claude/skills/story-map/SKILL.md`, and gives `AGENTS.md` a short pointer to it instead of the full section, so agents read the rules only when a task needs them. Existing files are never overwritten. See [Populate the first map](https://github.com/duncan-m/auto-story-map/blob/main/README.md#populate-the-first-map).
 - **Take the map into Spreo:** The board's **Export** menu has a new item, *Spreo, guide to an interactive board*. It opens a guide, in a new tab, to building an interactive Spreo board from the map through Spreo's MCP server, from ChatGPT, Claude or Claude Code, with a prompt you can copy. Internal viewers only, as for the rest of the menu. See [Spreo](https://github.com/duncan-m/auto-story-map/blob/main/docs/integrations.md#spreo).
 
 ## 0.7.5

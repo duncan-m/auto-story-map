@@ -1785,7 +1785,7 @@ stories:
     title: Install a story map skill
     activity: set-up
     release: v0-7-6
-    status: planned
+    status: in-progress
     estimate: 2
     jobs:
       - pick-up-work

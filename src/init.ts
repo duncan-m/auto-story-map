@@ -5,6 +5,8 @@ import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 export interface InitOptions {
   /** Write a GitHub Actions workflow that validates the map. Defaults to true. */
   ci?: boolean;
+  /** Write the rules as a skill, with a short pointer in `AGENTS.md`. Defaults to false. */
+  skill?: boolean;
 }
 
 export interface InitStep {
@@ -17,6 +19,21 @@ export interface InitStep {
 const packageRoot = new URL("../", import.meta.url);
 const template = (name: string) => readFile(new URL(`templates/${name}`, packageRoot), "utf8");
 const agentsMarker = "<!-- auto-story-map:start -->";
+export const skillPath = ".claude/skills/story-map/SKILL.md";
+
+/**
+ * Builds the skill from the `AGENTS.md` section, so the two carry the same
+ * rules. Headings move up a level, and links to the host's files gain the path
+ * back to the root from the skill's folder.
+ */
+export async function skillFile() {
+  const rules = (await template("AGENTS.md"))
+    .replace(/^<!-- auto-story-map:start -->\n## Story map\n\n/, "")
+    .replace(/\n<!-- auto-story-map:end -->\n$/, "")
+    .replace(/^### /gm, "## ")
+    .replace(/\]\((product|docs)\//g, "](../../../$1/");
+  return (await template("SKILL.md")).replace("__RULES__", () => rules);
+}
 
 async function exists(path: string) {
   try {
@@ -152,7 +169,8 @@ export function describeProduct(name: string) {
 
 /**
  * Sets up Auto Story Map in a host repository: a starter map, the story
- * map guide, the agent instructions and a validation workflow. Existing files
+ * map guide, the agent instructions, optionally as a skill, and a validation
+ * workflow. Existing files
  * are never overwritten, so it is safe to run again.
  */
 export async function initStoryMap(root: string, options: InitOptions = {}): Promise<InitStep[]> {
@@ -185,8 +203,20 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     });
   }
 
+  if (options.skill) {
+    const skill = await skillFile();
+    if (!(await exists(await at(skillPath)))) {
+      await writeNew(realRoot, skillPath, skill);
+      steps.push({ path: skillPath, action: "created" });
+    } else if (await readFile(await at(skillPath), "utf8") === skill) {
+      steps.push({ path: skillPath, action: "skipped", reason: "already up to date" });
+    } else {
+      steps.push({ path: skillPath, action: "skipped", reason: "differs from this version's skill; run init --skill in an empty folder to compare" });
+    }
+  }
+
   const agentsPath = "AGENTS.md";
-  const agents = await template("AGENTS.md");
+  const agents = await template(options.skill ? "AGENTS-skill.md" : "AGENTS.md");
   if (!(await exists(await at(agentsPath)))) {
     await writeNew(realRoot, agentsPath, agents);
     steps.push({ path: agentsPath, action: "created" });

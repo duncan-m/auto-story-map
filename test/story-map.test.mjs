@@ -528,6 +528,85 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
 });
 
+test("ESM-117: the skill carries every rule in the AGENTS.md section", async () => {
+  const { skillFile } = await import("../dist/init.js");
+  const agents = await readFile(new URL("../templates/AGENTS.md", import.meta.url), "utf8");
+  const skill = await skillFile();
+  assert.match(skill, /^---\nname: story-map\ndescription: \S[^\n]+\n---\n\n# Story map\n\n/);
+  assert.doesNotMatch(skill, /__RULES__|auto-story-map:(start|end)/);
+  const rules = agents.replace(/<!-- auto-story-map:(start|end) -->/g, "").split("\n\n").map(part => part.trim()).filter(part => part && part !== "## Story map");
+  assert.ok(rules.length > 10);
+  const relink = text => text.replace(/^### /, "## ").replace(/\]\((product|docs)\//g, "](../../../$1/");
+  for (const rule of rules) assert.ok(skill.includes(relink(rule)), `missing from the skill: ${rule.slice(0, 60)}`);
+  assert.match(skill, /## Common commands\n/);
+  // Links resolve from the skill's folder, three levels below the root.
+  assert.match(skill, /\[product\/story-map\.yaml\]\(\.\.\/\.\.\/\.\.\/product\/story-map\.yaml\)/);
+  assert.doesNotMatch(skill, /\]\((product|docs)\//);
+});
+
+test("ESM-117: init --skill writes the skill and a short pointer in AGENTS.md", async t => {
+  const { initStoryMap, skillFile, skillPath } = await import("../dist/init.js");
+  const root = await mkdtemp(join(tmpdir(), "story-map-skill-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const first = await initStoryMap(root, { skill: true, ci: false });
+  assert.deepEqual(first.map(step => [step.path, step.action]), [
+    ["product/story-map.yaml", "created"],
+    ["docs/story-map.md", "created"],
+    [skillPath, "created"],
+    ["AGENTS.md", "created"],
+  ]);
+  assert.equal(skillPath, ".claude/skills/story-map/SKILL.md");
+  assert.equal(await readFile(join(root, skillPath), "utf8"), await skillFile());
+  const agents = await readFile(join(root, "AGENTS.md"), "utf8");
+  assert.match(agents, /^<!-- auto-story-map:start -->\n## Story map\n/);
+  assert.match(agents, /\[story map skill\]\(\.claude\/skills\/story-map\/SKILL\.md\)/);
+  assert.match(agents, /Never remove `draft` yourself/);
+  assert.match(agents, /story-map validate --check-sources product\/story-map\.yaml/);
+  const full = await readFile(new URL("../templates/AGENTS.md", import.meta.url), "utf8");
+  assert.ok(agents.split(/\s+/).length * 4 < full.split(/\s+/).length);
+
+  const second = await initStoryMap(root, { skill: true, ci: false });
+  assert.deepEqual(second.find(step => step.path === skillPath), { path: skillPath, action: "skipped", reason: "already up to date" });
+  await writeFile(join(root, skillPath), "# Our own skill\n");
+  const third = await initStoryMap(root, { skill: true, ci: false });
+  assert.match(third.find(step => step.path === skillPath).reason, /^differs from this version's skill/);
+  assert.equal(await readFile(join(root, skillPath), "utf8"), "# Our own skill\n");
+  assert.equal(await readFile(join(root, "AGENTS.md"), "utf8"), agents);
+
+  // A host that already has the full section keeps it.
+  const existing = await mkdtemp(join(tmpdir(), "story-map-skill-"));
+  t.after(() => rm(existing, { recursive: true, force: true }));
+  await writeFile(join(existing, "AGENTS.md"), full);
+  const steps = await initStoryMap(existing, { skill: true, ci: false });
+  assert.deepEqual(steps.find(step => step.path === "AGENTS.md"), { path: "AGENTS.md", action: "skipped", reason: "already has the story map section" });
+  assert.equal(await readFile(join(existing, "AGENTS.md"), "utf8"), full);
+
+  // Without --skill, nothing changes.
+  const plain = await mkdtemp(join(tmpdir(), "story-map-skill-"));
+  t.after(() => rm(plain, { recursive: true, force: true }));
+  const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
+  assert.equal(spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", plain]).status, 0);
+  assert.equal(await readFile(join(plain, "AGENTS.md"), "utf8"), full);
+  await assert.rejects(readFile(join(plain, skillPath)));
+  const run = spawnSync(process.execPath, [cli, "init", "--skill", "--no-ci", "--dir", plain], { encoding: "utf8" });
+  assert.equal(run.status, 0);
+  assert.match(run.stdout, /created  \.claude\/skills\/story-map\/SKILL\.md/);
+});
+
+test("ESM-117: init --skill refuses a .claude link that leads outside the repository", async t => {
+  const { initStoryMap } = await import("../dist/init.js");
+  const base = await mkdtemp(join(tmpdir(), "story-map-skill-links-"));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const outside = join(base, "outside");
+  const root = join(base, "host");
+  await mkdir(outside);
+  await mkdir(root);
+  await symlink(outside, join(root, ".claude"));
+  await assert.rejects(initStoryMap(root, { skill: true, ci: false }), /\.claude is a symbolic link that points outside the repository/);
+  await assert.rejects(readFile(join(outside, "skills/story-map/SKILL.md")));
+});
+
 test("text diagnostics escape line breaks and control characters from the map", async t => {
   const source = stringify(editedSample(document => {
     document.stories.find(story => story.id === "BUILDER-101").status = "shipped";
