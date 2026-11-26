@@ -143,7 +143,8 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
   for (const asset of assets.values()) asset.catch(() => {});
   const headers = { ...storyMapResponseHeaders };
   const writable = options.writable !== false;
-  const editor = writable ? createStoryMapEditServer({ map: options.map }) : undefined;
+  // Only this machine can reach the preview, and its Host check runs first, so whoever opens it may edit.
+  const editor = writable ? createStoryMapEditServer({ map: options.map, authorize: () => true, enabled: true }) : undefined;
 
   async function handle(request: IncomingMessage, response: ServerResponse) {
     const address = server.address();
@@ -231,7 +232,7 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
       <>
         {internal ? <Issues issues={checked.issues} kind="warning" /> : null}
         {map
-          ? <StoryMapBoard map={map} sourceBaseUrl={options.sourceBaseUrl} preservedParams={{ view }} exportHref={internal ? "/story-map/export?view=internal" : undefined} personaEditing={internal && editor ? editor.editing(source) : undefined} />
+          ? <StoryMapBoard map={map} sourceBaseUrl={options.sourceBaseUrl} preservedParams={{ view }} exportHref={internal ? "/story-map/export?view=internal" : undefined} personaEditing={internal ? editor?.editing(source) ?? false : undefined} />
           : <p>{message}</p>}
       </>
     );

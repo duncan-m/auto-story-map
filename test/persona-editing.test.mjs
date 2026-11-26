@@ -363,7 +363,7 @@ test("ESM-147: the edit server refuses a non-loopback Host, which stops DNS rebi
 
 test("ESM-147: createStoryMapEditServer gives the props the board needs", async () => {
   const { createStoryMapEditServer, storyMapRevision } = await import("auto-story-map");
-  const server = createStoryMapEditServer({ map: "unused.yaml" });
+  const server = createStoryMapEditServer({ map: "unused.yaml", authorize: () => true });
   const props = server.editing(map);
   assert.equal(props.endpoint, "/api/story-map/edit");
   assert.equal(props.revision, storyMapRevision(map));
