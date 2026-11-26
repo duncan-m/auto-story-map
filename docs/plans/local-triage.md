@@ -33,6 +33,12 @@ The internal story panel gets a **Change** section with a status picker, a reaso
 
 It uses the story permalinks from ESM-122, in 0.7.4. This is the UI that item 3 saves from, so it is built first and item 3 adds only the save. Estimate: 3 points.
 
+### UI mockup
+
+![Mockup of the ESM-108 story panel with its Change section: on the left after choosing Blocked, a reason and 0.7.6, with the quoted command and Copied; on the right before any choice, with the hint and a disabled Copy](change-command-mockup.png)
+
+The mockup is [change-command-mockup.html](change-command-mockup.html), generated from the built board and the real `styles.css` with this product's map, with the **Change** section in the state `board.js` leaves it. To refresh it, render the panel again and take a screenshot at 1360 px wide. ESM-111 links to this section from its `sources`.
+
 ## 3. Save changes from the local preview
 
 `story-map preview` lets the **Change** section from item 2 save straight to the map file, through the same checks as `story-map edit --write`.

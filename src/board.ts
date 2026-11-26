@@ -10,7 +10,8 @@
  * It also remembers which release lanes the viewer collapsed, and adds them to
  * the board's export links so the downloaded file matches, and which job lanes
  * they collapsed on the Personas tab. It opens the panel a permalink names, and
- * turns each panel's **Copy link** into a button that copies the permalink. It keeps
+ * turns each panel's **Copy link** into a button that copies the permalink. It builds the
+ * `story-map edit` command for the story panel's **Change** pickers, to copy. It keeps
  * release names in view beside their lanes, and shrinks the activity row as the grid scrolls.
  * On `story-map preview --writable` it lets the Personas tab edit personas in place.
  */
@@ -363,6 +364,118 @@ export function enhanceStoryMapBriefs(root: ParentNode = document) {
         () => announce(board, "Could not copy the brief. Open Show the brief and select it to copy it."),
       );
     });
+  }
+}
+
+const shellSafe = /^[\w@%+=:,./-]+$/;
+
+/** Quotes a value for a POSIX shell, leaving plain words, such as story and release IDs, as they are. */
+export function shellQuote(value: string) {
+  return shellSafe.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+/** A change to one story, in the terms `story-map edit` takes. */
+export interface StoryMapEditChange {
+  id: string;
+  status?: string;
+  reason?: string;
+  release?: string;
+}
+
+/**
+ * The `story-map edit` command for a change, such as
+ * `npx story-map edit ESM-108 --release v0-7-5 --write`. Each value is quoted for the shell,
+ * and one that starts with a hyphen is passed as `--name=value`, as the parser asks.
+ */
+export function storyMapEditCommand(change: StoryMapEditChange) {
+  const option = (name: string, value: string) => value.startsWith("-") ? shellQuote(`${name}=${value}`) : `${name} ${shellQuote(value)}`;
+  return [
+    "npx story-map edit",
+    shellQuote(change.id),
+    ...(change.status ? [option("--status", change.status)] : []),
+    ...(change.status && change.reason ? [option("--reason", change.reason)] : []),
+    ...(change.release ? [option("--release", change.release)] : []),
+    "--write",
+  ].join(" ");
+}
+
+const needsReason = (status: string) => status === "blocked" || status === "cut";
+
+/**
+ * The command for what the story panel's **Change** pickers say, or why there is none yet:
+ * nothing differs from the story, or a blocked or cut story has no reason. Only what changed
+ * goes in the command. A new reason for a story that stays blocked or cut repeats its status,
+ * since `--reason` goes with `--status`.
+ */
+export function storyMapChangeCommand(
+  story: { id: string; status: string; release: string; reason?: string },
+  chosen: { status: string; release: string; reason?: string },
+): { command: string } | { message: string } {
+  const reason = needsReason(chosen.status) ? chosen.reason?.trim() ?? "" : "";
+  const statusChanged = chosen.status !== story.status || (needsReason(chosen.status) && reason !== (story.reason ?? ""));
+  const releaseChanged = chosen.release !== story.release;
+  if (statusChanged && needsReason(chosen.status) && !reason) return { message: `Say why it is ${chosen.status} to see its command.` };
+  if (!statusChanged && !releaseChanged) return { message: "Choose a new status or release to see its command." };
+  return {
+    command: storyMapEditCommand({
+      id: story.id,
+      ...(statusChanged ? { status: chosen.status, reason } : {}),
+      ...(releaseChanged ? { release: chosen.release } : {}),
+    }),
+  };
+}
+
+const enhancedChanges = new WeakSet<Element>();
+
+/**
+ * Shows the **Change** section of each internal story panel and builds the matching
+ * `story-map edit` command as its status, reason and release pickers change. The reason
+ * field shows for blocked and cut. With clipboard access, **Copy** copies the command and
+ * says what it copied, such as “Copied command: ESM-111”. Nothing is saved. Safe to call more than once.
+ */
+export function enhanceStoryMapChanges(root: ParentNode = document) {
+  const canCopy = typeof navigator !== "undefined" && !!navigator.clipboard?.writeText;
+  for (const form of root.querySelectorAll<HTMLFormElement>("form[data-esm-change]")) {
+    if (enhancedChanges.has(form)) continue;
+    enhancedChanges.add(form);
+    const section = form.closest<HTMLElement>("section.esm-change-section");
+    if (section) section.hidden = false;
+    const field = <Field extends HTMLElement>(selector: string) => form.querySelector<Field>(selector);
+    const status = field<HTMLSelectElement>("[name=status]");
+    const release = field<HTMLSelectElement>("[name=release]");
+    const reason = field<HTMLInputElement>("[name=reason]");
+    const reasonField = field<HTMLElement>("[data-esm-change-reason]");
+    const output = field<HTMLElement>("[data-esm-change-command]");
+    const copy = field<HTMLButtonElement>("button[data-esm-change-copy]");
+    if (!status || !release || !output) continue;
+    const { esmChange: id = "", esmStatus: current = "", esmRelease: currentRelease = "", esmReason: currentReason = "" } = form.dataset;
+    if (copy) copy.hidden = !canCopy;
+
+    const update = () => {
+      if (reasonField) reasonField.hidden = !needsReason(status.value);
+      const result = storyMapChangeCommand(
+        { id, status: current, release: currentRelease, reason: currentReason },
+        { status: status.value, release: release.value, reason: reason?.value },
+      );
+      output.textContent = "command" in result ? result.command : result.message;
+      if ("command" in result) delete output.dataset.empty;
+      else output.dataset.empty = "";
+      if (copy) copy.disabled = !("command" in result);
+    };
+    form.addEventListener("input", update);
+    form.addEventListener("change", update);
+    form.addEventListener("submit", event => event.preventDefault());
+    copy?.addEventListener("click", () => {
+      if (copy.disabled || !canCopy) return;
+      const board = form.closest(".esm-board");
+      navigator.clipboard.writeText(output.textContent ?? "").then(() => {
+        showCopied(copy, "Copied");
+        if (board) announce(board, `Copied command: ${id}`);
+      }, () => {
+        if (board) announce(board, "Could not copy the command. Select it to copy it.");
+      });
+    });
+    update();
   }
 }
 
@@ -821,6 +934,7 @@ function enhance() {
   enhanceStoryMapMenus();
   enhanceStoryMapPermalinks();
   enhanceStoryMapBriefs();
+  enhanceStoryMapChanges();
   enhanceStoryMapPersonaEditing();
 }
 
