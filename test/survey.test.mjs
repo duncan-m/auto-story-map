@@ -85,6 +85,8 @@ async function repository(t) {
       "    return sum(order)",
       "message = 'TODO is not a comment here'",
       "/* TODO(alex): split this file */",
+      "<!-- FIXME: close the dialog --!>",
+      "x = a ** TODO",
       "",
     ].join("\n"),
     "node_modules/pkg/index.js": "// TODO: never read\n",
@@ -152,6 +154,7 @@ test("ESM-118: lists TODO and FIXME comments with file and line, only after a co
     { file: "src/cart.js", line: 1, kind: "TODO", text: "keep the cart between visits" },
     { file: "src/orders.py", line: 2, kind: "FIXME", text: "rounding is off for some currencies" },
     { file: "src/orders.py", line: 5, kind: "TODO", text: "(alex): split this file" },
+    { file: "src/orders.py", line: 6, kind: "FIXME", text: "close the dialog" },
   ], "a string is not a comment, and node_modules and dist are skipped");
 });
 
@@ -238,6 +241,10 @@ test("ESM-118: reads version headings, tag versions and release IDs", () => {
   assert.deepEqual(changelogVersions("# Notes\n\n## Install\n", "CHANGELOG.md"), []);
   assert.deepEqual(["v1.2.0", "pkg@1.2.0", "release-2.0", "v1.0.0-rc.1", "latest"].map(tagVersion), ["1.2.0", "1.2.0", "2.0", "1.0.0-rc.1", undefined]);
   assert.deepEqual(["0.7.5", "1.0.0-rc.1", "Unreleased", "deploy/March 2026", "---"].map(suggestedReleaseId), ["v0-7-5", "v1-0-0-rc-1", "unreleased", "deploy-march-2026", "release"]);
+  const start = performance.now();
+  tagVersion(`9.9-${"-0.0-".repeat(20000)}!`);
+  assert.equal(suggestedReleaseId(`a${"-".repeat(50000)}!`), "a");
+  assert.ok(performance.now() - start < 1000, "long runs of hyphens and versions stay quick");
   assert.deepEqual(markdownHeadings("Title\n=====\n\n#### Deep `code` [link](x)\n").map(({ level, text, anchor, line }) => [level, text, anchor, line]), [
     [1, "Title", "title", 1],
     [4, "Deep code link", "deep-code-link", 4],

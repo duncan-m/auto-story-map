@@ -148,19 +148,37 @@ function capped<T>(items: T[], max: number): [T[], number | undefined] {
   return items.length > max ? [items.slice(0, max), items.length - max] : [items, undefined];
 }
 
-const versionPattern = /^(?:.*[@/_-])?[vV]?(\d+(?:\.\d+)+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/;
+const versionPattern = /^[vV]?(\d+(?:\.\d+)+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/;
+/** Longest tag name read for a version. Git keeps tag names short. */
+const tagNameMaxLength = 256;
+
+/** Removes hyphens from both ends, without a regular expression that backtracks on long runs of them. */
+function trimHyphens(text: string) {
+  let start = 0;
+  let end = text.length;
+  while (start < end && text[start] === "-") start++;
+  while (end > start && text[end - 1] === "-") end--;
+  return text.slice(start, end);
+}
 
 /** The version in a tag name such as `v1.2.0` or `pkg@1.2.0`, or undefined. */
 export function tagVersion(tag: string): string | undefined {
-  return versionPattern.exec(tag)?.[1];
+  // Try the whole name, then the text after each @, /, _ or -, so pkg@1.2.0 gives 1.2.0.
+  const name = tag.slice(0, tagNameMaxLength);
+  for (let start = 0; start < name.length; start++) {
+    if (start > 0 && !"@/_-".includes(name[start - 1])) continue;
+    const match = versionPattern.exec(name.slice(start));
+    if (match) return match[1];
+  }
+  return undefined;
 }
 
 /** A release ID from a version or tag, such as `v0-7-5` for 0.7.5, within the map's ID rules. */
 export function suggestedReleaseId(version: string): string {
   if (/^unreleased$/i.test(version)) return "unreleased";
-  const slug = version.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const slug = trimHyphens(version.slice(0, tagNameMaxLength).toLowerCase().replace(/[^a-z0-9]+/g, "-"));
   const id = /^\d/.test(slug) ? `v${slug}` : slug || "release";
-  return id.slice(0, 64).replace(/-+$/, "");
+  return trimHyphens(id.slice(0, 64));
 }
 
 /** Compares numeric versions: by each number, then a prerelease before its release. */
@@ -287,7 +305,7 @@ const planFolders = new Set(["plans", "plan", "rfcs", "rfc", "proposals", "adr",
 const isPlanFile = (file: string) =>
   file.split("/").slice(0, -1).some(folder => planFolders.has(folder.toLowerCase())) || /^roadmap\.(md|markdown|mdx)$/i.test(basename(file));
 
-const statusLine = /^\s*(?:[-*]\s+)?[*_]*status[*_]*\s*:[*_]*\s*(.+?)\s*$/i;
+const statusLine = /^\s*(?:[-*]\s+)?[*_]*status[*_]*\s*:[*_]*(.*)$/i;
 const closedWords = new Set([
   "done", "built", "complete", "completed", "implemented", "merged", "shipped", "released", "delivered", "finished",
   "superseded", "replaced", "rejected", "declined", "withdrawn", "abandoned", "cut", "dropped", "obsolete", "deprecated", "archived",
@@ -295,7 +313,7 @@ const closedWords = new Set([
 
 /** The plan's `Status:` line among its first lines, and whether its first word says it is finished. */
 function planStatus(markdown: string): { status?: string; closed: boolean } {
-  const line = markdown.split(/\r?\n/, 40).map(text => statusLine.exec(text)?.[1]).find(Boolean);
+  const line = markdown.split(/\r?\n/, 40).map(text => statusLine.exec(text)?.[1].trim()).find(Boolean);
   if (!line) return { closed: false };
   const word = /[\p{L}-]+/u.exec(line.toLowerCase())?.[0] ?? "";
   return { status: fit(line), closed: closedWords.has(word) };
@@ -304,12 +322,25 @@ function planStatus(markdown: string): { status?: string; closed: boolean } {
 /** Finds a `TODO` or `FIXME` that follows a comment marker on the line, such as `//`, `#`, `/*`, `*`, `--` or `<!--`. */
 function todoIn(line: string): { kind: SurveyTodo["kind"]; text: string } | undefined {
   for (const match of line.matchAll(/\b(TODO|FIXME)\b/g)) {
-    const before = line.slice(0, match.index).trimEnd();
-    if (!/(?:\/\/|\/\*+|#|<!--|--|;)$/.test(before) && !/^\s*\*+$/.test(before)) continue;
-    const text = line.slice(match.index + match[0].length).replace(/\s*(?:\*\/|-->)\s*$/, "").replace(/^\s*[:-]?\s*/, "");
+    if (!followsCommentMarker(line.slice(0, match.index).trimEnd())) continue;
+    let text = line.slice(match.index + match[0].length).trim();
+    const close = commentClosers.find(closer => text.endsWith(closer));
+    if (close) text = text.slice(0, -close.length).trimEnd();
+    if (text.startsWith(":") || text.startsWith("-")) text = text.slice(1).trimStart();
     return { kind: match[1] as SurveyTodo["kind"], text: fit(text) };
   }
   return undefined;
+}
+
+const commentOpeners = ["//", "#", "<!--", "--", ";"];
+const commentClosers = ["*/", "-->", "--!>"];
+
+/** Whether text ends with a comment marker: `//`, `#`, `<!--`, `--`, `;`, `/*` or `/**`, or is only the `*` of a block comment's line. */
+function followsCommentMarker(before: string) {
+  let end = before.length;
+  while (end > 0 && before[end - 1] === "*") end--;
+  if (end < before.length) return before[end - 1] === "/" || !before.slice(0, end).trim();
+  return commentOpeners.some(opener => before.endsWith(opener));
 }
 
 /** Lists the files a set of paths names, through `repositoryFiles`, reporting paths that leave the root. */
