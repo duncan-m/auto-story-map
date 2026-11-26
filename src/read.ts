@@ -1,5 +1,6 @@
 import { toJsonStory, type StoryMapJsonStory } from "./export-json.js";
 import { filterStoryMapView, type StoryMapFilters } from "./filter.js";
+import type { StoryReadinessState } from "./readiness.js";
 import type { StoryMapFilterState, StoryMapView } from "./view.js";
 
 type InternalView = Extract<StoryMapView, { audience: "internal" }>;
@@ -10,13 +11,15 @@ export interface StoryQuery extends StoryMapFilters {
   releases?: readonly string[];
   /** Only stories under these activities. Empty or absent means every activity. */
   activities?: readonly string[];
+  /** Only planned and in-progress stories in these readiness states. Empty or absent means any readiness, or none. */
+  readiness?: readonly StoryReadinessState[];
 }
 
 /** The stories `findStories` matched, in map order, and the filter it applied. */
 export interface FoundStories {
   stories: StoryMapJsonStory[];
   /** As on a filtered view. `total` counts the stories in the chosen releases and activities. */
-  filter: StoryMapFilterState & { releases?: string[]; activities?: string[] };
+  filter: StoryMapFilterState & { releases?: string[]; activities?: string[]; readiness?: StoryReadinessState[] };
 }
 
 /** A story ID that `getStories` could not find, with the closest IDs in the map. */
@@ -41,6 +44,7 @@ export function findStories(view: StoryMapView, query: StoryQuery = {}, options:
   const internal = internalView(view);
   const releases = query.releases?.length ? new Set(query.releases) : undefined;
   const activities = query.activities?.length ? new Set(query.activities) : undefined;
+  const readiness = query.readiness?.length ? new Set(query.readiness) : undefined;
   const narrowed: InternalView = {
     ...internal,
     stories: internal.stories.filter(story => (!releases || releases.has(story.release)) && (!activities || activities.has(story.activity))),
@@ -48,11 +52,14 @@ export function findStories(view: StoryMapView, query: StoryQuery = {}, options:
   const filtered = filterStoryMapView(narrowed, query, options);
   const testsIndexed = internal.testsIndexed === true;
   return {
-    stories: filtered.stories.map(story => toJsonStory(story, testsIndexed)),
+    stories: filtered.stories
+      .filter(story => !readiness || (!!story.readiness && readiness.has(story.readiness.state)))
+      .map(story => toJsonStory(story, testsIndexed)),
     filter: {
       ...filtered.filter!,
       ...(releases ? { releases: [...releases] } : {}),
       ...(activities ? { activities: [...activities] } : {}),
+      ...(readiness ? { readiness: [...readiness] } : {}),
     },
   };
 }

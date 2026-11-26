@@ -2,6 +2,7 @@ import type { StoryMapJsonStory } from "../export-json.js";
 import { releaseEstimatesText } from "../export.js";
 import { changedWithinOptions, type ChangedWithinDays } from "../filter.js";
 import { jobStatement } from "../personas.js";
+import { storyReadinessStates, storyReadinessText, type StoryReadinessState } from "../readiness.js";
 import { findStories, getStories } from "../read.js";
 import { storyStatuses, storyStatusLabels, type StoryStatusFilter } from "../status.js";
 import { getStoryMapForViewer, type InternalReleaseLabel, type StoryDependency, type StoryMapView } from "../view.js";
@@ -93,6 +94,7 @@ function storyText(view: Extract<StoryMapView, { audience: "internal" }>, story:
   if (story.estimatedCostUsd !== undefined) field(lines, "Est. cost", `$${story.estimatedCostUsd.toFixed(2)}`);
   if (story.dependsOn?.length) field(lines, "Depends on", dependencyList(story.dependsOn));
   if (story.dependents?.length) field(lines, "Waiting for it", dependencyList(story.dependents));
+  if (story.readiness) field(lines, "Readiness", storyReadinessText(story.readiness, id => labelled(view, "releases", id)));
   if (story.personas?.length) field(lines, "For", story.personas.map(id => labelled(view, "personas", id)).join(", "));
   if (story.jobs?.length) {
     const jobs = new Map((view.personas ?? []).flatMap(persona => persona.jobs.map(job => [job.id, { job, persona }] as const)));
@@ -167,6 +169,7 @@ export const stories = defineCommand({
     const activities: string[] = [];
     const personas: string[] = [];
     const jobs: string[] = [];
+    const readiness: StoryReadinessState[] = [];
     let query: string | undefined;
     let changedWithinDays: ChangedWithinDays | undefined;
     const options = parseReadArgs(rest, (name, value) => {
@@ -183,6 +186,11 @@ export const stories = defineCommand({
         personas.push(...value().split(",").map(part => part.trim()).filter(Boolean));
       } else if (name === "--job") {
         jobs.push(...value().split(",").map(part => part.trim()).filter(Boolean));
+      } else if (name === "--readiness") {
+        for (const state of value().split(",").map(part => part.trim()).filter(Boolean)) {
+          if (!(storyReadinessStates as readonly string[]).includes(state)) throw new ArgumentError(`--readiness must be ${storyReadinessStates.join(", ")}, not ${state}`);
+          if (!readiness.includes(state as StoryReadinessState)) readiness.push(state as StoryReadinessState);
+        }
       } else if (name === "--query") {
         query = value();
       } else if (name === "--changed-within") {
@@ -194,7 +202,7 @@ export const stories = defineCommand({
       }
       return true;
     });
-    return options && { ...options, statuses, releases, activities, personas, jobs, query, changedWithinDays };
+    return options && { ...options, statuses, releases, activities, personas, jobs, readiness, query, changedWithinDays };
   },
 
   async run(options) {
@@ -228,6 +236,7 @@ export const stories = defineCommand({
       changedWithinDays: options.changedWithinDays,
       releases: options.releases,
       activities: options.activities,
+      readiness: options.readiness,
       ...(options.personas.length ? { persona: options.personas } : {}),
       ...(options.jobs.length ? { job: options.jobs } : {}),
     });

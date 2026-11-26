@@ -23,7 +23,7 @@ const usage = `Usage:
   story-map tests [--tests <path>] [--root <path>] [--out <file>] [<map.yaml>]
   story-map export --format vsdx|csv|json [--output <file>] [--history <file>] [--tests-index <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
-  story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
+  story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--readiness <state>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
   story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [<ID> ...]
   story-map claim [--format text|json] [--map <path>] [--remote <name>] [--store <dir>] --agent <name> [--ttl <duration>] [--branch <name>] [--renew | --take-over] <ID>
@@ -126,7 +126,8 @@ export
 
 story
   Prints one or more stories in full: status, release, activity, estimate,
-  who it is for, the jobs it serves, summary, notes and sources, with history
+  who it is for, the jobs it serves, whether it is ready to start and which
+  prerequisites are not merged yet, summary, notes and sources, with history
   and tagged tests when their files are given. An ID that is not in the map exits 1 and suggests close matches.
   Reads are always the internal view.
 
@@ -148,6 +149,10 @@ stories
   --persona <ID>     Only stories for this persona, from their jobs or their
                      own personas. Repeat for several.
   --job <ID>         Only stories that serve this job. Repeat for several.
+  --readiness <state>
+                     Only planned and in-progress stories that are ready,
+                     waiting or at-risk, from their dependsOn links.
+                     Repeat, or separate with commas.
   --query <text>     Search IDs, titles, summaries, notes, status reasons,
                      persona titles and job statements, as the board's
                      search does. Use it to find an existing
