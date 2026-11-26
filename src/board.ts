@@ -10,7 +10,8 @@
  * It also remembers which release lanes the viewer collapsed, and adds them to
  * the board's export links so the downloaded file matches, and which job lanes
  * they collapsed on the Personas tab. It opens the panel a permalink names, and
- * turns each panel's **Copy link** into a button that copies the permalink.
+ * turns each panel's **Copy link** into a button that copies the permalink. It keeps
+ * release names in view beside their lanes, and shrinks the activity row as the grid scrolls.
  * On `story-map preview --writable` it lets the Personas tab edit personas in place.
  */
 
@@ -146,6 +147,56 @@ export function enhanceStoryMapReleases(root: ParentNode = document) {
       writeCollapsed([...ids], kind.prefix);
       updateExportLinks(board);
     });
+  }
+}
+
+const enhancedGrids = new WeakSet<Element>();
+
+/**
+ * Keeps the grid's headings in view. Measures the activity row and release column for CSS,
+ * and sets `data-esm-stuck`, which shrinks the row to its titles, once the grid has scrolled
+ * by the height that saves. Safe to call more than once.
+ */
+export function enhanceStoryMapHeadings(root: ParentNode = document) {
+  for (const box of root.querySelectorAll<HTMLElement>(".esm-scroll")) {
+    const row = box.querySelector<HTMLElement>(".esm-activities");
+    const corner = box.querySelector<HTMLElement>(".esm-corner");
+    if (!row || !corner || enhancedGrids.has(box)) continue;
+    enhancedGrids.add(box);
+    const set = (name: string, pixels: number) => box.style.setProperty(name, `${pixels}px`);
+    let saved = 0;
+    const update = () => {
+      // Shrinking hides the persona avatars, so wait while one of them has focus.
+      const stuck = saved > 0 && box.scrollTop >= saved && !row.contains(document.activeElement);
+      if (box.hasAttribute("data-esm-stuck") !== stuck) box.toggleAttribute("data-esm-stuck", stuck);
+      set("--esm-activities-height", row.getBoundingClientRect().height);
+    };
+    const measure = () => {
+      box.removeAttribute("data-esm-stuck");
+      const full = row.getBoundingClientRect().height;
+      box.setAttribute("data-esm-stuck", "");
+      saved = full - row.getBoundingClientRect().height;
+      set("--esm-activities-saved", saved);
+      set("--esm-labels-width", corner.getBoundingClientRect().width);
+      update();
+    };
+    measure();
+    box.addEventListener("scroll", update, { passive: true });
+    row.addEventListener("focusout", () => requestAnimationFrame(update));
+    // Following a permalink scrolls the page as well as the grid, which can push the headings off the window.
+    const reveal = () => {
+      if (box.querySelector(":target") && row.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start" });
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("load", () => requestAnimationFrame(reveal));
+      window.addEventListener("hashchange", () => requestAnimationFrame(reveal));
+    }
+    if (typeof ResizeObserver === "undefined") continue;
+    // The row's height changes as it shrinks, so watch the box and a title, for new widths and text sizes.
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    const title = row.querySelector(".esm-activity-title");
+    if (title) observer.observe(title);
   }
 }
 
@@ -766,6 +817,7 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
 function enhance() {
   enhanceStoryMapFilters();
   enhanceStoryMapReleases();
+  enhanceStoryMapHeadings();
   enhanceStoryMapMenus();
   enhanceStoryMapPermalinks();
   enhanceStoryMapBriefs();
