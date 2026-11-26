@@ -1,6 +1,6 @@
 # Plan: edit personas in place on the local preview
 
-Status: in progress. The work is ESM-147 in the **0.7.6: Update the map from the board** release of the map. It has no agreed estimate yet.
+Status: in progress. The work is ESM-147 in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 8 points.
 
 The Personas tab (ESM-911) shows each persona's summary, context and job statements, but changing any of them means finding the right lines in the YAML or asking an agent. Personas are mostly agent drafts waiting for a person to review them, and reviewing usually means rewording: tightening a constraint, sharpening a job's trigger or stake. This plan lets a person do that on the Personas tab itself, in the local preview, without making the hosted board writable.
 
@@ -72,7 +72,7 @@ Name each `ESM-147: …`.
 
 ## Estimate
 
-Not agreed yet. The team should size it once ESM-112 is built, since most of the risk (the endpoint and its checks) is there.
+8 points, agreed after it merged.
 
 ## Questions for review
 
