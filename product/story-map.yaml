@@ -446,7 +446,9 @@ releases:
     notes: |
       Split from the original 0.7.6. Reading and comparing versions (ESM-113 and ESM-114) come before the board's Version picker (ESM-115), which depends on both. The audit (ESM-109) uses the evidence from ESM-105 in 0.7.5.
 
-      Plans: docs/plans/map-versions.md and docs/plans/0.4.0-enhancements.md
+      Activity and release titles stay in view while the board scrolls (ESM-157). Mockup: docs/plans/sticky-board-headings.md#ui-mockup
+
+      Plans: docs/plans/map-versions.md, docs/plans/0.4.0-enhancements.md and docs/plans/sticky-board-headings.md
     impact:
       - metric: Map changes that are missing from feature PRs
         expected: Found by the weekly audit and proposed in a PR
@@ -455,6 +457,10 @@ releases:
       - metric: Time to see what the map said at an earlier release or review
         expected: One command or one choice in the board's Version picker
         solves: Checking out old commits, or asking an agent, to see a past plan
+        draft: true
+      - metric: Scrolling back up to see which activity or release a card belongs to
+        expected: "None: both titles stay in view as the board scrolls"
+        solves: Losing track of the column and lane on maps with many releases
         draft: true
     customer:
       title: "0.7.7"
@@ -968,6 +974,18 @@ stories:
     notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size.
     sources:
       - docs/plans/map-versions.md#3-switch-the-board-to-an-earlier-version
+  - id: ESM-157
+    title: Keep activity and release titles in view while scrolling
+    activity: explore
+    release: v0-7-7
+    status: in-progress
+    jobs:
+      - get-oriented
+      - triage-backlog
+    summary: The activity titles stay at the top of the board as it scrolls down, each release's name stays beside its lane, and the release column stays on the left as the board scrolls sideways.
+    sources:
+      - docs/plans/sticky-board-headings.md#change
+      - docs/plans/sticky-board-headings.md#ui-mockup
   - id: ESM-128
     title: Show outstanding actions on an Actions tab
     activity: explore

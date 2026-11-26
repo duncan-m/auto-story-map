@@ -266,6 +266,7 @@
 .esm-lane[data-lane="1"] { --esm-lane-bg: var(--esm-lane-1-bg); --esm-lane-ink: var(--esm-lane-1-ink); --esm-lane-chip: var(--esm-lane-1-chip); }
 .esm-lane[data-lane="2"] { --esm-lane-bg: var(--esm-lane-2-bg); --esm-lane-ink: var(--esm-lane-2-ink); --esm-lane-chip: var(--esm-lane-2-chip); }
 .esm-release { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; padding: 13px 5px 11px 11px; }
+.esm-release-heading { max-width: 100%; }
 .esm-release-name { display: flex; align-items: baseline; gap: 7px; font-weight: 750; line-height: 1.25; overflow-wrap: break-word; hyphens: auto; }
 .esm-release-dot { flex: 0 0 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--esm-lane-ink); transform: translateY(-1px); }
 .esm-release-summary { padding-left: 14px; color: var(--esm-muted); font-size: .875rem; line-height: 1.35; overflow-wrap: break-word; }
@@ -315,6 +316,7 @@
   .esm-lane:has(.esm-collapse-input:checked) :is(.esm-release-summary, .esm-release-impact) { display: none; }
   /* A collapsed lane is one line: name, then the expand chevron, then the story count. */
   .esm-lane:has(.esm-collapse-input:checked) > .esm-release { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 4px; padding-right: 11px; }
+  .esm-lane:has(.esm-collapse-input:checked) .esm-release-heading { display: flex; align-items: center; gap: 4px; }
   .esm-lane:has(.esm-collapse-input:checked) .esm-collapse { position: relative; top: auto; right: auto; order: 1; }
   .esm-lane:has(.esm-collapse-input:checked) .esm-release-count { order: 2; margin-left: 4px; }
   .esm-lane:has(.esm-collapse-input:checked) .esm-release-estimate { order: 3; padding-left: 6px; }
@@ -326,6 +328,26 @@
 .esm-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 4.5rem; padding: 8px 0; }
 .esm-row > .esm-cell:last-child { padding-right: 8px; }
 .esm-cell-label { display: none; }
+
+/* Sticky headings. The grid scrolls in its own box, so headings can stick to its top and left edges.
+   The default height leaves room for the footer, so the headings stay in view at the end of the page.
+   A host with a fixed header or a taller footer sets --esm-board-height, and "none" lets the page scroll instead. Small windows
+   and print keep the page scroll. board.js measures the row and column, and shrinks the row to its titles. */
+@media screen and (min-width: 651px) and (min-height: 480px) {
+  /* Positioned, so it also holds the absolutely placed hidden labels, which would otherwise make the page taller. */
+  .esm-scroll { position: relative; max-height: var(--esm-board-height, calc(100dvh - 7.5rem)); overflow: auto; isolation: isolate; scroll-padding: calc(var(--esm-activities-height, 13rem) + 8px) 8px 8px calc(var(--esm-labels-width, 11.4rem) + 8px); }
+  .esm-activities { position: sticky; top: 0; z-index: 2; margin: -12px -12px -10px; padding: 12px 12px 10px; background: var(--esm-canvas); }
+  .esm-corner { position: sticky; left: 0; z-index: 1; display: flex; align-items: center; align-self: stretch; padding-left: 11px; background: var(--esm-canvas); }
+  .esm-release { position: sticky; left: 0; z-index: 1; border-radius: 9px 0 0 9px; background: var(--esm-lane-bg); }
+  .esm-release-heading { position: sticky; top: var(--esm-activities-height, auto); z-index: 1; width: calc(100% + 12px); max-width: none; margin: -13px -12px -4px 0; padding: 13px 12px 4px 0; border-radius: 9px 0 0; background: var(--esm-lane-bg); }
+  /* The margin keeps the space the shrunken row gives up, so the lanes do not jump. */
+  .esm-scroll[data-esm-stuck] .esm-activities { margin-bottom: calc(var(--esm-activities-saved, 0px) - 10px); box-shadow: 0 6px 8px -6px var(--esm-shadow); }
+  .esm-scroll[data-esm-stuck] .esm-activity > :not(.esm-activity-title, .esm-step) { display: none; }
+  @supports selector(:has(*)) {
+    .esm-lane:has(.esm-collapse-input:checked) > .esm-release { position: static; border-radius: 9px; }
+    .esm-lane:has(.esm-collapse-input:checked) .esm-release-heading { left: 11px; width: auto; margin: 0; padding: 0; }
+  }
+}
 
 /* Version footer */
 .esm-footer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 14px; padding: 0 4px; color: var(--esm-faint); font-size: .8125rem; }
