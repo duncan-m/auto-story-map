@@ -1927,8 +1927,11 @@ function withParam(href: string, name: string, value: string) {
   return `${path}${path.includes("?") ? "&" : "?"}${name}=${encodeURIComponent(value)}${fragment}`;
 }
 
+/** The guide to building a Spreo board from the map through Spreo's MCP server, from ChatGPT, Claude or Claude Code. */
+const spreoGuideUrl = `${storyMapRepositoryUrl}/blob/main/docs/integrations.md#spreo`;
+
 /**
- * An Export button that opens a menu of links to the host's export route. A
+ * An Export button that opens a menu of links to the host's export route, then a link to the Spreo guide. A
  * `<details>` element opens it, so it works without JavaScript. board.js keeps
  * `collapsed` in step with the lanes, and closes the menu on Escape or a click elsewhere.
  */
@@ -1947,6 +1950,7 @@ function ExportMenu({ href }: { href: string }) {
           const target = withParam(href, "format", format);
           return <li key={format}><a className="esm-export-link" href={target} data-esm-export={target} download>{label}</a></li>;
         })}
+        <li className="esm-export-guide"><a className="esm-export-link" href={spreoGuideUrl} {...newTab}>Spreo, guide to an interactive board<NewTabHint /></a></li>
       </ul>
     </details>
   );

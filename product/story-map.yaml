@@ -424,7 +424,7 @@ releases:
 
       Split from the original 0.7.6, which held 48 points. Map versions, activity steps and the scheduled audit moved to 0.7.7.
 
-      Plans: docs/plans/local-triage.md and docs/plans/actions-tab.md
+      Plans: docs/plans/local-triage.md and docs/plans/actions-tab.md. The Spreo menu item is shown in the mockup at docs/plans/export-to-external-tools.md#ui-mockup.
     impact:
       - metric: Drafts confirmed or stories moved by editing the YAML by hand
         expected: Done with story-map confirm, or from the story panel in the local preview
@@ -985,8 +985,10 @@ stories:
     title: Add export support for Spreo
     activity: explore
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 2
+    tokens: 2820188
+    estimatedCostUsd: 1.51
     jobs:
       - share-roadmap
     summary: Internal viewers choose Spreo from the board's Export menu and get a guide to creating an interactive story board in Spreo from ChatGPT, Claude or Claude Code.
@@ -1003,6 +1005,9 @@ stories:
       - No Spreo API integration or import format is added to the library.
     sources:
       - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
+      - docs/plans/export-to-external-tools.md#ui-mockup
+      - docs/integrations.md#spreo
+      - docs/plans/spreo-export-mockup.png
   - id: ESM-146
     title: Show how to set up personas on an empty Personas tab
     activity: explore

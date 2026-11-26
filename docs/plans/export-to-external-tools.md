@@ -207,6 +207,13 @@ The CLI always builds the internal view, because whoever runs it already has the
 
 **Tests.** Rendering with `exportHref` shows the links for internal views and never for customer views. The helper returns the right headers and throws for customers. The `board.js` change keeps `collapsed` in step with the lanes.
 
+**Spreo (ESM-137, 0.7.6).** The Export menu ends with *Spreo, guide to an interactive board*, under a divider. It is a link, not a download: it opens [the Spreo section of `docs/integrations.md`](../integrations.md#spreo) on GitHub's `main` branch in a new tab, with `rel="noopener noreferrer"`, and carries no `data-esm-export`, so `board.js` leaves it alone. The guide shows how to connect Spreo's MCP server (`https://mcp.spreo.io/mcp`) from Claude Code, Claude and ChatGPT, gives a prompt that builds the board from `product/story-map.yaml`, and says that the board is a one-way snapshot and that the prompt shares the internal map with the AI provider and Spreo. The library has no Spreo code or import format. Choices made while building it:
+
+- The link points to `main` rather than the installed version's tag, so older installs still find the guide. `docs/integrations.md` is not shipped in the package.
+- Spreo has no swimlane shape outside its timeline roadmap, so the prompt asks for a zone per release and leaves the exact shapes to the assistant.
+
+**Tests.** `ESM-137:` tests check the link's target, `rel` and position, that the three downloads stay, and that customer views never show it. See the [UI mockup](#ui-mockup).
+
 ## 5. Export the map as CSV
 
 **Change.** `storyMapToCsv(view, options)` in `src/export-csv.ts` uses the same `prepareStoryMapExport`. It writes one row per story with columns `Activity`, `Release`, `ID` and `Title`, in board order (release, then activity, then map order). A collapsed release gets one row with `Release` set and `Title` set to "Collapsed · N stories". Release notes and impact are left out, because they do not fit one row per story. The Visio file carries them.
@@ -232,6 +239,12 @@ Fields follow RFC 4180: they are quoted when needed, with doubled quotes and CRL
 3. runs `soffice --headless --convert-to pdf out.vsdx` and fails if no PDF is produced.
 
 This only shows the file is well-formed enough for a third-party reader. Fidelity in Miro and Lucidchart is still checked by hand before the release, using item 1's checklist.
+
+## UI mockup
+
+![Mockup of the internal board with the Export menu open, showing Visio, CSV and JSON downloads and, under a divider, Spreo, guide to an interactive board, with a new-tab icon](spreo-export-mockup.png)
+
+The mockup is [spreo-export-mockup.html](spreo-export-mockup.html), the real internal board rendered from this product's map with the real `styles.css`, filtered by the search “export”, with the Export menu open. To refresh the image, open it in a browser at 1360 px wide and take a screenshot of the top 900 px. ESM-137 links to this section from its `sources`.
 
 ## Not now
 

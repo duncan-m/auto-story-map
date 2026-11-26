@@ -215,6 +215,8 @@
 .esm-header .esm-menu-panel { right: auto; left: 0; }
 .esm-export-link, .esm-menu-option { display: flex; white-space: nowrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; color: var(--esm-ink); font-size: .875rem; text-decoration: none; cursor: pointer; }
 .esm-export-link:hover, .esm-menu-option:hover { background: var(--esm-hover); }
+.esm-export-guide { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--esm-line); }
+.esm-export-guide .esm-external { margin-left: -3px; color: var(--esm-faint); }
 .esm-menu-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--esm-accent); }
 .esm-filter-results { margin: 0; padding: 0 17px 12px; color: var(--esm-muted); font-size: .875rem; }
 .esm-filter-results a, .esm-detail a { color: var(--esm-accent-ink); }
