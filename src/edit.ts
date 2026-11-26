@@ -4,7 +4,7 @@ import { z } from "zod";
 import { checkStoryMap, type StoryMapCheckIssue, type StoryMapCheckOptions, type StoryMapCheckResult } from "./check.js";
 import { diffStoryMaps, formatStoryMapDiff, type StoryMapDiff } from "./diff.js";
 import { closestIds } from "./read.js";
-import { parseStoryMap, personaJobsMaxItems, personasMaxItems } from "./schema.js";
+import { parseStoryMap, personaJobsMaxItems, personasMaxItems, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapPersonaContext } from "./schema.js";
 import { storyStatuses } from "./status.js";
 
 const text = z.string().trim().min(1);
@@ -310,7 +310,7 @@ function unknownStory(id: string, stories: RawStory[], index: number): never {
 type RawPersona = Raw & { id: string; context?: Raw; jobs?: (Raw & { id: string })[] };
 type PersonaOperation = Extract<StoryMapEditOperation, { op: (typeof personaEditOperations)[number] }>;
 
-function unknownPersona(id: string, personas: RawPersona[], index: number, kind: "persona" | "job"): never {
+function unknownPersona(id: string, personas: RawPersona[], index: number | undefined, kind: "persona" | "job"): never {
   const ids = kind === "persona" ? personas.map(item => item.id) : personas.flatMap(item => (item.jobs ?? []).map(job => job.id));
   const suggestions = closestIds(id, ids);
   throw new StoryMapEditError(`There is no ${kind} ${id}.${suggestions.length ? ` Did you mean ${suggestions.join(", ")}?` : ""}`, index);
@@ -604,6 +604,11 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
     }
   }
 
+  return finishEdit(source, before, editor, intended, options, { addedIds, addedPersonaIds });
+}
+
+/** Checks the edited text reads back as the intended map, then validates it and compares it with the old one. */
+async function finishEdit(source: string, before: StoryMapDocument, editor: TextEditor, intended: Raw, options: StoryMapEditOptions, added: { addedIds: string[]; addedPersonaIds: string[] }): Promise<StoryMapEditResult> {
   // The text edits must give exactly the intended map, or something outside the edit moved.
   let same = false;
   try {
@@ -627,14 +632,106 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
   return {
     source: editor.source,
     changed: editor.source !== source,
-    addedIds,
-    addedPersonaIds,
+    ...added,
     lineDiff: unifiedDiff(source, editor.source),
     ...(diff ? { diff, summary: formatStoryMapDiff(diff) } : {}),
     check,
     newIssues,
     valid,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Confirming drafts. Kept apart from the edit operations, so `edit --from` and the
+// preview can never remove `draft`: only a person confirms one, with `story-map confirm`.
+
+/**
+ * What to confirm: a job, or a persona's context, by `id`; a release's impact item
+ * by its position, from 1; or every drafted job of one persona.
+ */
+export type StoryMapDraftTarget = { id: string } | { release: string; impact: number } | { allJobsOf: string };
+
+/** One draft that a confirmation removes `draft: true` from, as the reader sees it. */
+export type StoryMapDraft =
+  | { kind: "job"; persona: { id: string; title: string }; job: StoryMapJob }
+  | { kind: "context"; persona: { id: string; title: string }; context: StoryMapPersonaContext }
+  | { kind: "impact"; release: { id: string; title: string }; position: number; item: ReleaseImpact };
+
+/** The outcome of `proposeDraftConfirmation`. `changed` is false when the target is not a draft. */
+export interface StoryMapDraftConfirmation extends StoryMapEditResult {
+  /** The drafts the confirmation removes `draft` from, in map order. */
+  drafts: StoryMapDraft[];
+}
+
+/**
+ * Removes `draft: true` from a drafted job, persona context or impact item, keeping
+ * every other line, and returns the drafts with the new text, as `proposeStoryMapEdit`
+ * does. Nothing is written. Throws `StoryMapEditError` for an unknown or ambiguous target.
+ */
+export async function proposeDraftConfirmation(source: string, target: StoryMapDraftTarget, options: Pick<StoryMapEditOptions, "check"> = {}): Promise<StoryMapDraftConfirmation> {
+  let before: StoryMapDocument;
+  try {
+    before = parseStoryMap(source);
+  } catch {
+    throw new StoryMapEditError("The map is not valid, so it cannot be edited. Run story-map validate and fix it first.");
+  }
+  const intended = parseDocument(source).toJS() as Raw & { personas?: RawPersona[]; releases: (Raw & { id: string; impact?: Raw[] })[] };
+  const editor = new TextEditor(source);
+  const personas = before.personas ?? [];
+  const drafts: StoryMapDraft[] = [];
+  const named = (item: { id: string; title: string }) => ({ id: item.id, title: item.title });
+  const confirmJob = (personaIndex: number, jobIndex: number) => {
+    const persona = personas[personaIndex];
+    const job = persona.jobs![jobIndex];
+    if (!job.draft) return;
+    drafts.push({ kind: "job", persona: named(persona), job });
+    delete intended.personas![personaIndex].jobs![jobIndex].draft;
+    editor.setFieldAt(["personas", personaIndex, "jobs", jobIndex], "draft", undefined, jobKeyOrder);
+  };
+
+  if ("release" in target) {
+    const releaseIndex = before.releases.findIndex(release => release.id === target.release);
+    if (releaseIndex === -1) {
+      const suggestions = closestIds(target.release, before.releases.map(release => release.id));
+      throw new StoryMapEditError(`There is no release ${target.release}.${suggestions.length ? ` Did you mean ${suggestions.join(", ")}?` : ""}`);
+    }
+    const release = before.releases[releaseIndex];
+    const impact = release.impact ?? [];
+    if (!Number.isInteger(target.impact) || target.impact < 1 || target.impact > impact.length) {
+      throw new StoryMapEditError(impact.length ? `${release.id} has ${impact.length} impact ${impact.length === 1 ? "item" : "items"}, so give a number from 1 to ${impact.length}.` : `${release.id} has no impact items.`);
+    }
+    const item = impact[target.impact - 1];
+    if (item.draft) {
+      drafts.push({ kind: "impact", release: named(release), position: target.impact, item });
+      delete intended.releases[releaseIndex].impact![target.impact - 1].draft;
+      editor.setFieldAt(["releases", releaseIndex, "impact", target.impact - 1], "draft", undefined, []);
+    }
+  } else if ("allJobsOf" in target) {
+    const personaIndex = personas.findIndex(persona => persona.id === target.allJobsOf);
+    if (personaIndex === -1) unknownPersona(target.allJobsOf, intended.personas ?? [], undefined, "persona");
+    personas[personaIndex].jobs?.forEach((_, jobIndex) => confirmJob(personaIndex, jobIndex));
+  } else {
+    const jobOwner = personas.findIndex(persona => persona.jobs?.some(job => job.id === target.id));
+    const personaIndex = personas.findIndex(persona => persona.id === target.id);
+    if (jobOwner !== -1 && personaIndex !== -1) {
+      throw new StoryMapEditError(`${target.id} is both a job and a persona. Confirm the job by hand, or the persona's jobs with --all-in ${target.id}.`);
+    }
+    if (jobOwner !== -1) confirmJob(jobOwner, personas[jobOwner].jobs!.findIndex(job => job.id === target.id));
+    else if (personaIndex !== -1) {
+      const persona = personas[personaIndex];
+      if (persona.context?.draft) {
+        drafts.push({ kind: "context", persona: named(persona), context: persona.context });
+        delete intended.personas![personaIndex].context!.draft;
+        editor.setFieldAt(["personas", personaIndex, "context"], "draft", undefined, contextKeyOrder);
+      }
+    } else {
+      const ids = [...personas.flatMap(persona => (persona.jobs ?? []).map(job => job.id)), ...personas.map(persona => persona.id)];
+      const suggestions = closestIds(target.id, ids);
+      throw new StoryMapEditError(`There is no job or persona ${target.id}.${suggestions.length ? ` Did you mean ${suggestions.join(", ")}?` : ""} For a release's impact, give --impact <n>.`);
+    }
+  }
+
+  return { ...(await finishEdit(source, before, editor, intended, options, { addedIds: [], addedPersonaIds: [] })), drafts };
 }
 
 // ---------------------------------------------------------------------------

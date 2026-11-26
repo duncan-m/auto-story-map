@@ -889,8 +889,10 @@ stories:
     title: Confirm drafts from the command line
     activity: review
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 3
+    tokens: 3529712
+    estimatedCostUsd: 2.1
     jobs:
       - ground-work-in-customer-needs
       - plan-and-build
@@ -898,6 +900,7 @@ stories:
     notes: For people only. It refuses --write when standard input is not a terminal, so agents keep to dry runs (ESM-744).
     sources:
       - docs/plans/local-triage.md#1-confirm-drafts-from-the-command-line
+      - docs/story-map.md#confirm-a-draft
   - id: ESM-111
     title: Show the edit command in the story panel
     activity: explore

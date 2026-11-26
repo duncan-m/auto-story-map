@@ -155,7 +155,7 @@ releases:
 
 Impact is recommended. The validator warns about a release with active stories but no impact, and about a drafted item in a release that has shipped stories. Neither fails validation unless you add `--strict`.
 
-Agents can draft impact from plans, issues and the code, and mark each item `draft: true`. A person confirms it by removing `draft`, usually while reviewing the PR. The board cannot edit notes or impact: change them in a PR like any other map change.
+Agents can draft impact from plans, issues and the code, and mark each item `draft: true`. A person confirms it by removing `draft`, usually while reviewing the PR, with [`story-map confirm`](#confirm-a-draft) or by hand. The board cannot edit notes or impact: change them in a PR like any other map change.
 
 On the internal board, each release lane shows its first impact item under the title, with “+1 more” when there are more and a **Draft** label on drafts. Select the release title to open its panel: the summary, notes, every impact item with its expected and actual result, progress such as “3 of 5 stories shipped, 1 cut”, and the release’s stories grouped by status. Cut stories are left out of the total, because they have left the release. Progress counts every story in the release, while the list shows only the stories that match the current filters and says how many are hidden. Each story opens its own panel.
 
@@ -319,7 +319,7 @@ Validation fails on a duplicate persona ID, a job ID used twice anywhere in the 
 - a drafted job that a shipped story serves, as for [drafted impact](#release-notes-and-impact);
 - more than half the active stories saying nothing about who they are for.
 
-Untagged stories are allowed, so an existing map stays valid. Chore, infrastructure and security stories that serve no user's job can stay untagged: there is no warning for a single untagged story, so do not invent a persona or job to cover them. Agents can draft personas and jobs from the product's docs, issues and research, mark each job `draft: true`, and say so in the PR. A person confirms a job by removing `draft`. Tag stories with `story-map edit <ID> --add-job <job ID>` or `--add-persona <persona ID>`, and new stories with `story-map add --job <job ID>`.
+Untagged stories are allowed, so an existing map stays valid. Chore, infrastructure and security stories that serve no user's job can stay untagged: there is no warning for a single untagged story, so do not invent a persona or job to cover them. Agents can draft personas and jobs from the product's docs, issues and research, mark each job `draft: true`, and say so in the PR. A person confirms a job by removing `draft`, with [`story-map confirm`](#confirm-a-draft) or by hand. Tag stories with `story-map edit <ID> --add-job <job ID>` or `--add-persona <persona ID>`, and new stories with `story-map add --job <job ID>`.
 
 ### Mark a core job
 
@@ -385,7 +385,7 @@ personas:
 - `usesToday`: the products, tools and workarounds they rely on now, including competitors and asking someone, because those are what a story competes with.
 - `constraints`: what they work under, such as “checks money on a phone, often on the commute”.
 
-Context is internal. Customers never see it, even for a persona with approved customer copy. Internal views and the JSON export carry it, search does not match it, and `story-map diff` reports added, changed, confirmed and removed context under **Personas and jobs**. Agents may draft context from the product's docs and research, mark it `draft: true`, and leave out what no source supports. A person confirms it by removing `draft`, and validate warns about drafted context on a persona that a shipped story is for.
+Context is internal. Customers never see it, even for a persona with approved customer copy. Internal views and the JSON export carry it, search does not match it, and `story-map diff` reports added, changed, confirmed and removed context under **Personas and jobs**. Agents may draft context from the product's docs and research, mark it `draft: true`, and leave out what no source supports. A person confirms it by removing `draft`, with [`story-map confirm`](#confirm-a-draft) or by hand, and validate warns about drafted context on a persona that a shipped story is for.
 
 `story-map diff` lists added, removed, renamed and reordered personas, and added, removed, reworded, moved and confirmed jobs and changes of [core job](#mark-a-core-job), under **Personas and jobs**, and a story's job and persona changes in its row, such as “Jobs: `plan-release` → `answer-whats-next`”. Added and reworded jobs show their full statement, so reviewers can check the wording without reading the YAML, such as “Added job `share-roadmap` (Product manager): When customers ask what is coming …, I want to show them approved stories only, so that I can give a straight answer ….” A person confirming a draft shows as “Confirmed drafted job `share-roadmap` (Product manager)”. Personas are internal unless their customer copy is [approved](#share-personas-with-customers), and customers never see jobs.
 
@@ -681,13 +681,30 @@ The commands enforce the rules in `AGENTS.md`:
 - **No deletes.** There is no remove operation. Cut a story with `--status cut --reason …` instead.
 - **Reasons for blocked and cut.** `--status blocked` and `--status cut` need `--reason`, which becomes `statusReason`. Any other status removes the reason.
 - **No customer copy by default.** `--customer-title` and `--customer-summary` need `--customer`, once the wording is approved. The summary lists them under customer-facing changes for the PR description.
-- **Drafts stay drafts.** `release-impact` always adds `draft: true`, and nothing removes it. Only a person does, by hand.
+- **Drafts stay drafts.** `release-impact` always adds `draft: true`, and no edit removes it, `--from` included. Only a person does, with [`story-map confirm`](#confirm-a-draft) or by hand.
 - **No `updatedBy` by default.** Git credits the commit author. `--updated-by <name>` sets it on each story the edit touches, when you edit on someone else's behalf.
 - **IDs are kept.** No edit changes an existing ID. `add` numbers stories in sequence across the whole map, whatever their release: the next ID is one after the highest number in the map, such as `BUILDER-104` after `BUILDER-103`. Cut stories count, and gaps are not filled, so a number is never handed out twice. Pass `--id` to choose one, and an ID already in the map is refused.
 - **Estimates are the team's.** No command sets an estimate. `add` warns when the release uses estimates, so flag the missing one in the PR.
 - The map, and the `--from` file, must be inside the current directory.
 
 In code, `proposeStoryMapEdit(source, operations, options)` returns the same result without writing, and throws a `StoryMapEditError` for a refused edit.
+
+### Confirm a draft
+
+When you have reviewed a job, a persona's context or an impact item that an agent drafted, confirm it with `story-map confirm` instead of finding its `draft: true` line in the YAML:
+
+```bash
+npx --no-install story-map confirm get-oriented            # a job
+npx --no-install story-map confirm founder                 # a persona's context
+npx --no-install story-map confirm v0-7-6 --impact 1       # a release's first impact item
+npx --no-install story-map confirm --all-in founder        # every drafted job of a persona
+```
+
+- **Read it as the reader does.** It prints each draft as the board shows it, such as the job's “When …, I want …, so that …” statement and its steps, then the line diff and the [`story-map diff`](#review-a-map-change) summary, where it shows under “Confirmed”. Nothing is saved until you add `--write`. Only the `draft: true` line goes, and comments and other lines stay as they were.
+- **People only.** `--write` asks you to type the ID back, the job, persona or release, and saves only when it matches. It refuses when standard input is not a terminal, which is how agents run commands, and there is no option to skip the prompt. Agents may run the dry run to show a person what a draft says, but never run it with `--write`.
+- `--format json` prints the drafts and the change, and never writes. Exit codes are 0 for a dry run or a confirmed draft, 1 for a refusal or a wrong ID, and 2 for a usage error.
+
+The history credits the commit that removes `draft` to its author, as for any other edit. In code, `proposeDraftConfirmation(source, target)` returns the drafts and the same result as `proposeStoryMapEdit` without writing.
 
 ## Coordinate several agents
 

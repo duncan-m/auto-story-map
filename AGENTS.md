@@ -16,7 +16,7 @@ When a plan adds or changes UI, include a `## UI mockup` section with an HTML mo
 
 Keep new stories internal by default. Add customer-facing copy only when the story is approved for that audience. Mark a story as `merged` when its work reaches the default branch, and as `shipped` when it is available to its intended users. If the product deploys every merge straight away, go straight to `shipped`. When work stops or is dropped, set the status to `blocked` or `cut` instead of deleting the story, and explain why in `statusReason`. If release assignment or availability is unclear, keep the existing value and flag the question in the PR.
 
-Record each release’s notes and expected impact in its `notes` and `impact`, following [Release notes and impact](docs/story-map.md#release-notes-and-impact). Mark impact items you draft with `draft: true`. Only a person removes `draft`, so never remove it yourself. The board cannot edit these fields, so update them in a PR like any other map change.
+Record each release’s notes and expected impact in its `notes` and `impact`, following [Release notes and impact](docs/story-map.md#release-notes-and-impact). Mark impact items you draft with `draft: true`. Only a person removes `draft`, so never remove it yourself, and never run `story-map confirm` with `--write`. The board cannot edit these fields, so update them in a PR like any other map change.
 
 Tag each story you add or change with the jobs to be done it serves, using the existing job IDs in the map's `personas`, following [Personas and jobs to be done](docs/story-map.md#personas-and-jobs-to-be-done). Never invent a persona or job without marking each job `draft: true` and saying so in the PR, and never remove `draft` yourself.
 

@@ -1,5 +1,5 @@
 import { readFile, realpath, writeFile } from "node:fs/promises";
-import { proposeStoryMapEdit, StoryMapEditError, type StoryMapEditOperation } from "../edit.js";
+import { proposeStoryMapEdit, StoryMapEditError, type StoryMapEditOperation, type StoryMapEditResult } from "../edit.js";
 import { resolveRootedPath } from "../references.js";
 import { ArgumentError, defineCommand, escapeText, optionValue, printJson, readFormat, report } from "./shared.js";
 
@@ -42,7 +42,7 @@ function parseEditArgs(rest: string[], extra: (name: string, value: () => string
 }
 
 /** Reads a file the edit was given, refusing one outside the repository. */
-async function readInside(root: string, path: string) {
+export async function readInside(root: string, path: string) {
   const resolved = await resolveRootedPath(root, await realpath(root), path);
   if (resolved.kind === "issue") throw new StoryMapEditError(`${path}: ${resolved.issue.message}`);
   if (resolved.kind === "missing") throw new StoryMapEditError(`${path}: no such file.`);
@@ -92,6 +92,11 @@ async function runEdit(options: CommonOptions, operations: () => Promise<StoryMa
     console.error("Nothing to change: the map already says this.");
     return;
   }
+  printEditResult(options, result, written);
+}
+
+/** Prints the line diff, the diff summary and the issues the edit caused, then whether it was written. */
+export function printEditResult(options: Pick<CommonOptions, "map" | "write">, result: StoryMapEditResult, written: boolean) {
   process.stdout.write(escapeDiff(result.lineDiff));
   if (result.summary) console.log(`\n${escapeDiff(result.summary.trimEnd())}`);
   // Errors stop the write wherever they are. Warnings the map already had are not this edit's doing.
@@ -102,11 +107,12 @@ async function runEdit(options: CommonOptions, operations: () => Promise<StoryMa
   for (const id of result.addedIds) console.error(`Added ${escapeText(id)}.`);
   if (!result.valid) console.error(`The edited map is not valid, so ${options.write ? "it was not written" : "it cannot be written"}.`);
   else if (written) console.error(`Wrote ${escapeText(options.map)}.`);
-  else console.error("Dry run: nothing written. Run again with --write to save.");
+  // A write that has not happened yet, such as one waiting for confirm's prompt, says nothing here.
+  else if (!options.write) console.error("Dry run: nothing written. Run again with --write to save.");
 }
 
 /** Each diff line is map text, so escape its controls but keep the line structure. */
-const escapeDiff = (diff: string) => diff.split("\n").map(escapeText).join("\n");
+export const escapeDiff = (diff: string) => diff.split("\n").map(escapeText).join("\n");
 
 export const edit = defineCommand({
   parse(rest: string[]) {
