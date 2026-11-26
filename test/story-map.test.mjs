@@ -267,7 +267,8 @@ test("the filter toolbar submits a GET form and keeps host parameters", async ()
   assert.match(html, /Showing 3 of 5 stories\. <a href="\?as=engineer">Clear filters<\/a>/);
   assert.doesNotMatch(html.match(/<a href="\?as=engineer">/)[0], /target=/);
   assert.equal(cardsIn(html).length, 3);
-  assert.doesNotMatch(html, /Reconciliation discovery/);
+  // The story panels' release pickers list every release, so leave them out.
+  assert.doesNotMatch(html.replace(/<select class="esm-select" name="release">[\s\S]*?<\/select>/g, ""), /Reconciliation discovery/);
 
   const none = await makeStoryMapResponse("/story-map?q=nothing-matches", map, engineer).text();
   assert.match(none, /No stories match these filters\./);

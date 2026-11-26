@@ -72,6 +72,12 @@ Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or 
 
 The [status history](#show-status-history) works out who last edited each story from Git, so `updatedBy` is optional. Set it to a display name only when the commit author is not the person to credit, such as an edit made on someone else’s behalf. An edit that sets `updatedBy` is credited to that name.
 
+### Change a story from the board
+
+On the internal board, the story panel has a **Change** section with a **Status** picker, a **Reason** field for blocked and cut, and a **Release** picker, each starting at the story's current value. The board does not save. As you choose, it shows the matching command, such as `npx story-map edit ESM-108 --release v0-7-5 --write`, naming only what changed, and a **Copy** button to paste it into a terminal or an agent's chat. Each value is quoted for the shell, so a reason with quotes or spaces pastes safely. A blocked or cut story needs a reason before a command shows. Copying changes nothing, and customers never see the section.
+
+The section needs `board.js` to build the command, so it stays hidden without it, and **Copy** stays hidden without clipboard access. In code, `storyMapEditCommand({ id, status, reason, release })` from `auto-story-map/board.js` builds the same command.
+
 ## Example
 
 When price catalogue lookup is agreed for the builder workflow, put the story under the estimate activity and the builder release. Its YAML can look like this:

@@ -918,6 +918,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         {internal && story.tokens !== undefined && <><dt>Tokens used</dt><dd>{story.tokens.toLocaleString("en-US")}</dd></>}
         {internal && story.estimatedCostUsd !== undefined && <><dt>Estimated cost</dt><dd>{`$${story.estimatedCostUsd.toFixed(2)}`}</dd></>}
       </dl>
+      {internal && <ChangeSection story={story} panelId={panelId} releaseTitles={releaseTitles} />}
       {internal && hasDependencies(story) && (
         <DependenciesSection story={story} panelId={panelId} storyPanelIds={storyPanelIds} releaseTitles={releaseTitles} />
       )}
@@ -1164,6 +1165,54 @@ function ChatIcon() {
  * the brief in a `<pre>`, to read before sending it anywhere and to copy by hand. The panel's
  * **Share** menu copies it, or opens it in a web agent.
  */
+/**
+ * The internal panel's **Change** section: status, reason and release pickers that build the
+ * matching `story-map edit` command, with a **Copy** button, to paste into a terminal or an
+ * agent's chat. The board does not save, so copying changes nothing. The pickers need board.js
+ * to build the command, so the section stays hidden until board.js shows it, and **Copy** stays
+ * hidden without clipboard access. The reason field is for blocked and cut only.
+ */
+function ChangeSection({ story, panelId, releaseTitles }: { story: InternalStoryCard; panelId: string; releaseTitles: ReadonlyMap<string, string> }) {
+  const headingId = `${panelId}-change`;
+  const needsReason = story.status === "blocked" || story.status === "cut";
+  return (
+    <section className="esm-detail-section esm-change-section" aria-labelledby={headingId} hidden>
+      <h4 id={headingId}>Change</h4>
+      <form
+        className="esm-change-form"
+        data-esm-change={story.id}
+        data-esm-status={story.status}
+        data-esm-release={story.release}
+        data-esm-reason={story.statusReason ?? ""}
+      >
+        <label className="esm-change-field">
+          <span>Status</span>
+          <select className="esm-select" name="status" defaultValue={story.status}>
+            {storyStatuses.map(status => <option value={status} key={status}>{storyStatusLabels[status]}</option>)}
+          </select>
+        </label>
+        <label className="esm-change-field esm-change-reason" data-esm-change-reason="" hidden={!needsReason || undefined}>
+          <span>Reason</span>
+          <input className="esm-change-input" name="reason" defaultValue={story.statusReason ?? ""} placeholder="Why it is blocked or cut" autoComplete="off" />
+        </label>
+        <label className="esm-change-field">
+          <span>Release</span>
+          <select className="esm-select" name="release" defaultValue={story.release}>
+            {[...releaseTitles].map(([id, title]) => <option value={id} key={id}>{title}</option>)}
+          </select>
+        </label>
+        <div className="esm-change-command">
+          <code id={`${panelId}-command`} data-esm-change-command="" data-empty="">Choose a new status or release to see its command.</code>
+          <button type="button" className="esm-change-copy" data-esm-change-copy="" aria-describedby={`${panelId}-command`} disabled hidden>
+            <BriefIcon /><span data-esm-copy-label="">Copy</span>
+          </button>
+        </div>
+        <p className="esm-change-note">This board does not save. Paste the command into a terminal or an agent's chat to make the change.</p>
+      </form>
+    </section>
+  );
+}
+
 function AgentBrief({ brief, panelId }: { brief: string; panelId: string }) {
   const briefId = `${panelId}-brief`;
   return (

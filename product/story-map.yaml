@@ -914,8 +914,10 @@ stories:
     title: Show the edit command in the story panel
     activity: explore
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 3
+    tokens: 5530403
+    estimatedCostUsd: 2.75
     dependsOn:
       - ESM-122
     jobs:
@@ -924,6 +926,8 @@ stories:
     summary: The internal story panel has status, reason and release pickers that build the matching story-map edit command, with a button to copy it.
     sources:
       - docs/plans/local-triage.md#2-change-status-and-release-from-the-story-panel
+      - docs/plans/local-triage.md#ui-mockup
+      - docs/story-map.md#change-a-story-from-the-board
   - id: ESM-112
     title: Save status and release changes from the local preview
     activity: explore
