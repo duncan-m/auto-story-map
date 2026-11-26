@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { claim, claims, unclaim } from "./commands/claim.js";
+import confirm from "./commands/confirm.js";
 import diff from "./commands/diff.js";
 import { add, edit, releaseImpact } from "./commands/edit.js";
 import evidence from "./commands/evidence.js";
@@ -33,6 +34,7 @@ const usage = `Usage:
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
+  story-map confirm [--format text|json] [--map <path>] [--write] <job ID> | <persona ID> | <release ID> --impact <n> | --all-in <persona ID>
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--read-only] [<map.yaml>]
   story-map help [<command>]
 
@@ -319,8 +321,28 @@ add
 
 release-impact
   Adds an expected impact item to a release, always with draft: true. Only a
-  person confirms it, by removing draft by hand. Takes the common edit options
+  person confirms it, with story-map confirm. Takes the common edit options
   in story-map help edit.
+
+confirm
+  Confirms a draft by removing its draft: true: a job by its ID, a persona's
+  context by the persona's ID, or a release's impact item by its number. It
+  prints each draft as the reader sees it, such as the job's “When …, I want
+  …, so that …” statement, then the line diff. Nothing is written without
+  --write. Comments and other lines are kept.
+
+  --impact <n>       Confirm the nth impact item of the release, from 1.
+  --all-in <persona ID>
+                     Confirm every drafted job of the persona.
+  --write            Save, after you type the ID back. It needs a terminal,
+                     so it refuses when standard input is not one. Agents
+                     must never confirm drafts, and there is no way to skip
+                     the prompt.
+  --format json      Print the drafts and the change as JSON. Never writes.
+  --map <path>       Map to edit. Defaults to product/story-map.yaml.
+
+  Exit codes: 0 for a dry run or a confirmed draft, 1 for a refusal or a
+  wrong ID typed back, 2 for a usage error.
 
 preview
   Serves the map as a board on http://127.0.0.1:4173/story-map, with
@@ -345,7 +367,7 @@ preview
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, claim, claims, unclaim, tokens, preview, edit, add, "release-impact": releaseImpact };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, claim, claims, unclaim, tokens, preview, edit, add, "release-impact": releaseImpact, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {
