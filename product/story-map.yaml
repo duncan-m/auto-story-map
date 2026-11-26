@@ -914,8 +914,10 @@ stories:
     title: Show the edit command in the story panel
     activity: explore
     release: v0-7-6
-    status: in-progress
+    status: merged
     estimate: 3
+    tokens: 5530403
+    estimatedCostUsd: 2.75
     dependsOn:
       - ESM-122
     jobs:
