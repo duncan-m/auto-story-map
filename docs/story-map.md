@@ -1067,7 +1067,7 @@ return new Response(storyMapToJson(view), {
 
 ### Download from the board
 
-Give the board an export route, and internal viewers get an **Export** button to the right of the filters. It opens a menu with *Visio (.vsdx), for Lucidchart or Miro*, *CSV* and *JSON, for agents and scripts*. Without the filter toolbar, the button goes under the board's title instead. Customers never see it, even when the prop is set. The menu is a `<details>` element, so it opens without JavaScript. With `board.js`, it also closes on Escape, on a click elsewhere, and after a choice.
+Give the board an export route, and internal viewers get an **Export** button to the right of the filters. It opens a menu with *Visio (.vsdx), for Lucidchart or Miro*, *CSV* and *JSON, for agents and scripts*, then *Spreo, guide to an interactive board*, which opens [the Spreo guide](https://github.com/duncan-m/auto-story-map/blob/main/docs/integrations.md#spreo) in a new tab. The guide shows how to build a Spreo board from the map through Spreo's MCP server, from ChatGPT, Claude or Claude Code. Without the filter toolbar, the button goes under the board's title instead. Customers never see it, even when the prop is set. The menu is a `<details>` element, so it opens without JavaScript. With `board.js`, it also closes on Escape, on a click elsewhere, and after a choice.
 
 ```tsx
 <StoryMapBoard map={view} exportHref="/story-map/export" />

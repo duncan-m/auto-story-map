@@ -2985,6 +2985,27 @@ test("ESM-704: the board links to the export for internal viewers only", () => {
   assert.doesNotMatch(customerPage, /esm-export/, "never in a customer toolbar");
 });
 
+test("ESM-137: the Export menu links to the Spreo guide for internal viewers", () => {
+  const render = (viewer, props = {}) => renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, viewer), ...props }));
+  const internal = render(engineer, { exportHref: "/story-map/export" });
+  const menu = /<details class="esm-menu esm-export">.*?<\/details>/.exec(internal)?.[0] ?? "";
+  const item = /<li class="esm-export-guide">(<a [^>]*>)(.*?)<\/a><\/li><\/ul>/.exec(menu);
+  assert.ok(item, "the Spreo link is the last item in the Export menu");
+  const [, tag, content] = item;
+  assert.match(tag, /href="https:\/\/github\.com\/duncan-m\/auto-story-map\/blob\/main\/docs\/integrations\.md#spreo"/);
+  assert.match(tag, /target="_blank"/);
+  assert.match(tag, /rel="[^"]*\bnoopener\b[^"]*"/);
+  assert.doesNotMatch(tag, /download|data-esm-export/, "a link to the guide, not a download board.js rewrites");
+  assert.match(content, /^Spreo, guide to an interactive board<svg[^>]*class="esm-icon esm-external".*\(opens in a new tab\)/);
+  assert.equal(menu.match(/ download=""/g).length, 3, "the Visio, CSV and JSON downloads stay");
+});
+
+test("ESM-137: customer views never show the Spreo link", () => {
+  const board = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, regular), exportHref: "/story-map/export" }));
+  const page = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapPage(map, regular, { searchParams: new URLSearchParams() }), exportHref: "/story-map/export" }));
+  for (const html of [board, page]) assert.doesNotMatch(html, /integrations\.md|Spreo/);
+});
+
 test("ESM-704: storyMapExportResponse builds a download for a host route", () => {
   const view = exportView();
   const vsdx = storyMapExportResponse(view, { format: "vsdx", collapsed: `${map.releases[0].id}, no-such-release`, now: exportNow });
