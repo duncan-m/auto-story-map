@@ -1,6 +1,6 @@
 # Plan: turn on persona editing in a host app running locally
 
-Status: planned. The work is ESM-156 in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 5 points.
+Status: merged. The work is ESM-156 in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 5 points.
 
 A solo builder runs their own product on their machine, opens its board, and wants to reword a persona the way they can on `story-map preview`. ESM-147 built the editor and made it work on the preview and the example host, but testing it in a vinext (Next-compatible) host found that a host's own board needs more set-up than the guide says, and in five ways the documented path does not work:
 

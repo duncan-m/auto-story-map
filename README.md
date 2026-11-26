@@ -44,6 +44,7 @@ Export the map as JSON and an agent can review your stories and tests and sugges
 - `story-map init` sets up the map, the guide, the rules in `AGENTS.md` and a GitHub Actions check that summarises story changes on each PR.
 - A JSON export, with notes on its provenance and completeness, lets an agent review the map against the code.
 - `story-map preview` shows your own map as a board on your computer.
+- `story-map mcp` serves the read, validate, evidence, edit and claim commands as MCP tools, with the same safeguards.
 
 **Export**: JSON, Visio (`.vsdx`, for Lucidchart, Miro or Visio) and CSV.
 
@@ -189,6 +190,8 @@ npx story-map add --activity review --release v0-7-5 --title "Check claims in CI
 
 See [Change the map from the command line](docs/story-map.md#change-the-map-from-the-command-line).
 
+Agents that call tools rather than run commands can use the same reads, edits and claims over MCP with `npx story-map mcp`, after installing `@modelcontextprotocol/sdk`. See [Serve the map over MCP](docs/story-map.md#serve-the-map-over-mcp).
+
 ## Export the map
 
 Exports are a one-way snapshot of the internal map. The YAML file stays the source of truth, and edits made elsewhere do not come back. Customers can never export the map.
@@ -223,9 +226,9 @@ Use `npx story-map export --format vsdx` or `--format csv`, or the board's **Exp
 
 ## Limitations
 
-The board is read-only. Every change to the map, including release notes and expected impact, is made in `product/story-map.yaml` through a PR, usually by an agent working in the host repo, and appears once that PR is merged and deployed.
+The deployed board is read-only. Every change to the map, including release notes and expected impact, is made in `product/story-map.yaml` through a PR, usually by an agent working in the host repo, and appears once that PR is merged and deployed.
 
-You can’t edit the map in the app. The map ships with each deployment, so an edit saved from the board would only appear after a merge and redeploy, and could overwrite newer changes on the default branch. Editing in the app would need the map stored on a separate hosted service instead of in the product repo. That isn’t part of this library.
+You can’t edit the map in the deployed app. The map ships with each deployment, so an edit saved from the board would only appear after a merge and redeploy, and could overwrite newer changes on the default branch. Editing in the app would need the map stored on a separate hosted service instead of in the product repo. That isn’t part of this library. While you run the app on your own machine, the Personas tab can [edit personas][edit-personas] and save them to your checkout, ready for a PR.
 
 ## Changes and releases
 
@@ -262,4 +265,5 @@ The [GNU Affero General Public License, version 3][license], in particular its s
 [overview]: https://github.com/duncan-m/auto-story-map/blob/main/docs/ENGINEERING-OVERVIEW.md
 [license]: https://github.com/duncan-m/auto-story-map/blob/main/LICENSE
 [export]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-the-map
+[edit-personas]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#edit-personas-on-your-machine
 [json-export]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-as-json-for-agents

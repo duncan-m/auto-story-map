@@ -13,7 +13,8 @@
  * turns each panel's **Copy link** into a button that copies the permalink. It builds the
  * `story-map edit` command for the story panel's **Change** pickers, to copy. It keeps
  * release names in view beside their lanes, and shrinks the activity row as the grid scrolls.
- * On `story-map preview --writable` it lets the Personas tab edit personas in place.
+ * On `story-map preview` it lets the Personas tab edit personas in place. On a host's
+ * board opened from `localhost` without a save route, it notes that editing is not set up.
  */
 
 const focusKey = "esm-filter-focus";
@@ -927,6 +928,60 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
   }
 }
 
+const editSetupHiddenKey = "esm-edit-setup-hidden";
+const editSetupGuide = "https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#in-your-own-app";
+const loopbackHostnames = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+/**
+ * Says why there are no edit buttons on an internal Personas tab opened from this
+ * machine when the app has no save route, and links to the steps. **Hide** keeps it
+ * hidden in this browser. The note is added here, not on the server, so a deployed
+ * page never mentions editing, and it only appears on a loopback host.
+ */
+export function enhanceStoryMapEditSetup(root: ParentNode = document) {
+  if (typeof location === "undefined" || !loopbackHostnames.has(location.hostname)) return;
+  try {
+    if (localStorage.getItem(editSetupHiddenKey)) return;
+  } catch {
+    // Storage can be unavailable. The note then shows each time.
+  }
+  for (const page of root.querySelectorAll<HTMLElement>(":is(.esm-persona-page, .esm-persona-setup)[data-esm-internal]:not([data-esm-edit-endpoint], [data-esm-read-only])")) {
+    if (page.querySelector(".esm-edit-setup-note")) continue;
+    const note = document.createElement("aside");
+    note.className = "esm-edit-setup-note";
+    note.setAttribute("role", "note");
+    const text = document.createElement("span");
+    const title = document.createElement("strong");
+    title.textContent = "Editing is not set up in this app.";
+    const link = document.createElement("a");
+    link.href = editSetupGuide;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Set up editing";
+    text.append(title, " This board runs on your machine, but the app has no save route, so the edit buttons are hidden. Add a save route and read the map on each request to save edits to the map file. ", link);
+    const hide = document.createElement("button");
+    hide.type = "button";
+    hide.className = "esm-cancel";
+    hide.textContent = "Hide";
+    hide.setAttribute("aria-label", "Hide this note");
+    hide.addEventListener("click", () => {
+      try {
+        localStorage.setItem(editSetupHiddenKey, "1");
+      } catch {
+        // Storage can be unavailable. The note is hidden until the page reloads.
+      }
+      for (const shown of document.querySelectorAll(".esm-edit-setup-note")) shown.remove();
+    });
+    note.append(text, hide);
+    // At the top of the persona, or under the heading when there are no personas yet.
+    const main = page.querySelector(".esm-persona-main");
+    const heading = page.querySelector(":scope > h3");
+    if (main) main.prepend(note);
+    else if (heading) heading.after(note);
+    else page.prepend(note);
+  }
+}
+
 function enhance() {
   enhanceStoryMapFilters();
   enhanceStoryMapReleases();
@@ -936,6 +991,7 @@ function enhance() {
   enhanceStoryMapBriefs();
   enhanceStoryMapChanges();
   enhanceStoryMapPersonaEditing();
+  enhanceStoryMapEditSetup();
 }
 
 if (typeof document !== "undefined") {
