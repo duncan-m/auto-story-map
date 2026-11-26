@@ -99,15 +99,24 @@ export function slugify(heading: string) {
   return headingText(heading).toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc}\- ]/gu, "").replace(/ /g, "-");
 }
 
-/** Returns every anchor a Markdown file defines: heading slugs (with GitHub’s -1, -2 suffixes) and HTML ids. */
-export function markdownAnchors(markdown: string) {
-  const anchors = new Set<string>();
+/** A Markdown heading: its level, its text as GitHub renders it, its anchor and its line, from 1. */
+export interface MarkdownHeading {
+  level: number;
+  text: string;
+  anchor: string;
+  line: number;
+}
+
+/** Reads a Markdown file's headings, outside code fences, and the ids of its HTML anchors. */
+function scanMarkdown(markdown: string) {
+  const headings: MarkdownHeading[] = [];
+  const htmlIds: string[] = [];
   const counts = new Map<string, number>();
-  const addHeading = (raw: string) => {
+  const addHeading = (raw: string, level: number, line: number) => {
     const base = slugify(raw);
     const count = counts.get(base) ?? 0;
     counts.set(base, count + 1);
-    anchors.add(count ? `${base}-${count}` : base);
+    headings.push({ level, text: headingText(raw), anchor: count ? `${base}-${count}` : base, line });
   };
 
   let fence: string | undefined;
@@ -122,13 +131,25 @@ export function markdownAnchors(markdown: string) {
     if (fence) return;
 
     const atx = atxHeading(line);
-    if (atx !== undefined) addHeading(atx);
-    else if (index > 0 && /^\s{0,3}(=+|-+)\s*$/.test(line) && lines[index - 1].trim() && !/^\s*([-*+]|\d+\.)\s/.test(lines[index - 1])) {
-      addHeading(lines[index - 1]);
+    const setext = /^\s{0,3}(=+|-+)\s*$/.exec(line);
+    if (atx !== undefined) addHeading(atx, /^\s{0,3}(#{1,6})/.exec(line)![1].length, index + 1);
+    else if (setext && index > 0 && lines[index - 1].trim() && !/^\s*([-*+]|\d+\.)\s/.test(lines[index - 1])) {
+      addHeading(lines[index - 1], setext[1][0] === "=" ? 1 : 2, index);
     }
-    for (const id of htmlAnchors(line)) anchors.add(id);
+    htmlIds.push(...htmlAnchors(line));
   });
-  return anchors;
+  return { headings, htmlIds };
+}
+
+/** Lists a Markdown file's headings in order, with GitHub’s anchors, skipping code fences. */
+export function markdownHeadings(markdown: string): MarkdownHeading[] {
+  return scanMarkdown(markdown).headings;
+}
+
+/** Returns every anchor a Markdown file defines: heading slugs (with GitHub’s -1, -2 suffixes) and HTML ids. */
+export function markdownAnchors(markdown: string) {
+  const { headings, htmlIds } = scanMarkdown(markdown);
+  return new Set([...headings.map(heading => heading.anchor), ...htmlIds]);
 }
 
 function looksLikePath(source: string) {

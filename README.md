@@ -162,9 +162,11 @@ Pass `--skill` to put the rules and common commands in a skill at `.claude/skill
 
 It never overwrites an existing file, so it is safe to run again. [This library’s own map][example-map] shows a fuller map.
 
+For a repo that already has history, `npx story-map survey --format json` lists its release tags and changelog versions, its docs and their headings, and its open plans and `TODO` comments, for the agent to draft the map from. It reads and suggests only. See [Survey a repository](docs/story-map.md#survey-a-repository).
+
 Start an agent in the host repo and give it this task.
 
-> Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, open a few story cards if the host renders the board, and flag any uncertain release or status decisions for review.
+> Populate `product/story-map.yaml` for this product using the [first-run workflow][first-run]. Survey the repository first, then start with the primary user journey and cite the evidence for each story. Use a [Markdown heading link][engineering-overview] where an engineering overview exists. Validate the map, open a few story cards if the host renders the board, and flag any uncertain release or status decisions for review.
 
 ## Read the map from the command line
 

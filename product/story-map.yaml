@@ -1811,8 +1811,10 @@ stories:
     title: Survey a repository for its first map
     activity: set-up
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 5
+    tokens: 5140402
+    estimatedCostUsd: 2.93
     dependsOn:
       - ESM-105
     jobs:

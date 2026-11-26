@@ -13,6 +13,7 @@ import { releases, stories, story } from "./commands/read.js";
 import { ArgumentError, type Command } from "./commands/shared.js";
 import tests from "./commands/tests.js";
 import tokens from "./commands/tokens.js";
+import survey from "./commands/survey.js";
 import validate from "./commands/validate.js";
 import { defaultExportMaxStories } from "./export.js";
 
@@ -27,6 +28,7 @@ const usage = `Usage:
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--readiness <state>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
   story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [<ID> ...]
+  story-map survey [--format text|json] [--root <path>] [--tags <pattern>] [--changelog <file>] [--docs <path>] [--plans <path>]
   story-map claim [--format text|json] [--map <path>] [--remote <name>] [--store <dir>] --agent <name> [--ttl <duration>] [--branch <name>] [--renew | --take-over] <ID>
   story-map claims [--format text|json] [--remote <name>] [--store <dir>]
   story-map unclaim [--format text|json] [--remote <name>] [--store <dir>] [--agent <name>] <ID>
@@ -201,6 +203,25 @@ evidence
                      stale. Claims never change the suggested status.
   --claims-remote <name>, --claims-store <dir>
                      Read claims from this remote or claim store instead.
+
+survey
+  Collects the facts an agent needs to draft a first map for a repository
+  that already has history, without changing anything and without a map:
+  release tags and CHANGELOG.md versions, with dates, as suggested releases;
+  Markdown docs and their headings, as candidate sources; and plan docs that
+  are not finished and TODO and FIXME comments, with file and line, as planned
+  work. It reads and suggests only: the agent still drafts the stories. It
+  reads the checkout only, with no network calls.
+
+  --format json      Print the survey as JSON, for agents and scripts.
+  --root <path>      Repository root. Defaults to the current directory.
+  --tags <pattern>   Release tags to read, such as 'v*'. Defaults to every tag.
+  --changelog <file> Changelog to read. Defaults to CHANGELOG.md at the root.
+  --docs <path>      Where to look for Markdown docs. Repeat for several.
+                     Defaults to the whole root.
+  --plans <path>     Where to look for plans. Repeat for several. Defaults to
+                     docs in plans, rfcs, proposals, adr or decisions folders,
+                     and roadmaps.
 
 claim
   Records that an agent is on a story, before any branch or pull request
@@ -389,7 +410,7 @@ mcp
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, confirm };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {

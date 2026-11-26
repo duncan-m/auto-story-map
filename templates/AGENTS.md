@@ -5,7 +5,7 @@ Treat [product/story-map.yaml](product/story-map.yaml) as the source of truth fo
 
 ### Populate the first map
 
-When `product/story-map.yaml` is missing, still contains the builder estimates demo, or is the starter map from `story-map init` (its summary begins “Starter map”), follow the [first-run workflow](docs/story-map.md#populate-the-first-map). Inspect this product, draft its initial internal map, and validate it. Use an existing Markdown heading for each engineering overview you can verify. If the product already has a map, keep its story IDs and update only the requested scope.
+When `product/story-map.yaml` is missing, still contains the builder estimates demo, or is the starter map from `story-map init` (its summary begins “Starter map”), follow the [first-run workflow](docs/story-map.md#populate-the-first-map). Run `npx --no-install story-map survey --format json` first, then inspect this product, draft its initial internal map from what you find, and validate it. Use an existing Markdown heading for each engineering overview you can verify. If the product already has a map, keep its story IDs and update only the requested scope.
 
 ### Maintain the map
 
