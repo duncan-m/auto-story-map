@@ -102,11 +102,13 @@ export interface StoryMapBoardProps {
   webAgents?: readonly StoryMapWebAgent[];
   /**
    * Lets internal viewers edit personas, their context and job statements in place
-   * on the Personas tab. `story-map preview --writable` sets it. Each form posts the
-   * edit to `endpoint` with the `token` header and the `revision` the page was rendered
-   * from. Leave it unset on hosted boards, which stay read-only.
+   * on the Personas tab. `story-map preview` sets it, and a host gets it from
+   * `createStoryMapEditServer`'s `read`. Each form posts the edit to `endpoint` with the
+   * `token` header and the `revision` the page was rendered from. Leave it unset on hosted
+   * boards, which stay read-only. Unset on a board opened from `localhost`, board.js notes
+   * that editing is not set up; pass `false` when it is off on purpose, to skip the note.
    */
-  personaEditing?: StoryMapPersonaEditing;
+  personaEditing?: StoryMapPersonaEditing | false;
 }
 
 /** Where the Personas tab saves edits, for `personaEditing`. */
@@ -916,6 +918,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         {internal && story.tokens !== undefined && <><dt>Tokens used</dt><dd>{story.tokens.toLocaleString("en-US")}</dd></>}
         {internal && story.estimatedCostUsd !== undefined && <><dt>Estimated cost</dt><dd>{`$${story.estimatedCostUsd.toFixed(2)}`}</dd></>}
       </dl>
+      {internal && <ChangeSection story={story} panelId={panelId} releaseTitles={releaseTitles} />}
       {internal && hasDependencies(story) && (
         <DependenciesSection story={story} panelId={panelId} storyPanelIds={storyPanelIds} releaseTitles={releaseTitles} />
       )}
@@ -1162,6 +1165,54 @@ function ChatIcon() {
  * the brief in a `<pre>`, to read before sending it anywhere and to copy by hand. The panel's
  * **Share** menu copies it, or opens it in a web agent.
  */
+/**
+ * The internal panel's **Change** section: status, reason and release pickers that build the
+ * matching `story-map edit` command, with a **Copy** button, to paste into a terminal or an
+ * agent's chat. The board does not save, so copying changes nothing. The pickers need board.js
+ * to build the command, so the section stays hidden until board.js shows it, and **Copy** stays
+ * hidden without clipboard access. The reason field is for blocked and cut only.
+ */
+function ChangeSection({ story, panelId, releaseTitles }: { story: InternalStoryCard; panelId: string; releaseTitles: ReadonlyMap<string, string> }) {
+  const headingId = `${panelId}-change`;
+  const needsReason = story.status === "blocked" || story.status === "cut";
+  return (
+    <section className="esm-detail-section esm-change-section" aria-labelledby={headingId} hidden>
+      <h4 id={headingId}>Change</h4>
+      <form
+        className="esm-change-form"
+        data-esm-change={story.id}
+        data-esm-status={story.status}
+        data-esm-release={story.release}
+        data-esm-reason={story.statusReason ?? ""}
+      >
+        <label className="esm-change-field">
+          <span>Status</span>
+          <select className="esm-select" name="status" defaultValue={story.status}>
+            {storyStatuses.map(status => <option value={status} key={status}>{storyStatusLabels[status]}</option>)}
+          </select>
+        </label>
+        <label className="esm-change-field esm-change-reason" data-esm-change-reason="" hidden={!needsReason || undefined}>
+          <span>Reason</span>
+          <input className="esm-change-input" name="reason" defaultValue={story.statusReason ?? ""} placeholder="Why it is blocked or cut" autoComplete="off" />
+        </label>
+        <label className="esm-change-field">
+          <span>Release</span>
+          <select className="esm-select" name="release" defaultValue={story.release}>
+            {[...releaseTitles].map(([id, title]) => <option value={id} key={id}>{title}</option>)}
+          </select>
+        </label>
+        <div className="esm-change-command">
+          <code id={`${panelId}-command`} data-esm-change-command="" data-empty="">Choose a new status or release to see its command.</code>
+          <button type="button" className="esm-change-copy" data-esm-change-copy="" aria-describedby={`${panelId}-command`} disabled hidden>
+            <BriefIcon /><span data-esm-copy-label="">Copy</span>
+          </button>
+        </div>
+        <p className="esm-change-note">This board does not save. Paste the command into a terminal or an agent's chat to make the change.</p>
+      </form>
+    </section>
+  );
+}
+
 function AgentBrief({ brief, panelId }: { brief: string; panelId: string }) {
   const briefId = `${panelId}-brief`;
   return (
@@ -1817,9 +1868,11 @@ function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
   filter: NonNullable<StoryMapView["filter"]>;
   preservedParams?: Readonly<Record<string, string>>;
   baseId: string;
-  editing?: StoryMapPersonaEditing;
+  editing?: StoryMapPersonaEditing | false;
 }) {
   if (!personas.length) return <PersonasSetup baseId={baseId} editing={editing} />;
+  const off = editing === false;
+  editing = editing || undefined;
   const persona = personas.find(item => item.id === filter.persona?.[0]) ?? personas[0];
   const base = filterParams(filter, preservedParams);
   const titleId = `${baseId}-persona-title`;
@@ -1827,7 +1880,7 @@ function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
   const links = personas.map(item => ({ item, href: personaPageHref(filter, item.id, preservedParams) }));
   const addPersona = editing && personas.length < personasMax ? `${baseId}-add-persona` : undefined;
   return (
-    <div className="esm-persona-page" data-esm-edit-endpoint={editing?.endpoint} data-esm-edit-token={editing?.token} data-esm-edit-revision={editing?.revision}>
+    <div className="esm-persona-page" {...editingAttributes(editing, off)}>
       <details className="esm-menu esm-persona-picker">
         <summary className="esm-select esm-menu-button">
           <span className="esm-visually-hidden">Persona: </span><PersonaAvatar persona={persona} />{persona.title}
@@ -1900,12 +1953,24 @@ const personasExample = `personas:
  * The Personas tab of a map with no personas: how to add them, so the tab is
  * where the team finds out about personas rather than a feature they never see.
  */
-function PersonasSetup({ baseId, editing }: { baseId: string; editing?: StoryMapPersonaEditing }) {
+/**
+ * Marks the internal Personas page for board.js: where edits save to, or, without
+ * that, `data-esm-internal` so it can note on `localhost` that editing is not set up,
+ * unless `off` says it is turned off on purpose.
+ */
+function editingAttributes(editing: StoryMapPersonaEditing | undefined, off: boolean) {
+  return editing
+    ? { "data-esm-edit-endpoint": editing.endpoint, "data-esm-edit-token": editing.token, "data-esm-edit-revision": editing.revision }
+    : { "data-esm-internal": "", "data-esm-read-only": off ? "" : undefined };
+}
+
+function PersonasSetup({ baseId, editing: given }: { baseId: string; editing?: StoryMapPersonaEditing | false }) {
+  const editing = given || undefined;
   const titleId = `${baseId}-persona-setup`;
   const guide = `${storyMapRepositoryUrl}/blob/main/docs/story-map.md#personas-and-jobs-to-be-done`;
   const formId = `${baseId}-add-persona`;
   return (
-    <article className="esm-persona-setup" aria-labelledby={titleId} data-esm-edit-endpoint={editing?.endpoint} data-esm-edit-token={editing?.token} data-esm-edit-revision={editing?.revision}>
+    <article className="esm-persona-setup" aria-labelledby={titleId} {...editingAttributes(editing, given === false)}>
       <h3 id={titleId}>No personas yet</h3>
       <p>Personas name the people the product serves and the jobs each of them is trying to get done. Tag stories with those jobs to see who each story is for, and which needs have no stories yet.</p>
       {editing && <div className="esm-add-persona"><AddPersonaButton formId={formId} /><AddPersonaForm formId={formId} /><p>Or add them to the map file:</p></div>}

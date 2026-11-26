@@ -23,7 +23,7 @@ What it shows:
 - **Edit operation** in `src/edit.ts`: `create-persona` (`title`, optional `summary` and `id`) appends the persona to `personas`, creating the list before `activities` when the map has none. Without `id`, `personaIdFor` makes one from the first words of the title, adding `-2`, `-3` and so on when another persona has it. An empty summary is left out. A thirteenth persona is refused. The result's new `addedPersonaIds` names the ID it chose.
 - **Endpoint**: `personaEditOperations` gains `create-persona`, and the save handler's response includes `addedPersonaIds`.
 - **Board** (`src/react.tsx`, `board.js`): with `personaEditing`, **+ Add persona** appears in the persona list and the picker, both opening one form at the top of the persona's page. After a save, board.js opens the new persona's page, keeping the other filters. The empty Personas tab gets the same button and form.
-- **Docs**: the guide's [Edit personas on the local preview](../story-map.md#edit-personas-on-the-local-preview) describes it.
+- **Docs**: the guide's [Edit personas on your machine](../story-map.md#edit-personas-on-your-machine) describes it.
 
 ## Left out
 

@@ -914,8 +914,10 @@ stories:
     title: Show the edit command in the story panel
     activity: explore
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 3
+    tokens: 5530403
+    estimatedCostUsd: 2.75
     dependsOn:
       - ESM-122
     jobs:
@@ -924,6 +926,8 @@ stories:
     summary: The internal story panel has status, reason and release pickers that build the matching story-map edit command, with a button to copy it.
     sources:
       - docs/plans/local-triage.md#2-change-status-and-release-from-the-story-panel
+      - docs/plans/local-triage.md#ui-mockup
+      - docs/story-map.md#change-a-story-from-the-board
   - id: ESM-112
     title: Save status and release changes from the local preview
     activity: explore
@@ -1061,7 +1065,7 @@ stories:
     summary: On the local preview and the example host, the Personas tab edits a persona's title, summary, context and job statements in place and saves them to the map file. Drafts stay drafts.
     notes: Makes story-map preview writable by default, with --read-only to turn it off, and turns editing on in the example host. The save handler, createStoryMapEditServer, checks a loopback Host, a matching Origin, JSON, a start-up token and the file's revision, and accepts persona edits only. IDs, order, customer copy and draft are not editable here. A deployed product's board stays read-only (ESM-404).
     sources:
-      - docs/story-map.md#edit-personas-on-the-local-preview
+      - docs/story-map.md#edit-personas-on-your-machine
       - docs/plans/edit-personas.md#change
       - docs/plans/edit-personas.md#ui-mockup
       - src/edit.ts
@@ -1090,7 +1094,7 @@ stories:
     sources:
       - docs/plans/add-delete-jobs.md#change
       - docs/plans/add-delete-jobs.md#ui-mockup
-      - docs/story-map.md#edit-personas-on-the-local-preview
+      - docs/story-map.md#edit-personas-on-your-machine
       - src/edit.ts
       - src/react.tsx
       - src/board.ts
@@ -1112,7 +1116,7 @@ stories:
     sources:
       - docs/plans/add-persona.md#change
       - docs/plans/add-persona.md#ui-mockup
-      - docs/story-map.md#edit-personas-on-the-local-preview
+      - docs/story-map.md#edit-personas-on-your-machine
       - src/edit.ts
       - src/edit-server.ts
       - src/react.tsx
@@ -1122,8 +1126,10 @@ stories:
     title: Turn on persona editing in a host app running locally
     activity: explore
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 5
+    tokens: 16614908
+    estimatedCostUsd: 5.33
     dependsOn:
       - ESM-147
     jobs:
@@ -1135,6 +1141,10 @@ stories:
     sources:
       - docs/plans/host-persona-editing.md
       - docs/plans/host-persona-editing.md#ui-mockup
+      - docs/plans/host-persona-editing-screenshot.png
+      - docs/story-map.md#in-your-own-app
+      - src/edit-server.ts
+      - test/host-persona-editing.test.mjs
   - id: ESM-910
     title: Break a job into steps
     activity: explore

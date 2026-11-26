@@ -228,9 +228,9 @@ Use `npx story-map export --format vsdx` or `--format csv`, or the board's **Exp
 
 ## Limitations
 
-The board is read-only. Every change to the map, including release notes and expected impact, is made in `product/story-map.yaml` through a PR, usually by an agent working in the host repo, and appears once that PR is merged and deployed.
+The deployed board is read-only. Every change to the map, including release notes and expected impact, is made in `product/story-map.yaml` through a PR, usually by an agent working in the host repo, and appears once that PR is merged and deployed.
 
-You can’t edit the map in the app. The map ships with each deployment, so an edit saved from the board would only appear after a merge and redeploy, and could overwrite newer changes on the default branch. Editing in the app would need the map stored on a separate hosted service instead of in the product repo. That isn’t part of this library.
+You can’t edit the map in the deployed app. The map ships with each deployment, so an edit saved from the board would only appear after a merge and redeploy, and could overwrite newer changes on the default branch. Editing in the app would need the map stored on a separate hosted service instead of in the product repo. That isn’t part of this library. While you run the app on your own machine, the Personas tab can [edit personas][edit-personas] and save them to your checkout, ready for a PR.
 
 ## Changes and releases
 
@@ -267,4 +267,5 @@ The [GNU Affero General Public License, version 3][license], in particular its s
 [overview]: https://github.com/duncan-m/auto-story-map/blob/main/docs/ENGINEERING-OVERVIEW.md
 [license]: https://github.com/duncan-m/auto-story-map/blob/main/LICENSE
 [export]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-the-map
+[edit-personas]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#edit-personas-on-your-machine
 [json-export]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#export-as-json-for-agents
