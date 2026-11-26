@@ -2050,8 +2050,10 @@ stories:
     title: Understand which stories are ready to start
     activity: track
     release: v0-7-6
-    status: in-progress
+    status: merged
     estimate: 5
+    tokens: 3510898
+    estimatedCostUsd: 2.03
     jobs:
       - triage-backlog
       - plan-and-build
