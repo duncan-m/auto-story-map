@@ -1775,8 +1775,10 @@ stories:
     title: Serve the CLI over MCP
     activity: plan
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 5
+    tokens: 5709742
+    estimatedCostUsd: 2.86
     dependsOn:
       - ESM-105
       - ESM-106
