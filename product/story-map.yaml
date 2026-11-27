@@ -1952,6 +1952,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: must
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-160
     jobs:
@@ -1968,6 +1970,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: could
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-148
     jobs:
@@ -1983,6 +1987,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: should
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-148
       - ESM-153
@@ -1998,6 +2004,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: should
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-148
     jobs:
@@ -2014,6 +2022,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: should
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-117
       - ESM-148
@@ -2028,6 +2038,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: must
+    tokens: 3641822
+    estimatedCostUsd: 1.23
     dependsOn:
       - ESM-148
     jobs:
