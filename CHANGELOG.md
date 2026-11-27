@@ -2,6 +2,24 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
+## Unreleased
+
+### Delivery plans for host products
+
+- **Write a delivery plan:** The guide has a new [Write a delivery plan](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#write-a-delivery-plan) section: the question an agent asks before a product adopts plans, and the parts of a plan, from the status line to the effort table. Plans are opt in, and nothing changes until a person says yes.
+- **Ask once, remember the answer:** `story-map settings --plans <folder>` or `--plans off` records the answer in the map's new `settings.plans`. Until then, `init`, `validate` and the `AGENTS.md` section ask the agent to put the question to the person.
+- **Scaffold a plan:** `story-map plan <ID...>`, or `--release <ID>`, prints a plan skeleton filled in from the map, with the stories the work builds on and overlaps and an effort table of agreed estimates.
+- **An example plan in the package:** `docs/example-builder-estimate-plan.md` is now a full plan for the sample map, with a mockup, and ships in the package.
+
+**For developers**
+
+- `validate` has a new `notice` severity, for questions to a person rather than problems with the map. It is printed first as `notice:`, as a `::notice` annotation with `--format github`, and counted in a new `notices` field, and it never fails validation, even with `--strict`. `StoryMapIssueSeverity` now includes `"notice"`: host code that switches over every severity needs a case for it.
+- The only notice so far asks whether to use delivery plans, while `settings.plans` is unset. It links to the host's copy of the guide, or to the guide on GitHub at the installed version's tag when the copy has no Write a delivery plan section.
+- Once `settings.plans` names a folder, `validate --check-sources` checks the story IDs in it, as `--plans` does.
+- `edit --from` and the MCP server's `propose_edit` take a `plans` op, and `story-map diff` lists a change to `settings.plans` under **Settings**.
+- `init` says when the story map section of `AGENTS.md` differs from the package's, and never replaces it. The `AGENTS.md` template gains a **Plan the work** section, and the skill from `init --skill` carries the planning rules in full. `storyMapPlan` and `deliveryPlanGuideLink` are exported.
+- See [Upgrade to 0.7.7](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-077).
+
 ## 0.7.6
 
 0.7.6 lets people triage the map without editing the YAML, and gives agents new ways into it.

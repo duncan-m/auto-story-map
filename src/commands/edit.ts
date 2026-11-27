@@ -240,3 +240,23 @@ export const releaseImpact = defineCommand({
     await runEdit(options, async () => options.operations);
   },
 });
+
+/** Records the person's answer to whether to use delivery plans, in `settings.plans`. */
+export const settings = defineCommand({
+  parse(rest: string[]) {
+    let plans: string | false | undefined;
+    const positional: string[] = [];
+    const common = parseEditArgs(rest, (name, value) => {
+      if (name !== "--plans") return false;
+      const folder = value();
+      plans = folder === "off" ? false : folder;
+      return true;
+    }, positional);
+    if (!common || positional.length) return null;
+    if (plans === undefined) throw new ArgumentError("--plans is required: a folder, such as docs/plans, or off");
+    return { ...common, operations: [{ op: "plans", plans } as StoryMapEditOperation] };
+  },
+  async run(options) {
+    await runEdit(options, async () => options.operations);
+  },
+});

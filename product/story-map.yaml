@@ -7,6 +7,8 @@ visibility: all-users
 customer:
   title: Auto Story Map Demo
   summary: What you can do with Auto Story Map today, and what is coming next.
+settings:
+  plans: docs/plans
 # Drafted with ESM-901 from the README, the guide and the stories below. Every job is a draft until a person confirms it.
 personas:
   - id: founder
@@ -1946,7 +1948,7 @@ stories:
     title: Show hosts how to write a delivery plan
     activity: plan
     release: v0-7-7
-    status: planned
+    status: merged
     priority: must
     dependsOn:
       - ESM-160
@@ -1957,11 +1959,12 @@ stories:
     summary: The guide gains a Write a delivery plan section with the plan structure this repository uses, the question an agent asks before a host adopts it, and matching steps in the first-run workflow and upgrade notes.
     sources:
       - docs/plans/host-planning-guidance.md#1-write-a-delivery-plan-section-in-the-guide
+      - docs/story-map.md#write-a-delivery-plan
   - id: ESM-149
     title: Ship an example delivery plan that follows the guide
     activity: plan
     release: v0-7-7
-    status: planned
+    status: merged
     priority: could
     dependsOn:
       - ESM-148
@@ -1971,11 +1974,12 @@ stories:
     summary: Replaces the short builder estimate example with a full plan for the sample map, shipped in the package so the guide's links work in a host.
     sources:
       - docs/plans/host-planning-guidance.md#4-ship-an-example-plan
+      - docs/example-builder-estimate-plan.md#ui-mockup
   - id: ESM-150
     title: Tell host agents how to plan work in AGENTS.md
     activity: set-up
     release: v0-7-7
-    status: planned
+    status: merged
     priority: should
     dependsOn:
       - ESM-148
@@ -1990,7 +1994,7 @@ stories:
     title: Scaffold a delivery plan from the map
     activity: plan
     release: v0-7-7
-    status: planned
+    status: merged
     priority: should
     dependsOn:
       - ESM-148
@@ -2001,11 +2005,12 @@ stories:
     summary: story-map plan <ID...> prints a plan skeleton for the chosen stories with their titles, release, the stories the work builds on and overlaps, and an effort table, ready to fill in.
     sources:
       - docs/plans/host-planning-guidance.md#5-scaffold-a-plan-from-the-map
+      - docs/story-map.md#scaffold-a-plan
   - id: ESM-152
     title: Carry the planning rules in the story map skill
     activity: set-up
     release: v0-7-7
-    status: planned
+    status: merged
     priority: should
     dependsOn:
       - ESM-117
@@ -2019,7 +2024,7 @@ stories:
     title: Ask each host whether to use delivery plans
     activity: set-up
     release: v0-7-7
-    status: planned
+    status: merged
     priority: must
     dependsOn:
       - ESM-148
@@ -2029,6 +2034,7 @@ stories:
     summary: Delivery plans are opt in. init, validate and the AGENTS.md section prompt the agent to ask the person whether to use them, with a link to the guide, and the answer is kept in settings.plans so it is asked once.
     sources:
       - docs/plans/host-planning-guidance.md#2-ask-whether-to-use-delivery-plans
+      - docs/story-map.md#choose-whether-to-use-delivery-plans
   - id: ESM-180
     title: Choose the lowest free story ID in add
     activity: plan

@@ -172,6 +172,12 @@ function formatSchemas(strict: boolean) {
   const settings = object({
     stalledAfterWeeks: z.number().int().min(0).max(104).optional()
       .describe("Flag a story as stalled when it has been in progress for longer than this many weeks. Defaults to 4. 0 turns the flag off. Needs the history file from `story-map history`."),
+    plans: z.union([
+      z.string().trim().min(1).max(250)
+        .refine(folder => !/^([a-zA-Z]:)?[\\/]/.test(folder) && !folder.split(/[\\/]/).includes(".."), "Use a folder inside the repository, relative to its root, such as docs/plans."),
+      z.literal(false),
+    ]).optional()
+      .describe("Whether this product keeps delivery plans: the repository-relative folder they go in, such as docs/plans, or false for no plans. Leave it out until a person has chosen, and validate asks for the choice. Set it with `story-map settings --plans`. See Write a delivery plan in docs/story-map.md."),
   }).describe("Optional settings for everyone who views the map. Hosts can override them.");
 
   const map = object({
@@ -352,7 +358,11 @@ export type StoryMapJob = z.infer<typeof strictSchemas.job>;
 export type StoryMapJobStep = z.infer<typeof strictSchemas.jobStep>;
 export type StoryMapPersonaContext = z.infer<typeof strictSchemas.personaContext>;
 
-export type StoryMapIssueSeverity = "error" | "warning";
+/**
+ * Errors make the map invalid. Warnings are advice, and fail validation only with `--strict`.
+ * Notices are questions for a person, such as whether to use delivery plans, and never fail validation.
+ */
+export type StoryMapIssueSeverity = "error" | "warning" | "notice";
 
 export interface StoryMapIssue {
   /** Errors make the map invalid. Warnings are advice: the map still parses and CI passes unless run with `--strict`. */
@@ -405,7 +415,7 @@ export function describeIssueTarget(issue: StoryMapIssue): string {
 
 export function formatStoryMapIssue(issue: StoryMapIssue): string {
   const line = issue.line ? `line ${issue.line}: ` : "";
-  const level = issue.severity === "warning" ? "warning: " : "";
+  const level = issue.severity === "error" ? "" : `${issue.severity}: `;
   return `${line}${level}${describeIssueTarget(issue)}: ${issue.message}`;
 }
 

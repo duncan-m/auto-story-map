@@ -1,6 +1,9 @@
-import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
+import { readFile, realpath } from "node:fs/promises";
+import { isAbsolute, join, relative, resolve } from "node:path";
+import { checkPlanReferences, checkSources, resolveRootedPath, type ReferenceIssue } from "./references.js";
 import { describeIssueTarget, loadStoryMap, StoryMapValidationError, type StoryMapIssueSeverity, type StoryMapWarningKind } from "./schema.js";
 import { checkStoryTests, findStoryTests } from "./tests.js";
+import { storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 
 /** Options for `checkStoryMap`. The file checks are off unless asked for, as with `story-map validate`. */
 export interface StoryMapCheckOptions {
@@ -30,7 +33,7 @@ export interface StoryMapCheckIssue {
   /** ID of the activity, release or story that contains the issue. */
   itemId?: string;
   message: string;
-  /** What a warning asks for, such as `missing-estimate`. Absent on errors and on warnings about other files. */
+  /** What a warning asks for, such as `missing-estimate`. Absent on errors, notices and warnings about other files. */
   kind?: StoryMapWarningKind;
 }
 
@@ -42,6 +45,8 @@ export interface StoryMapCheckResult {
   counts?: { activities: number; releases: number; stories: number };
   errors: number;
   warnings: number;
+  /** Questions for a person, such as whether to use delivery plans. They never make the map invalid, even with `strict`. */
+  notices: number;
   /** Which of the optional file checks ran. */
   checked: ("sources" | "plans" | "tests")[];
   /** Issues in the map first, in source order, then those in other files. */
@@ -79,13 +84,20 @@ export async function checkStoryMap(source: string, options: StoryMapCheckOption
   } catch (error) {
     if (!(error instanceof StoryMapValidationError)) throw error;
     const issues = error.issues.map(toCheckIssue);
-    const errors = issues.filter(issue => issue.severity === "error").length;
-    return { valid: false, errors, warnings: issues.length - errors, checked, issues };
+    return { valid: false, ...tally(issues), checked, issues };
   }
   const root = options.root ?? process.cwd();
   const found: ReferenceIssue[] = [];
   if (options.checkSources) found.push(...await checkSources(loaded, root));
-  if (options.plans?.length) found.push(...await checkPlanReferences(loaded, root, options.plans));
+  const planPaths = [...options.plans ?? []];
+  const chosen = loaded.map.settings?.plans;
+  // Once a host keeps plans, --check-sources checks the IDs in them too, unless --plans already covers the folder.
+  if (options.checkSources && typeof chosen === "string" && !covered(root, planPaths, chosen) && await hasFolder(root, chosen)) {
+    planPaths.push(chosen);
+    if (!checked.includes("plans")) checked.push("plans");
+  }
+  if (planPaths.length) found.push(...await checkPlanReferences(loaded, root, planPaths));
+  if (chosen === undefined) found.push(await plansNotice(root));
   if (options.tests?.length) {
     const tests = await findStoryTests(loaded, root, { paths: options.tests });
     found.push(...tests.issues, ...checkStoryTests(loaded, tests.tests));
@@ -93,15 +105,62 @@ export async function checkStoryMap(source: string, options: StoryMapCheckOption
   const issues = ([...found, ...loaded.warnings] as ReferenceIssue[])
     .sort((a, b) => (a.file ? 1 : 0) - (b.file ? 1 : 0) || (a.line ?? 0) - (b.line ?? 0))
     .map(toCheckIssue);
-  const errors = issues.filter(issue => issue.severity === "error").length;
-  const warnings = issues.length - errors;
+  const counted = tally(issues);
   const { map } = loaded;
   return {
-    valid: errors === 0 && !(options.strict && warnings),
+    valid: counted.errors === 0 && !(options.strict && counted.warnings),
     counts: { activities: map.activities.length, releases: map.releases.length, stories: map.stories.length },
-    errors,
-    warnings,
+    ...counted,
     checked,
     issues,
+  };
+}
+
+function tally(issues: readonly StoryMapCheckIssue[]) {
+  const of = (severity: StoryMapIssueSeverity) => issues.filter(issue => issue.severity === severity).length;
+  return { errors: of("error"), warnings: of("warning"), notices: of("notice") };
+}
+
+/** True when `folder` is one of `paths` or inside one of them, so its files are checked already. */
+function covered(root: string, paths: readonly string[], folder: string) {
+  const target = resolve(root, folder);
+  return paths.some(path => {
+    const rel = relative(resolve(root, path), target);
+    return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  });
+}
+
+/** A host that has said yes to plans may not have written one yet, so a missing folder is not a problem. */
+async function hasFolder(root: string, folder: string) {
+  try {
+    return (await resolveRootedPath(root, await realpath(root), folder)).kind !== "missing";
+  } catch {
+    return false;
+  }
+}
+
+/** The heading every prompt about delivery plans links to. */
+export const deliveryPlanGuideSection = "docs/story-map.md#write-a-delivery-plan";
+
+/**
+ * Where to read about delivery plans: the host's own copy of the guide when it has the
+ * section, or the guide on GitHub at this version's tag when the copy is older.
+ */
+export async function deliveryPlanGuideLink(root: string): Promise<string> {
+  try {
+    const guide = await readFile(join(root, "docs", "story-map.md"), "utf8");
+    if (/^## Write a delivery plan\s*$/m.test(guide)) return deliveryPlanGuideSection;
+  } catch {
+    // No copy of the guide, so link to the package's.
+  }
+  return `${storyMapRepositoryUrl}/blob/v${storyMapVersion}/${deliveryPlanGuideSection}`;
+}
+
+/** Asks for the delivery plans choice while `settings.plans` is left out. */
+async function plansNotice(root: string): Promise<ReferenceIssue> {
+  return {
+    severity: "notice",
+    path: [],
+    message: `Delivery plans: not chosen yet. Ask the person whether to use them, see ${await deliveryPlanGuideLink(root)}, and record the answer with \`story-map settings --plans <folder>\` or \`--plans off\`.`,
   };
 }

@@ -61,7 +61,9 @@ export type { StoryMapJsonExport, StoryMapJsonExportOptions, StoryMapJsonJob, St
 export { storyMapExportFormats, storyMapExportResponse } from "./export-response.js";
 export type { StoryMapExportFormat, StoryMapExportResponse, StoryMapExportResponseOptions } from "./export-response.js";
 export type { StoryMapExportOptions } from "./export.js";
-export { checkStoryMap } from "./check.js";
+export { checkStoryMap, deliveryPlanGuideLink, deliveryPlanGuideSection } from "./check.js";
+export { defaultPlansFolder, storyMapPlan } from "./plan.js";
+export type { StoryMapPlanOptions, StoryMapPlanRequest, StoryMapPlanSkeleton } from "./plan.js";
 export type { StoryMapCheckIssue, StoryMapCheckOptions, StoryMapCheckResult } from "./check.js";
 export { evidenceItemsMaxItems, evidenceTextMaxLength, gatherStoryEvidence, StoryEvidenceError } from "./evidence.js";
 export type { EvidenceBranch, EvidenceClaim, EvidenceCommit, EvidenceMention, EvidenceTag, EvidenceTest, StoryEvidence, StoryEvidenceOptions, StoryEvidenceResult } from "./evidence.js";

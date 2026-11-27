@@ -47,6 +47,8 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
     dependsOn: z.array(text).optional(),
   }).strict(),
   z.object({ op: z.literal("release-impact"), release: text, metric: text, expected: text, solves: text.optional() }).strict(),
+  // Records the person's answer to whether to use delivery plans: a folder, or false for no plans.
+  z.object({ op: z.literal("plans"), plans: z.union([text, z.literal(false)]) }).strict(),
   // Persona edits reword what is there. IDs, order, customer copy and draft are left alone.
   z.object({ op: z.literal("set-persona"), persona: text, title: text.optional(), summary: z.string().trim().optional() }).strict(),
   z.object({
@@ -125,7 +127,8 @@ export class StoryMapEditError extends Error {
 const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "priority", "tokens", "estimatedCostUsd", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 const personaKeyOrder = ["id", "title", "summary", "context", "jobs", "customer"];
-const mapKeyOrder = ["version", "id", "title", "summary", "visibility", "customer", "personas", "activities", "releases", "stories"];
+const mapKeyOrder = ["version", "id", "title", "summary", "visibility", "customer", "settings", "personas", "activities", "releases", "stories"];
+const settingsKeyOrder = ["stalledAfterWeeks", "plans"];
 const contextKeyOrder = ["success", "usesToday", "constraints", "draft"];
 const jobKeyOrder = ["id", "situation", "motivation", "outcome", "draft", "steps"];
 
@@ -494,6 +497,19 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       const impact = [...((release.impact as unknown[] | undefined) ?? []), item];
       release.impact = impact;
       editor.appendToList("releases", release.id, "impact", item, impact);
+      return;
+    }
+
+    if (operation.op === "plans") {
+      const settings = intended.settings as Raw | undefined;
+      if (settings?.plans === operation.plans) return;
+      if (settings) {
+        settings.plans = operation.plans;
+        editor.setFieldAt(["settings"], "plans", operation.plans, settingsKeyOrder);
+      } else {
+        intended.settings = { plans: operation.plans };
+        editor.setFieldAt([], "settings", intended.settings, mapKeyOrder);
+      }
       return;
     }
 

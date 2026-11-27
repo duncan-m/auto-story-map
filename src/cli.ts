@@ -3,12 +3,13 @@ import actions from "./commands/actions.js";
 import { claim, claims, unclaim } from "./commands/claim.js";
 import confirm from "./commands/confirm.js";
 import diff from "./commands/diff.js";
-import { add, edit, releaseImpact } from "./commands/edit.js";
+import { add, edit, releaseImpact, settings } from "./commands/edit.js";
 import evidence from "./commands/evidence.js";
 import exportMap from "./commands/export.js";
 import history from "./commands/history.js";
 import init from "./commands/init.js";
 import mcp from "./commands/mcp.js";
+import plan from "./commands/plan.js";
 import preview from "./commands/preview.js";
 import { releases, stories, story } from "./commands/read.js";
 import { ArgumentError, type Command } from "./commands/shared.js";
@@ -39,6 +40,8 @@ const usage = `Usage:
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
+  story-map settings --plans <folder>|off [common edit options]
+  story-map plan [--map <path>] [--release <ID>] [<ID> ...]
   story-map confirm [--format text|json] [--map <path>] [--write] <job ID> | <persona ID> | <release ID> --impact <n> | --all-in <persona ID>
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--read-only] [<map.yaml>]
   story-map mcp [--root <path>] [--map <path>] [--read-only]
@@ -57,6 +60,8 @@ init
 validate
   Errors make the map invalid and exit 1. Warnings, such as a blocked story
   with no statusReason, are printed but exit 0 unless --strict is set.
+  Notices, such as delivery plans not chosen yet, are questions for a person
+  and never fail, even with --strict.
 
   --format text      Print file:line:column: problem (default).
   --format github    Print GitHub Actions annotations so problems appear on the PR diff.
@@ -64,7 +69,8 @@ validate
                      issue's severity, file, line, column, YAML path and message.
   --strict           Treat warnings as errors.
   --check-sources    Check that repository-relative sources exist and that
-                     Markdown #heading fragments match a heading.
+                     Markdown #heading fragments match a heading, and the
+                     story IDs in the settings.plans folder when it is set.
   --plans <path>     Check that story IDs mentioned in Markdown files under
                      <path> exist in the map. Repeat for several paths.
   --tests <path>     Check story IDs in the names of tests under <path>: an
@@ -348,8 +354,8 @@ edit
                      estimated-cost, add-source,
                      remove-source, add-job, remove-job, add-persona,
                      remove-persona, add-dependency, remove-dependency,
-                     customer-title, customer-summary, add and
-                     release-impact.
+                     customer-title, customer-summary, add,
+                     release-impact and plans.
 
   Common edit options:
   --write            Save the change, only when the edited map is valid.
@@ -378,6 +384,29 @@ release-impact
   Adds an expected impact item to a release, always with draft: true. Only a
   person confirms it, with story-map confirm. Takes the common edit options
   in story-map help edit.
+
+settings
+  Records the person's answer to whether to use delivery plans, in the map's
+  settings.plans. Only record an answer they gave: "not now" changes nothing,
+  so the question is asked again. A dry run unless --write is given. Takes the
+  common edit options in story-map help edit.
+
+  --plans <folder>   Keep delivery plans in this repository-relative folder,
+                     such as docs/plans. validate --check-sources then checks
+                     the story IDs in it.
+  --plans off        Do not use delivery plans. Nothing asks again.
+
+plan
+  Prints a delivery plan skeleton for the stories given, in the structure
+  from Write a delivery plan in docs/story-map.md: a status line, a numbered
+  item for each story, the stories it builds on and overlaps, empty UI
+  mockup, Decisions to make and Not now sections, and an effort table with
+  agreed estimates. It writes nothing, so pipe it into a new file. It never
+  sets an estimate. An ID that is not in the map exits 1.
+
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --release <ID>     Every planned and in-progress story in this release,
+                     in place of IDs.
 
 confirm
   Confirms a draft by removing its draft: true: a job by its ID, a persona's
@@ -436,7 +465,7 @@ mcp
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, actions, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, confirm };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, actions, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {
