@@ -476,6 +476,15 @@
               13
             ]
           },
+          "priority": {
+            "description": "Optional MoSCoW priority: must, should or could have. Internal only. The board shows it as an MH, SH or CH tag.",
+            "type": "string",
+            "enum": [
+              "must",
+              "should",
+              "could"
+            ]
+          },
           "tokens": {
             "description": "Optional. Model tokens used to deliver the story, counting input, output and cache tokens, recorded in the pull request that finishes it, such as from `story-map tokens`. Internal only.",
             "type": "integer",

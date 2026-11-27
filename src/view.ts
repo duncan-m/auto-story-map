@@ -4,7 +4,7 @@ import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
 import type { StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { storyMapReadiness, type StoryReadiness } from "./readiness.js";
-import { defaultStalledAfterWeeks, loadStoryMap, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
+import { defaultStalledAfterWeeks, loadStoryMap, type EstimatePoints, type StoryPriority, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 
@@ -155,6 +155,8 @@ export interface InternalStoryCard extends StoryCard {
   statusReason?: string;
   /** Effort estimate in story points. */
   estimate?: EstimatePoints;
+  /** MoSCoW priority: must, should or could have. */
+  priority?: StoryPriority;
   /** Model tokens used to deliver the story, recorded in the pull request that finished it. */
   tokens?: number;
   /** Estimated cost of those tokens in US dollars at API list prices. */
@@ -523,6 +525,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           status: story.status,
           statusReason: story.statusReason,
           ...(story.estimate !== undefined ? { estimate: story.estimate } : {}),
+          ...(story.priority !== undefined ? { priority: story.priority } : {}),
           ...(story.tokens !== undefined ? { tokens: story.tokens } : {}),
           ...(story.estimatedCostUsd !== undefined ? { estimatedCostUsd: story.estimatedCostUsd } : {}),
           ...dependencies(story),

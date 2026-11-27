@@ -848,6 +848,7 @@ stories:
     release: v0-8-0
     status: planned
     estimate: 8
+    priority: could
     jobs:
       - triage-backlog
     sources:
@@ -861,6 +862,7 @@ stories:
     release: v0-8-0
     status: planned
     estimate: 5
+    priority: must
     dependsOn:
       - ESM-105
     jobs:
@@ -927,6 +929,7 @@ stories:
     release: v0-7-6
     status: merged
     estimate: 5
+    priority: must
     tokens: 6818989
     estimatedCostUsd: 3.04
     dependsOn:
@@ -947,6 +950,7 @@ stories:
     release: v0-8-0
     status: planned
     estimate: 3
+    priority: could
     jobs:
       - validate-inherited-map
       - get-oriented
@@ -959,6 +963,7 @@ stories:
     release: v0-8-0
     status: planned
     estimate: 3
+    priority: should
     jobs:
       - validate-inherited-map
       - agree-first-release-plan
@@ -971,6 +976,7 @@ stories:
     release: v0-8-0
     status: planned
     estimate: 8
+    priority: could
     dependsOn:
       - ESM-113
       - ESM-114
@@ -986,6 +992,7 @@ stories:
     activity: explore
     release: v0-8-0
     status: in-progress
+    priority: must
     jobs:
       - get-oriented
       - triage-backlog
@@ -999,6 +1006,7 @@ stories:
     release: v0-7-6
     status: merged
     estimate: 8
+    priority: should
     tokens: 68512478
     estimatedCostUsd: 20.01
     jobs:
@@ -1830,6 +1838,7 @@ stories:
     release: v0-7-7
     status: planned
     estimate: 3
+    priority: should
     jobs:
       - plan-and-build
     summary: A story ID in a describe or suite name covers every test inside it, so renaming a test does not unlink it from its story.
@@ -1840,6 +1849,7 @@ stories:
     activity: plan
     release: v0-7-7
     status: planned
+    priority: must
     jobs:
       - agree-first-release-plan
       - plan-and-build
@@ -1852,6 +1862,7 @@ stories:
     activity: plan
     release: v0-7-7
     status: planned
+    priority: could
     dependsOn:
       - ESM-148
     jobs:
@@ -1865,6 +1876,7 @@ stories:
     activity: set-up
     release: v0-7-7
     status: planned
+    priority: should
     dependsOn:
       - ESM-148
       - ESM-153
@@ -1879,6 +1891,7 @@ stories:
     activity: plan
     release: v0-7-7
     status: planned
+    priority: should
     dependsOn:
       - ESM-148
     jobs:
@@ -1893,6 +1906,7 @@ stories:
     activity: set-up
     release: v0-7-7
     status: planned
+    priority: should
     dependsOn:
       - ESM-117
       - ESM-148
@@ -1906,6 +1920,7 @@ stories:
     activity: set-up
     release: v0-7-7
     status: planned
+    priority: must
     dependsOn:
       - ESM-148
     jobs:
@@ -1920,6 +1935,7 @@ stories:
     release: v0-7-8
     status: planned
     estimate: 3
+    priority: must
     dependsOn:
       - ESM-105
       - ESM-116
@@ -1938,6 +1954,7 @@ stories:
     status: cut
     statusReason: ESM-144 already starts Claude Code on the brief in the repository, and ESM-124 lets you copy the brief into a local claude or codex session. What is left, a local or Codex launch, is not worth 5 points or the open terminal spike in Decision B.
     estimate: 5
+    priority: could
     dependsOn:
       - ESM-112
       - ESM-124
@@ -1969,6 +1986,7 @@ stories:
     release: v0-8-2
     status: planned
     estimate: 5
+    priority: should
     jobs:
       - get-oriented
       - agree-first-release-plan
@@ -1981,6 +1999,7 @@ stories:
     release: v0-8-2
     status: planned
     estimate: 8
+    priority: should
     dependsOn:
       - ESM-130
     jobs:
@@ -1995,6 +2014,7 @@ stories:
     release: v0-8-2
     status: planned
     estimate: 8
+    priority: should
     dependsOn:
       - ESM-131
       - ESM-174
@@ -2010,6 +2030,7 @@ stories:
     release: v0-8-2
     status: planned
     estimate: 3
+    priority: could
     dependsOn:
       - ESM-131
       - ESM-174
@@ -2025,6 +2046,7 @@ stories:
     release: v0-8-2
     status: planned
     estimate: 3
+    priority: should
     dependsOn:
       - ESM-174
     jobs:
@@ -2039,6 +2061,7 @@ stories:
     release: v0-8-3
     status: planned
     estimate: 5
+    priority: could
     dependsOn:
       - ESM-130
     jobs:
@@ -2053,6 +2076,7 @@ stories:
     release: v0-8-3
     status: planned
     estimate: 5
+    priority: could
     dependsOn:
       - ESM-130
       - ESM-131
@@ -2068,6 +2092,7 @@ stories:
     release: v0-8-3
     status: planned
     estimate: 8
+    priority: could
     dependsOn:
       - ESM-130
       - ESM-131
@@ -2095,12 +2120,28 @@ stories:
     sources:
       - docs/plans/visual-dependency-map.md#1-work-out-readiness-and-dependency-risks
       - docs/plans/visual-dependency-map.md#ui-mockup
+  - id: ESM-158
+    title: Tag each story as must, should or could have
+    activity: plan
+    release: v0-7-6
+    status: merged
+    tokens: 33147775
+    estimatedCostUsd: 13.84
+    jobs:
+      - triage-backlog
+      - get-oriented
+    summary: Each story can carry an optional MoSCoW priority. Internal cards show it as an MH, SH or CH tag, and the story panel shows it in full.
+    notes: Internal only, so customers never see priorities. Values are must, should and could. Set with story-map edit --priority.
+    sources:
+      - docs/plans/moscow-priority.md
+      - docs/plans/moscow-priority.md#ui-mockup
   - id: ESM-140
     title: Explore dependencies as a visual graph
     activity: explore
     release: v0-7-9
     status: planned
     estimate: 8
+    priority: could
     dependsOn:
       - ESM-142
     jobs:
@@ -2116,6 +2157,7 @@ stories:
     release: v0-7-9
     status: planned
     estimate: 5
+    priority: could
     dependsOn:
       - ESM-140
     jobs:
@@ -2131,6 +2173,7 @@ stories:
     release: v0-7-9
     status: planned
     estimate: 5
+    priority: should
     dependsOn:
       - ESM-139
     jobs:
@@ -2147,6 +2190,7 @@ stories:
     release: v0-7-9
     status: planned
     estimate: 3
+    priority: should
     dependsOn:
       - ESM-139
     jobs:

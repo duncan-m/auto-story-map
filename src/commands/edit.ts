@@ -116,7 +116,7 @@ export const escapeDiff = (diff: string) => diff.split("\n").map(escapeText).joi
 
 export const edit = defineCommand({
   parse(rest: string[]) {
-    const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from" | "tokens" | "estimatedCost", string>> = {};
+    const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from" | "priority" | "tokens" | "estimatedCost", string>> = {};
     const lists: [option: string, op: string, key: string][] = [
       ["--add-source", "add-source", "source"], ["--remove-source", "remove-source", "source"],
       ["--add-job", "add-job", "job"], ["--remove-job", "remove-job", "job"],
@@ -128,7 +128,7 @@ export const edit = defineCommand({
     const names: Record<string, keyof typeof fields> = {
       "--status": "status", "--reason": "reason", "--release": "release", "--activity": "activity", "--title": "title",
       "--summary": "summary", "--notes": "notes", "--customer-title": "customerTitle", "--customer-summary": "customerSummary", "--from": "from",
-      "--tokens": "tokens", "--estimated-cost": "estimatedCost",
+      "--priority": "priority", "--tokens": "tokens", "--estimated-cost": "estimatedCost",
     };
     const common = parseEditArgs(rest, (name, value) => {
       const list = lists.find(([option]) => option === name);
@@ -149,6 +149,11 @@ export const edit = defineCommand({
     if (fields.status) operations.push({ op: "status", id, status: fields.status, ...(fields.reason ? { reason: fields.reason } : {}) });
     for (const key of ["release", "activity", "title", "summary", "notes"] as const) {
       if (fields[key]) operations.push({ op: key, id, [key]: fields[key] });
+    }
+    if (fields.priority) {
+      const priority = fields.priority.toLowerCase();
+      if (!["must", "should", "could", "none"].includes(priority)) throw new ArgumentError(`--priority must be must, should, could or none, not ${fields.priority}`);
+      operations.push({ op: "priority", id, priority });
     }
     if (fields.tokens) {
       const tokens = fields.tokens.replace(/[,_]/g, "");

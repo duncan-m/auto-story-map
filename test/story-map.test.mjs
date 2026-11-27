@@ -1327,7 +1327,9 @@ test("ESM-122: a story permalink keeps the story on the board whatever the filte
   assert.deepEqual(readStoryMapFilters(new URLSearchParams("story=FINANCE-202&release=finance-follow-up")), { query: undefined, status: undefined, story: "FINANCE-202", release: "finance-follow-up" });
   assert.deepEqual(readStoryMapFilters(new URLSearchParams("story=<script>&release=../x")), { query: undefined, status: undefined });
 
-  const page = (viewer, query) => getStoryMapPage(map, viewer, { searchParams: new URLSearchParams(query) });
+  // A fixed time, so pages built a millisecond apart still compare equal.
+  const now = new Date("2026-11-27T00:00:00Z");
+  const page = (viewer, query) => getStoryMapPage(map, viewer, { now, searchParams: new URLSearchParams(query) });
   // FINANCE-202 is cut, so the default status filter hides it, and the search does not match it.
   const linked = page(engineer, "story=FINANCE-202&q=prices");
   assert.deepEqual(linked.stories.map(story => story.id), ["BUILDER-102", "FINANCE-202"]);
@@ -3795,4 +3797,56 @@ test("ESM-912: detail panels slide in from the right as a full-height sheet", as
   assert.match(css, /\.esm-detail:popover-open \{ transform: none; \}/);
   assert.match(css, /@starting-style \{\n  \.esm-detail:popover-open \{ transform: translateX\(100%\); \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\n  \.esm-detail, \.esm-detail::backdrop \{ transition: none; \}/);
+});
+
+test("ESM-158: priorities accept only must, should and could", async () => {
+  const { storyPriorities } = await import("auto-story-map");
+  assert.deepEqual(storyPriorities, ["must", "should", "could"]);
+  for (const priority of storyPriorities) {
+    const parsed = editedSample(document => { document.stories[0].priority = priority; });
+    assert.equal(parsed.stories[0].priority, priority);
+  }
+  for (const priority of ["wont", "MH", "Must", 1]) {
+    assert.throws(() => editedSample(document => { document.stories[0].priority = priority; }), error =>
+      error.issues.length === 1
+      && error.issues[0].path.join(".") === "stories.0.priority"
+      && error.issues[0].message === "Use one of must, should, could.", `priority: ${JSON.stringify(priority)}`);
+  }
+});
+
+test("ESM-158: the board tags cards and panels with MH, SH or CH, for internal viewers only", async () => {
+  const prioritised = editedSample(document => {
+    const story = id => document.stories.find(story => story.id === id);
+    story("BUILDER-101").priority = "must";
+    Object.assign(story("BUILDER-102"), { priority: "should", estimate: 3 });
+    story("BUILDER-103").priority = "could";
+  });
+  const render = view => renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+  const internal = getStoryMapForViewer(prioritised, engineer);
+  assert.equal(internal.stories.find(story => story.id === "BUILDER-101").priority, "must");
+  const html = render(internal);
+  // The tag sits on the ID line, before the estimate, with the full name for screen readers.
+  assert.match(html, /<span class="esm-card-head"><span class="esm-card-id">BUILDER-101<\/span><span class="esm-priority esm-priority-must" title="Priority: Must have"><span aria-hidden="true">MH<\/span><span class="esm-visually-hidden">Priority: Must have<\/span><\/span><\/span>/);
+  assert.match(html, /<span class="esm-card-id">BUILDER-102<\/span><span class="esm-card-tags"><span class="esm-priority esm-priority-should"[^>]*><span aria-hidden="true">SH<\/span>.*?<\/span><\/span><span class="esm-estimate"/);
+  assert.match(html, /<dt>Priority<\/dt><dd><span class="esm-priority esm-priority-could"[^>]*><span aria-hidden="true">CH<\/span>.*?<\/span><\/span> Could have<\/dd>/);
+  assert.doesNotMatch(render(getStoryMapForViewer(map, engineer)), /esm-priority|<dt>Priority/);
+
+  const customer = getStoryMapForViewer(prioritised, regular);
+  assert.ok(customer.stories.every(story => !("priority" in story)));
+  assert.doesNotMatch(render(customer), /esm-priority|<dt>Priority|Must have/);
+  const payload = await makeStoryMapResponse("/api/story-map", prioritised, regular).text();
+  assert.doesNotMatch(payload, /"priority"/);
+});
+
+test("ESM-158: diffs show priority changes, outside the customer-facing comparison", () => {
+  const before = editedSample(document => { document.stories[0].priority = "should"; });
+  const after = editedSample(document => { document.stories[0].priority = "must"; document.stories[1].priority = "could"; });
+  const diff = diffStoryMaps(before, after);
+  const updates = Object.fromEntries(diff.stories.updated.map(update => [update.id, update]));
+  assert.deepEqual(updates[before.stories[0].id].priority, { from: "should", to: "must" });
+  assert.deepEqual(updates[before.stories[1].id].priority, { to: "could" });
+  assert.equal(diff.customer.length, 0);
+  const markdown = formatStoryMapDiff(diff);
+  assert.match(markdown, /Priority: should → must/);
+  assert.match(markdown, /Priority: none → could/);
 });

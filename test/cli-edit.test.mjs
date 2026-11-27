@@ -264,3 +264,18 @@ test("ESM-744: random sequences of edits change only what they name, and validat
     parseStoryMap(source);
   }), { numRuns });
 });
+
+test("ESM-158: edit --priority sets, changes and removes a story's priority", async t => {
+  const { run, read } = await scratch(t, fixture);
+  const id = parseStoryMap(fixture).stories[0].id;
+  assert.equal(run("edit", id, "--priority", "Must", "--write").status, 0);
+  assert.equal(parseStoryMap(await read()).stories[0].priority, "must");
+  const changed = run("edit", id, "--priority", "could");
+  assert.equal(changed.status, 0);
+  assert.match(changed.stdout, /Priority: must → could/);
+  assert.equal(run("edit", id, "--priority", "none", "--write").status, 0);
+  assert.ok(!("priority" in parseStoryMap(await read()).stories[0]));
+  const wrong = run("edit", id, "--priority", "wont");
+  assert.notEqual(wrong.status, 0);
+  assert.match(wrong.stderr, /--priority must be must, should, could or none, not wont/);
+});

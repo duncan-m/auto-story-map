@@ -4,7 +4,7 @@ import { z } from "zod";
 import { checkStoryMap, type StoryMapCheckIssue, type StoryMapCheckOptions, type StoryMapCheckResult } from "./check.js";
 import { diffStoryMaps, formatStoryMapDiff, type StoryMapDiff } from "./diff.js";
 import { closestIds } from "./read.js";
-import { parseStoryMap, personaJobsMaxItems, personasMaxItems, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapPersonaContext } from "./schema.js";
+import { parseStoryMap, personaJobsMaxItems, personasMaxItems, storyPriorities, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapPersonaContext } from "./schema.js";
 import { storyStatuses } from "./status.js";
 
 const text = z.string().trim().min(1);
@@ -18,6 +18,7 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("title"), id: storyId, title: text }).strict(),
   z.object({ op: z.literal("summary"), id: storyId, summary: text }).strict(),
   z.object({ op: z.literal("notes"), id: storyId, notes: text }).strict(),
+  z.object({ op: z.literal("priority"), id: storyId, priority: z.enum([...storyPriorities, "none"]) }).strict(),
   z.object({ op: z.literal("tokens"), id: storyId, tokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) }).strict(),
   z.object({ op: z.literal("estimated-cost"), id: storyId, usd: z.number().min(0).max(1_000_000_000) }).strict(),
   z.object({ op: z.literal("add-source"), id: storyId, source: text }).strict(),
@@ -121,7 +122,7 @@ export class StoryMapEditError extends Error {
 }
 
 /** The order fields are written in when an edit adds one, following the guide's examples. */
-const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "tokens", "estimatedCostUsd", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
+const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "priority", "tokens", "estimatedCostUsd", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 const personaKeyOrder = ["id", "title", "summary", "context", "jobs", "customer"];
 const mapKeyOrder = ["version", "id", "title", "summary", "visibility", "customer", "personas", "activities", "releases", "stories"];
@@ -558,6 +559,9 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       case "notes":
       case "tokens":
         set(operation.op, operation[operation.op as keyof typeof operation]);
+        break;
+      case "priority":
+        set("priority", operation.priority === "none" ? undefined : operation.priority);
         break;
       case "estimated-cost":
         // Kept to the cent, as the PR shows it.

@@ -389,8 +389,15 @@
 .esm-card:hover { border-color: var(--esm-card-hover); box-shadow: 0 2px 7px var(--esm-shadow); }
 .esm-card-id { margin: 0; color: var(--esm-faint); font-size: .75rem; font-weight: 650; letter-spacing: .025em; line-height: 1; overflow-wrap: anywhere; }
 /* The estimate sits at the top right, on the ID line. Its negative margins keep that line the same height as on cards with no estimate. */
-.esm-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+.esm-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; row-gap: 10px; width: 100%; }
+/* Keep the ID on one line: on a narrow card the tags wrap under it instead. */
+.esm-card-head > .esm-card-id { flex: none; overflow-wrap: normal; white-space: nowrap; }
 .esm-estimate { flex: none; margin: -3px -2px -3px 0; padding: 2px 5px; border: 1px solid var(--esm-line); border-radius: 4px; color: var(--esm-muted); font-size: .6875rem; font-weight: 700; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* A MoSCoW tag, such as “MH”, before the estimate. Must is strongest, could is quietest. */
+.esm-priority { flex: none; display: inline-block; margin: -3px -2px -3px 0; padding: 2px 5px; border-radius: 4px; background: var(--esm-lane-2-chip); color: var(--esm-lane-2-ink); font-size: .6875rem; font-weight: 750; letter-spacing: .03em; line-height: 1; white-space: nowrap; }
+.esm-priority-must { background: var(--esm-lane-0-chip); color: var(--esm-lane-0-ink); }
+.esm-priority-should { background: var(--esm-lane-1-chip); color: var(--esm-lane-1-ink); }
+.esm-detail .esm-priority { margin: 0 4px 0 0; vertical-align: 1px; }
 .esm-card-title { font-size: .9rem; font-weight: 650; line-height: 1.33; overflow-wrap: anywhere; }
 .esm-status { display: inline-flex; align-items: center; gap: 4px; color: var(--esm-status-planned); font-size: .8125rem; line-height: 1.2; }
 .esm-status[data-status="in-progress"] { color: var(--esm-status-in-progress); }
@@ -620,6 +627,8 @@ button.esm-dependency-link:hover .esm-dependency-title { text-decoration: underl
 .esm-activity .esm-avatars { margin-top: 6px; }
 .esm-card-tags { display: inline-flex; flex: none; align-items: center; gap: 8px; margin: -3px 0; }
 .esm-card-tags .esm-estimate { margin: 0 -2px 0 0; }
+.esm-card-tags .esm-priority { margin: 0; }
+.esm-card-tags .esm-priority:last-child { margin-right: -2px; }
 .esm-persona-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .esm-persona-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 3px 11px 3px 3px; border: 1px solid var(--esm-line); border-radius: 999px; background: var(--esm-paper); color: var(--esm-ink); font-size: .8125rem; font-weight: 600; }
 .esm-persona-chip .esm-avatar { box-shadow: none; }

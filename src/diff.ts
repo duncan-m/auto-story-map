@@ -35,6 +35,8 @@ export interface StoryUpdate extends StoryDiffRef {
   dependsOn?: Change<string[]>;
   /** Story points before and after. Absent on one side when the story had no estimate. */
   estimate?: { from?: number; to?: number };
+  /** MoSCoW priority before and after. Absent on one side when the story had none. */
+  priority?: { from?: string; to?: string };
   /** Tokens used to deliver the story, before and after. Absent on one side when none were recorded. */
   tokens?: { from?: number; to?: number };
   /** Estimated cost in US dollars, before and after. */
@@ -316,6 +318,12 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
         ...(story.estimate !== undefined ? { to: story.estimate } : {}),
       };
     }
+    if (previous.priority !== story.priority) {
+      update.priority = {
+        ...(previous.priority !== undefined ? { from: previous.priority } : {}),
+        ...(story.priority !== undefined ? { to: story.priority } : {}),
+      };
+    }
     if (previous.tokens !== story.tokens) {
       update.tokens = {
         ...(previous.tokens !== undefined ? { from: previous.tokens } : {}),
@@ -334,7 +342,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     for (const field of ["summary", "statusReason", "notes", "sources", "customer", "updatedBy"] as const) {
       if (!same(previous[field], story[field])) update.details.push(field);
     }
-    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.tokens || update.estimatedCostUsd || update.dependsOn || update.jobs || update.personas || update.details.length) {
+    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.priority || update.tokens || update.estimatedCostUsd || update.dependsOn || update.jobs || update.personas || update.details.length) {
       updated.push(update);
     }
   }
@@ -493,6 +501,7 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     if (update.release) changes.push(`Release: ${text(update.release.from)} → ${text(update.release.to)}`);
     if (update.titleChange) changes.push(`Renamed from “${text(update.titleChange.from)}”`);
     if (update.estimate) changes.push(`Estimate: ${update.estimate.from ?? "none"} → ${update.estimate.to ?? "none"}`);
+    if (update.priority) changes.push(`Priority: ${update.priority.from ?? "none"} → ${update.priority.to ?? "none"}`);
     if (update.tokens) changes.push(`Tokens used: ${formatTokens(update.tokens.from)} → ${formatTokens(update.tokens.to)}`);
     if (update.estimatedCostUsd) changes.push(`Estimated cost: ${formatUsd(update.estimatedCostUsd.from)} → ${formatUsd(update.estimatedCostUsd.to)}`);
     const ids = (list: string[]) => list.map(code).join(", ") || "none";

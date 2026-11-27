@@ -222,6 +222,24 @@ On the internal board, a card shows its estimate at the top right, such as “5 
 
 Estimates are internal only. Customers never see them, on the board or in the JSON. Agents should not set or change an estimate unless the team has agreed it, and should flag a missing one in the PR instead.
 
+## Prioritise stories
+
+Each story can carry an optional MoSCoW `priority`: `must`, `should` or `could` have. Internal cards show it as a tag on the ID line, before the estimate: **MH**, **SH** or **CH**. The story panel lists it in full, such as “MH Must have”, after the release.
+
+```yaml
+- id: BUILDER-102
+  title: Look up prices in the material catalogue
+  activity: prepare
+  release: builder-mvp
+  status: planned
+  estimate: 3
+  priority: must
+```
+
+Set it with `story-map edit BUILDER-102 --priority must`, and remove it with `--priority none`. `story-map story` prints it, and `story-map diff` shows a change as “Priority: should → must”. Any other value is a validation error. Priorities are internal only: customers never see them on the board or in the JSON.
+
+A priority is the team's call. Agents can suggest one in a PR, but should say it is a suggestion so a person can agree or change it.
+
 ## Record dependencies
 
 When a story cannot be built until other stories land, list them in its `dependsOn`, most important first:
@@ -763,6 +781,7 @@ npx --no-install story-map edit ESM-105 --release v0-7-5 --activity review
 npx --no-install story-map edit ESM-741 --add-source docs/story-map.md#read-the-map-from-the-command-line
 npx --no-install story-map edit ESM-902 --add-job get-oriented
 npx --no-install story-map edit ESM-109 --add-dependency ESM-105
+npx --no-install story-map edit ESM-109 --priority must
 npx --no-install story-map add --activity review --release v0-7-5 --title "Check claims in CI"
 npx --no-install story-map release-impact v0-7-5 --metric "Agents starting the same story" --expected "None, for teams that use claims"
 ```

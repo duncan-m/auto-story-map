@@ -35,7 +35,7 @@ const usage = `Usage:
   story-map claims [--format text|json] [--remote <name>] [--store <dir>]
   story-map unclaim [--format text|json] [--remote <name>] [--store <dir>] [--agent <name>] <ID>
   story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] [--prices <file>] <ID>
-  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--tokens <n>] [--estimated-cost <usd>] [common edit options]
+  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--priority must|should|could|none] [--tokens <n>] [--estimated-cost <usd>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
@@ -332,6 +332,9 @@ edit
                      Repeat for several.
   --customer-title, --customer-summary <text>
                      Customer-facing copy. Needs --customer.
+  --priority <must|should|could|none>
+                     Set the story's MoSCoW priority, shown on internal
+                     cards as MH, SH or CH. none removes it.
   --tokens <n>       Record the model tokens used to deliver the story, in
                      the pull request that finishes it. story-map tokens
                      counts them from Claude Code's logs.
@@ -341,7 +344,7 @@ edit
   --from <file>      A JSON list of edits, such as
                      [{"op": "status", "id": "ESM-744", "status": "merged"}],
                      applied all or none. The ops are status, release,
-                     activity, title, summary, notes, tokens,
+                     activity, title, summary, notes, priority, tokens,
                      estimated-cost, add-source,
                      remove-source, add-job, remove-job, add-persona,
                      remove-persona, add-dependency, remove-dependency,
