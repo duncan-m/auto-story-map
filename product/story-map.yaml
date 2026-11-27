@@ -496,14 +496,14 @@ releases:
       title: "0.8.0"
   - id: v0-8-1
     title: "0.8.1: Agent briefs"
-    summary: Agents and scripts print a brief for a story, release or activity with story-map brief, and the local preview starts Claude Code or Codex on a brief in the repository.
+    summary: Agents and scripts print a brief for a story, release or activity with story-map brief.
     notes: |
-      Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting an agent needs the writable preview from 0.7.6 (ESM-112).
+      Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting a local agent from the preview (ESM-127) was cut: Open in Claude Code (ESM-144) and Copy brief (ESM-124) already cover it.
 
       Plan: docs/plans/agent-briefs.md
     impact:
       - metric: Steps to start a local agent on a story
-        expected: One click in the local preview, or one story-map brief command
+        expected: One story-map brief command or get_brief call
         solves: Copying a brief from the board and pasting it into a terminal
         draft: true
   - id: v0-8-2
@@ -1939,7 +1939,8 @@ stories:
     title: Start Claude Code or Codex on a brief from the local preview
     activity: plan
     release: v0-8-1
-    status: planned
+    status: cut
+    statusReason: ESM-144 already starts Claude Code on the brief in the repository, and ESM-124 lets you copy the brief into a local claude or codex session. What is left, a local or Codex launch, is not worth 5 points or the open terminal spike in Decision B.
     estimate: 5
     dependsOn:
       - ESM-112
