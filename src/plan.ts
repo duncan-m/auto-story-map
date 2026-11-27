@@ -42,7 +42,7 @@ const line = (text: string) => text.replace(/\s+/g, " ").trim();
  */
 export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, options: StoryMapPlanOptions = {}): StoryMapPlanSkeleton {
   if (view.audience !== "internal") throw new TypeError("Only the internal view has plans: a plan carries internal notes and estimates.");
-  const folder = (options.plansFolder ?? defaultPlansFolder).replace(/\/+$/, "") || ".";
+  const folder = trimSlashes(options.plansFolder ?? defaultPlansFolder) || ".";
   const targets = pickTargets(view, request);
   const releaseIds = [...new Set(targets.map(story => story.release))];
   const releaseTitle = (id: string) => view.releases.find(release => release.id === id)?.title ?? id;
@@ -55,7 +55,7 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
   const estimated = targets.filter(story => story.estimate !== undefined).length;
   const estimates = estimated === targets.length
     ? "Every story has an agreed estimate."
-    : estimated === 0 ? `${targets.length === 1 ? "It has" : "None has"} an agreed estimate yet.` : `${estimated} of ${targets.length} have an agreed estimate.`;
+    : estimated === 0 ? targets.length === 1 ? "It has no agreed estimate yet." : "None has an agreed estimate yet." : `${estimated} of ${targets.length} have an agreed estimate.`;
   const items = targets.map((story, index) => ({ story, heading: `${index + 1}. ${line(story.title)}` }));
 
   const link = (story: InternalStoryCard) => {
@@ -128,7 +128,7 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
     "",
     "| Story | Points |",
     "| --- | --- |",
-    ...targets.map(story => `| ${story.id}: ${line(story.title).replace(/\|/g, "\\|")} | ${story.estimate ?? "not agreed"} |`),
+    ...targets.map(story => `| ${story.id}: ${line(story.title).replace(/[\\|]/g, "\\$&")} | ${story.estimate ?? "not agreed"} |`),
     `| **Total** | **${totalText}** |`,
     "",
     "<!-- Which stories could move to another release, and why. -->",
@@ -155,4 +155,11 @@ function pickTargets(view: InternalView, request: StoryMapPlanRequest): Internal
 
 function listWords(words: readonly string[]) {
   return words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+}
+
+/** Drops trailing slashes without a regular expression, which could be slow on a long run of them. */
+function trimSlashes(path: string) {
+  let end = path.length;
+  while (end > 0 && path[end - 1] === "/") end--;
+  return path.slice(0, end);
 }

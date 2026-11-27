@@ -274,3 +274,11 @@ test("ESM-152: the skill carries the planning rules in full, and the AGENTS.md p
   const pointer = await readFile(new URL("templates/AGENTS-skill.md", packageRoot), "utf8");
   assert.match(pointer, /If `settings\.plans` is not set in the map, ask the person whether to use delivery plans/);
 });
+
+test("ESM-151: plan escapes table characters in titles and trims the folder's trailing slashes", () => {
+  const odd = fixture.replace("title: Submit the estimate to finance", "title: 'Submit a | b \\ c'");
+  const { markdown, path } = storyMapPlan(internal(odd), { stories: ["BUILDER-103"] }, { plansFolder: "plans///" });
+  assert.match(markdown, /^\| BUILDER-103: Submit a \\\| b \\\\ c \| not agreed \|$/m);
+  assert.match(path, /^plans\/[^/]/);
+  assert.match(markdown, /release of the map\. It has no agreed estimate yet\.\n/);
+});
