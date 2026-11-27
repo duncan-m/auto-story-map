@@ -10,6 +10,7 @@ import {
   checkStoryMap,
   getStoryMapActions,
   isStoryMapRuleId,
+  needsPersonRules,
   parseStoryMap,
   storyMapPackagedGuideUrl,
   storyMapRuleHelp,
@@ -146,8 +147,9 @@ test("ESM-159: every validate issue has a rule and a help link to a heading that
   assert.equal(issue.help, storyMapRuleHelp("unreadable-map"));
   seen.add(issue.rule);
 
-  // Every rule that is not a warning kind has a case above. Warning kinds are covered by the Actions tests.
-  const untested = storyMapRuleIds.filter(rule => !seen.has(rule) && !storyMapWarningKinds.includes(rule));
+  // Every rule that is not a warning kind has a case above. Warning kinds are covered by the Actions tests,
+  // and the rules diff lists under Needs a person by the ESM-162 tests.
+  const untested = storyMapRuleIds.filter(rule => !seen.has(rule) && !storyMapWarningKinds.includes(rule) && !needsPersonRules.includes(rule));
   assert.deepEqual(untested, [], "add a case that breaks each new rule");
 });
 
