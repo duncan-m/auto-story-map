@@ -71,6 +71,8 @@ const cases = [
   ["empty-persona-context", () => edited(map => { map.personas[0].context = {}; })],
   ["customer-copy-required", () => edited(map => { map.visibility = "all-users"; })],
   ["choose-delivery-plans", () => edited(map => { delete map.settings; })],
+  // The root below has an AGENTS.md section from an older version.
+  ["setup-behind", () => edited(() => {})],
 ];
 
 /** Each source, plan and test file problem, checked in one repository. */
@@ -102,6 +104,7 @@ test("ESM-159: every validate issue has a rule and a help link to a heading that
   await mkdir(join(root, "plans"), { recursive: true });
   await mkdir(join(root, "test"), { recursive: true });
   await writeFile(join(root, "docs", "plan.md"), "# Plan\n");
+  await writeFile(join(root, "AGENTS.md"), `<!-- auto-story-map:start 0.7.0 sha256:${"0".repeat(64)} -->\nOld rules.\n<!-- auto-story-map:end -->\n`);
   await writeFile(join(root, "docs", "big.md"), `# Big\n${"x".repeat(5 * 1024 * 1024)}\n`);
   await writeFile(join(root, "plans", "plan.md"), "Builds on S-999.\n");
   await writeFile(join(root, "plans", "words.md"), "Status: built. The work is S-1.\n");

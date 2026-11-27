@@ -47,6 +47,7 @@ export const storyMapRules = {
   "test-file-too-large": { section: "link-tests-to-stories", summary: "A test file is too large to read." },
   "unreadable-map": { section: "validate-a-change", summary: "The map file could not be read." },
   "choose-delivery-plans": { section: "choose-whether-to-use-delivery-plans", summary: "Nobody has chosen whether to use delivery plans." },
+  "setup-behind": { section: "what-the-set-up-markers-mean", summary: "A part of the set-up comes from an older version whose template has changed since." },
   "job-without-stories": { section: "personas-and-jobs-to-be-done", summary: "No story serves a job to be done." },
   "step-without-stories": { section: "break-a-job-into-steps", summary: "A job's step has no stories in its activity." },
   "persona-without-stories": { section: "personas-and-jobs-to-be-done", summary: "No story is for a persona." },
