@@ -3270,6 +3270,8 @@ test("ESM-801: finds tests tagged with story IDs without running them", async t 
     ["test/calls.js", 15, "test", "BUILDER-102", "BUILDER-102: each %s"],
     ["test/calls.js", 16, "test", "BUILDER-102", "BUILDER-102: each table $a"],
     ["test/calls.js", 20, "group", "BUILDER-103", "BUILDER-103: describe"],
+    // An untagged test inside a tagged describe is linked to its story (ESM-119).
+    ["test/calls.js", 21, "test", "BUILDER-103", "names no story"],
     ["test/calls.js", 23, "group", "BUILDER-103", "BUILDER-103: suite"],
     ["test/calls.js", 24, "test", "BUILDER-101", `BUILDER-101: it's "escaped" \u2014 here`],
     ["test/calls.js", 25, "test", "BUILDER-101", "BUILDER-101: name on the next line"],
@@ -3326,7 +3328,7 @@ test("ESM-801: story-map tests writes an index the board can parse", async t => 
   assert.equal(index.version, 1);
   assert.equal(index.omitted, undefined);
   assert.deepEqual(index.tests[0], { storyIds: ["BUILDER-101"], file: "test/calls.js", line: 7, name: "BUILDER-101: double quotes", kind: "test" });
-  assert.equal(index.tests.length, 17);
+  assert.equal(index.tests.length, 18);
   assert.ok(!printed.stdout.includes("BUILDER-999"));
   assert.ok(!printed.stdout.includes('"column"'));
 
@@ -3335,8 +3337,8 @@ test("ESM-801: story-map tests writes an index the board can parse", async t => 
   await writeFile(join(root, "product/story-map.yaml"), sample);
   const written = run("--out", "out/tests.json");
   assert.equal(written.status, 0, written.stderr);
-  assert.match(written.stderr, /out\/tests\.json: 19 tests for 3 stories\n$/);
-  assert.equal(parseStoryMapTests(await readFile(join(root, "out/tests.json"), "utf8")).tests.length, 19);
+  assert.match(written.stderr, /out\/tests\.json: 20 tests for 3 stories\n$/);
+  assert.equal(parseStoryMapTests(await readFile(join(root, "out/tests.json"), "utf8")).tests.length, 20);
 
   assert.equal(run("--tests", "../elsewhere", "map.yaml").status, 2);
   assert.equal(run("--tests", "missing", "map.yaml").status, 2);
@@ -3485,6 +3487,108 @@ test("ESM-801: the story panel lists tagged tests by file, linking to each line"
   for (const file of ["/etc/passwd", "../outside.test.js", "https://evil.test/x.js", "//evil.test/x.js", "test\\x.js"]) {
     assert.throws(() => parseStoryMapTests({ ...tests, tests: [{ ...tests.tests[0], file }], omitted: undefined }), /relative to the repository root/, file);
   }
+});
+
+const describeBlocks = `import { describe, it, suite, test } from "vitest";
+describe("BUILDER-101: estimates", () => {
+  it("totals materials", () => {});
+  describe("rounding", () => {
+    it("rounds to the penny", () => {});
+    describe.each([1, 2])("BUILDER-102: tax band %s", () => {
+      test.each([[1]])("applies the band", () => {});
+    });
+  });
+  it("BUILDER-102: shares a total", () => {});
+  it("BUILDER-101: names its own story too", () => {});
+});
+test("outside every block", () => {});
+describe(\`\${"dynamic"} name\`, () => {
+  it("BUILDER-103: tagged inside an untagged block", () => {});
+});
+suite.concurrent("BUILDER-999: unknown group", () => {
+  it("one", () => {});
+  it("two", () => {});
+});
+describe("BUILDER-103: groups by reference", sharedTests);
+it("after a block passed by reference", () => {});
+`;
+
+test("ESM-119: a tagged describe block links every test inside it", async t => {
+  const { findStoryTests, buildStoryMapTests, checkStoryTests } = await import("../dist/tests.js");
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const root = await mkdtemp(join(tmpdir(), "story-map-describe-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(join(root, "blocks.test.ts"), describeBlocks);
+  const loaded = loadStoryMap(sample);
+  const { tests } = await findStoryTests(loaded, root, { paths: ["."] });
+
+  assert.deepEqual(tests.map(found => [found.line, found.kind, found.storyIds.join(" "), (found.inheritedIds ?? []).join(" "), found.name]), [
+    [2, "group", "BUILDER-101", "", "BUILDER-101: estimates"],
+    [3, "test", "BUILDER-101", "BUILDER-101", "totals materials"],
+    // Nested blocks pass the IDs down, untagged or not.
+    [4, "group", "BUILDER-101", "BUILDER-101", "rounding"],
+    [5, "test", "BUILDER-101", "BUILDER-101", "rounds to the penny"],
+    // A tagged block inside a tagged block: its own ID first, then the outer ones.
+    [6, "group", "BUILDER-102 BUILDER-101", "BUILDER-101", "BUILDER-102: tax band %s"],
+    [7, "test", "BUILDER-102 BUILDER-101", "BUILDER-102 BUILDER-101", "applies the band"],
+    // A test with its own ID keeps it and also gets the block's.
+    [10, "test", "BUILDER-102 BUILDER-101", "BUILDER-101", "BUILDER-102: shares a total"],
+    // Naming the block's story again is not inheriting it.
+    [11, "test", "BUILDER-101", "", "BUILDER-101: names its own story too"],
+    [15, "test", "BUILDER-103", "", "BUILDER-103: tagged inside an untagged block"],
+    [17, "group", "BUILDER-999", "", "BUILDER-999: unknown group"],
+    [18, "test", "BUILDER-999", "BUILDER-999", "one"],
+    [19, "test", "BUILDER-999", "BUILDER-999", "two"],
+    // A block passed by reference has no tests in its text, and the block ends at its closing bracket.
+    [21, "group", "BUILDER-103", "", "BUILDER-103: groups by reference"],
+  ]);
+
+  // An unknown ID in a block's name is reported once, at the block.
+  assert.deepEqual(checkStoryTests(loaded, tests).filter(issue => issue.severity === "error").map(issue => [issue.line, issue.message]), [
+    [17, "Unknown story ID 'BUILDER-999' in a test name. Add the story to the map or correct the tag."],
+  ]);
+
+  // The index marks the IDs a test has only from its block.
+  const { index } = buildStoryMapTests(loaded, tests);
+  assert.deepEqual(index.tests.find(entry => entry.line === 10), { storyIds: ["BUILDER-102", "BUILDER-101"], inheritedIds: ["BUILDER-101"], file: "blocks.test.ts", line: 10, name: "BUILDER-102: shares a total", kind: "test" });
+  assert.equal(index.tests.find(entry => entry.line === 11).inheritedIds, undefined);
+  assert.ok(!index.tests.some(entry => entry.storyIds.includes("BUILDER-999")));
+  assert.deepEqual(parseStoryMapTests(JSON.stringify(index)), index);
+  const entry = index.tests.find(found => found.line === 3);
+  assert.throws(() => parseStoryMapTests({ ...index, tests: [{ ...entry, inheritedIds: ["BUILDER-102"] }] }), /inherited ID in storyIds/);
+  assert.throws(() => parseStoryMapTests({ ...index, tests: [{ ...entry, inheritedIds: [] }] }), /inheritedIds/);
+
+  // Deeply nested tagged blocks stay quick to read, and each test inherits at most 20 IDs.
+  const deep = Array.from({ length: 20_000 }, (_, n) => `describe("BUILDER-${n}", () => { it("x", () => {});\n`).join("") + "})".repeat(20_000);
+  await writeFile(join(root, "deep.test.js"), deep);
+  const started = performance.now();
+  const nested = await findStoryTests(loaded, root, { paths: ["deep.test.js"] });
+  assert.ok(performance.now() - started < 2000, "reads deep nesting quickly");
+  assert.equal(nested.tests.at(-1).inheritedIds.length, 20);
+});
+
+test("ESM-119: the story panel marks tests covered by their block", () => {
+  const tests = parseStoryMapTests({
+    version: 1,
+    generatedAt: "2026-11-27T12:00:00.000Z",
+    tests: [
+      { storyIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 2, name: "BUILDER-101: estimates", kind: "group" },
+      { storyIds: ["BUILDER-101"], inheritedIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 3, name: "totals materials", kind: "test" },
+      { storyIds: ["BUILDER-102", "BUILDER-101"], inheritedIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 10, name: "BUILDER-102: shares a total", kind: "test" },
+    ],
+  });
+  const view = getStoryMapForViewer(map, engineer, { tests });
+  const byId = id => view.stories.find(card => card.id === id).tests;
+  assert.deepEqual(byId("BUILDER-101").map(test => [test.line, test.inherited ?? false]), [[2, false], [3, true], [10, true]]);
+  // The test names BUILDER-102 itself, so it is not inherited there.
+  assert.deepEqual(byId("BUILDER-102").map(test => [test.line, test.inherited ?? false]), [[10, false]]);
+  assert.ok(!("inheritedIds" in byId("BUILDER-101")[1]));
+
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+  const panel = html.split('<div class="esm-detail"').find(part => part.includes('<p class="esm-card-id">BUILDER-101</p>'));
+  assert.match(panel, /All tests in this group · line 2/);
+  assert.match(panel, /<span class="esm-test-name">totals materials<\/span><\/span><span class="esm-test-line">Covered by its group · line 3/);
+  assert.match(panel, /Covered by its group · line 10/);
 });
 
 test("ESM-801: customers never see test names or paths", async () => {

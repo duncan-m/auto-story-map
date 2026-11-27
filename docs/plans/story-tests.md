@@ -164,6 +164,6 @@ Pass and fail results are out of scope here, but the index is designed so they c
 
 ## Open questions
 
-1. Should a tag on a `describe` apply to every test inside it, instead of being listed once? It would match how people group tests, but needs the scanner to track nesting.
+1. Should a tag on a `describe` apply to every test inside it, instead of being listed once? It would match how people group tests, but needs the scanner to track nesting. Answered by ESM-119: it does, as [Tag a describe block for all its tests](0.8.0-agents-and-adoption.md#4-tag-a-describe-block-for-all-its-tests) planned.
 2. Should shipped stories without tests be warned about too, perhaps only with `--strict`?
 3. Should the card face show a test count? This plan keeps the card to the ID, title and status.
