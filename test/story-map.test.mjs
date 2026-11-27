@@ -434,9 +434,10 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.equal(starter.title, "Field Ops Story Map");
   assert.equal(starter.visibility, "internal");
   assert.match(starter.summary, /^Starter map/);
-  assert.equal(await readFile(join(root, "docs/story-map.md"), "utf8"), await readFile(new URL("../docs/story-map.md", import.meta.url), "utf8"));
+  const guide = await readFile(join(root, "docs/story-map.md"), "utf8");
+  assert.equal(guide.slice(guide.indexOf("\n") + 1), await readFile(new URL("../docs/story-map.md", import.meta.url), "utf8"));
   const agents = await readFile(join(root, "AGENTS.md"), "utf8");
-  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- auto-story-map:start -->\n## Story map\n/);
+  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- auto-story-map:start \S+ sha256:[0-9a-f]{64} -->\n## Story map\n/);
   assert.match(agents, /<!-- auto-story-map:end -->\n$/);
   assert.match(await readFile(join(root, ".github/workflows/story-map.yml"), "utf8"), /story-map validate --format github --check-sources product\/story-map\.yaml/);
 
@@ -500,7 +501,7 @@ test("init refuses links that lead outside the repository", async t => {
   const steps = await initStoryMap(inside);
   assert.deepEqual(steps.slice(1, 3).map(step => [step.path, step.action]), [["docs/story-map.md", "created"], ["AGENTS.md", "updated"]]);
   assert.match(await readFile(join(inside, "documentation/story-map.md"), "utf8"), /./);
-  assert.match(await readFile(join(inside, "RULES.md"), "utf8"), /^# Rules\n\n<!-- auto-story-map:start -->/);
+  assert.match(await readFile(join(inside, "RULES.md"), "utf8"), /^# Rules\n\n<!-- auto-story-map:start \S+ sha256:/);
 
   const dotted = await host("dotted");
   await mkdir(join(dotted, "..documentation"));
@@ -522,7 +523,7 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.equal(run.status, 0);
   assert.match(run.stdout, /skipped  \.github\/workflows\/story-map\.yml \(no package-lock\.json/);
   assert.match(run.stdout, /Next, ask an agent/);
-  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- auto-story-map:start -->/);
+  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- auto-story-map:start \S+ sha256:/);
 
   await writeFile(join(root, "package-lock.json"), "{}");
   const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
@@ -561,7 +562,7 @@ test("ESM-117: init --skill writes the skill and a short pointer in AGENTS.md", 
   assert.equal(skillPath, ".claude/skills/story-map/SKILL.md");
   assert.equal(await readFile(join(root, skillPath), "utf8"), await skillFile());
   const agents = await readFile(join(root, "AGENTS.md"), "utf8");
-  assert.match(agents, /^<!-- auto-story-map:start -->\n## Story map\n/);
+  assert.match(agents, /^<!-- auto-story-map:start \S+ sha256:[0-9a-f]{64} -->\n## Story map\n/);
   assert.match(agents, /\[story map skill\]\(\.claude\/skills\/story-map\/SKILL\.md\)/);
   assert.match(agents, /Never remove `draft` yourself/);
   assert.match(agents, /story-map validate --check-sources product\/story-map\.yaml/);
@@ -589,7 +590,8 @@ test("ESM-117: init --skill writes the skill and a short pointer in AGENTS.md", 
   t.after(() => rm(plain, { recursive: true, force: true }));
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   assert.equal(spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", plain]).status, 0);
-  assert.equal(await readFile(join(plain, "AGENTS.md"), "utf8"), full);
+  const plainAgents = await readFile(join(plain, "AGENTS.md"), "utf8");
+  assert.equal(plainAgents.replace(/^<!-- auto-story-map:start \S+ sha256:[0-9a-f]{64} -->/, "<!-- auto-story-map:start -->"), full);
   await assert.rejects(readFile(join(plain, skillPath)));
   const run = spawnSync(process.execPath, [cli, "init", "--skill", "--no-ci", "--dir", plain], { encoding: "utf8" });
   assert.equal(run.status, 0);

@@ -32,6 +32,22 @@ The JSON has `format: "auto-story-map.survey"` and `version: 1`, with the signal
 
 In code, `surveyRepository(options)` returns the same result.
 
+### What the set-up markers mean
+
+`story-map init` records, in each part it sets up, the package version it came from and a hash of the text it wrote:
+
+| Part | Where the version is recorded |
+| --- | --- |
+| The story map section of `AGENTS.md` | The start marker: `<!-- auto-story-map:start 0.7.8 sha256:… -->` |
+| `docs/story-map.md` | A comment on the first line: `<!-- auto-story-map 0.7.8 sha256:… -->` |
+| `.github/workflows/story-map.yml` | A comment on the first line: `# auto-story-map 0.7.8 sha256:…` |
+
+The hash is `sha256:` and the SHA-256 of the part's body, with line endings evened out: for `AGENTS.md`, the text between the start marker's line and `<!-- auto-story-map:end -->`; for the guide and the workflow, everything after the first line. While the body still matches its hash, the part is as the package wrote it, so an upgrade can replace it safely. Once someone edits it, the hash no longer matches, and the edit is kept. Leave the markers in place, and edit the text around them as you like. Your own choices, such as `settings.plans`, stay in the map, not in these files.
+
+Parts set up before 0.7.8 have no version: the start marker is plain `<!-- auto-story-map:start -->`, and the guide and workflow have no first-line comment. They still work, and `init` and `validate` treat them as before. The package ships `templates/known-versions.json`, the hashes of every template from earlier releases, so a part whose body matches one counts as unedited, from that version. A part that matches none counts as edited, from an unknown version. The story map skill from `init --skill` and the starter map record no version.
+
+In code, `readSetupFileVersion(part, text, known)` from `auto-story-map` reads a part's file, where `part` is `agents`, `guide` or `workflow`, `text` is the whole file and `known` comes from `loadKnownSetupVersions()`. It returns the recorded version and hash, the hash of the body now, `knownVersions` for the earlier releases it matches, `unedited`, and `from`, the version it came from when that is known. It returns `undefined` for an `AGENTS.md` without a complete story map section.
+
 ## Upgrade to 0.7.7
 
 These steps work from 0.7.0 or later. Existing maps stay valid.

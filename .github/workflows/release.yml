@@ -23,6 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0 # known-versions reads the templates at every release tag
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -34,6 +35,13 @@ jobs:
       - run: npm test
       - name: Check the committed JSON Schema is up to date
         run: git diff --exit-code -- story-map.schema.json
+      - name: Check the known template versions are up to date
+        run: |
+          node scripts/known-versions.mjs
+          if ! git diff --exit-code -- templates/known-versions.json; then
+            echo "::error::templates/known-versions.json is out of date. Run npm run known-versions on the release branch and commit it."
+            exit 1
+          fi
       - name: Smoke-test the packed npm package
         env:
           REACT_MAJOR: ${{ matrix.react }}

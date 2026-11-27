@@ -33,15 +33,16 @@ Later releases authenticate through the workflow’s OpenID Connect token, so th
 1. On a branch, set the new version with `npm version <version> --no-git-tag-version`. Before 1.0.0, use a minor version for breaking changes and a patch version for fixes.
 2. Add a `## <version>` section to `CHANGELOG.md`, or rename the `## Unreleased` section. The board's version footer links to this heading, and a test checks that it exists. Mark breaking changes and link to the upgrade steps.
 3. For breaking changes, add an upgrade section to `docs/story-map.md` and update the upgrade links in `README.md` and `AGENTS.md`.
-4. Merge the PR into `main`.
-5. Tag the merge commit and push the tag:
+4. Run `npm run known-versions` and commit `templates/known-versions.json` if it changed. It records the hash of each set-up template from every earlier release tag, so the upgrade review recognises hosts set up before versions were recorded. The release workflow regenerates it from the tags and stops if the committed file differs. See [What the set-up markers mean](story-map.md#what-the-set-up-markers-mean).
+5. Merge the PR into `main`.
+6. Tag the merge commit and push the tag:
 
    ```sh
    git tag v<version>
    git push origin v<version>
    ```
 
-The workflow stops before publishing if the tag does not match `package.json` or the changelog has no section for the version.
+The workflow stops before publishing if the tag does not match `package.json`, the changelog has no section for the version, or `templates/known-versions.json` is out of date.
 
 ## If the repository is renamed
 
