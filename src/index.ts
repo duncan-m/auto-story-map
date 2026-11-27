@@ -61,7 +61,10 @@ export type { StoryMapJsonExport, StoryMapJsonExportOptions, StoryMapJsonJob, St
 export { storyMapExportFormats, storyMapExportResponse } from "./export-response.js";
 export type { StoryMapExportFormat, StoryMapExportResponse, StoryMapExportResponseOptions } from "./export-response.js";
 export type { StoryMapExportOptions } from "./export.js";
-export { checkStoryMap, deliveryPlanGuideLink, deliveryPlanGuideSection } from "./check.js";
+export { checkStoryMap, deliveryPlanGuideLink, deliveryPlanGuideSection, storyMapRuleLinker } from "./check.js";
+export type { StoryMapRuleLinker } from "./check.js";
+export { isStoryMapRuleId, storyMapGuidePath, storyMapPackagedGuideUrl, storyMapRuleHelp, storyMapRuleIds, storyMapRules } from "./rules.js";
+export type { StoryMapRuleId, StoryMapRuleInfo } from "./rules.js";
 export { defaultPlansFolder, storyMapPlan } from "./plan.js";
 export type { StoryMapPlanOptions, StoryMapPlanRequest, StoryMapPlanSkeleton } from "./plan.js";
 export type { StoryMapCheckIssue, StoryMapCheckOptions, StoryMapCheckResult } from "./check.js";

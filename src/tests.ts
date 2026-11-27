@@ -410,14 +410,14 @@ export async function findStoryTests(loaded: LoadedStoryMap, root: string, { pat
     const files = resolved.kind === "inside" ? await repositoryFiles(realRoot, resolved.path, testFileFilter, outside) : [];
     for (const link of outside) issues.push(outsideLinkIssue(shown(link)));
     if (!files.length) {
-      issues.push({ severity: "error", path: [], file: path, message: "No test files found." });
+      issues.push({ severity: "error", path: [], file: path, message: "No test files found. Pass a folder or file that holds the tests.", rule: "tests-not-found" });
       continue;
     }
     for (const file of files) {
       if (read.has(file)) continue;
       read.add(file);
       if ((await stat(file)).size > maxTestFileBytes) {
-        issues.push({ severity: "warning", path: [], file: shown(file), message: `Larger than ${maxTestFileBytes / 1024 / 1024} MB, so its tests were not read.` });
+        issues.push({ severity: "warning", path: [], file: shown(file), message: `Larger than ${maxTestFileBytes / 1024 / 1024} MB, so its tests were not read. Split the file to have its tests counted.`, rule: "test-file-too-large" });
         continue;
       }
       if (!pattern) continue;
@@ -505,6 +505,7 @@ export function checkStoryTests(loaded: LoadedStoryMap, found: FoundStoryTest[])
         line: test.line,
         column: test.column,
         message: `Unknown story ID '${id}' in a test name. Add the story to the map or correct the tag.`,
+        rule: "unknown-test-story",
       });
     }
   }

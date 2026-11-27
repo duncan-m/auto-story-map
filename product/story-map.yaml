@@ -2053,7 +2053,7 @@ stories:
     title: Give each validation issue a rule and a link to the guide
     activity: review
     release: v0-7-7
-    status: planned
+    status: merged
     jobs:
       - update-the-map
     personas:

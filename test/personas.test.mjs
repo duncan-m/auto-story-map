@@ -115,11 +115,11 @@ test("ESM-901: rejects duplicate, unknown and repeated persona and job IDs", () 
     story.personas = ["nobody"];
   }));
   assert.deepEqual(issues.sort(), [
-    "personas.1.jobs.1.id: Duplicate job ID 'price-materials'. Job IDs are unique across the map.",
-    "personas.2.id: Duplicate ID 'builder'.",
-    "stories.0.jobs.1: Job 'price-materials' is listed twice.",
-    "stories.0.jobs.2: Unknown job 'invent-job'.",
-    "stories.0.personas.0: Unknown persona 'nobody'.",
+    "personas.1.jobs.1.id: Duplicate job ID 'price-materials'. Job IDs are unique across the map, so give one of them a new ID.",
+    "personas.2.id: Duplicate ID 'builder'. Give one of them a new ID.",
+    "stories.0.jobs.1: Job 'price-materials' is listed twice. Remove one.",
+    "stories.0.jobs.2: Unknown job 'invent-job'. Use a job ID from the map's personas.",
+    "stories.0.personas.0: Unknown persona 'nobody'. Use a persona ID from the map's personas.",
   ]);
 });
 
@@ -155,7 +155,7 @@ test("ESM-901: warns about personas and jobs no story uses, untagged stories, un
   }));
   const messages = personaWarnings(map).map(warning => `${warning.path.join(".")} (${warning.itemId ?? "map"}): ${warning.message}`);
   assert.deepEqual(messages.sort(), [
-    "personas.1.jobs.0 (finance): Core job approve-estimate (Finance reviewer) has no stories.",
+    "personas.1.jobs.0 (finance): Core job approve-estimate (Finance reviewer) has no stories. Tag the stories that serve it, or review whether the job is still right.",
     "personas.2 (auditor): No story is for Auditor. Tag the stories that serve them, or remove the persona.",
     "personas.0.jobs.1.draft (builder): Confirm the drafted job send-estimate and remove draft: true. Stories that serve it have shipped.",
     "stories.3.personas.0 (FINANCE-201): For Finance reviewer, but serves none of their jobs, so it may not match a known need. Add the job it serves, or draft one.",
@@ -246,7 +246,7 @@ test("ESM-901: story-map edit adds and removes jobs and personas", async () => {
 
   const unknown = await proposeStoryMapEdit(source, [{ op: "add-job", id: "BUILDER-101", job: "invent-job" }]);
   assert.equal(unknown.valid, false);
-  assert.ok(unknown.newIssues.some(issue => issue.message === "Unknown job 'invent-job'."));
+  assert.ok(unknown.newIssues.some(issue => issue.message === "Unknown job 'invent-job'. Use a job ID from the map's personas."));
 
   await assert.rejects(proposeStoryMapEdit(source, [{ op: "remove-persona", id: "BUILDER-101", persona: "finance" }]), /BUILDER-101 has no persona finance\./);
 
@@ -802,7 +802,7 @@ test("ESM-907: accepts persona context with any of its parts", () => {
 
 test("ESM-907: rejects empty context, unknown fields and parts over their limits", () => {
   const empty = issuesOf(withContext(document => { document.personas[0].context = { draft: true }; }));
-  assert.deepEqual(empty, ["personas.0.context: Context needs at least one of success, usesToday and constraints."]);
+  assert.deepEqual(empty, ["personas.0.context: Context needs at least one of success, usesToday and constraints. Add one, or remove context."]);
 
   const issues = issuesOf(withContext(document => {
     Object.assign(document.personas[0].context, {
@@ -938,14 +938,14 @@ test("ESM-908: validate warns when a core job has no stories, in place of the us
     document.stories.find(story => story.id === "BUILDER-101").jobs = ["send-estimate"];
   }));
   const messages = personaWarnings(map).map(warning => warning.message);
-  assert.ok(messages.includes("Core job price-materials (Builder) has no stories."), messages.join("\n"));
+  assert.ok(messages.includes("Core job price-materials (Builder) has no stories. Tag the stories that serve it, or review whether the job is still right."), messages.join("\n"));
   assert.ok(!messages.some(message => message.startsWith("Job price-materials")));
 
   // A job that is not core keeps the usual warning.
   const other = parse(tagged(document => {
     document.stories.find(story => story.id === "BUILDER-103").jobs = ["price-materials"];
   }));
-  assert.ok(personaWarnings(other).some(warning => warning.message === "Job send-estimate (Builder) has no stories."));
+  assert.ok(personaWarnings(other).some(warning => warning.message === "Job send-estimate (Builder) has no stories. Tag the stories that serve it, or review whether the job is still right."));
 });
 
 test("ESM-908: diff reports a change of core job when jobs are reordered", () => {
@@ -1007,7 +1007,7 @@ test("ESM-910: rejects unknown activities, unknown fields and steps over their l
     document.personas[0].jobs[1].steps = Array.from({ length: 7 }, (_, index) => ({ title: `Step ${index}` }));
     document.personas[1].jobs[0].steps = [{ title: "x".repeat(61) }, { title: " " }];
   }));
-  assert.ok(issues.includes("personas.0.jobs.0.steps.1.activity: Unknown activity 'audit'."), issues.join("\n"));
+  assert.ok(issues.includes("personas.0.jobs.0.steps.1.activity: Unknown activity 'audit'. Use an activity ID from the map."), issues.join("\n"));
   for (const path of ["personas.0.jobs.0.steps.2.owner", "personas.0.jobs.1.steps", "personas.1.jobs.0.steps.0.title", "personas.1.jobs.0.steps.1.title"]) {
     assert.ok(issues.some(issue => issue.startsWith(`${path}: `)), `${path} in ${issues.join("\n")}`);
   }
@@ -1044,7 +1044,7 @@ test("ESM-910: validate warns about a step with no stories in its activity, unle
     document.personas[0].jobs[1].steps = [{ title: "Send", activity: "submit" }];
     document.stories.find(story => story.id === "BUILDER-103").jobs = ["price-materials"];
   })));
-  assert.ok(empty.includes("personas.0.jobs.1: Job send-estimate (Builder) has no stories."), empty.join("\n"));
+  assert.ok(empty.includes("personas.0.jobs.1: Job send-estimate (Builder) has no stories. Tag the stories that serve it, or review whether the job is still right."), empty.join("\n"));
   assert.ok(!empty.some(message => message.startsWith("personas.0.jobs.1.steps")), empty.join("\n"));
 });
 

@@ -22,6 +22,16 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 - `init` says when the story map section of `AGENTS.md` differs from the package's, and never replaces it. The `AGENTS.md` template gains a **Plan the work** section, and the skill from `init --skill` carries the planning rules in full. `storyMapPlan` and `deliveryPlanGuideLink` are exported.
 - See [Upgrade to 0.7.7](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-077).
 
+### Rules as checks
+
+- **Each validation problem names its rule and links to the guide:** Every problem `validate` reports now has a stable rule ID, such as `missing-status-reason`, and a link to the section of the guide that explains how to fix it, so an agent can fix a problem without reading the whole guide. Text output gives the rule in brackets with the link on the next line, GitHub annotations are titled with the rule, and JSON issues gain `rule` and `help`. The MCP server's `validate_map`, `story-map actions` and the board's Actions tab show them too. Most messages now also say what to change. See [Validation rules](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#validation-rules).
+
+**For developers**
+
+- `StoryMapIssue` has a required `rule`, and `StoryMapCheckIssue` adds `help`. A warning's `rule` is its `kind`. The `--format json` `version` stays 1, since the fields are additions.
+- Links go to the repository's own `docs/story-map.md` when it has the heading, otherwise to the guide on GitHub at the installed version's tag. `storyMapRules`, `storyMapRuleIds`, `storyMapRuleHelp`, `storyMapRuleLinker` and `isStoryMapRuleId` are exported, and `getStoryMapActions` takes a `help` option. Action groups gain `rule` and `help`.
+- Text output and annotation titles change, so scripts that compare them exactly should match on `rule` instead.
+
 ## 0.7.6
 
 0.7.6 lets people triage the map without editing the YAML, and gives agents new ways into it.

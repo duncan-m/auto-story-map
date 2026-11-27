@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { countStoryMapActions, filterStoryMapActions, getStoryMapActions, isStoryMapActionItemType, isStoryMapActionKind, storyMapActionItemTypes, storyMapActionKindOrder, type StoryMapAction, type StoryMapActionFilter } from "../actions.js";
+import { storyMapRuleLinker } from "../check.js";
 import { buildStoryMapTests, findStoryTests } from "../tests.js";
 import type { StoryMapTests } from "../tests-index.js";
 import { ArgumentError, count, defineCommand, escapeText, loadInputsOrReport, loadMapOrReport, optionValue, printJson, readFormat, report } from "./shared.js";
@@ -73,7 +74,7 @@ export default defineCommand({
       process.exitCode = 1;
       return;
     }
-    const all = getStoryMapActions(loaded.map, { tests, locate: loaded.locate });
+    const all = getStoryMapActions(loaded.map, { tests, locate: loaded.locate, help: await storyMapRuleLinker(options.root) });
     const groups = filterStoryMapActions(all, options.filter);
     const total = countStoryMapActions(groups);
 
@@ -88,8 +89,9 @@ export default defineCommand({
     const lines: string[] = [];
     for (const group of groups) {
       if (lines.length) lines.push("");
-      lines.push(`${group.title} (${group.actions.length}): ${group.needsPerson ? "needs a person" : "a person or an agent"}`);
+      lines.push(`${group.title} (${group.actions.length}): ${group.needsPerson ? "needs a person" : "a person or an agent"} [${group.rule}]`);
       lines.push(`  ${group.why}`);
+      lines.push(`  help: ${escapeText(group.help)}`);
       for (const action of group.actions) {
         const at = action.line ? `, line ${action.line}` : "";
         lines.push(`  - ${itemLabel(action)}${at}: ${escapeText(action.message)}`);

@@ -233,12 +233,15 @@ test("ESM-742: validate --format json returns each error with its position and Y
     path: ["stories", 3, "release"],
     target: "stories.3.release (FINANCE-201)",
     itemId: "FINANCE-201",
-    message: "Unknown release 'finance-later'.",
+    message: "Unknown release 'finance-later'. Use a release ID from the map.",
+    rule: "unknown-reference",
+    help: "docs/story-map.md#validate-a-change",
   }]);
 
   const unreadable = JSON.parse(run("validate", "--format", "json", join(directory, "missing.yaml")).stdout);
   assert.equal(unreadable.maps[0].issues[0].severity, "error");
   assert.match(unreadable.maps[0].issues[0].message, /ENOENT/);
+  assert.equal(unreadable.maps[0].issues[0].rule, "unreadable-map");
 });
 
 test("ESM-742: validate --format json fails warnings with --strict", async t => {

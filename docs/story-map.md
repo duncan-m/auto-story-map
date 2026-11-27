@@ -39,8 +39,9 @@ These steps work from 0.7.0 or later. Existing maps stay valid.
 1. From your host repo, run `npm install auto-story-map@0.7.7` and commit the dependency and lockfile changes together.
 2. `story-map validate` prints a new `notice` until the map records whether to use delivery plans. Notices never fail validation, even with `--strict`. Ask the person the question in [Choose whether to use delivery plans](#choose-whether-to-use-delivery-plans), and record their answer with `npx --no-install story-map settings --plans <folder>` or `--plans off`. Do not copy the planning rules into `AGENTS.md` before they say yes.
 3. `StoryMapIssueSeverity` now includes `"notice"`, and `checkStoryMap` returns a `notices` count. Host code that switches over every severity, or reads `--format json`, needs a case for it.
-4. `init` now says when the story map section of `AGENTS.md` differs from the package's. Compare yours with `node_modules/auto-story-map/templates/AGENTS.md`, which gains a **Plan the work** section, and take the paragraphs you want. Copy the new guide over `docs/story-map.md` too, so links to [Write a delivery plan](#write-a-delivery-plan) open in your copy. Until then, the notice links to the guide on GitHub.
-5. Run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
+4. Every `validate` problem now names its [rule](#validation-rules) and links to the guide. Text output adds ` [rule]` to the end of each problem and a `help:` line under it, GitHub annotations are titled with the rule instead of “Story map”, and JSON issues gain `rule` and `help`. Many messages also say what to change. Scripts that compare validate's text or annotation titles exactly need updating, and should match on `rule` from `--format json` instead. `StoryMapIssue` has a required `rule`, so host code that builds its own issues must set one.
+5. `init` now says when the story map section of `AGENTS.md` differs from the package's. Compare yours with `node_modules/auto-story-map/templates/AGENTS.md`, which gains a **Plan the work** section, and take the paragraphs you want. Copy the new guide over `docs/story-map.md` too, so links to [Write a delivery plan](#write-a-delivery-plan) open in your copy. Until then, the notice links to the guide on GitHub.
+6. Run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
 
 ## Upgrade to 0.7.0
 
@@ -671,11 +672,14 @@ In the library source repo, run `npm run build && npm run validate` or `npm test
 npx --no-install story-map validate product/story-map.yaml
 ```
 
-Each problem is reported as `file:line:column` with the item it belongs to, for example:
+Each problem is reported as `file:line:column` with the item it belongs to, then what to change, the [rule](#validation-rules) it breaks in brackets and, on the next line, a link to the section of this guide that explains it, for example:
 
 ```text
-product/story-map.yaml:74:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'.
+product/story-map.yaml:74:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'. Use a release ID from the map. [unknown-reference]
+  help: docs/story-map.md#validate-a-change
 ```
+
+The link goes to your repository's copy of this guide when it has that heading, and otherwise to the guide on GitHub at the installed version's tag.
 
 The checks cover YAML syntax, duplicate keys and IDs, missing and unknown fields, invalid statuses, broken references and missing customer-facing copy. Customer copy is optional, and internal stories never need it, but three cases are errors: an `all-users` map with no map-level `customer` copy, and a story with customer copy whose activity or release has none. All problems are reported in one run.
 
@@ -693,13 +697,13 @@ Three optional checks look beyond the map file. Run them from the repository roo
 npx --no-install story-map validate --check-sources --plans docs --tests test product/story-map.yaml
 ```
 
-Run the validator in CI for story map changes. In GitHub Actions, add `--format github` so each problem appears as an annotation on the PR diff. Errors appear as error annotations and warnings as warning annotations:
+Run the validator in CI for story map changes. In GitHub Actions, add `--format github` so each problem appears as an annotation on the PR diff. Errors appear as error annotations and warnings as warning annotations. Each annotation is titled with its rule, and its message ends with the guide link:
 
 ```yaml
 - run: npx --no-install story-map validate --format github --check-sources product/story-map.yaml
 ```
 
-For an agent or script, add `--format json`. It prints one document, with `format: "auto-story-map.validation"`, `version: 1`, `valid` for the whole run and a `maps` entry for each file: its `valid`, `counts` of activities, releases and stories, the number of `errors`, `warnings` and `notices`, which optional checks ran, and `issues`. Each issue has its `severity`, `file` when it is not in the map, `line`, `column`, the YAML `path`, the readable `target`, the `itemId`, the `message` and, for a warning about the map, its `kind`, such as `missing-estimate` (see [See what the map is waiting for](#see-what-the-map-is-waiting-for)). Exit codes are the same as for text, so `--strict` still fails on warnings:
+For an agent or script, add `--format json`. It prints one document, with `format: "auto-story-map.validation"`, `version: 1`, `valid` for the whole run and a `maps` entry for each file: its `valid`, `counts` of activities, releases and stories, the number of `errors`, `warnings` and `notices`, which optional checks ran, and `issues`. Each issue has its `severity`, `file` when it is not in the map, `line`, `column`, the YAML `path`, the readable `target`, the `itemId`, the `message`, the `rule` and its `help` link and, for a warning about the map, its `kind`, which is the same as its rule, such as `missing-estimate` (see [See what the map is waiting for](#see-what-the-map-is-waiting-for)). `rule` and `help` were added in 0.7.7, so `version` is still 1. Exit codes are the same as for text, so `--strict` still fails on warnings:
 
 ```json
 {
@@ -709,13 +713,60 @@ For an agent or script, add `--format json`. It prints one document, with `forma
   "path": ["stories", 3, "release"],
   "target": "stories.3.release (FINANCE-201)",
   "itemId": "FINANCE-201",
-  "message": "Unknown release 'finance-later'."
+  "message": "Unknown release 'finance-later'. Use a release ID from the map.",
+  "rule": "unknown-reference",
+  "help": "docs/story-map.md#validate-a-change"
 }
 ```
 
-In code, `checkStoryMap(source, options)` returns the same result for one map without printing it. It takes `root`, `checkSources`, `plans`, `tests` and `strict`.
+In code, `checkStoryMap(source, options)` returns the same result for one map without printing it. It takes `root`, `checkSources`, `plans`, `tests` and `strict`. The [MCP server](#serve-the-map-over-mcp)'s `validate_map` tool returns it too.
 
-In code, `parseStoryMap` throws a `StoryMapValidationError`. Its `issues` list gives each problem’s `severity`, `path`, `message`, `line`, `column` and the `itemId` of the activity, release or story it belongs to. `storyMapWarnings(document)` returns the warnings for a parsed map.
+In code, `parseStoryMap` throws a `StoryMapValidationError`. Its `issues` list gives each problem’s `severity`, `path`, `message`, `rule`, `line`, `column` and the `itemId` of the activity, release or story it belongs to. `storyMapWarnings(document)` returns the warnings for a parsed map.
+
+### Validation rules
+
+Every problem names the rule it breaks, so an agent or script can match it without reading the message, and links to the section that explains it. Rule IDs never change once released. Messages may be reworded, so match on `rule`, not `message`. In code, `storyMapRules` lists every rule with its section, and `storyMapRuleHelp(rule)` gives its link.
+
+| Rule | Severity | What it checks | Explained in |
+| --- | --- | --- | --- |
+| `yaml-syntax` | error | The file is not valid YAML. | [Validate a change](#validate-a-change) |
+| `duplicate-key` | error | A key appears twice in the same mapping. | [Validate a change](#validate-a-change) |
+| `unknown-field` | error | A field the map format does not have. | [Check the map as you edit](#check-the-map-as-you-edit) |
+| `missing-field` | error | A required field is left out. | [Check the map as you edit](#check-the-map-as-you-edit) |
+| `invalid-value` | error | A value of the wrong type, length or format, or not one of the allowed values. | [Check the map as you edit](#check-the-map-as-you-edit) |
+| `duplicate-id` | error | Two personas, jobs, activities, releases or stories share an ID. | [Validate a change](#validate-a-change) |
+| `unknown-reference` | error | A reference to an activity, release, persona, job or story that is not in the map. | [Validate a change](#validate-a-change) |
+| `duplicate-reference` | error | The same job, persona or dependency is listed twice on a story. | [Validate a change](#validate-a-change) |
+| `dependency-cycle` | error | A story depends on itself, directly or through other stories. | [Record dependencies](#record-dependencies) |
+| `empty-persona-context` | error | A persona's context has none of its fields. | [Describe a persona's context](#describe-a-personas-context) |
+| `customer-copy-required` | error | Customer-facing copy is missing where the audience rules need it. | [Audience settings](#audience-settings) |
+| `invalid-source-path` | error | A source is not a valid path. | [Validate a change](#validate-a-change) |
+| `missing-source` | error | A repository-relative source does not exist. | [Validate a change](#validate-a-change) |
+| `missing-heading` | error | A source's `#heading` matches no heading in the Markdown file. | [Validate a change](#validate-a-change) |
+| `source-too-large` | error | A source's Markdown file is too large to check its `#heading`. | [Validate a change](#validate-a-change) |
+| `outside-repository` | error | A source, plan or test path leaves the repository. | [Validate a change](#validate-a-change) |
+| `plans-not-found` | error | A `--plans` path has no Markdown files. | [Validate a change](#validate-a-change) |
+| `unknown-plan-story` | error | A plan mentions a story ID that is not in the map. | [Validate a change](#validate-a-change) |
+| `tests-not-found` | error | A `--tests` path has no test files. | [Link tests to stories](#link-tests-to-stories) |
+| `unknown-test-story` | error | A test name has a story ID that is not in the map. | [Link tests to stories](#link-tests-to-stories) |
+| `test-file-too-large` | warning | A test file is too large to read. | [Link tests to stories](#link-tests-to-stories) |
+| `unreadable-map` | error | The map file could not be read. | [Validate a change](#validate-a-change) |
+| `choose-delivery-plans` | notice | Nobody has chosen whether to use delivery plans. | [Choose whether to use delivery plans](#choose-whether-to-use-delivery-plans) |
+| `job-without-stories` | warning | No story serves a job to be done. | [Personas and jobs to be done](#personas-and-jobs-to-be-done) |
+| `step-without-stories` | warning | A job's step has no stories in its activity. | [Break a job into steps](#break-a-job-into-steps) |
+| `persona-without-stories` | warning | No story is for a persona. | [Personas and jobs to be done](#personas-and-jobs-to-be-done) |
+| `stories-without-personas` | warning | Most active stories say nothing about who they are for. | [Personas and jobs to be done](#personas-and-jobs-to-be-done) |
+| `persona-without-job` | warning | A story is for a persona but serves none of their jobs. | [Personas and jobs to be done](#personas-and-jobs-to-be-done) |
+| `confirm-draft-job` | warning | A drafted job has shipped stories but is still a draft. | [Confirm a draft](#confirm-a-draft) |
+| `confirm-draft-context` | warning | A persona's drafted context has shipped stories but is still a draft. | [Confirm a draft](#confirm-a-draft) |
+| `confirm-draft-impact` | warning | A release's drafted impact has shipped stories but is still a draft. | [Confirm a draft](#confirm-a-draft) |
+| `missing-estimate` | warning | A story has no estimate while others in its release do. | [Estimate effort](#estimate-effort) |
+| `story-without-tests` | warning | An in-progress or merged story has no tagged tests. | [Link tests to stories](#link-tests-to-stories) |
+| `missing-impact` | warning | A release with active stories has no impact. | [Release notes and impact](#release-notes-and-impact) |
+| `missing-status-reason` | warning | A blocked or cut story has no `statusReason`. | [Blocked and cut stories](#blocked-and-cut-stories) |
+| `depends-on-cut` | warning | A story depends on a cut story. | [Record dependencies](#record-dependencies) |
+
+A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule.
 
 ### Check the map as you edit
 
@@ -737,6 +788,8 @@ To act on several items at once, tick their rows, or the box in the table's head
 
 One row of filters sits above the table: a **Category** switch, **Action** and **Release** dropdowns, and **Needs a person**. Each choice shows its count. The filters are links, so they work without JavaScript, and each offers only the choices that match the other filters. **Copy** and the row checkboxes need [`board.js`](#integrate-with-a-product): without it the table only reads, and `story-map actions` prints the commands. An empty tab says “Nothing is waiting on the map” and when it was checked. Story and release panels show their own actions, each with its **Copy** button, and a link to the tab narrowed to them. Persona pages do not: a job with no stories already says so on its lane. Cards show nothing new.
 
+Under each problem, the rule it breaks, such as `missing-estimate`, links to the section of this guide that explains it, on GitHub at the installed version's tag. See [Validation rules](#validation-rules).
+
 Nothing is dismissed by hand: an action goes away when the map changes. The tab lists validate's warnings about the map and, when the host passes a [tests index](#link-tests-to-stories), in-progress and merged stories that no test names. Checks that need the repository's files, such as missing sources, are not on the tab. The customer view never includes actions.
 
 To show each action's line in the map, linked with the board's `sourceBaseUrl`, pass the map's text and path to `getStoryMapPage` or `getStoryMapForViewer` as `mapFile: { path: "product/story-map.yaml", source }`. `story-map preview` does this for you.
@@ -750,7 +803,7 @@ npx --no-install story-map actions --format json --kind missing-estimate
 npx --no-install story-map actions --item-type persona
 ```
 
-`--tests <path>` scans tests as `validate --tests` does, and `--tests-index <file>` reads `story-map tests` output instead. It exits 0 whatever it finds. Agents may act on actions that do not need a person. They must leave the others, drafts and estimates, to a person. In code, `getStoryMapActions(document, { tests, locate })` returns the groups.
+Each group gives its rule in brackets and a `help:` link, which goes to your repository's copy of this guide when it has the heading. In JSON, each group has `rule` and `help`. `--tests <path>` scans tests as `validate --tests` does, and `--tests-index <file>` reads `story-map tests` output instead. It exits 0 whatever it finds. Agents may act on actions that do not need a person. They must leave the others, drafts and estimates, to a person. In code, `getStoryMapActions(document, { tests, locate })` returns the groups.
 
 ## Review a map change
 

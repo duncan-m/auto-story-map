@@ -45,3 +45,5 @@ npx --no-install story-map diff origin/<base branch>
 ```
 
 `edit` and `add` print a dry run. Check it, then run the command again with `--write`. Add `--format json` to the read commands for output you can parse.
+
+Each problem `validate` reports names its rule in brackets, such as `[missing-status-reason]`, with a `help:` link to the guide section that explains it. Read that section to fix the problem, rather than the whole guide.

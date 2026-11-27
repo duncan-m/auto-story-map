@@ -78,7 +78,7 @@ test("ESM-153: validate prints the notice in every format", async t => {
   assert.match(text.stderr, /^product\/story-map\.yaml: notice: Delivery plans: not chosen yet\./);
   assert.match(text.stdout, /valid \(.*\)(, \d+ warnings?)?, 1 notice\n/);
   const github = run("validate", "--format", "github", "--strict", "product/story-map.yaml");
-  assert.match(github.stdout, /^::notice file=product\/story-map\.yaml,title=Story map::Delivery plans: not chosen yet/);
+  assert.match(github.stdout, /^::notice file=product\/story-map\.yaml,title=choose-delivery-plans::Delivery plans: not chosen yet/);
   const json = JSON.parse(run("validate", "--format", "json", "product/story-map.yaml").stdout);
   assert.equal(json.maps[0].notices, 1);
   assert.equal(json.maps[0].issues[0].severity, "notice");

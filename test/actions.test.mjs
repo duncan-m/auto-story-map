@@ -126,7 +126,7 @@ test("ESM-128: gives every warning a kind", () => {
   }
 });
 
-test("ESM-128: validate --format json includes each warning's kind, and text output does not change", async () => {
+test("ESM-128: validate --format json includes each warning's kind, and text output names it as the rule", async () => {
   const result = await checkStoryMap(source);
   assert.ok(result.issues.length > 0);
   // The delivery plans notice is a question, not a warning, so it has no kind.
@@ -138,7 +138,8 @@ test("ESM-128: validate --format json includes each warning's kind, and text out
     const issues = JSON.parse(json.stdout).maps[0].issues;
     assert.ok(issues.every(issue => issue.severity === "notice" || storyMapWarningKinds.includes(issue.kind)));
     const text = spawnSync(process.execPath, [cli, "validate", "map.yaml"], { cwd: dir, encoding: "utf8" });
-    assert.doesNotMatch(text.stderr, /missing-estimate|confirm-draft/);
+    // ESM-159: a warning's kind is its rule, which text prints in brackets.
+    assert.match(text.stderr, / \[missing-estimate\]\n  help: /);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -282,7 +283,7 @@ test("ESM-128: the table puts Category before Item and Action after Problem, and
   assert.deepEqual(headings.filter(Boolean), ["Category", "Item", "Problem", "Action", "Copy command"]);
   assert.match(html, /<td class="esm-action-type"><span class="esm-item-type" data-item-type="persona">Persona<\/span><\/td><th scope="row" class="esm-action-item">/);
   assert.match(html, /<span class="esm-item-type" data-item-type="map">Map<\/span>/);
-  assert.match(html, /<\/th><td class="esm-action-message">[^<]*<\/td><td class="esm-action-kind">/);
+  assert.match(html, /<\/th><td class="esm-action-message">[^<]*<a class="esm-action-rule" href="[^"]+#[^"]+"[^>]*>[a-z-]+<\/a><\/td><td class="esm-action-kind">/);
 
   assert.deepEqual(readStoryMapFilters(new URLSearchParams("action-item-type=release")).actions, { itemType: "release" });
   assert.equal(readStoryMapFilters(new URLSearchParams("action-item-type=nonsense")).actions, undefined);
@@ -377,7 +378,7 @@ test("ESM-128: story-map actions prints the tab's list, filtered, as text or JSO
 
     const text = run("--release", "r1");
     assert.equal(text.status, 0);
-    assert.match(text.stdout, /^Confirm a release's drafted impact \(1\): needs a person\n/);
+    assert.match(text.stdout, /^Confirm a release's drafted impact \(1\): needs a person \[confirm-draft-impact\]\n  [^\n]+\n  help: \S+#confirm-a-draft\n/);
     assert.match(text.stdout, /  - r1 \(First\), line \d+: Confirm the drafted impact for “Time to quote”[^\n]*\n    npx story-map confirm r1 --impact 1 --write\n/);
     assert.match(text.stdout, /2 actions, 2 for a person only\. Agents act only on the others\.\n$/);
 
