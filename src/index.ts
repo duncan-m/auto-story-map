@@ -73,6 +73,8 @@ export type { EvidenceBranch, EvidenceClaim, EvidenceCommit, EvidenceMention, Ev
 export { changelogVersions, RepositorySurveyError, suggestedReleaseId, surveyCodeFileMaxBytes, surveyEntriesMaxItems, surveyHeadingsMaxItems, surveyItemsMaxItems, surveyRepository, surveyTextMaxLength, surveyTodosMaxItems, tagVersion } from "./survey.js";
 export type { RepositorySurvey, RepositorySurveyOptions, SurveyChangelogVersion, SurveyDoc, SurveyHeading, SurveyPlan, SurveyRelease, SurveyTag, SurveyTodo } from "./survey.js";
 export { hasAgentsSection, knownSetupVersionsFrom, loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, setupParts, stampSetupFile } from "./setup-versions.js";
+export { currentSetupTemplateHashes, findSetupBehind, isSetupPartBehind, setupBehindMessage, setupPartPaths } from "./setup-behind.js";
+export type { FindSetupBehindOptions, SetupPartBehind } from "./setup-behind.js";
 export type { KnownSetupVersions, ReleasedSetupTemplate, SetupFileVersion, SetupPart } from "./setup-versions.js";
 export { describeUpgradeState, isUpgradePartBehind, upgradePartIds, upgradeReport, workflowCommands } from "./upgrade.js";
 export type { UpgradePart, UpgradePartId, UpgradePartState, UpgradeRecommendation, UpgradeReport, UpgradeReportOptions } from "./upgrade.js";

@@ -48,6 +48,12 @@ Parts set up before 0.7.8 have no version: the start marker is plain `<!-- auto-
 
 In code, `readSetupFileVersion(part, text, known)` from `auto-story-map` reads a part's file, where `part` is `agents`, `guide` or `workflow`, `text` is the whole file and `known` comes from `loadKnownSetupVersions()`. It returns the recorded version and hash, the hash of the body now, `knownVersions` for the earlier releases it matches, `unedited`, and `from`, the version it came from when that is known. It returns `undefined` for an `AGENTS.md` without a complete story map section.
 
+Once a part comes from an older version than the installed package, and the package has changed that part's template since, `story-map validate` prints one `setup-behind` notice, such as:
+
+> This repository's set-up is from 0.7.5, and the package is 0.7.8, which changes the story map section of AGENTS.md and docs/story-map.md. Run `story-map upgrade` to see what changes.
+
+It names every part that is behind, in one notice, and never fails validation, even with `--strict`. It stays quiet for a part that is current, missing, or unmarked and matching an earlier template that has not changed since. A part that matches no known template is from an unknown version, so it never triggers the notice either: run `story-map upgrade` to compare it. Your edits to a part do not matter here, only the version it came from. In code, `findSetupBehind(root)` returns the parts that are behind.
+
 ### Review the set-up after an upgrade
 
 `story-map upgrade` compares each part of the set-up with the installed version of the package and says what this version would change. It writes nothing:
@@ -829,6 +835,7 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `test-file-too-large` | warning | A test file is too large to read. | [Link tests to stories](#link-tests-to-stories) |
 | `unreadable-map` | error | The map file could not be read. | [Validate a change](#validate-a-change) |
 | `choose-delivery-plans` | notice | Nobody has chosen whether to use delivery plans. | [Choose whether to use delivery plans](#choose-whether-to-use-delivery-plans) |
+| `setup-behind` | notice | A part of the set-up comes from an older version whose template has changed since. | [What the set-up markers mean](#what-the-set-up-markers-mean) |
 | `job-without-stories` | warning | No story serves a job to be done. | [Personas and jobs to be done](#personas-and-jobs-to-be-done) |
 | `step-without-stories` | warning | A job's step has no stories in its activity. | [Break a job into steps](#break-a-job-into-steps) |
 | `persona-without-stories` | warning | No story is for a persona. | [Personas and jobs to be done](#personas-and-jobs-to-be-done) |

@@ -2506,7 +2506,9 @@ stories:
     title: Remind hosts whose set-up falls behind the package
     activity: set-up
     release: v0-7-8
-    status: planned
+    status: merged
+    tokens: 2814037
+    estimatedCostUsd: 1.69
     dependsOn:
       - ESM-166
       - ESM-153
@@ -2517,6 +2519,7 @@ stories:
     summary: validate prints one notice, never failing even with --strict, when a part of the set-up comes from an older version whose template has changed since, pointing to story-map upgrade.
     sources:
       - docs/plans/upgrade-review.md#7-remind-hosts-that-fall-behind
+      - docs/story-map.md#what-the-set-up-markers-mean
   - id: ESM-173
     title: Review edited AGENTS.md rules one at a time
     activity: set-up

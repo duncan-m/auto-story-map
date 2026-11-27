@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 and ESM-167 are merged, and ESM-168 to ESM-173 are planned. Decisions A to E are made. None has an agreed estimate yet.
+Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166, ESM-167 and ESM-172 are merged, and ESM-168 to ESM-171 and ESM-173 are planned. Decisions A to E are made. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 
@@ -182,6 +182,8 @@ An `init` run on a host that is already set up hands over to `upgrade`, instead 
 > This repository's set-up is from 0.7.5, and the package is 0.7.8. Run `story-map upgrade` to see what changes.
 
 It uses the `notice` severity proposed in ESM-153, so it never fails validation, even with `--strict`. It shows once per run, not once per part. Agents run validate after each map change, so the reminder reaches the person through them soon after an upgrade.
+
+As built, the notice has the rule `setup-behind` and names each part that is behind, with its version when they differ. A part is behind when the version it came from is older than the package and the template it came from, its recorded hash or the known earlier template its body matches, is not one this version writes. Edits do not matter, only the template. A part that is missing, or unmarked and matching no known template, is from an unknown version and gets no notice. `findSetupBehind(root)` does the check, on `readSetupFileVersion` from ESM-166.
 
 ## 8. Review edited rules one at a time
 

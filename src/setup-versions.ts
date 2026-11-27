@@ -161,7 +161,8 @@ export interface ReleasedSetupTemplate {
   text: string;
 }
 
-function compareVersions(a: string, b: string) {
+/** Orders release versions such as `0.7.10` after `0.7.9`: negative when `a` is older, positive when newer. */
+export function compareVersions(a: string, b: string) {
   const parts = (version: string) => version.split(/[.-]/).map(part => Number.parseInt(part, 10) || 0);
   const [left, right] = [parts(a), parts(b)];
   for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
