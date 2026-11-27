@@ -2469,7 +2469,9 @@ stories:
     title: Apply the recommended set-up changes in simple mode
     activity: set-up
     release: v0-7-8
-    status: planned
+    status: merged
+    tokens: 9500544
+    estimatedCostUsd: 4.62
     dependsOn:
       - ESM-167
       - ESM-168
@@ -2482,6 +2484,7 @@ stories:
     summary: story-map upgrade --mode simple --write replaces unedited parts, adds what is missing, keeps every part the host edited and asks the product choices not yet made. --apply applies the parts chosen in advanced mode.
     sources:
       - docs/plans/upgrade-review.md#4-apply-the-recommended-changes-in-simple-mode
+      - docs/story-map.md#apply-the-changes
   - id: ESM-170
     title: Ask once for simple or advanced upgrade mode
     activity: set-up

@@ -1,6 +1,8 @@
-import { describeUpgradeState, upgradeReport, type AgentsRuleReview, type AgentsRuleState, type UpgradePart, type UpgradeReport } from "../upgrade.js";
+import { createInterface } from "node:readline/promises";
+import { describeUpgradeState, upgradeReport, type AgentsRuleReview, type AgentsRuleState, type UpgradePart, type UpgradePartId, type UpgradeReport } from "../upgrade.js";
+import { applyUpgrade, parseUpgradeParts, type UpgradeAnswers, type UpgradeApplyMode, type UpgradeApplyResult, type UpgradeQuestion } from "../upgrade-apply.js";
 import { upgradeOverviewLines } from "../upgrade-overview.js";
-import { defineCommand, escapeText, optionValue, printJson, readFormat } from "./shared.js";
+import { ArgumentError, defineCommand, escapeText, optionValue, printJson, readFormat } from "./shared.js";
 
 const formats = ["text", "markdown", "json"] as const;
 
@@ -9,6 +11,11 @@ interface UpgradeOptions {
   root: string;
   map?: string;
   diff: boolean;
+  /** Set by --mode, or advanced by --apply. Left out, the command only reports. */
+  mode?: UpgradeApplyMode;
+  parts?: UpgradePartId[];
+  write: boolean;
+  answers: UpgradeAnswers;
 }
 
 const pad = (text: string, width: number) => text.padEnd(width);
@@ -123,25 +130,53 @@ export function upgradeMarkdown(report: UpgradeReport): string {
 
 export default defineCommand({
   parse(rest: string[]): UpgradeOptions | null {
-    const options: UpgradeOptions = { format: "text", root: ".", diff: false };
+    const options: UpgradeOptions = { format: "text", root: ".", diff: false, write: false, answers: {} };
     for (let index = 0; index < rest.length; index++) {
       const arg = rest[index];
-      if (arg === "--diff") {
-        options.diff = true;
+      if (arg === "--diff" || arg === "--write") {
+        options[arg === "--diff" ? "diff" : "write"] = true;
         continue;
       }
       const name = arg.split("=")[0];
-      if (!["--format", "--root", "--map"].includes(name)) return null;
+      if (!["--format", "--root", "--map", "--mode", "--apply", "--plans", "--story-ids"].includes(name)) return null;
       const [value, next] = optionValue(rest, index, name);
       index = next;
       if (name === "--format") options.format = readFormat(value, formats);
       else if (name === "--root") options.root = value;
-      else options.map = value;
+      else if (name === "--map") options.map = value;
+      else if (name === "--mode") {
+        if (value !== "simple" && value !== "advanced") throw new ArgumentError(`--mode must be simple or advanced, not ${value}`);
+        options.mode = value;
+      } else if (name === "--apply") {
+        try {
+          options.parts = parseUpgradeParts(value);
+        } catch (error) {
+          throw new ArgumentError((error as Error).message);
+        }
+      } else if (name === "--plans") options.answers.plans = value === "off" ? false : value;
+      else {
+        if (value !== "next" && value !== "lowest-free") throw new ArgumentError(`--story-ids must be next or lowest-free, not ${value}`);
+        options.answers.storyIds = value;
+      }
+    }
+    if (options.parts) {
+      if (options.mode === "simple") throw new ArgumentError("--apply names the parts to take in advanced mode; simple mode takes the recommended ones");
+      options.mode = "advanced";
+    }
+    const applying = options.mode === "simple" || !!options.parts;
+    if (!applying && (options.write || options.answers.plans !== undefined || options.answers.storyIds !== undefined)) {
+      throw new ArgumentError("--write, --plans and --story-ids apply the review: add --mode simple, or --apply <parts> for the parts you accept");
     }
     return options;
   },
 
   async run(options) {
+    if (options.mode === "advanced" && !options.parts) {
+      options.diff = true;
+    } else if (options.mode) {
+      await runApply(options);
+      return;
+    }
     let report;
     try {
       report = await upgradeReport({ root: options.root, map: options.map });
@@ -152,6 +187,119 @@ export default defineCommand({
     }
     if (options.format === "json") printJson("upgrade", report);
     else if (options.format === "markdown") process.stdout.write(upgradeMarkdown(report));
-    else console.log(upgradeText(report, options.diff));
+    else {
+      console.log(upgradeText(report, options.diff));
+      if (options.mode === "advanced") console.log("\nTo apply the parts you accept, run again with --apply <parts> --write, such as --apply guide,workflow.");
+    }
   },
 });
+
+/** True when a person is at a terminal to answer questions, and the output is for them. */
+const atTerminal = (options: UpgradeOptions) => options.format === "text" && !!process.stdin.isTTY && !!process.stdout.isTTY;
+
+async function askOnTerminal(questions: readonly UpgradeQuestion[]): Promise<UpgradeAnswers> {
+  const lines = createInterface({ input: process.stdin, output: process.stderr });
+  const answers: UpgradeAnswers = {};
+  try {
+    for (const question of questions) {
+      const hint = question.part === "plans" ? "a folder such as docs/plans, off, or Enter for not now" : "next, lowest-free, or Enter for not now";
+      for (;;) {
+        const answer = (await lines.question(`${question.question} (${hint}; see ${question.link}) `)).trim();
+        if (!answer) break;
+        if (question.part === "plans") {
+          answers.plans = answer === "off" ? false : answer;
+          break;
+        }
+        if (answer === "next" || answer === "lowest-free") {
+          answers.storyIds = answer;
+          break;
+        }
+        console.error("Answer next or lowest-free, or press Enter for not now.");
+      }
+    }
+  } finally {
+    lines.close();
+  }
+  return answers;
+}
+
+const changeWords: Record<UpgradeApplyResult["changes"][number]["action"], string> = {
+  add: "add",
+  replace: "replace",
+  update: "update",
+  record: "record",
+  ask: "ask",
+  keep: "keep",
+};
+
+/** What applying the review changes, as people read it at a terminal: the overview, the changes, then the questions. */
+export function upgradeApplyText(result: UpgradeApplyResult, diff = false): string {
+  const shown = result.changes.filter(change => change.action !== "keep" && change.action !== "ask");
+  const lines = [...upgradeOverviewLines(result.overview).map(escapeText), ""];
+  if (shown.length) {
+    const rows = shown.map(change => [change.title, changeWords[change.action], change.change].map(escapeText));
+    const widths = [0, 1].map(column => Math.max(...[["Part", "Action"][column], ...rows.map(row => row[column])].map(text => text.length)));
+    lines.push(
+      result.written ? "Changed:" : "Changes:",
+      "",
+      `${pad("Part", widths[0])}  ${pad("Action", widths[1])}  Change`,
+      ...rows.map(([title, action, change]) => `${pad(title, widths[0])}  ${pad(action, widths[1])}  ${change}`),
+    );
+    if (diff) for (const change of shown.filter(change => change.diff)) lines.push("", `${escapeText(change.path)}:`, ...change.diff!.trimEnd().split("\n").map(escapeText));
+  } else {
+    lines.push("Nothing to change.");
+  }
+  if (result.questions.length) {
+    lines.push("", "To ask the person, and record only their answer:", "");
+    for (const question of result.questions) lines.push(`- ${question.question} Answer with ${question.option}. See ${question.link}`);
+    lines.push("", "Not now leaves a choice unset, so it is asked again.");
+  }
+  lines.push("");
+  if (result.written) lines.push(`Wrote ${result.files.map(escapeText).join(", ")}. Review the changes, and commit them in a pull request.`);
+  else if (result.changed) lines.push(`Apply these changes? Run again with --write.${diff ? "" : " Add --diff to see each file's diff."}`);
+  else lines.push("Nothing was changed.");
+  return lines.join("\n");
+}
+
+/** The result as Markdown for a pull request description: the overview, then a table of the changes. */
+export function upgradeApplyMarkdown(result: UpgradeApplyResult): string {
+  const [heading, ...overview] = upgradeOverviewLines(result.overview);
+  const shown = result.changes.filter(change => change.action !== "keep" && change.action !== "ask");
+  const lines = [
+    `### ${inline(heading)}`,
+    ...overview.flatMap((line, index) => line && !line.startsWith("- ") && overview[index - 1] && !overview[index - 1].startsWith("- ") ? ["", inline(line)] : [inline(line)]),
+  ];
+  if (shown.length) {
+    lines.push("", `### ${result.written ? "Changed" : "Changes"}`, "", "| Part | Action | Change |", "| --- | --- | --- |", ...shown.map(change => `| ${cell(change.title)} | ${cell(changeWords[change.action])} | ${cell(change.change)} |`));
+  }
+  if (result.questions.length) {
+    lines.push("", "### To ask the person", "", ...result.questions.map(question => `- ${inline(question.question)} See ${inline(question.link)}`));
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+async function runApply(options: UpgradeOptions) {
+  const apply = (answers: UpgradeAnswers, write: boolean) =>
+    applyUpgrade({ root: options.root, map: options.map, mode: options.mode, parts: options.parts, answers, write });
+  let result;
+  try {
+    // At a terminal, ask the choices nobody has made before writing anything.
+    let answers = options.answers;
+    if (options.write && atTerminal(options)) {
+      const planned = await apply(answers, false);
+      if (planned.questions.length) answers = { ...answers, ...(await askOnTerminal(planned.questions)) };
+    }
+    result = await apply(answers, options.write);
+  } catch (error) {
+    // A refused upgrade, such as a file that changed meanwhile or a link out of the repository, writes nothing.
+    if (!(error instanceof Error)) throw error;
+    console.error(`story-map: ${escapeText(error.message)}`);
+    process.exitCode = 1;
+    return;
+  }
+  if (options.format === "json") {
+    const { report, ...rest } = result;
+    printJson("upgrade", { ...report, ...rest });
+  } else if (options.format === "markdown") process.stdout.write(upgradeApplyMarkdown(result));
+  else console.log(upgradeApplyText(result, options.diff));
+}

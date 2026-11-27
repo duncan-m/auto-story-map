@@ -241,20 +241,29 @@ export const releaseImpact = defineCommand({
   },
 });
 
-/** Records the person's answer to whether to use delivery plans, in `settings.plans`. */
+/** Records the person's answers to the product choices: delivery plans in `settings.plans`, and the story ID policy in `settings.storyIds`. */
 export const settings = defineCommand({
   parse(rest: string[]) {
     let plans: string | false | undefined;
+    let storyIds: string | undefined;
     const positional: string[] = [];
     const common = parseEditArgs(rest, (name, value) => {
-      if (name !== "--plans") return false;
-      const folder = value();
-      plans = folder === "off" ? false : folder;
+      if (name === "--plans") {
+        const folder = value();
+        plans = folder === "off" ? false : folder;
+      } else if (name === "--story-ids") {
+        storyIds = value();
+        if (storyIds !== "next" && storyIds !== "lowest-free") throw new ArgumentError("--story-ids must be next or lowest-free");
+      } else return false;
       return true;
     }, positional);
     if (!common || positional.length) return null;
-    if (plans === undefined) throw new ArgumentError("--plans is required: a folder, such as docs/plans, or off");
-    return { ...common, operations: [{ op: "plans", plans } as StoryMapEditOperation] };
+    if (plans === undefined && storyIds === undefined) throw new ArgumentError("--plans or --story-ids is required: --plans with a folder, such as docs/plans, or off, and --story-ids with next or lowest-free");
+    const operations = [
+      ...(plans === undefined ? [] : [{ op: "plans", plans }]),
+      ...(storyIds === undefined ? [] : [{ op: "story-ids", storyIds }]),
+    ] as StoryMapEditOperation[];
+    return { ...common, operations };
   },
   async run(options) {
     await runEdit(options, async () => options.operations);
