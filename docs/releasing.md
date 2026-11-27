@@ -34,6 +34,7 @@ Later releases authenticate through the workflow’s OpenID Connect token, so th
 2. Add a `## <version>` section to `CHANGELOG.md`, or rename the `## Unreleased` section. The board's version footer links to this heading, and a test checks that it exists. Mark breaking changes and link to the upgrade steps.
 3. For breaking changes, add an upgrade section to `docs/story-map.md` and update the upgrade links in `README.md` and `AGENTS.md`.
 4. Run `npm run known-versions` and commit `templates/known-versions.json` if it changed. It records the hash of each set-up template from every earlier release tag, so the upgrade review recognises hosts set up before versions were recorded. The release workflow regenerates it from the tags and stops if the committed file differs. See [What the set-up markers mean](story-map.md#what-the-set-up-markers-mean).
+   In `templates/changes.yaml`, put the lines for every unreleased version under the version being released, since a test checks that each released version in it is a tag whose templates changed.
 5. Merge the PR into `main`.
 6. Tag the merge commit and push the tag:
 

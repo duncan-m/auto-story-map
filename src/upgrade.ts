@@ -4,6 +4,7 @@ import { parse as parseYaml } from "yaml";
 import { unifiedDiff } from "./edit.js";
 import { skillFile, skillPath, testFolder, workflowWithTests } from "./init.js";
 import { loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, type KnownSetupVersions, type SetupFileVersion, type SetupPart } from "./setup-versions.js";
+import { loadSetupChanges, upgradeOverview, type SetupChanges, type UpgradeOverview } from "./upgrade-overview.js";
 import { storyMapVersion } from "./version.js";
 
 /**
@@ -80,6 +81,8 @@ export interface UpgradeReport {
   packageVersion: string;
   /** The map the choices are read from, relative to the root. */
   map: string;
+  /** A short overview in plain words, from `templates/changes.yaml`, of what the review would apply. Show it to people as written. */
+  overview: UpgradeOverview;
   /** Every part, in the order of `upgradePartIds`. */
   parts: UpgradePart[];
 }
@@ -91,6 +94,8 @@ export interface UpgradeReportOptions {
   map?: string;
   /** Earlier templates, for hosts set up before versions were recorded. Defaults to the package's `templates/known-versions.json`. */
   known?: KnownSetupVersions;
+  /** The lines the overview is built from. Defaults to the package's `templates/changes.yaml`. */
+  changes?: SetupChanges;
 }
 
 /** True when a part is behind this version: an outdated file, or an edited one this version also changes. ESM-172's reminder can use it. */
@@ -293,7 +298,8 @@ export async function upgradeReport(options: UpgradeReportOptions = {}): Promise
 
   const settings = mapSettings(mapText);
   parts.push(choice("plans", mapPath, settings), choice("storyIds", mapPath, settings));
-  return { packageVersion: storyMapVersion, map: mapPath, parts };
+  const overview = upgradeOverview(parts, options.changes ?? (await loadSetupChanges()), storyMapVersion);
+  return { packageVersion: storyMapVersion, map: mapPath, overview, parts };
 }
 
 const stateWords: Record<UpgradePartState, string> = {
