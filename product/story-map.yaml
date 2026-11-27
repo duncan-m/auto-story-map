@@ -1000,7 +1000,7 @@ stories:
     title: Show outstanding actions on an Actions tab
     activity: explore
     release: v0-7-6
-    status: planned
+    status: in-progress
     estimate: 8
     jobs:
       - get-oriented
@@ -1009,6 +1009,7 @@ stories:
     summary: Internal viewers open an Actions tab next to Story map and Personas that lists what validate warns about, grouped by kind, with a link to each item and the command that fixes it. Item panels show their own actions, and story-map actions prints the same list for agents.
     sources:
       - docs/plans/actions-tab.md
+      - docs/plans/actions-tab-screenshot.png
   - id: ESM-137
     title: Add export support for Spreo
     activity: explore

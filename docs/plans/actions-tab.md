@@ -98,6 +98,12 @@ The four parts share one function, `getStoryMapActions`, so they fit in one PR, 
 
 Missing sources, broken `#heading` links and unknown IDs in plans and tests need the repository's files, which the board does not have. This map has none of these problems today, and listing them needs a new CI step in each host, so they are left out of ESM-128. A follow-up story could add `story-map validate --out <file>` to write the JSON result in CI, and have the host pass it to the view as `checks`, on the server, like the history and tests index. The tab would list those issues first, with the time they were checked. The tests index the host already passes is enough for `story-without-tests`, so that kind is in ESM-128.
 
+## UI screenshot
+
+The tab as built, on this repository's map in `story-map preview`, with the board's real `styles.css`:
+
+![The Actions tab, listing the map's actions grouped by kind](actions-tab-screenshot.png)
+
 ## Not now
 
 - **Fixing actions in place on the hosted board.** The hosted board stays read-only (ESM-404). Saving from the tab can follow the writable local preview (ESM-112).

@@ -5,6 +5,7 @@ import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import { storyReadinessLabels, storyReadinessText } from "./readiness.js";
 import { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
+import { filterStoryMapActions, countStoryMapActions, storyMapActionKinds, type StoryMapAction, type StoryMapActionFilter, type StoryMapActionGroup } from "./actions.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryDependency, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
@@ -805,8 +806,17 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles, webAgents, repository }: {
+/** What a panel needs to list its item's actions. */
+interface PanelActionsInfo {
+  groups: readonly StoryMapActionGroup[];
+  links: ActionLinks;
+  /** The Actions tab narrowed to the item. Absent when the board has no tabs. */
+  tabHref?: string;
+}
+
+function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles, webAgents, repository, actions }: {
   story: InternalStoryCard;
+  actions?: PanelActionsInfo;
   webAgents?: readonly StoryMapWebAgent[];
   repository?: string;
   /** Each placed story's panel, by story ID, so the Dependencies section can open it. */
@@ -918,6 +928,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         {internal && story.tokens !== undefined && <><dt>Tokens used</dt><dd>{story.tokens.toLocaleString("en-US")}</dd></>}
         {internal && story.estimatedCostUsd !== undefined && <><dt>Estimated cost</dt><dd>{`$${story.estimatedCostUsd.toFixed(2)}`}</dd></>}
       </dl>
+      {internal && actions && <ItemActions groups={actions.groups} type="story" id={story.id} panelId={panelId} links={actions.links} tabHref={actions.tabHref} />}
       {internal && <ChangeSection story={story} panelId={panelId} releaseTitles={releaseTitles} />}
       {internal && hasDependencies(story) && (
         <DependenciesSection story={story} panelId={panelId} storyPanelIds={storyPanelIds} releaseTitles={releaseTitles} />
@@ -1276,8 +1287,9 @@ function paragraphs(text: string) {
   return text.split(/\n[ \t]*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
 }
 
-function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, filtered, webAgents, repository }: {
+function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, filtered, webAgents, repository, actions }: {
   release: InternalReleaseLabel;
+  actions?: PanelActionsInfo;
   webAgents?: readonly StoryMapWebAgent[];
   repository?: string;
   panelId: string;
@@ -1316,6 +1328,7 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
         </div>
       </div>
       {release.summary && <p className="esm-detail-summary">{release.summary}</p>}
+      {actions && <ItemActions groups={actions.groups} type="release" id={release.id} panelId={panelId} links={actions.links} tabHref={actions.tabHref} />}
       {release.notes && (
         <section className="esm-detail-section" aria-labelledby={`${panelId}-notes`}>
           <h4 id={`${panelId}-notes`}>Release notes</h4>
@@ -1817,17 +1830,18 @@ function personaPageHref(filter: NonNullable<StoryMapView["filter"]>, personaId:
  * The Story map and Personas tabs, as links, so they work without JavaScript.
  * Each keeps the viewer's filters, so going back to the map keeps them.
  */
-function BoardTabs({ current, filter, preservedParams, stories, personas }: {
-  current: "map" | "personas";
+function BoardTabs({ current, filter, preservedParams, stories, personas, actions }: {
+  current: "map" | "personas" | "actions";
   filter: NonNullable<StoryMapView["filter"]>;
   preservedParams?: Readonly<Record<string, string>>;
   stories: number;
   personas: number;
+  actions: number;
 }) {
   const params = boardParams(filter, preservedParams);
   const personasParams = new URLSearchParams(params);
   personasParams.set("view", "personas");
-  const tab = (page: "map" | "personas", href: string, label: string, count: number, counted: string) => (
+  const tab = (page: "map" | "personas" | "actions", href: string, label: string, count: number, counted: string) => (
     <a className="esm-tab" href={href} aria-current={current === page ? "page" : undefined}>
       {label}
       <span className="esm-tab-count"><span aria-hidden="true">{count}</span><span className="esm-visually-hidden">{`, ${counted}`}</span></span>
@@ -1837,8 +1851,196 @@ function BoardTabs({ current, filter, preservedParams, stories, personas }: {
     <nav className="esm-tabs" aria-label="Board views">
       {tab("map", `?${params}`, "Story map", stories, storyCount(stories))}
       {tab("personas", `?${personasParams}`, "Personas", personas, plural(personas, "persona"))}
+      {tab("actions", actionsHref(filter, preservedParams), "Actions", actions, plural(actions, "action"))}
       <span className="esm-tabs-end">Internal only. Customers see the story map.</span>
     </nav>
+  );
+}
+
+/** The link to the Actions tab, keeping the board's filters, narrowed by `actions`. */
+function actionsHref(filter: NonNullable<StoryMapView["filter"]>, preservedParams?: Readonly<Record<string, string>>, actions: StoryMapActionFilter = {}) {
+  const params = boardParams(filter, preservedParams);
+  params.set("view", "actions");
+  if (actions.kind) params.set("action-kind", actions.kind);
+  if (actions.release) params.set("action-release", actions.release);
+  if (actions.item) params.set("action-item", actions.item);
+  if (actions.needsPerson) params.set("needs-person", "1");
+  return `?${params}`;
+}
+
+/** Where an action's item opens: a story's or release's permalink, or a persona's page. */
+interface ActionLinks {
+  item(action: StoryMapAction): { href?: string; label: string } | undefined;
+  /** The action's line in the map file, under `sourceBaseUrl`. */
+  line(action: StoryMapAction): string | undefined;
+}
+
+function WhoActs({ needsPerson }: { needsPerson: boolean }) {
+  return needsPerson
+    ? <span className="esm-action-who" data-person="">Needs a person</span>
+    : <span className="esm-action-who">A person or an agent</span>;
+}
+
+/** The fixing command with a **Copy** button that board.js shows when it can copy. */
+function ActionCommand({ command, id }: { command: string; id: string }) {
+  return (
+    <div className="esm-change-command esm-action-command">
+      <code id={id}>{command}</code>
+      <button type="button" className="esm-change-copy" data-esm-copy-command={id} aria-describedby={id} hidden>
+        <BriefIcon /><span data-esm-copy-label="">Copy</span>
+      </button>
+    </div>
+  );
+}
+
+/** One action: its item, what to do, who can do it, its line in the map and its command. */
+function ActionEntry({ action, id, links, title }: { action: StoryMapAction; id: string; links: ActionLinks; title?: string }) {
+  // In a panel the item is the panel's own, so the row names the kind instead.
+  const item = title ? { label: title } : links.item(action);
+  const lineHref = links.line(action);
+  return (
+    <li className="esm-action">
+      <p className="esm-action-head">
+        {item && (item.href ? <a className="esm-action-item" href={item.href}>{item.label}</a> : <span className="esm-action-item">{item.label}</span>)}
+        <WhoActs needsPerson={action.needsPerson} />
+        {action.line !== undefined && (lineHref
+          ? <a className="esm-action-line" href={lineHref} {...newTab}>{`Line ${action.line}`}<NewTabHint /></a>
+          : <span className="esm-action-line">{`Line ${action.line}`}</span>)}
+      </p>
+      <p className="esm-action-message">{action.message}</p>
+      {action.command && <ActionCommand command={action.command} id={id} />}
+    </li>
+  );
+}
+
+/** A filter link in the Actions tab: a plain link, marked current when chosen. */
+function ActionFilterMenu({ label, chosen, options }: { label: string; chosen?: string; options: { label: string; href: string; current: boolean }[] }) {
+  return (
+    <details className="esm-menu esm-action-filter">
+      <summary className="esm-select esm-menu-button"><span className="esm-visually-hidden">{label}: </span>{chosen ?? `All ${label.toLowerCase()}s`}</summary>
+      <ul className="esm-menu-panel">
+        {options.map(option => (
+          <li key={option.href}><a href={option.href} aria-current={option.current ? "true" : undefined}>{option.label}</a></li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/**
+ * The Actions tab: what validate warns about, grouped by kind, each with a link to its item,
+ * who can act, its line in the map and the command that fixes it. Counts come from the whole
+ * map, so they do not change with the board's filters. The tab's own filters are links, so
+ * they work without JavaScript.
+ */
+function ActionsPage({ groups, filter, preservedParams, releases, links, checkedAt, settings, baseId }: {
+  groups: readonly StoryMapActionGroup[];
+  filter: NonNullable<StoryMapView["filter"]>;
+  preservedParams?: Readonly<Record<string, string>>;
+  releases: readonly StoryMapLabel[];
+  links: ActionLinks;
+  checkedAt: string;
+  settings: DateSettings;
+  baseId: string;
+}) {
+  const chosen = filter.actions ?? {};
+  const shown = filterStoryMapActions(groups, chosen);
+  const total = countStoryMapActions(groups);
+  const shownCount = countStoryMapActions(shown);
+  const href = (change: StoryMapActionFilter) => actionsHref(filter, preservedParams, { ...chosen, ...change });
+  const without = (key: keyof StoryMapActionFilter) => {
+    const next = { ...chosen };
+    delete next[key];
+    return actionsHref(filter, preservedParams, next);
+  };
+  const releaseIds = new Set(groups.flatMap(group => group.actions.flatMap(action => action.release ? [action.release] : [])));
+  const releaseTitle = (id: string) => releases.find(release => release.id === id)?.title ?? id;
+  const itemLabel = chosen.item;
+  const filtering = Object.keys(chosen).length > 0;
+  return (
+    <div className="esm-actions">
+      <div className="esm-actions-intro">
+        <p>
+          {total
+            ? `${plural(total, "action")} on the map, from what validate warns about. Each goes away when the map changes.`
+            : "Nothing is waiting on the map."}
+          {" "}<span className="esm-actions-checked">Checked <time dateTime={checkedAt}>{formatDate(checkedAt, settings)}</time>.</span>
+        </p>
+      </div>
+      {total > 0 && (
+        <nav className="esm-actions-filters" aria-label="Filter actions">
+          <ActionFilterMenu
+            label="Kind"
+            chosen={chosen.kind && storyMapActionKinds[chosen.kind].title}
+            options={[
+              { label: "All kinds", href: without("kind"), current: !chosen.kind },
+              ...groups.map(group => ({ label: `${group.title} (${group.actions.length})`, href: href({ kind: group.kind }), current: chosen.kind === group.kind })),
+            ]}
+          />
+          {releaseIds.size > 0 && (
+            <ActionFilterMenu
+              label="Release"
+              chosen={chosen.release && releaseTitle(chosen.release)}
+              options={[
+                { label: "All releases", href: without("release"), current: !chosen.release },
+                ...releases.filter(release => releaseIds.has(release.id)).map(release => ({ label: release.title, href: href({ release: release.id }), current: chosen.release === release.id })),
+              ]}
+            />
+          )}
+          <a className="esm-action-toggle" href={chosen.needsPerson ? without("needsPerson") : href({ needsPerson: true })} aria-current={chosen.needsPerson ? "true" : undefined}>
+            Needs a person
+          </a>
+          {itemLabel && <span className="esm-action-chip">{`Only ${itemLabel}`} <a href={without("item")} aria-label={`Show actions for every item, not only ${itemLabel}`}>×</a></span>}
+          {filtering && <a className="esm-clear" href={actionsHref(filter, preservedParams)}>Clear</a>}
+          <span className="esm-results">{filtering ? `${shownCount} of ${plural(total, "action")}` : plural(total, "action")}</span>
+        </nav>
+      )}
+      {total > 0 && !shown.length && <p className="esm-release-hidden">No actions match these filters.</p>}
+      {shown.map((group, groupIndex) => {
+        const headingId = `${baseId}-action-group-${groupIndex}`;
+        return (
+          <section className="esm-action-group" aria-labelledby={headingId} key={group.kind} data-kind={group.kind}>
+            <h3 id={headingId}>{group.title} <span className="esm-tab-count">{group.actions.length}</span></h3>
+            <p className="esm-action-why">{group.why} <WhoActs needsPerson={group.needsPerson} /></p>
+            <ul className="esm-action-list">
+              {group.actions.map((action, index) => (
+                <ActionEntry action={action} id={`${baseId}-action-${groupIndex}-${index}`} links={links} key={index} />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** An item's own actions, in its panel or page, with a link to the tab narrowed to it. */
+function ItemActions({ groups, type, id, panelId, links, tabHref, page = false }: {
+  /** True on the persona page, which is not a panel. */
+  page?: boolean;
+  groups: readonly StoryMapActionGroup[];
+  type: "story" | "release" | "persona";
+  id: string;
+  panelId: string;
+  links: ActionLinks;
+  tabHref?: string;
+}) {
+  // IDs are only unique within their list, so match the type too.
+  const mine = filterStoryMapActions(groups, { item: id })
+    .map(group => ({ ...group, actions: group.actions.filter(action => action.item.type === type) }))
+    .filter(group => group.actions.length);
+  if (!mine.length) return null;
+  const headingId = `${panelId}-actions`;
+  return (
+    <section className={page ? "esm-page-actions esm-item-actions" : "esm-detail-section esm-item-actions"} aria-labelledby={headingId}>
+      <h4 id={headingId}>Actions</h4>
+      <ul className="esm-action-list">
+        {mine.flatMap((group, groupIndex) => group.actions.map((action, index) => (
+          <ActionEntry action={action} id={`${panelId}-action-${groupIndex}-${index}`} links={links} title={group.title} key={`${group.kind}-${index}`} />
+        )))}
+      </ul>
+      {tabHref && <p className="esm-item-actions-link"><a href={tabHref}>See them on the Actions tab<span aria-hidden="true"> →</span></a></p>}
+    </section>
   );
 }
 
@@ -1863,8 +2065,9 @@ function PersonaLink({ persona, href, current }: { persona: PersonaLabel; href: 
  * their context and their jobs as lanes, core job first, each with its steps in order.
  * Counts come from the whole map, so they do not change with the filters.
  */
-function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
+function PersonasPage({ personas, filter, preservedParams, baseId, editing, actions }: {
   personas: readonly PersonaLabel[];
+  actions?: Omit<PanelActionsInfo, "tabHref">;
   filter: NonNullable<StoryMapView["filter"]>;
   preservedParams?: Readonly<Record<string, string>>;
   baseId: string;
@@ -1921,6 +2124,7 @@ function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
             <span>{`${plural(persona.jobs.length, "job")} · ${plural(persona.activeStories, "active story", "active stories")}`}</span>
           </p>
         </div>
+        {actions && <ItemActions groups={actions.groups} type="persona" id={persona.id} panelId={`${baseId}-persona`} links={actions.links} tabHref={actionsHref(filter, preservedParams, { item: persona.id })} page />}
         <PersonaContext persona={persona} baseId={`${baseId}-context`} editing={!!editing} />
         <section className="esm-persona-jobs" aria-labelledby={jobsId}>
           <h4 className="esm-section-title" id={jobsId}>Jobs to be done {persona.jobs.length > 0 && <span>Core job first, each with its steps in order</span>}</h4>
@@ -2343,9 +2547,26 @@ export function StoryMapBoard({
   const personaList = [...lookup.personas.values()];
   const tabs = internal && map.filter ? map.filter : undefined;
   const personasTab = !!tabs && tabs.view === "personas";
+  const actionsTab = !!tabs && tabs.view === "actions";
+  // Hand-built views from before the Actions tab may have no actions.
+  const actionGroups = map.audience === "internal" ? map.actions ?? [] : [];
+  const mapPath = map.audience === "internal" ? map.mapPath : undefined;
+  const actionLinks: ActionLinks = {
+    item(action) {
+      if (action.item.type === "map") return { label: "The whole map" };
+      const { type, id, title } = action.item;
+      if (type === "story") return { href: permalink({ story: id }), label: `${id} ${title}` };
+      if (type === "release") return { href: permalink({ release: id }), label: title };
+      return { href: tabs && personaPageHref(tabs, id, preservedParams), label: title };
+    },
+    line: action => mapPath && action.line ? testHref(mapPath, action.line, sourceBaseUrl) : undefined,
+  };
+  const itemActionsHref = (id: string) => tabs && actionsHref(tabs, preservedParams, { item: id });
+  // The story map's own parts are hidden on the other tabs.
+  const otherTab = personasTab || actionsTab;
   // The panel a permalink opens, which board.js shows on load. Customers have no release panels, so their release links only scroll.
-  const linkedStory = !personasTab && map.filter?.story ? placed.find(story => story.id === map.filter!.story) : undefined;
-  const linkedReleaseIndex = !personasTab && internalReleases && showGrid && map.filter?.release ? releases.findIndex(release => release.id === map.filter!.release) : -1;
+  const linkedStory = !otherTab && map.filter?.story ? placed.find(story => story.id === map.filter!.story) : undefined;
+  const linkedReleaseIndex = !otherTab && internalReleases && showGrid && map.filter?.release ? releases.findIndex(release => release.id === map.filter!.release) : -1;
   const openPanel = linkedStory ? panelIds.get(linkedStory) : linkedReleaseIndex >= 0 ? `${baseId}-release-${linkedReleaseIndex}` : undefined;
 
   return (
@@ -2363,15 +2584,28 @@ export function StoryMapBoard({
       <div className="esm-frame">
         {tabs && (
           <BoardTabs
-            current={personasTab ? "personas" : "map"}
+            current={personasTab ? "personas" : actionsTab ? "actions" : "map"}
             filter={tabs}
             preservedParams={preservedParams}
             stories={tabs.total}
             personas={personaList.length}
+            actions={countStoryMapActions(actionGroups)}
           />
         )}
-        {personasTab && <PersonasPage personas={personaList} filter={tabs!} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} />}
-        {!personasTab && map.filter && (
+        {personasTab && <PersonasPage personas={personaList} filter={tabs!} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} actions={{ groups: actionGroups, links: actionLinks }} />}
+        {actionsTab && map.audience === "internal" && (
+          <ActionsPage
+            groups={actionGroups}
+            filter={tabs!}
+            preservedParams={preservedParams}
+            releases={map.releases}
+            links={actionLinks}
+            checkedAt={map.actionsCheckedAt ?? settings.now.toISOString()}
+            settings={settings}
+            baseId={baseId}
+          />
+        )}
+        {!otherTab && map.filter && (
           <FilterToolbar
             filter={map.filter}
             shown={placed.length}
@@ -2385,13 +2619,13 @@ export function StoryMapBoard({
             activities={map.activities}
           />
         )}
-        {!personasTab && hideInactive && (
+        {!otherTab && hideInactive && (
           <p className="esm-inactive-toggle">
             <input type="checkbox" className="esm-inactive-input" id={toggleId} />
             <label htmlFor={toggleId}>Show blocked and cut stories ({hiddenSummary(inactive)})</label>
           </p>
         )}
-        {personasTab ? null : showGrid ? (
+        {otherTab ? null : showGrid ? (
           <div className="esm-scroll" role="region" tabIndex={0} aria-label="Story map by release and activity">
             <div
               className="esm-grid"
@@ -2477,7 +2711,7 @@ export function StoryMapBoard({
         ) : !filtering && <p className="esm-empty">There are no stories to show yet.</p>}
       </div>
       {showVersion && <VersionFooter internal={internal} />}
-      {!personasTab && placed.map(story => (
+      {!otherTab && placed.map(story => (
         <StoryDetail
           key={story.id}
           story={story}
@@ -2498,9 +2732,10 @@ export function StoryMapBoard({
           releaseTitles={releaseTitles}
           webAgents={webAgents}
           repository={repository}
+          actions={internal ? { groups: actionGroups, links: actionLinks, tabHref: itemActionsHref(story.id) } : undefined}
         />
       ))}
-      {!personasTab && personaList.map(persona => (
+      {!otherTab && personaList.map(persona => (
         <PersonaDetail
           key={persona.id}
           persona={persona}
@@ -2510,7 +2745,7 @@ export function StoryMapBoard({
           openHref={tabs && personaPageHref(tabs, persona.id, preservedParams)}
         />
       ))}
-      {!personasTab && internalReleases && showGrid && releases.map((release, index) => (
+      {!otherTab && internalReleases && showGrid && releases.map((release, index) => (
         <ReleaseDetail
           key={release.id}
           release={internalReleases.get(release.id)!}
@@ -2521,6 +2756,7 @@ export function StoryMapBoard({
           filtered={!!map.filter}
           webAgents={webAgents}
           repository={repository}
+          actions={{ groups: actionGroups, links: actionLinks, tabHref: itemActionsHref(release.id) }}
         />
       ))}
     </section>

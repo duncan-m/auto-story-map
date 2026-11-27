@@ -1,5 +1,5 @@
 import { checkPlanReferences, checkSources, type ReferenceIssue } from "./references.js";
-import { describeIssueTarget, loadStoryMap, StoryMapValidationError, type StoryMapIssueSeverity } from "./schema.js";
+import { describeIssueTarget, loadStoryMap, StoryMapValidationError, type StoryMapIssueSeverity, type StoryMapWarningKind } from "./schema.js";
 import { checkStoryTests, findStoryTests } from "./tests.js";
 
 /** Options for `checkStoryMap`. The file checks are off unless asked for, as with `story-map validate`. */
@@ -30,6 +30,8 @@ export interface StoryMapCheckIssue {
   /** ID of the activity, release or story that contains the issue. */
   itemId?: string;
   message: string;
+  /** What a warning asks for, such as `missing-estimate`. Absent on errors and on warnings about other files. */
+  kind?: StoryMapWarningKind;
 }
 
 /** The outcome of `checkStoryMap`. */
@@ -56,6 +58,7 @@ function toCheckIssue(issue: ReferenceIssue): StoryMapCheckIssue {
     ...(issue.path.length ? { target: describeIssueTarget(issue) } : {}),
     ...(issue.itemId ? { itemId: issue.itemId } : {}),
     message: issue.message,
+    ...(issue.kind ? { kind: issue.kind } : {}),
   };
 }
 

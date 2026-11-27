@@ -4,11 +4,14 @@ export {
   parseStoryMap,
   StoryMapValidationError,
   storyMapSchema,
+  storyMapWarningKinds,
   storyMapWarnings,
   storyStatuses,
 } from "./schema.js";
+export { countStoryMapActions, filterStoryMapActions, getStoryMapActions, isStoryMapActionKind, storyMapActionKindOrder, storyMapActionKinds, untestedStoryWarnings } from "./actions.js";
+export type { StoryMapAction, StoryMapActionCategory, StoryMapActionFilter, StoryMapActionGroup, StoryMapActionItem, StoryMapActionKindInfo, StoryMapActionOptions } from "./actions.js";
 export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, jobStepsMaxItems, jobStepTitleMaxLength, personaConstraintsMaxItems, personaContextMaxLength, personaJobsMaxItems, personaSuccessMaxLength, personasMaxItems, personaUsesTodayMaxItems, personaUsesTodayMaxLength, releaseImpactMaxItems, releaseNotesMaxLength, storyDependsOnMaxItems, storyPersonasMaxItems } from "./schema.js";
-export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapJobStep, StoryMapPersona, StoryMapPersonaContext, StoryMapIssue, StoryMapIssueSeverity, StoryStatus } from "./schema.js";
+export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapJobStep, StoryMapPersona, StoryMapPersonaContext, StoryMapIssue, StoryMapIssueSeverity, StoryMapWarning, StoryMapWarningKind, StoryStatus } from "./schema.js";
 export { activeStoryStatuses, customerStatus, customerStoryStatuses, inactiveStoryStatuses, isActiveStatus, storyStatusLabels } from "./status.js";
 export type { CustomerStoryStatus, StoryStatusFilter } from "./status.js";
 export { defaultInternalRoles, getStoryMapForViewer, getStoryMapPage, recentUpdateDays, storyMapResponseHeaders } from "./view.js";

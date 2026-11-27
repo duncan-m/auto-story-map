@@ -360,6 +360,35 @@ export interface StoryMapIssue {
   column?: number;
   /** ID of the activity, release or story that contains the issue. */
   itemId?: string;
+  /** What a warning asks for, so the Actions tab can group and explain it without reading `message`. Absent on errors. */
+  kind?: StoryMapWarningKind;
+}
+
+/**
+ * Every kind of warning `storyMapWarnings` and `validate --tests` return. `src/actions.ts` gives
+ * each a title, who can act on it and the command that fixes it.
+ */
+export const storyMapWarningKinds = [
+  "job-without-stories",
+  "step-without-stories",
+  "persona-without-stories",
+  "stories-without-personas",
+  "persona-without-job",
+  "confirm-draft-job",
+  "confirm-draft-context",
+  "confirm-draft-impact",
+  "missing-estimate",
+  "story-without-tests",
+  "missing-impact",
+  "missing-status-reason",
+  "depends-on-cut",
+] as const;
+export type StoryMapWarningKind = (typeof storyMapWarningKinds)[number];
+
+/** A warning about a valid map, which always says what kind it is. */
+export interface StoryMapWarning extends StoryMapIssue {
+  severity: "warning";
+  kind: StoryMapWarningKind;
 }
 
 /** Names the part of the map an issue is about, such as `stories.3.release (FINANCE-201)`. */
@@ -448,8 +477,8 @@ export function parseStoryMap(source: string): StoryMapDocument {
  * Checks a valid map for problems that should not fail validation, such as a
  * blocked story with no reason. Paths point into the map like error paths.
  */
-export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
-  const warnings: StoryMapIssue[] = [];
+export function storyMapWarnings(map: StoryMapDocument): StoryMapWarning[] {
+  const warnings: StoryMapWarning[] = [];
   const releasesWithShipped = new Set<string>();
   const releasesWithActive = new Set<string>();
   for (const story of map.stories) {
@@ -460,6 +489,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
     if (releasesWithActive.has(release.id) && !release.impact?.length) {
       warnings.push({
         severity: "warning",
+        kind: "missing-impact",
         path: ["releases", index],
         message: "Add impact: what the release is expected to change, and how it will be measured.",
         itemId: release.id,
@@ -470,6 +500,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
       if (!item.draft) return;
       warnings.push({
         severity: "warning",
+        kind: "confirm-draft-impact",
         path: ["releases", index, "impact", itemIndex, "draft"],
         message: `Confirm the drafted impact for “${item.metric}” and remove draft: true. The release has shipped stories.`,
         itemId: release.id,
@@ -486,6 +517,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
       && (releasesWithEstimates.get(story.release) ?? 0) > 0) {
       warnings.push({
         severity: "warning",
+        kind: "missing-estimate",
         path: ["stories", index],
         message: "Add an estimate: other stories in this release have one, so the release total leaves this story out.",
         itemId: story.id,
@@ -496,6 +528,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
         if (!cutStories.has(ref)) return;
         warnings.push({
           severity: "warning",
+          kind: "depends-on-cut",
           path: ["stories", index, "dependsOn", refIndex],
           message: `Depends on ${ref}, which is cut, so that work will not land. Remove the dependency, or cut or replan this story.`,
           itemId: story.id,
@@ -505,6 +538,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
     if ((story.status === "blocked" || story.status === "cut") && !story.statusReason) {
       warnings.push({
         severity: "warning",
+        kind: "missing-status-reason",
         path: ["stories", index, "status"],
         message: `Add a statusReason explaining why the story is ${story.status}.`,
         itemId: story.id,
@@ -520,11 +554,11 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
  * about who they are for, and drafts that have shipped. A map with no personas,
  * or no active stories yet, gets none.
  */
-function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
+function personaWarnings(map: StoryMapDocument): StoryMapWarning[] {
   const personas = map.personas ?? [];
   const active = map.stories.filter(story => isActiveStatus(story.status));
   if (!personas.length || !active.length) return [];
-  const warnings: StoryMapIssue[] = [];
+  const warnings: StoryMapWarning[] = [];
   const resolve = storyPersonaResolver(map);
   const used = new Set(map.stories.flatMap(story => resolve(story)));
   const served = new Set(active.flatMap(story => story.jobs ?? []));
@@ -538,6 +572,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
     if (!used.has(persona.id)) {
       warnings.push({
         severity: "warning",
+        kind: "persona-without-stories",
         path: ["personas", index],
         message: `No story is for ${persona.title}. Tag the stories that serve them, or remove the persona.`,
         itemId: persona.id,
@@ -547,6 +582,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
       if (!served.has(job.id)) {
         warnings.push({
           severity: "warning",
+          kind: "job-without-stories",
           path: ["personas", index, "jobs", jobIndex],
           // The first job is the core job, so a gap there matters most.
           message: `${jobIndex === 0 ? "Core job" : "Job"} ${job.id} (${persona.title}) has no stories.`,
@@ -560,6 +596,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
           const activity = activityTitles.get(step.activity) ?? step.activity;
           warnings.push({
             severity: "warning",
+            kind: "step-without-stories",
             path: ["personas", index, "jobs", jobIndex, "steps", stepIndex],
             message: `Step “${step.title}” of job ${job.id} (${persona.title}) has no stories in ${activity}. Tag the stories there that serve the job, or point the step to another activity.`,
             itemId: persona.id,
@@ -569,6 +606,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
       if (job.draft && shipped.has(job.id)) {
         warnings.push({
           severity: "warning",
+          kind: "confirm-draft-job",
           path: ["personas", index, "jobs", jobIndex, "draft"],
           message: `Confirm the drafted job ${job.id} and remove draft: true. Stories that serve it have shipped.`,
           itemId: persona.id,
@@ -578,6 +616,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
     if (persona.context?.draft && shippedFor.has(persona.id)) {
       warnings.push({
         severity: "warning",
+        kind: "confirm-draft-context",
         path: ["personas", index, "context", "draft"],
         message: `Confirm the drafted context for ${persona.title} and remove draft: true. Stories for them have shipped.`,
         itemId: persona.id,
@@ -589,6 +628,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
   if (untagged * 2 > active.length) {
     warnings.push({
       severity: "warning",
+      kind: "stories-without-personas",
       path: ["personas"],
       message: `${untagged} of ${active.length} active stories do not say who they are for. Add the jobs each serves, or its personas.`,
     });
@@ -602,6 +642,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
       if (!persona?.jobs?.length || persona.jobs.some(job => story.jobs?.includes(job.id))) return;
       warnings.push({
         severity: "warning",
+        kind: "persona-without-job",
         path: ["stories", index, "personas", personaIndex],
         message: `For ${persona.title}, but serves none of their jobs, so it may not match a known need. Add the job it serves, or draft one.`,
         itemId: story.id,

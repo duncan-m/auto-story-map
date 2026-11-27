@@ -480,6 +480,32 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
   }
 }
 
+const enhancedActions = new WeakSet<Element>();
+
+/**
+ * Shows the **Copy** button beside each action's command, on the Actions tab and in panels,
+ * and makes it copy the command, saying “Copied command”. Without clipboard access, the
+ * buttons stay hidden and the command can still be selected. Safe to call more than once.
+ */
+export function enhanceStoryMapActions(root: ParentNode = document) {
+  if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) return;
+  for (const board of root.querySelectorAll<HTMLElement>(".esm-board")) {
+    if (enhancedActions.has(board)) continue;
+    enhancedActions.add(board);
+    for (const button of board.querySelectorAll<HTMLButtonElement>("button[data-esm-copy-command]")) button.hidden = false;
+    board.addEventListener("click", event => {
+      const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button[data-esm-copy-command]") : null;
+      if (!button) return;
+      const command = document.getElementById(button.dataset.esmCopyCommand ?? "");
+      if (!command || !board.contains(command)) return;
+      navigator.clipboard.writeText(command.textContent ?? "").then(() => {
+        showCopied(button, "Copied");
+        announce(board, "Copied command");
+      }, () => announce(board, "Could not copy the command. Select it to copy it."));
+    });
+  }
+}
+
 const editFocusKey = "esm-edit-focus";
 const editNextKey = "esm-edit-next";
 const enhancedEditing = new WeakSet<Element>();
@@ -990,6 +1016,7 @@ function enhance() {
   enhanceStoryMapPermalinks();
   enhanceStoryMapBriefs();
   enhanceStoryMapChanges();
+  enhanceStoryMapActions();
   enhanceStoryMapPersonaEditing();
   enhanceStoryMapEditSetup();
 }

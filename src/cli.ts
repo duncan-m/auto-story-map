@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import actions from "./commands/actions.js";
 import { claim, claims, unclaim } from "./commands/claim.js";
 import confirm from "./commands/confirm.js";
 import diff from "./commands/diff.js";
@@ -27,6 +28,7 @@ const usage = `Usage:
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--readiness <state>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
+  story-map actions [--format text|json] [--map <path>] [--kind <kind>] [--release <ID>] [--needs-person] [--tests <path> | --tests-index <file>] [--root <path>]
   story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [<ID> ...]
   story-map survey [--format text|json] [--root <path>] [--tags <pattern>] [--changelog <file>] [--docs <path>] [--plans <path>]
   story-map claim [--format text|json] [--map <path>] [--remote <name>] [--store <dir>] --agent <name> [--ttl <duration>] [--branch <name>] [--renew | --take-over] <ID>
@@ -169,6 +171,25 @@ releases
   Lists releases, or the ones named, with story counts by status, estimates,
   notes and expected impact. Impact items drafted by an agent are marked
   [draft]. Takes the same options as story.
+
+actions
+  Lists what the map is waiting for, as the board's Actions tab does: every
+  validate warning about the map, grouped by kind, each with its line and the
+  command that fixes it. Kinds marked "needs a person", such as drafts to
+  confirm and estimates to agree, are for people only. Agents act on the
+  others and leave these alone. Exits 0 whatever it finds.
+
+  --format json      Print the groups and actions as JSON.
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --kind <kind>      Only actions of this kind, such as missing-estimate.
+  --release <ID>     Only actions on this release or its stories.
+  --needs-person     Only actions a person must take.
+  --tests <path>     Scan tests under <path>, as validate --tests does, so
+                     in-progress and merged stories with no tagged tests are
+                     listed too. Repeat for several paths.
+  --tests-index <file>
+                     Read the tests from story-map tests output instead.
+  --root <path>      Repository root for --tests. Defaults to the current directory.
 
 evidence
   Reports what has already happened on each story, or on every active story
@@ -410,7 +431,7 @@ mcp
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, confirm };
+const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, actions, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {

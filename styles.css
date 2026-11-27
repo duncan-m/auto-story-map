@@ -659,6 +659,40 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-tab-count { padding: 1px 6px; border-radius: 5px; background: var(--esm-hover); color: var(--esm-muted); font-size: .75rem; font-weight: 700; }
 .esm-tabs-end { margin-left: auto; padding-bottom: 12px; color: var(--esm-muted); font-size: .8125rem; }
 
+/* Actions tab and the panels' Actions rows */
+.esm-actions { padding: 18px 20px 24px; }
+.esm-actions-intro p { margin: 0 0 14px; color: var(--esm-muted); font-size: .9rem; }
+.esm-actions-checked { color: var(--esm-faint); }
+.esm-actions-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 18px; }
+.esm-action-filter .esm-menu-panel { right: auto; left: 0; max-height: 22rem; overflow-y: auto; }
+.esm-action-filter .esm-menu-panel a { display: block; padding: 7px 10px; border-radius: 6px; color: var(--esm-ink); font-size: .875rem; text-decoration: none; white-space: nowrap; }
+.esm-action-filter .esm-menu-panel a:hover { background: var(--esm-hover); }
+.esm-action-filter .esm-menu-panel a[aria-current] { color: var(--esm-accent-ink); font-weight: 650; }
+.esm-action-toggle { padding: 6px 11px; border: 1px solid var(--esm-line); border-radius: 999px; color: var(--esm-muted); font-size: .875rem; font-weight: 650; text-decoration: none; }
+.esm-action-toggle:hover { background: var(--esm-hover); color: var(--esm-ink); }
+.esm-action-toggle[aria-current] { border-color: var(--esm-accent); background: var(--esm-activity-bg); color: var(--esm-accent-ink); }
+.esm-action-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; background: var(--esm-hover); font-size: .8125rem; font-weight: 650; }
+.esm-action-chip a { padding: 0 5px; border-radius: 999px; color: var(--esm-muted); text-decoration: none; }
+.esm-actions-filters .esm-clear { color: var(--esm-accent-ink); font-size: .875rem; font-weight: 650; }
+.esm-actions-filters .esm-results { margin-left: auto; color: var(--esm-muted); font-size: .8125rem; }
+.esm-action-group + .esm-action-group { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--esm-line); }
+.esm-action-group h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1rem; }
+.esm-action-why { margin: 0 0 10px; color: var(--esm-muted); font-size: .875rem; }
+.esm-action-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.esm-action { padding: 10px 12px; border: 1px solid var(--esm-card-line); border-radius: 9px; background: var(--esm-paper); }
+.esm-action-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-size: .875rem; }
+.esm-action-item { color: var(--esm-ink); font-weight: 650; }
+a.esm-action-item { color: var(--esm-accent-ink); }
+.esm-action-who { color: var(--esm-muted); font-size: .75rem; font-weight: 650; }
+.esm-action-who[data-person] { padding: 1px 6px; border-radius: 5px; background: var(--esm-stalled-bg); color: var(--esm-stalled); }
+.esm-action-line { margin-left: auto; color: var(--esm-muted); font-size: .75rem; }
+.esm-action-message { margin: 4px 0 0; font-size: .875rem; line-height: 1.45; overflow-wrap: anywhere; }
+.esm-action-command { margin-top: 8px; }
+.esm-item-actions .esm-action { padding: 8px 10px; }
+.esm-item-actions-link { margin: 8px 0 0; font-size: .875rem; }
+.esm-page-actions { margin: 0 0 18px; }
+.esm-page-actions h4 { margin: 0 0 10px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+
 /* Personas tab: the persona list beside the chosen persona */
 .esm-persona-page { display: grid; grid-template-columns: 15.5rem minmax(0, 1fr); }
 .esm-persona-list { padding: 14px 10px; border-right: 1px solid var(--esm-line); }
@@ -829,9 +863,12 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
   .esm-board[data-hide-inactive]:not(:has(.esm-inactive-input:checked)) .esm-cell[data-inactive-only] { display: none; }
   .esm-inactive-toggle { padding: 12px; }
   .esm-cell-label { display: block; margin-top: 6px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; }
-  .esm-tabs { padding: 0 12px; }
+  .esm-tabs { gap: 0 16px; padding: 0 12px; }
   .esm-tabs-end { display: none; }
   .esm-persona-page { display: block; }
+  .esm-actions { padding: 14px 12px 20px; }
+  .esm-actions-filters .esm-results { margin-left: 0; flex-basis: 100%; }
+  .esm-action-line { margin-left: 0; }
   .esm-persona-list { display: none; }
   .esm-persona-picker { display: block; padding: 12px 12px 0; }
   .esm-persona-picker > .esm-select { display: flex; align-items: center; gap: 8px; width: 100%; }

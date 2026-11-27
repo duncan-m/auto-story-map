@@ -1,3 +1,4 @@
+import { isStoryMapActionKind, type StoryMapActionFilter } from "./actions.js";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatuses, type StoryStatusFilter } from "./status.js";
 import { jobStatement } from "./personas.js";
 import type { InternalStoryCard, StoryMapLabel, StoryMapView } from "./view.js";
@@ -29,6 +30,11 @@ export interface StoryMapFilters {
    */
   view?: StoryMapPage;
   /**
+   * What the Actions tab narrows its list to: a kind, a release, one story, release or persona,
+   * and whether only actions a person must take. Internal views only; unknown values are ignored.
+   */
+  actions?: StoryMapActionFilter;
+  /**
    * A story ID from a permalink. The story is kept whatever the other filters say, and the
    * board opens its panel. Ignored unless the story is in the view, so a customer board treats
    * an internal-only story like one that does not exist.
@@ -38,8 +44,8 @@ export interface StoryMapFilters {
   release?: string;
 }
 
-/** The pages of an internal board with personas: the story map, or the Personas tab. */
-export type StoryMapPage = "map" | "personas";
+/** The pages of an internal board: the story map, the Personas tab or the Actions tab. */
+export type StoryMapPage = "map" | "personas" | "actions";
 
 export interface FilterOptions {
   /** Time to measure “changed in” windows from. Defaults to now. */
@@ -72,7 +78,8 @@ function readStatuses(value: unknown): StoryStatusFilter[] {
  * `persona`, `job`, `activity` and `view` parameters, and a permalink's `story` or `release`. `status` can repeat, once for each chosen
  * status or `stalled`, and `status=all` chooses every status. `persona`, `job`
  * and `activity` repeat, once for each ID. `view=personas` opens the Personas
- * tab. Unknown values are ignored.
+ * tab and `view=actions` the Actions tab, which reads `action-kind`, `action-release`,
+ * `action-item` and `needs-person=1`. Unknown values are ignored.
  */
 export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const query = params.get("q")?.trim().slice(0, maxQueryLength) || undefined;
@@ -83,7 +90,17 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const persona = readIds(params.getAll("persona"));
   const job = readIds(params.getAll("job"));
   const activity = readIds(params.getAll("activity"));
-  const view = params.get("view") === "personas" ? "personas" as const : undefined;
+  const viewParam = params.get("view");
+  const view = viewParam === "personas" || viewParam === "actions" ? viewParam : undefined;
+  const actionKind = params.get("action-kind") ?? undefined;
+  const [actionRelease] = readIds(params.getAll("action-release"));
+  const [actionItem] = readIds(params.getAll("action-item"));
+  const actions: StoryMapActionFilter = {
+    ...(isStoryMapActionKind(actionKind) ? { kind: actionKind } : {}),
+    ...(actionRelease ? { release: actionRelease } : {}),
+    ...(actionItem ? { item: actionItem } : {}),
+    ...(params.get("needs-person") === "1" ? { needsPerson: true } : {}),
+  };
   const [story] = readIds(params.getAll("story"));
   const [release] = readIds(params.getAll("release"));
   return {
@@ -94,6 +111,7 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
     ...(job.length ? { job } : {}),
     ...(activity.length ? { activity } : {}),
     ...(view ? { view } : {}),
+    ...(Object.keys(actions).length ? { actions } : {}),
     ...(story ? { story } : {}),
     ...(release ? { release } : {}),
   };
@@ -144,6 +162,17 @@ export function filterStoryMapView<View extends StoryMapView>(
   const activitySet = new Set(activity);
   // Only internal viewers get the Personas tab, which shows how to add personas when the map has none. Customers never do, because jobs never reach them.
   const personasPage = filters.view === "personas" && internal;
+  const actionsPage = filters.view === "actions" && internal;
+  // Action filters only count for values the view has, so customers and unknown IDs change nothing.
+  const actionFilter: StoryMapActionFilter = {};
+  if (internal && filters.actions) {
+    const { kind, release, item, needsPerson } = filters.actions;
+    const itemIds = new Set(view.actions.flatMap(group => group.actions.flatMap(action => "id" in action.item ? [action.item.id] : [])));
+    if (isStoryMapActionKind(kind)) actionFilter.kind = kind;
+    if (release !== undefined && view.releases.some(entry => entry.id === release)) actionFilter.release = release;
+    if (item !== undefined && itemIds.has(item)) actionFilter.item = item;
+    if (needsPerson === true) actionFilter.needsPerson = true;
+  }
   // Search also matches the titles of a story's personas and the statements of its jobs, for internal viewers.
   const personaTitles = new Map(internalPersonas.map(item => [item.id, item.title]));
   const statements = new Map(internalPersonas.flatMap(item => item.jobs.map(entry => [entry.id, jobStatement(entry)] as const)));
@@ -187,7 +216,8 @@ export function filterStoryMapView<View extends StoryMapView>(
       ...(persona.length ? { persona } : {}),
       ...(job.length ? { job } : {}),
       ...(activity.length ? { activity } : {}),
-      ...(personasPage ? { view: "personas" as const } : {}),
+      ...(personasPage ? { view: "personas" as const } : actionsPage ? { view: "actions" as const } : {}),
+      ...(Object.keys(actionFilter).length ? { actions: actionFilter } : {}),
       ...(linkedStory ? { story: linkedStory } : {}),
       ...(linkedRelease ? { release: linkedRelease } : {}),
       total: view.stories.length,

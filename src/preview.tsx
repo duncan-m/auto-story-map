@@ -200,7 +200,9 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
     const history = await readOptional(options.history, parseStoryMapHistory);
     const tests = await readOptional(options.tests, parseStoryMapTests);
     const internal = view === "internal";
-    const access = { canViewInternal: () => internal, history, tests };
+    const mapPath = relative(process.cwd(), options.map).split(sep).join("/") || options.map;
+    // The source gives each action on the Actions tab its line in the map.
+    const access = { canViewInternal: () => internal, history, tests, mapFile: { path: mapPath, source } };
     // The customer view is a signed-in customer with no internal role.
     const viewer = { roles: [] as string[] };
 
@@ -221,7 +223,7 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
     }
 
     // The page writes an agent brief for each open story and release panel, naming the map as it is in the repository.
-    const brief = isApi ? undefined : { mapPath: relative(process.cwd(), options.map).split(sep).join("/") || options.map };
+    const brief = isApi ? undefined : { mapPath };
     const map = getStoryMapPage(document, viewer, { ...access, searchParams: url.searchParams, ...(brief ? { brief } : {}) });
     const message = "This map has visibility: internal, so signed-in customers see nothing. Set visibility: all-users and add customer copy to show it to them.";
     if (isApi) {
