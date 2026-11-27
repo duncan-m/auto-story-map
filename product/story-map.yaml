@@ -932,8 +932,10 @@ stories:
     title: Save status and release changes from the local preview
     activity: explore
     release: v0-7-6
-    status: planned
+    status: merged
     estimate: 5
+    tokens: 6818989
+    estimatedCostUsd: 3.04
     dependsOn:
       - ESM-111
       - ESM-147
@@ -944,6 +946,8 @@ stories:
     notes: Local only, on the loopback address, with an Origin check, a start-up token and a refusal when the file changed since the page loaded. The hosted board stays read-only (ESM-404).
     sources:
       - docs/plans/local-triage.md#3-save-changes-from-the-local-preview
+      - docs/plans/local-triage.md#ui-mockup-for-saving
+      - docs/story-map.md#save-from-the-local-preview
   - id: ESM-113
     title: Read the map as it was at a version
     activity: explore

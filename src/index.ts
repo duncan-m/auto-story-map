@@ -75,7 +75,7 @@ export { findStories, getStories } from "./read.js";
 export type { FoundStories, MissingStory, StoryQuery } from "./read.js";
 export { branchNamesStory, countStoryTokens, defaultClaudeLogs, defaultTokenPrices, defaultTokenPricesDate } from "./tokens.js";
 export type { StoryTokenOptions, StoryTokenUsage, TokenCost, TokenCounts, TokenPrice, TokenPrices } from "./tokens.js";
-export { nextStoryId, personaEditOperations, proposeDraftConfirmation, proposeStoryMapEdit, StoryMapEditError, storyMapEditOperationSchema } from "./edit.js";
+export { localEditOperations, nextStoryId, personaEditOperations, proposeDraftConfirmation, proposeStoryMapEdit, StoryMapEditError, storyChangeOperations, storyMapEditOperationSchema } from "./edit.js";
 export { createStoryMapEditServer, storyMapEditPath, storyMapEditTokenHeader, storyMapRevision } from "./edit-server.js";
 export type { StoryMapEditingProps, StoryMapEditRead, StoryMapEditRequest, StoryMapEditServer, StoryMapEditServerOptions } from "./edit-server.js";
 export type { StoryMapDraft, StoryMapDraftConfirmation, StoryMapDraftTarget, StoryMapEditOperation, StoryMapEditOptions, StoryMapEditResult } from "./edit.js";

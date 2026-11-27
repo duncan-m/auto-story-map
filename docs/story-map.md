@@ -99,6 +99,12 @@ On the internal board, the story panel has a **Change** section with a **Status*
 
 The section needs `board.js` to build the command, so it stays hidden without it, and **Copy** stays hidden without clipboard access. In code, `storyMapEditCommand({ id, status, reason, release })` from `auto-story-map/board.js` builds the same command.
 
+#### Save from the local preview
+
+On [`story-map preview`](#preview-the-map-locally), the section also has a **Save** button, unless the preview runs with `--read-only`. It writes the change to the map file, through the same checks as `story-map edit --write`: a blocked or cut story needs a reason, the map must stay valid, and comments and untouched lines are kept. The page then reloads with the story's panel open. Commit the file with your other changes, and the commit credits you as its author.
+
+The save goes to the preview's `POST /api/story-map/edit`, which accepts only status, reason and release changes from the panel, beside the Personas tab's edits, so the board cannot do what `edit` refuses, such as removing `draft`. It needs the token the preview put in its page, an `Origin` of the preview itself and a JSON body. If the file has changed on disk since the page loaded, such as after an agent's edit or a `git pull`, the save is refused, the section asks you to reload, and nothing is overwritten. A host's own board saves the same way when it passes `storyEditing={editing}` from [`createStoryMapEditServer`](#in-your-own-app). Deployed boards stay read-only, so there the section only shows the command.
+
 ## Example
 
 When price catalogue lookup is agreed for the builder workflow, put the story under the estimate activity and the builder release. Its YAML can look like this:
@@ -521,7 +527,7 @@ const editor = createStoryMapEditServer({
 // The board's route: read the file on each request instead of importing it.
 const { document, editing } = await editor.read(request);
 const map = getStoryMapPage(document, viewer, { canViewInternal, searchParams: url.searchParams });
-// <StoryMapBoard map={map} personaEditing={editing} />
+// <StoryMapBoard map={map} personaEditing={editing} storyEditing={editing} />
 
 // The save route, at storyMapEditPath:
 export const POST = (request: Request) => editor.handleRequest(request);
@@ -530,7 +536,7 @@ export const POST = (request: Request) => editor.handleRequest(request);
 - **Read the file on each request.** A board that imports the map at build time, such as with `story-map.yaml?raw`, keeps showing the old map after a save, and the next save is refused as stale. `editor.read(request)` returns the file's text, the parsed `document` and the `editing` props, so a save shows on the next load.
 - **`authorize` is required** and must match the board's internal check. The token only proves the page came from this server, not that the person may edit, so without it any signed-in user of the local app could edit the map. It gets the request passed to `read`, `handle` or `handleRequest`.
 - **Editing turns itself off** in a production build, when `NODE_ENV` is `production`, and for any request whose `Host` is not `127.0.0.1`, `localhost` or `[::1]`. `read` then returns no `editing` and saves get 403, so a deployed app stays read-only with nothing to remember. Pass `enabled: false` to turn it off yourself.
-- **Fetch or Node.** `handleRequest(request)` takes a Fetch `Request` and returns a `Response`, for App Router, vinext, Remix, Hono or Workers routes. `handle(request, response)` does the same for a Node server. Both check the `Origin`, the token, the file's revision and the size, and accept persona edits only.
+- **Fetch or Node.** `handleRequest(request)` takes a Fetch `Request` and returns a `Response`, for App Router, vinext, Remix, Hono or Workers routes. `handle(request, response)` does the same for a Node server. Both check the `Origin`, the token, the file's revision and the size, and accept persona edits and a story's status, reason and release only. Pass `storyEditing={editing}` too to let the story panel's **Change** section save.
 - **Editing off on purpose.** Pass `personaEditing={false}` to an internal board to skip the set-up note, as `story-map preview --read-only` does.
 
 ### Share personas with customers
@@ -986,7 +992,7 @@ Open the address it prints, `http://127.0.0.1:4173/story-map`. **Internal** show
 
 - Pass the map's path when it is not `product/story-map.yaml`, `--port <n>` for another port, and `--history <file>` and `--tests-index <file>` for dates, changes and tagged tests.
 - Add `--source-base-url https://github.com/<owner>/<repo>/blob/main/` to turn repository-relative sources into links.
-- You can [edit personas in place](#edit-personas-on-your-machine) on the Personas tab, and the edits save to the map file. Pass `--read-only` to turn that off. Saves need the token the preview puts in its own pages, an `Origin` of the preview itself, and a JSON body, so another site cannot post to it. A save from a page older than the file, such as after an agent's edit or a `git pull`, is refused and nothing is overwritten.
+- You can [edit personas in place](#edit-personas-on-your-machine) on the Personas tab, and [save a story's status, reason and release](#save-from-the-local-preview) from its panel, and the edits save to the map file. Pass `--read-only` to turn that off. Saves need the token the preview puts in its own pages, an `Origin` of the preview itself, and a JSON body, so another site cannot post to it. A save from a page older than the file, such as after an agent's edit or a `git pull`, is refused and nothing is overwritten.
 - The board's search, filters, panels and export menu work as they will in your product. The JSON view is at `/api/story-map`.
 - It renders the React board, so it needs `react` and `react-dom` installed. If they are missing, it says how to add them.
 

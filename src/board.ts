@@ -402,28 +402,56 @@ export function storyMapEditCommand(change: StoryMapEditChange) {
 
 const needsReason = (status: string) => status === "blocked" || status === "cut";
 
+type ChangeStory = { id: string; status: string; release: string; reason?: string };
+type ChangeChoice = { status: string; release: string; reason?: string };
+
 /**
- * The command for what the story panel's **Change** pickers say, or why there is none yet:
- * nothing differs from the story, or a blocked or cut story has no reason. Only what changed
- * goes in the command. A new reason for a story that stays blocked or cut repeats its status,
- * since `--reason` goes with `--status`.
+ * What the story panel's **Change** pickers change, or why there is nothing yet: nothing
+ * differs from the story, or a blocked or cut story has no reason. Only what changed is
+ * kept. A new reason for a story that stays blocked or cut repeats its status, since
+ * `--reason` goes with `--status`.
  */
-export function storyMapChangeCommand(
-  story: { id: string; status: string; release: string; reason?: string },
-  chosen: { status: string; release: string; reason?: string },
-): { command: string } | { message: string } {
+function storyMapChange(story: ChangeStory, chosen: ChangeChoice): { change: StoryMapEditChange } | { message: string } {
   const reason = needsReason(chosen.status) ? chosen.reason?.trim() ?? "" : "";
   const statusChanged = chosen.status !== story.status || (needsReason(chosen.status) && reason !== (story.reason ?? ""));
   const releaseChanged = chosen.release !== story.release;
   if (statusChanged && needsReason(chosen.status) && !reason) return { message: `Say why it is ${chosen.status} to see its command.` };
   if (!statusChanged && !releaseChanged) return { message: "Choose a new status or release to see its command." };
   return {
-    command: storyMapEditCommand({
+    change: {
       id: story.id,
-      ...(statusChanged ? { status: chosen.status, reason } : {}),
+      ...(statusChanged ? { status: chosen.status, ...(reason ? { reason } : {}) } : {}),
       ...(releaseChanged ? { release: chosen.release } : {}),
-    }),
+    },
   };
+}
+
+/** The command for what the story panel's **Change** pickers say, or why there is none yet, as `storyMapChange` decides. */
+export function storyMapChangeCommand(story: ChangeStory, chosen: ChangeChoice): { command: string } | { message: string } {
+  const result = storyMapChange(story, chosen);
+  return "change" in result ? { command: storyMapEditCommand(result.change) } : result;
+}
+
+/**
+ * The edit operations that save a change, for `POST /api/story-map/edit`: the same
+ * `status` and `release` operations `story-map edit --status --reason --release` makes.
+ */
+export function storyMapChangeOperations(change: StoryMapEditChange): Record<string, string>[] {
+  return [
+    ...(change.status ? [{ op: "status", id: change.id, status: change.status, ...(change.reason ? { reason: change.reason } : {}) }] : []),
+    ...(change.release ? [{ op: "release", id: change.id, release: change.release }] : []),
+  ];
+}
+
+const changeSavedKey = "esm-change-saved";
+
+/** The current page with the story's panel open, as a permalink opens it, keeping the filters. */
+function storyPageUrl(id: string) {
+  const url = new URL(location.href);
+  url.searchParams.delete("release");
+  url.searchParams.set("story", id);
+  url.hash = `esm-story-${id}`;
+  return url.href;
 }
 
 const enhancedChanges = new WeakSet<Element>();
@@ -432,7 +460,10 @@ const enhancedChanges = new WeakSet<Element>();
  * Shows the **Change** section of each internal story panel and builds the matching
  * `story-map edit` command as its status, reason and release pickers change. The reason
  * field shows for blocked and cut. With clipboard access, **Copy** copies the command and
- * says what it copied, such as “Copied command: ESM-111”. Nothing is saved. Safe to call more than once.
+ * says what it copied, such as “Copied command: ESM-111”. When the page was rendered with
+ * `storyEditing`, as `story-map preview` does, **Save** posts the change to the map file and
+ * reopens the panel. A save the server refuses, such as from a page older than the file,
+ * says why in the section and saves nothing. Safe to call more than once.
  */
 export function enhanceStoryMapChanges(root: ParentNode = document) {
   const canCopy = typeof navigator !== "undefined" && !!navigator.clipboard?.writeText;
@@ -448,24 +479,71 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
     const reasonField = field<HTMLElement>("[data-esm-change-reason]");
     const output = field<HTMLElement>("[data-esm-change-command]");
     const copy = field<HTMLButtonElement>("button[data-esm-change-copy]");
+    const save = field<HTMLButtonElement>("button[data-esm-change-save]");
+    const error = field<HTMLElement>(".esm-change-error");
     if (!status || !release || !output) continue;
     const { esmChange: id = "", esmStatus: current = "", esmRelease: currentRelease = "", esmReason: currentReason = "" } = form.dataset;
+    const { esmEditEndpoint: endpoint, esmEditToken: token, esmEditRevision: revision } = form.dataset;
     if (copy) copy.hidden = !canCopy;
+    let pending: StoryMapEditChange | undefined;
+    let saving = false;
 
     const update = () => {
       if (reasonField) reasonField.hidden = !needsReason(status.value);
-      const result = storyMapChangeCommand(
+      const result = storyMapChange(
         { id, status: current, release: currentRelease, reason: currentReason },
         { status: status.value, release: release.value, reason: reason?.value },
       );
-      output.textContent = "command" in result ? result.command : result.message;
-      if ("command" in result) delete output.dataset.empty;
+      pending = "change" in result ? result.change : undefined;
+      output.textContent = pending ? storyMapEditCommand(pending) : (result as { message: string }).message;
+      if (pending) delete output.dataset.empty;
       else output.dataset.empty = "";
-      if (copy) copy.disabled = !("command" in result);
+      if (copy) copy.disabled = !pending;
+      if (save) save.disabled = !pending || saving;
+      if (error && !saving) error.hidden = true;
     };
     form.addEventListener("input", update);
     form.addEventListener("change", update);
-    form.addEventListener("submit", event => event.preventDefault());
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!save || !endpoint || !pending || saving) return;
+      saving = true;
+      save.disabled = true;
+      if (error) error.hidden = true;
+      const fail = (message: string) => {
+        saving = false;
+        save.disabled = !pending;
+        if (error) {
+          error.textContent = message;
+          error.hidden = false;
+        }
+      };
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Story-Map-Token": token ?? "" },
+        body: JSON.stringify({ revision, operations: storyMapChangeOperations(pending) }),
+      })
+        .then(async response => {
+          const body = await response.json().catch(() => ({})) as { error?: string };
+          if (!response.ok) throw new Error(body.error || `The preview could not save the change (${response.status}).`);
+          try {
+            sessionStorage.setItem(changeSavedKey, id);
+          } catch {
+            // The reload then makes no announcement.
+          }
+          // A URL that differs only in its hash would not reload, so replace it and reload.
+          const next = storyPageUrl(id);
+          if (next.split("#")[0] === location.href.split("#")[0]) {
+            history.replaceState(history.state, "", next);
+            location.reload();
+          } else {
+            location.assign(next);
+          }
+        })
+        .catch((failure: unknown) => {
+          fail(failure instanceof Error && failure.message !== "Failed to fetch" ? failure.message : "Could not reach the preview. Check it is still running, then try again.");
+        });
+    });
     copy?.addEventListener("click", () => {
       if (copy.disabled || !canCopy) return;
       const board = form.closest(".esm-board");
@@ -478,6 +556,17 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
     });
     update();
   }
+
+  // After a save reloads the page on the story's panel, say that it saved.
+  let saved: string | null = null;
+  try {
+    saved = sessionStorage.getItem(changeSavedKey);
+    if (saved) sessionStorage.removeItem(changeSavedKey);
+  } catch {
+    // Storage can be unavailable.
+  }
+  const board = saved && typeof document !== "undefined" ? document.querySelector(".esm-board") : null;
+  if (saved && board) announce(board, `Saved ${saved} to the map file.`);
 }
 
 const enhancedActions = new WeakSet<Element>();

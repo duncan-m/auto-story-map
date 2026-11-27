@@ -23,7 +23,8 @@ export interface StoryMapPreviewOptions {
   /** Base URL that repository-relative sources link to, such as a GitHub `blob/main/` URL. */
   sourceBaseUrl?: string;
   /**
-   * Lets the Personas tab save edits to the map file, through `POST /api/story-map/edit`.
+   * Lets the Personas tab and the story panels' **Change** section save edits to the map
+   * file, through `POST /api/story-map/edit`.
    * On by default, because the preview only runs on this machine. Pass `false` for a
    * read-only preview. Saves are checked as `createStoryMapEditServer` describes.
    */
@@ -103,7 +104,7 @@ function page(title: string, view: PreviewView, mapPath: string, body: ReactNode
       </head>
       <body>
         <header className="preview-bar">
-          <span><strong>Story map preview</strong> of <code>{mapPath}</code>. {writable ? "Local only. Edits on the Personas tab save to this file." : "Local only, for checking the map."}</span>
+          <span><strong>Story map preview</strong> of <code>{mapPath}</code>. {writable ? "Local only. Edits on the Personas tab and in story panels save to this file." : "Local only, for checking the map."}</span>
           <nav aria-label="View">
             {views.map(([id, label]) => (
               <a key={id} href={`/story-map?view=${id}`} aria-current={view === id ? "page" : undefined}>{label}</a>
@@ -234,7 +235,7 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
       <>
         {internal ? <Issues issues={checked.issues} kind="warning" /> : null}
         {map
-          ? <StoryMapBoard map={map} sourceBaseUrl={options.sourceBaseUrl} preservedParams={{ view }} exportHref={internal ? "/story-map/export?view=internal" : undefined} personaEditing={internal ? editor?.editing(source) ?? false : undefined} />
+          ? <StoryMapBoard map={map} sourceBaseUrl={options.sourceBaseUrl} preservedParams={{ view }} exportHref={internal ? "/story-map/export?view=internal" : undefined} personaEditing={internal ? editor?.editing(source) ?? false : undefined} storyEditing={internal ? editor?.editing(source) ?? false : undefined} />
           : <p>{message}</p>}
       </>
     );

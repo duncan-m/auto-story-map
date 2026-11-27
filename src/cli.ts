@@ -412,8 +412,9 @@ preview
                      https://github.com/<owner>/<repo>/blob/main/
   --read-only        Turns off editing. By default you can edit personas,
                      their context and job statements in place on the
-                     Personas tab, and the edits save to the map file.
-                     Drafts stay drafts.
+                     Personas tab, and save a story's status, reason and
+                     release from its panel, and the edits save to the
+                     map file. Drafts stay drafts.
 
 mcp
   Runs a Model Context Protocol server over standard input and output, for

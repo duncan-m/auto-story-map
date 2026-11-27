@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { personaEditOperations, proposeStoryMapEdit, StoryMapEditError } from "./edit.js";
+import { localEditOperations, proposeStoryMapEdit, StoryMapEditError } from "./edit.js";
 import { parseStoryMap, type StoryMapDocument } from "./schema.js";
 
 /** The route the board's edit forms post to. */
@@ -15,7 +15,7 @@ export function storyMapRevision(source: string) {
   return createHash("sha256").update(source).digest("hex").slice(0, 32);
 }
 
-/** What `StoryMapBoard` needs in `personaEditing` to show the Personas tab's edit controls. */
+/** What `StoryMapBoard` needs in `personaEditing` or `storyEditing` to show its edit controls. */
 export interface StoryMapEditingProps {
   endpoint: string;
   token: string;
@@ -48,11 +48,11 @@ export interface StoryMapEditRead {
   source: string;
   /** The parsed map, for `getStoryMapPage`. */
   document: StoryMapDocument;
-  /** Pass as `personaEditing`. `undefined` unless editing is on for this request. */
+  /** Pass as `personaEditing`, and as `storyEditing` to save the story panel's **Change** section. `undefined` unless editing is on for this request. */
   editing: StoryMapEditingProps | undefined;
 }
 
-/** Saves edits from the board's Personas tab to a map file on this machine. */
+/** Saves edits from the board's Personas tab and story panels to a map file on this machine. */
 export interface StoryMapEditServer {
   /**
    * Reads the map file and, when editing is on for `request`, the props for `personaEditing`.
@@ -141,7 +141,7 @@ interface EditReply {
 }
 
 /**
- * Builds the handler that saves Personas tab edits to the map file at `map`, for a
+ * Builds the handler that saves Personas tab edits and story panel changes to the map file at `map`, for a
  * server on this machine such as `story-map preview` or a host app's dev server.
  * Editing turns itself off in a production build and for any request whose `Host`
  * is not a loopback address, so a deployed app stays read-only. Edits there would
@@ -151,8 +151,10 @@ interface EditReply {
  * `Origin` that matches it, JSON, and the token made when the handler was built.
  * `authorize` must accept the request too. A save from a page older than the file is
  * refused, so an agent's edit or a `git pull` is not overwritten. Only persona edits
- * are accepted, and they go through `proposeStoryMapEdit`, so comments and untouched
- * lines are kept and the file is written only when the map stays valid.
+ * and a story's status, reason and release are accepted (`localEditOperations`), so a
+ * page cannot do what `story-map edit` refuses, such as removing `draft`. They go through
+ * `proposeStoryMapEdit`, with the same checks as `story-map edit --write`, so comments and
+ * untouched lines are kept and the file is written only when the map stays valid.
  */
 export function createStoryMapEditServer(options: StoryMapEditServerOptions): StoryMapEditServer {
   const { map } = options;
@@ -200,8 +202,8 @@ export function createStoryMapEditServer(options: StoryMapEditServerOptions): St
     }
     const operations = body?.operations;
     if (!Array.isArray(operations) || !operations.length) return json(400, { error: "Send a list of operations." });
-    if (!operations.every(operation => (personaEditOperations as readonly unknown[]).includes((operation as { op?: unknown })?.op))) {
-      return json(400, { error: `Only ${personaEditOperations.join(", ")} edits can be saved here.` });
+    if (!operations.every(operation => (localEditOperations as readonly unknown[]).includes((operation as { op?: unknown })?.op))) {
+      return json(400, { error: `Only ${localEditOperations.join(", ")} edits can be saved here.` });
     }
     const source = await readFile(map, "utf8");
     if (body.revision !== storyMapRevision(source)) {
