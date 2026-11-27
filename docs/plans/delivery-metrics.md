@@ -1,9 +1,10 @@
 # Plan: Git-native delivery metrics
 
 Status: proposed. Planning only; no implementation in this PR. Work is split into two releases:
-- **0.8.2: Delivery visibility** — ESM-130 through ESM-134.
+- **0.8.2: Delivery visibility** — a spike first, ESM-174, then the full version, ESM-130 through ESM-134.
 - **0.8.3: Delivery intelligence** — ESM-135, ESM-136 and ESM-138.
 
+0. [Spike: show delivery totals in an Analytics tab](#spike-show-delivery-totals-in-an-analytics-tab) (ESM-174)
 1. [Reconstruct delivery events from Git](#1-reconstruct-delivery-events-from-git) (ESM-130)
 2. [Calculate historical scope and completion](#2-calculate-historical-scope-and-completion) (ESM-131)
 3. [Show burn-up and burn-down in Analytics](#3-show-burn-up-and-burn-down-in-analytics) (ESM-132)
@@ -13,7 +14,7 @@ Status: proposed. Planning only; no implementation in this PR. Work is split int
 7. [Baseline releases and expose scope changes](#7-baseline-releases-and-expose-scope-changes) (ESM-136)
 8. [Display cumulative flow and bottlenecks](#8-display-cumulative-flow-and-bottlenecks) (ESM-138)
 
-The team agreed estimates for 0.8.2 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. For 0.8.3 (18 points): ESM-135 5, ESM-136 5 and ESM-138 8. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
+The team agreed estimates for 0.8.2 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. For 0.8.3 (18 points): ESM-135 5, ESM-136 5 and ESM-138 8. ESM-174 has no estimate yet: the team needs to agree one. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
 
 ## Why and product outcome
 
@@ -33,6 +34,28 @@ Success: a user can open a release, see delivered versus changing scope, through
 - **Performance:** read Git only when `story-map history` runs, as it does today. Every metric is calculated from the map and the history file, so there is no second generated file and no Git scan per UI request. If a calculation later proves too slow or too large to run in the board, add a precomputed file then.
 
 ## Release 0.8.2 — Delivery visibility
+
+The release starts with a spike, ESM-174, which puts a simple delivery report in front of people quickly, using only data the map and the history file already hold. The full version, ESM-130 to ESM-134, follows on from it: it builds on the spike's Analytics tab and calculations rather than starting again, and adds what the spike leaves out, scope change and remaining work.
+
+### Spike: show delivery totals in an Analytics tab
+
+**User story:** As a Solo Builder, I want to see how many stories, points, tokens and how much spend I delivered each day, week or month, so that I can see my delivery pace and what it costs without building a report by hand.
+
+**Scope:** a new internal **Analytics** tab on the board, after **Story map** and **Personas**. A period selector (**Day**, **Week**, **Month**) and a completion selector (**Merged** or **Shipped**), using the milestone rule in the measurement contract. For each UTC period: stories completed, the sum of their `estimate`, the sum of their `tokens` and the sum of their `estimatedCostUsd`, with totals for the window. Show the last 8 days, 8 weeks or 6 months, with empty periods kept. A table is the main view, with a small bar chart of one chosen measure above it; no chart library.
+
+- **When a story was completed:** the time of the status change, in the history file the board already loads with `--history`, that took it into the selected milestone. A story that was reopened and completed again counts once, in the period of its latest completion. A story that is no longer complete is not counted.
+- **Values today, not at the time:** points, tokens and spend come from the story as it is in the map now. The tab says so. The full version's ESM-130 and ESM-131 replace this with values at the time.
+- **Coverage, not zeros:** each period shows how many of its stories have an estimate and how many have tokens recorded, such as “tokens for 4 of 9”. A story with no estimate or no tokens is never counted as zero. When the history is incomplete, the tab says from what date it is known.
+- **No history file:** the tab explains how to add one with `story-map history` and `--history`, and shows nothing else.
+- **Internal only:** the tab, tokens and spend never reach a customer view, like the Personas tab.
+
+**Acceptance:** totals match the map and the history file for this repository; reopened stories are counted once; missing estimates and tokens are shown as coverage, not as zero; empty periods appear; the tab, its data and its query parameters are absent from the customer projection; the table is readable by a screen reader and with the keyboard.
+
+**Not in the spike:** scope change, remaining work, burn-up and burn-down, release filters, and values at the time. Those are the full version below.
+
+**Depends on:** the existing `story-map history` file, and the `tokens` and `estimatedCostUsd` fields stories get in the PR that finishes them.
+
+**Follow-on:** ESM-132 adds the burn charts to this tab. ESM-133 becomes a small extension of the spike's table, adding velocity and the 12-week window. ESM-134 links each release lane to the tab.
 
 ### 1. Reconstruct delivery events from Git
 
@@ -58,27 +81,27 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **User story:** As a Solo Builder, I want a clear burn-up or burn-down chart by release so that I can see what is changing and whether work remains.
 
-**Scope:** internal Analytics tab; default burn-up (completed and total scope); toggle burn-down, story counts/points, release, 8/12 weeks and merged/shipped. Accessible chart labels, table fallback/accessible data, clear empty and insufficient-history states. Calculate the series from the map and the history file the board already loads with `--history`; support optional static/no-JS host rendering patterns.
+**Scope:** add to the Analytics tab from ESM-174; default burn-up (completed and total scope); toggle burn-down, story counts/points, release, 8/12 weeks and merged/shipped. Accessible chart labels, table fallback/accessible data, clear empty and insufficient-history states. Calculate the series from the map and the history file the board already loads with `--history`; support optional static/no-JS host rendering patterns.
 
 **Acceptance:** added scope is visible separately from completed work; charts never claim missing history is zero; unestimated work remains visible in count mode.
 
-**Depends on:** ESM-131.
+**Depends on:** ESM-131 and ESM-174.
 
 ### 4. Report throughput and velocity
 
 **User story:** As a Solo Builder, I want weekly delivered stories and estimated points so that I can understand my actual delivery cadence without sprints.
 
-**Scope:** weekly story throughput and story-point velocity, including zero weeks, same completion selector and explicit denominators/coverage. No individual-agent scoreboards or commit-count proxies.
+**Scope:** extends the spike's weekly table from ESM-174 with story-point velocity at the time and a 12-week window, including zero weeks, same completion selector and explicit denominators/coverage. No individual-agent scoreboards or commit-count proxies.
 
 **Acceptance:** one story contributes at most once to its currently selected completed milestone in a window; status reversals and re-completion have defined behavior, tested with fixtures. Unknown estimates are never silently dropped from story throughput.
 
-**Depends on:** ESM-131.
+**Depends on:** ESM-131 and ESM-174.
 
 ### 5. Summarise delivery on each release lane
 
 **User story:** As a Solo Builder, I want release progress shown next to the existing stories so that I can choose the next slice without leaving the map.
 
-**Scope:** completed/total count, progress bar, remaining and blocked counts, all from the current map, so this needs no history. Once ESM-132 lands, link to the corresponding Analytics release view. Keep the full story map readable and avoid false confidence when history/estimates are missing.
+**Scope:** completed/total count, progress bar, remaining and blocked counts, all from the current map, so this needs no history. Link to the Analytics tab from ESM-174, and to its release view once ESM-132 lands. Keep the full story map readable and avoid false confidence when history/estimates are missing.
 
 **Acceptance:** progress matches current map and selected completion milestone; blocked and cut states are distinguished; internal-only analytics do not leak through customer projection.
 
@@ -122,6 +145,19 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 **Estimate:** 8 points, agreed. A new accessible cumulative-flow chart with a table fallback, ageing views and release filters, the most new UI in the release.
 
+## UI mockup
+
+![Mockup of the Analytics tab by day in the merged view, with totals, a bar chart of stories and a table of stories, points, tokens and spend per day](delivery-metrics-mockup.png)
+
+The mockup is [delivery-metrics-mockup.html](delivery-metrics-mockup.html), for the ESM-174 spike. It is built on the real `styles.css` and the board's tab row and toolbar markup, and the Analytics classes are proposed. The numbers are this repository's map and its `story-map history` file on 27 November 2026, by day in the merged view. To refresh the image, take a full-page screenshot at 1360 px wide.
+
+What it shows:
+
+1. **A third internal tab, Analytics,** after **Story map** and **Personas**. ESM-128 plans an **Actions** tab in the same row, so whichever lands second adds itself after the other.
+2. **Period, milestone and chart selectors.** The chart shows one measure at a time, and the table below it is the accessible data.
+3. **Where the data is limited.** The note says where the history starts and that values are today's.
+4. **Coverage, not zeros.** Days whose stories have no estimate or tokens show a dash and how many are missing, and empty days stay in the table.
+
 ## Implementation guidance
 
 1. Extend existing history parsing, not a second Git reader. Keep history logic separate from rendering.
@@ -134,16 +170,16 @@ Success: a user can open a release, see delivered versus changing scope, through
 
 - Whether a 'completed' story that subsequently reopens should reduce cumulative burn-up or whether separate net-completed versus ever-completed series should be offered. Proposed default: net-completed, with status history explaining reversals.
 - When a story is moved between releases, whether its earlier delivered work appears historically in its old release. Proposed: yes for historical snapshots, with a separate current-scope view.
-- Whether Analytics is a top-level tab or a release-specific panel first. Proposed: a tab plus a small release-row summary.
+- Whether Analytics is a top-level tab or a release-specific panel first. Settled by ESM-174: a top-level **Analytics** tab, plus a small release-row summary in ESM-134.
 
 ## Not now
 
-Sprint creation, timesheets, manual daily updates, agent leaderboards, cost-per-token dashboards, server-side data storage, cycle time and completion forecasts. None is necessary to deliver trustworthy Git-native metrics.
+Sprint creation, timesheets, manual daily updates, agent leaderboards, cost-per-token dashboards (ESM-174 shows total tokens and spend per period, not cost per token or per agent), server-side data storage, cycle time and completion forecasts. None is necessary to deliver trustworthy Git-native metrics.
 
 ## Delivery checklist
 
-- All 8 stories remain `planned` until implementation begins.
-- No estimates are assigned without team agreement. The 0.8.2 and 0.8.3 estimates are agreed.
+- All 9 stories remain `planned` until implementation begins.
+- No estimates are assigned without team agreement. The 0.8.2 and 0.8.3 estimates are agreed, except ESM-174's.
 - Validate map/schema; add linked tests at implementation time.
 - Keep delivery metrics out of customer-facing projections.
 - Review usability with a Solo Builder and an inheriting PM before considering the feature shipped.
