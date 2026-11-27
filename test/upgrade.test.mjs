@@ -127,7 +127,7 @@ test("ESM-167: unmarked parts from before 0.7.8 are recognised through the known
 
 test("ESM-167: workflow steps are compared by the commands they run", async t => {
   const template = await packaged("templates/story-map-ci.yml");
-  assert.deepEqual([...workflowCommands(template).keys()], ["npm ci --ignore-scripts", "story-map validate", "story-map diff"]);
+  assert.deepEqual([...workflowCommands(template).keys()], ["npm ci --ignore-scripts", "story-map validate", "story-map diff", "story-map pr-check"]);
 
   // The host's own Node version and an extra --plans flag are edits, but add no step.
   const ours = template.replace("node-version: lts/*", "node-version: 22").replace("--check-sources product", "--check-sources --plans docs/plans product");
@@ -141,14 +141,14 @@ test("ESM-167: workflow steps are compared by the commands they run", async t =>
   ({ workflow } = byPart(await upgradeReport({ root, known: empty })));
   assert.deepEqual([workflow.state, workflow.recommendation, workflow.additions], ["edited", "keep", undefined]);
 
-  // A host that dropped the summary step and renamed its job is missing story-map diff.
+  // A host that dropped the summary and pr-check steps and renamed its job is missing both.
   const dropped = stampSetupFile("workflow", template, "0.7.5")
     .replace(/      - name: Summarise story map changes[\s\S]*$/, "")
     .replace("  validate:\n", "  map:\n");
   await write(root, { ".github/workflows/story-map.yml": dropped });
   ({ workflow } = byPart(await upgradeReport({ root, known: empty })));
-  assert.deepEqual([workflow.state, workflow.recommendation, workflow.additions], ["edited-outdated", "review", ["story-map diff"]]);
-  assert.equal(workflow.change, "add the story-map diff step");
+  assert.deepEqual([workflow.state, workflow.recommendation, workflow.additions], ["edited-outdated", "review", ["story-map diff", "story-map pr-check"]]);
+  assert.equal(workflow.change, "add the story-map diff, story-map pr-check steps");
 });
 
 test("ESM-167: the skill is needed when AGENTS.md points to it, and reviewed when it differs", async t => {

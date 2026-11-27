@@ -26,9 +26,17 @@ install:
   skill: The story map skill gives Claude Code the full rules when it works on the map, so the AGENTS.md section can stay short.
 
 releases:
+  "0.7.9":
+    agents:
+      - The rules on drafts, estimates and recording tokens say that CI now checks them.
+    workflow:
+      - CI fails a pull request whose agent-written commits make a change only a person should make, such as confirming a draft or setting an estimate, until a person adds the map-approved label, and one that marks a story merged without a Tokens used section.
+    guide:
+      - The guide explains the pull request check, how it tells an agent's commits from a person's, and how a person approves a change only they should make.
   "0.7.8":
     agents:
       - Each rule in the AGENTS.md section carries a hidden marker, so later upgrades update the rules you left alone and keep the ones you reworded or added.
+      - Agents ask once whether you want simple or advanced upgrades, and record only the answer a person gives.
     guide:
       - The guide explains how to review your set-up after an upgrade, rule by rule for AGENTS.md, how to apply the changes while keeping your own edits, and what the version markers in these files mean.
   "0.7.7":

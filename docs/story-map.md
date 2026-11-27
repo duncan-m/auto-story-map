@@ -66,11 +66,11 @@ Then it writes the starter map and the parts, and lists each file it created, up
 - **Simple mode**, the default, adds the recommended set: every part, as `init` always has. `--no-ci` leaves out the workflow, and `--skill` adds the skill, with a short pointer to it in `AGENTS.md` instead of the full rules.
 - **Advanced mode** adds only the parts you choose. Name them with `--apply`, such as `--apply agents,guide`. The parts are `agents`, `guide`, `workflow` and `skill`. `--mode advanced` alone asks which parts at a terminal, and otherwise prints the list and writes nothing.
 
-`--mode` picks the mode. Without it, `init` uses the map's `settings.upgrade` when the map is already there, and simple mode otherwise.
+`--mode` picks the mode. Without it, `init` uses the map's [`settings.upgrade`](#choose-simple-or-advanced-mode) when the map is already there, and simple mode otherwise.
 
 In both modes, the product choices, [delivery plans](#choose-whether-to-use-delivery-plans) and the [story ID policy](#change-the-map-from-the-command-line), are asked at a terminal, and pressing Enter means not now. Agents run without a terminal, so `init` lists them instead. An agent asks the person and passes only their answer, with `--plans <folder>` or `--plans off`, and `--story-ids next` or `--story-ids lowest-free`, or records it afterwards with `story-map settings`.
 
-`init` never overwrites a file. In a repository that is already set up, where the story map section of `AGENTS.md`, the guide or the workflow is there, `init` hands over to `story-map upgrade` instead of skipping every file. It prints the upgrade report, or the dry run of the mode or parts you gave, and writes nothing. Run `story-map upgrade` with `--write` to apply the changes, as [Apply the changes](#apply-the-changes) describes.
+`init` never overwrites a file. In a repository that is already set up, where the story map section of `AGENTS.md`, the guide or the workflow is there, `init` hands over to `story-map upgrade` instead of skipping every file. It prints the upgrade report, or the dry run of the mode or parts you gave, or of the mode in `settings.upgrade`, and writes nothing. Run `story-map upgrade` with `--write` to apply the changes, as [Apply the changes](#apply-the-changes) describes.
 
 ### What the set-up markers mean
 
@@ -138,7 +138,7 @@ A choice is **not chosen** until a person answers, and **chosen** after. Ask the
 - **The workflow** is compared by the commands its steps run, such as `story-map validate` and `story-map diff`, not line by line, since hosts change job names, Node versions and triggers. A step this version runs that yours does not is listed as an addition.
 - **The skill** records no version, so a skill that differs from this version's is reported as edited and outdated. It is only needed when your `AGENTS.md` section points to it.
 - **Diffs** are two-way, from your copy to this version's. `--diff` prints them after the table. The `AGENTS.md` section is compared [rule by rule](#review-the-agentsmd-section-rule-by-rule) instead, so `--diff` prints each rule's diff rather than the whole section's.
-- **`--format markdown`** gives the overview and the table for a pull request, with each diff folded. **`--format json`** gives `format: "auto-story-map.upgrade"`, `packageVersion`, `map`, the `overview` and `parts`, each with its `part`, `kind`, `title`, `path`, `state`, `from`, `change`, `recommendation` (`add`, `optional`, `replace`, `review`, `keep` or `ask`), and, where they apply, `additions`, `diff`, the chosen `value` and `version`, the marker reading below.
+- **`--format markdown`** gives the overview and the table for a pull request, with each diff folded. **`--format json`** gives `format: "auto-story-map.upgrade"`, `packageVersion`, `map`, the chosen `mode` or the `modeQuestion` to ask, the `overview` and `parts`, each with its `part`, `kind`, `title`, `path`, `state`, `from`, `change`, `recommendation` (`add`, `optional`, `replace`, `review`, `keep` or `ask`), and, where they apply, `additions`, `diff`, the chosen `value` and `version`, the marker reading below.
 - `--root <path>` reads another repository, and `--map <path>` another map's settings.
 
 #### The overview
@@ -195,6 +195,25 @@ The review recommends replacing only rules you never changed. A rule you reworde
 Sections set up before 0.7.8 have no rule markers. Their rules are recognised by their text, from the hash of each rule in every earlier release, kept under `rules` in `templates/known-versions.json`. A rule you reworded is recognised by its opening words. One whose opening words changed too counts as your own rule, and the rule it replaced as removed, so neither is lost or doubled. When such a section is edited, so its version is unknown, the newest release that shipped all of its unedited rules stands in for it.
 
 In JSON, the `agents` part has `rules`, this version's rules first, in its order, then the rules only you have. Each has `id` (left out for a paragraph of your own), `title`, `state`, `recommendation`, `change`, and, where they apply, `matchedBy` (`marker`, `text` or `opening`), `text` (your wording), `template` (this version's) and `diff`. In code, `reviewAgentsRules()` does the comparison and `agentsRules` lists every rule ID.
+
+### Choose simple or advanced mode
+
+The review runs in one of two modes, and the person who looks after the set-up chooses which, once:
+
+- **Simple** shows what changes for your team and applies the recommended changes. It never replaces a part you edited, and it still asks each product choice.
+- **Advanced** shows the same overview, then each part's diff, and you accept or keep each part.
+
+The choice is kept in the map's `settings.upgrade`, as `simple` or `advanced`. Left out, the review asks:
+
+> Do you want simple or advanced upgrades? Simple shows what changes for your team and applies the recommended changes, keeping your own edits. Advanced also shows each part's diff, for you to accept or keep.
+
+- **Agents** run without an interactive terminal, so they get the report, with the question after it, or under `modeQuestion` in `--format json`. Ask the person the question word for word, and record only the answer they give, as for [delivery plans](#choose-whether-to-use-delivery-plans): `npx --no-install story-map settings --upgrade simple --write` or `--upgrade advanced --write`. If they say not now, leave it unset, and run the review with `--mode` for this time only.
+- **At a terminal**, when standard input is interactive and no `--format` is given, `story-map upgrade` asks you itself. With `--write`, your answer is recorded in `settings.upgrade` along with the changes, so the review does not ask again. Pressing Enter means not now, and the review only reports.
+- **`--mode simple`** or **`--mode advanced`** overrides the setting for one run, and `--apply <parts>` always means advanced.
+
+Once a mode is set, `story-map upgrade` runs in it. In simple mode it is the same as `--mode simple`, below. In advanced mode at a terminal it walks through each part that would change: it shows the part's diff, or its rules for the `AGENTS.md` section, and asks whether to take this version's. Enter takes the recommendation, which is yes for a part to add or replace and no for a part you edited. It then asks the product choices, and applies the parts you took, with `--write`. Without a terminal, advanced mode prints the report with every diff, for `--apply`. `--write` with no mode chosen and no `--mode` exits 2, because the review would not know what to apply.
+
+`story-map diff` lists a change to `settings.upgrade` under **Settings**, so the choice is reviewed like any map change.
 
 ### Apply the changes
 
@@ -256,7 +275,9 @@ Each file it replaces or adds records this version in its [marker](#what-the-set
 
 `--format json` adds `mode`, `changes`, `questions`, `changed`, `written` and `files` to the report. Each change has `part`, `title`, `path`, `action` (`add`, `replace`, `update`, `record`, `ask` or `keep`), `change`, and `diff` or `value` where they apply. Each question has `part`, `question`, `link` and `option`. `--format markdown` gives the overview and a table of the changes, for the pull request that commits them. Commit the changes in a branch and pull request, like any other change, so they can be reviewed and reverted.
 
-In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and [`init`](#choose-the-parts-at-install) build on it.
+`answers.upgrade` records the person's choice of mode, and the result's `modeRecorded` names it when the map changes.
+
+In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and [`init`](#choose-the-parts-at-install) build on it: in advanced mode, an empty `parts` keeps every part, as when the person takes none.
 
 ## Upgrade to 0.7.7
 
@@ -1021,8 +1042,9 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `possible-renumber` | needs a person | A story was removed and one with the same title added, so it may have been renumbered. | [Changes that need a person](#changes-that-need-a-person) |
 | `customer-copy-changed` | needs a person | Customer-facing copy was added or changed, or the map was switched to all-users. | [Audience settings](#audience-settings) |
 | `settings-changed` | needs a person | A map setting was changed. | [Changes that need a person](#changes-that-need-a-person) |
+| `missing-tokens-used` | pull request | A pull request marks a story merged, but its description has no Tokens used section that names it or says why there is no count. | [Record the tokens used on a story](#record-the-tokens-used-on-a-story) |
 
-A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule. Validate never reports the **needs a person** rules: they compare two versions of the map, so [`story-map diff`](#changes-that-need-a-person) lists them.
+A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule. Validate never reports the **needs a person** rules: they compare two versions of the map, so [`story-map diff`](#changes-that-need-a-person) lists them. The **needs a person** and **pull request** rules are what [`story-map pr-check`](#check-a-pull-request-in-ci) reports.
 
 ### Check the map as you edit
 
@@ -1099,6 +1121,32 @@ Each line names the item, what changed and its rule. The section says what chang
 
 In JSON, `needsPerson` lists them, each with `rule`, `itemType` (`story`, `activity`, `release`, `persona`, `job` or `map`), `itemId`, `title` and `change`. A possible renumber also has `addedId`, the new story's ID. The list is empty when there is nothing to list. In code, `needsPersonChanges(before, after, diff)` returns the list, and `needsPersonRules` lists its rules, which are also in `storyMapRules`.
 
+
+### Check a pull request in CI
+
+`story-map pr-check <base-ref>` fails a pull request that breaks the map rules a check can see, so a reviewer does not have to find them in the YAML diff:
+
+- **Changes that need a person.** When any commit in the pull request that changes the map was written with an agent, each change listed under [Needs a person](#changes-that-need-a-person) is an error, with its rule, unless `--approved` is passed. A commit is an agent's when its author is in `--bot-names` or ends in `[bot]`, or when a `Co-Authored-By` trailer names a known agent: Claude, Codex, Copilot, Cursor, Devin, Gemini, Aider, Jules or OpenHands. Most agent commits are authored as a person, with a trailer, so the author alone would miss them. Merge commits are skipped, since they bring in work already on the base branch.
+- **Tokens used.** With `--body-file <file>`, or `--body-file -` for stdin, each story the pull request marks `merged` needs a **Tokens used** heading in the description whose text names the story, as the output of [`story-map tokens --format markdown`](#record-the-tokens-used-on-a-story) does. A section that names no story at all, such as one saying the agent's tool reports no count, explains the missing count for every story. HTML comments, such as the template's placeholder, do not count. Without `--body-file`, tokens are not checked, so a product that does not record tokens sees no token errors.
+
+Problems are printed as `validate` prints them, with `--format text`, `github` or `json`, and each one links to the part of this guide that explains it. It exits 1 when there is an error, and 2 for a bad option or Git reference. `--head <ref>` checks a range ending somewhere other than `HEAD`.
+
+A person approves a change only they should make by adding the `map-approved` label to the pull request. The workflow from `npx story-map init` runs the check on every pull request that changes the map, and again when the description or labels change, passing `--approved` when the label is there:
+
+```yaml
+- name: Check the pull request against the map rules
+  env:
+    BASE_REF: ${{ github.base_ref }}
+    PR_BODY: ${{ github.event.pull_request.body }}
+    APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'map-approved') && 'yes' || '' }}
+  run: printf '%s' "$PR_BODY" | npx --no-install story-map pr-check --format github ${APPROVED:+--approved} --body-file - "origin/$BASE_REF"
+```
+
+Check out with `fetch-depth: 0`, as for the diff summary, and add `edited`, `labeled` and `unlabeled` to the workflow's `pull_request` types so editing the description or the label runs the check again. Pass the description through an environment variable, as above, never straight into the script.
+
+This is a guardrail for agents that follow their own attribution rules, not a security boundary: an agent can leave out the trailer, and a person still reviews the pull request. What it removes is the need to read the YAML diff for these changes.
+
+In code, `checkPullRequest({ diff, after, commits, botNames, approved, body })` returns the result, `commitAgent(commit, botNames)` says which agent wrote a commit, `tokensUsedSection(body)` returns the section's text, and `prCheckRules` lists the rules only `pr-check` reports.
 ## Read the map from the command line
 
 Read the map with `story-map story`, `stories` and `releases` instead of opening the YAML file. They print text for people, or JSON with `--format json` for agents and scripts. Reads are always the internal view, because whoever runs them has the file. Each takes `--map <path>`, which defaults to `product/story-map.yaml`, and the files from [`story-map history`](#show-status-history) and [`story-map tests`](#link-tests-to-stories) as `--history <file>` and `--tests-index <file>`, for dates, changes and tagged tests.

@@ -145,7 +145,9 @@ test("ESM-171: init on a host that is already set up hands over to story-map upg
   const current = await host(t, { "package-lock.json": "{}" });
   assert.equal(init(current).status, 0);
   const again = init(current);
-  assert.match(again.stdout, /Nothing was changed\.\n$/);
+  assert.match(again.stdout, /\nNothing was changed\.\n/);
+  // Nobody has chosen a mode, so the review says to ask the person, as story-map upgrade does.
+  assert.match(again.stdout, /\nTo ask the person: Do you want simple or advanced upgrades\?/);
   assert.doesNotMatch(again.stdout, /To apply the changes/);
 });
 

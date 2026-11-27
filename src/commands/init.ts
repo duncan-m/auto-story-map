@@ -1,13 +1,10 @@
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
-import { createInterface } from "node:readline/promises";
-import { parse as parseYaml } from "yaml";
+import { resolve } from "node:path";
 import { initParts, initStoryMap, type InitPart } from "../init.js";
 import { describeUpgradeState, upgradeReport, type UpgradePart, type UpgradePartId, type UpgradeReport } from "../upgrade.js";
 import { applyUpgrade, parseUpgradeParts, type UpgradeAnswers, type UpgradeApplyMode, type UpgradeApplyResult } from "../upgrade-apply.js";
 import { upgradeOverviewLines } from "../upgrade-overview.js";
 import { ArgumentError, defineCommand, escapeText, optionValue } from "./shared.js";
-import upgrade, { askOnTerminal, atTerminal } from "./upgrade.js";
+import upgrade, { askUpgradeChoices, atTerminal, withTerminal } from "./upgrade.js";
 
 interface InitCommandOptions {
   ci: boolean;
@@ -78,7 +75,7 @@ export default defineCommand({
       return;
     }
 
-    const mode = options.mode ?? (await recordedMode(options.dir)) ?? "simple";
+    const mode = options.mode ?? report.mode ?? "simple";
     let parts: InitPart[] | undefined;
     if (mode === "simple") parts = recommendedParts(report, options);
     else if (options.parts) parts = chosenParts(options.parts, options);
@@ -186,10 +183,9 @@ export function installText(report: UpgradeReport, options: InitCommandOptions, 
 
 /** Asks at a terminal which parts to add. Enter takes the recommended set. */
 async function askForParts(recommended: readonly InitPart[]): Promise<InitPart[]> {
-  const lines = createInterface({ input: process.stdin, output: process.stderr });
-  try {
+  return withTerminal(async ask => {
     for (;;) {
-      const answer = (await lines.question(`\nWhich parts should init add? (${initParts.join(", ")}, separated by commas, none, or Enter for ${recommended.join(",")}) `)).trim();
+      const answer = (await ask(`\nWhich parts should init add? (${initParts.join(", ")}, separated by commas, none, or Enter for ${recommended.join(",")}) `)).trim();
       if (!answer) return [...recommended];
       if (answer === "none") return [];
       try {
@@ -200,9 +196,7 @@ async function askForParts(recommended: readonly InitPart[]): Promise<InitPart[]
       }
       console.error(`Name one or more of ${initParts.join(", ")}, or none.`);
     }
-  } finally {
-    lines.close();
-  }
+  });
 }
 
 /**
@@ -216,33 +210,20 @@ async function recordChoices(options: InitCommandOptions): Promise<UpgradeApplyR
   let answers = options.answers;
   if (atTerminal({ format: "text" })) {
     const planned = await apply(answers, false);
-    if (planned.questions.length) answers = { ...answers, ...(await askOnTerminal(planned.questions)) };
+    if (planned.questions.length) answers = { ...answers, ...(await withTerminal(ask => askUpgradeChoices(planned.questions, ask))) };
   }
   return apply(answers, true);
 }
 
 /**
- * The mode the person chose for the review, from the map's `settings.upgrade`.
- * Stand-in until ESM-170's `upgradeReport().mode` lands.
- */
-async function recordedMode(dir: string): Promise<UpgradeApplyMode | undefined> {
-  try {
-    const map = parseYaml(await readFile(join(dir, "product/story-map.yaml"), "utf8")) as { settings?: { upgrade?: unknown } } | null;
-    const mode = map?.settings?.upgrade;
-    return mode === "simple" || mode === "advanced" ? mode : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
  * A repository that is already set up gets the upgrade review instead, as a
- * dry run, with the same mode, parts and answers. Nothing is written.
+ * dry run, with the same mode, parts and answers. Left out, the mode is the
+ * map's `settings.upgrade`, as `story-map upgrade` reads it. Nothing is written.
  */
 async function handOver(options: InitCommandOptions, report: UpgradeReport) {
   const answered = options.answers.plans !== undefined || options.answers.storyIds !== undefined;
   // Answers apply only in a mode, so with no mode they go with simple mode's dry run.
-  const mode = options.mode ?? (answered ? "simple" : undefined);
+  const mode = options.mode ?? (answered ? report.mode ?? "simple" : undefined);
   const args = [
     ...(options.parts ? ["--apply", options.parts.join(",")] : mode ? ["--mode", mode] : []),
     ...(options.answers.plans === undefined ? [] : ["--plans", options.answers.plans === false ? "off" : options.answers.plans]),
@@ -251,6 +232,6 @@ async function handOver(options: InitCommandOptions, report: UpgradeReport) {
   console.log("This repository is already set up, so init hands over to story-map upgrade.\n");
   await upgrade.run(upgrade.parse(["--root", options.dir, ...args])!);
   if (process.exitCode || (report.overview.kind === "current" && !args.length)) return;
-  const apply = args.length ? args.join(" ") : "--mode simple";
+  const apply = args.length ? args.join(" ") : `--mode ${report.mode ?? "simple"}`;
   console.log(`\nTo apply the changes, run story-map upgrade ${apply} --write${options.parts ? "" : ", or --apply <parts> --write for only the parts you accept"}.`);
 }

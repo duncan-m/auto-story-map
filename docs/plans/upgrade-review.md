@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-169 and ESM-171 to ESM-173 are merged, and ESM-170 is planned. Decisions A to E are made. None has an agreed estimate yet.
+Status: merged. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-173 are merged. Decisions A to E are made. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 
@@ -167,6 +167,8 @@ As built, `applyUpgrade()` in `src/upgrade-apply.ts` does both, and `story-map u
 - An agent asks the person, and records only their answer, as with `settings.plans`. The guide and the `AGENTS.md` section say so.
 - At a terminal, when standard input is interactive and no `--format` is given, the review asks itself and walks through the parts one by one in advanced mode. Agents always get the report, because they run without an interactive terminal.
 - `--mode` on the command line overrides the setting for one run.
+
+As built, `settings.upgrade` is `simple` or `advanced`, recorded with `story-map settings --upgrade`, and `upgradeReport()` returns it as `mode`, or `modeQuestion` when it is left out. Without `--mode`, `story-map upgrade` runs in the recorded mode. Left out, agents get the report with the question after it, and `--write` exits 2. At a terminal with no `--format`, `askUpgradeMode()` asks, and `--write` records the answer through `answers.upgrade` along with the changes. In advanced mode at a terminal, `walkThroughUpgrade()` shows each part that would change with its diff or rules and asks whether to take it, with Enter taking the recommendation, and the parts taken go to `applyUpgrade()` as `parts`. The `AGENTS.md` template gains the `choose-upgrade-mode` rule. See [Choose simple or advanced mode](../story-map.md#choose-simple-or-advanced-mode).
 
 ## 6. Choose the parts at install
 
