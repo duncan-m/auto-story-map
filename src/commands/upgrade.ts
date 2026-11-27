@@ -32,7 +32,7 @@ export function upgradeText(report: UpgradeReport, diff = false): string {
   return lines.join("\n");
 }
 
-const cell = (text: string) => text.replace(/\|/g, "\\|").replace(/[\r\n]+/g, " ");
+const cell = (text: string) => text.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/[\r\n]+/g, " ");
 
 /** The report as Markdown for a pull request description, with each diff in a closed details block. */
 export function upgradeMarkdown(report: UpgradeReport): string {
