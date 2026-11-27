@@ -1,8 +1,8 @@
 # Plan: Git-native delivery metrics
 
 Status: proposed. Planning only; no implementation in this PR. Work is split into two releases:
-- **0.8.2: Delivery visibility** — a spike first, ESM-174, then the full version, ESM-130 through ESM-134.
-- **0.8.3: Delivery intelligence** — ESM-135, ESM-136 and ESM-138.
+- **0.8.3: Delivery visibility** — a spike first, ESM-174, then the full version, ESM-130 through ESM-134.
+- **0.8.4: Delivery intelligence** — ESM-135, ESM-136 and ESM-138.
 
 0. [Spike: show delivery totals in an Analytics tab](#spike-show-delivery-totals-in-an-analytics-tab) (ESM-174)
 1. [Reconstruct delivery events from Git](#1-reconstruct-delivery-events-from-git) (ESM-130)
@@ -14,7 +14,7 @@ Status: proposed. Planning only; no implementation in this PR. Work is split int
 7. [Baseline releases and expose scope changes](#7-baseline-releases-and-expose-scope-changes) (ESM-136)
 8. [Display cumulative flow and bottlenecks](#8-display-cumulative-flow-and-bottlenecks) (ESM-138)
 
-The team agreed estimates for 0.8.2 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. For 0.8.3 (18 points): ESM-135 5, ESM-136 5 and ESM-138 8. ESM-174 has no estimate yet: the team needs to agree one. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
+The team agreed estimates for 0.8.3 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. For 0.8.4 (18 points): ESM-135 5, ESM-136 5 and ESM-138 8. ESM-174 has no estimate yet: the team needs to agree one. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
 
 ## Why and product outcome
 
@@ -33,7 +33,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 - **Privacy:** analytics require internal-map permission; customer viewers never receive internal history, point estimates or velocity.
 - **Performance:** read Git only when `story-map history` runs, as it does today. Every metric is calculated from the map and the history file, so there is no second generated file and no Git scan per UI request. If a calculation later proves too slow or too large to run in the board, add a precomputed file then.
 
-## Release 0.8.2 — Delivery visibility
+## Release 0.8.3 — Delivery visibility
 
 The release starts with a spike, ESM-174, which puts a simple delivery report in front of people quickly, using only data the map and the history file already hold. The full version, ESM-130 to ESM-134, follows on from it: it builds on the spike's Analytics tab and calculations rather than starting again, and adds what the spike leaves out, scope change and remaining work.
 
@@ -105,9 +105,9 @@ The release starts with a spike, ESM-174, which puts a simple delivery report in
 
 **Acceptance:** progress matches current map and selected completion milestone; blocked and cut states are distinguished; internal-only analytics do not leak through customer projection.
 
-**Depends on:** nothing. It can land first in 0.8.2.
+**Depends on:** nothing. It can land first in 0.8.3.
 
-## Release 0.8.3 — Delivery intelligence
+## Release 0.8.4 — Delivery intelligence
 
 ### 6. Measure lead time
 
@@ -179,7 +179,7 @@ Sprint creation, timesheets, manual daily updates, agent leaderboards, cost-per-
 ## Delivery checklist
 
 - All 9 stories remain `planned` until implementation begins.
-- No estimates are assigned without team agreement. The 0.8.2 and 0.8.3 estimates are agreed, except ESM-174's.
+- No estimates are assigned without team agreement. The 0.8.3 and 0.8.4 estimates are agreed, except ESM-174's.
 - Validate map/schema; add linked tests at implementation time.
 - Keep delivery metrics out of customer-facing projections.
 - Review usability with a Solo Builder and an inheriting PM before considering the feature shipped.

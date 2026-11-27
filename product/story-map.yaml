@@ -84,6 +84,11 @@ personas:
         motivation: to share the relevant roadmap view with the intended audience
         outcome: collaborators can review the working plan and customers can see approved updates on what is available or planned, using the same source map
         draft: true
+      - id: keep-setup-current
+        situation: a new version of Auto Story Map is out, and my repository was set up with an earlier one
+        motivation: to understand what changes for my team and take the parts I want without losing the edits I made to my own set-up
+        outcome: my agents follow the current rules and CI runs the current checks, and I know which of my own changes I kept
+        draft: true
   - id: pm-inheriting-project
     title: Product Manager Inheriting an Existing Project
     summary: Takes product responsibility for a project that is already in use or being built, with limited documentation of its features, users, and prior decisions.
@@ -388,7 +393,7 @@ releases:
     notes: |
       The second half of the native CLI plan. It comes before the scheduled audit (ESM-109), which uses the evidence from ESM-105.
 
-      Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief in 0.7.8. Open in Claude Code (ESM-144) follows ESM-125, so a brief can start a Claude Code session on the web in the repository, not only a web chat. Its mockup is docs/plans/open-in-claude-code-mockup.html.
+      Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief in 0.8.0. Open in Claude Code (ESM-144) follows ESM-125, so a brief can start a Claude Code session on the web in the repository, not only a web chat. Its mockup is docs/plans/open-in-claude-code-mockup.html.
 
       Token counts (ESM-145) record the tokens used to deliver each story, in the pull request that finishes it. Mockup: docs/plans/token-usage.md#ui-mockup
 
@@ -420,7 +425,7 @@ releases:
     notes: |
       The Actions tab (ESM-128) lists validate warnings on the board, beside the draft confirmation and triage work it points to (ESM-110 to ESM-112).
 
-      From 0.7.9, readiness (ESM-139) says what can start now. ESM-142 and ESM-143 stay there.
+      From 0.8.1, readiness (ESM-139) says what can start now. ESM-142 and ESM-143 stay there.
 
       From 0.7.7, the skill, MCP server and survey (ESM-116 to ESM-118), reusing 0.7.5's evidence and claims.
 
@@ -463,17 +468,64 @@ releases:
     notes: |
       The skill, the MCP server and the survey (ESM-116 to ESM-118) moved to 0.7.6. ESM-152 adds the planning rules to the skill from ESM-117.
 
+      First, ESM-180 and ESM-159 to ESM-161 from Rules as checks, the plan checks that help build every later release.
+
       Plan: docs/plans/0.8.0-agents-and-adoption.md
       Plan for host planning guidance (ESM-148 to ESM-153): docs/plans/host-planning-guidance.md
+      Plan for Rules as checks (ESM-159 to ESM-165 and ESM-180): docs/plans/rules-as-checks.md
     impact:
       - metric: Host plans that name what they build on and what they leave out
         expected: Plans written from the guide's structure, with builds-on, Not now and effort sections
         solves: Hosts getting the map mechanics but not the planning discipline behind them
         draft: true
+      - metric: Plans whose status line disagrees with the map
+        expected: None, because validate reports each one
+        solves: Readers and agents trusting a stale plan status
+        draft: true
+      - metric: UI plans whose mockup is missing or not linked from a story
+        expected: None, because validate reports each one
+        solves: Reviewers finding a broken or unlinked mockup only when they open the plan
+        draft: true
     customer:
       title: "0.7.7"
   - id: v0-7-8
-    title: "0.7.8: Agent briefs"
+    title: "0.7.8: Upgrade review"
+    summary: On install and upgrade, story-map upgrade reports each part of a host's set-up, explains what changes in plain words, and applies the parts the person accepts, in a simple or an advanced mode.
+    notes: |
+      Planning proposal only. Today init never changes a part once it exists, so hosts keep the set-up they first installed. The review replaces the outdated-section report and decision C in the host planning guidance plan (ESM-150), and asks the delivery plans question from ESM-153 among its choices. It comes straight after 0.7.7, because existing hosts only get 0.7.7's AGENTS.md and guide changes through it. The Rules as checks changes in 0.7.9, such as pr-check, add their own parts to it. ESM-173 uses the rule IDs from ESM-159 in 0.7.7.
+
+      Plan: docs/plans/upgrade-review.md
+    impact:
+      - metric: Hosts running a set-up older than the installed package
+        expected: Told by validate after an upgrade, and brought current with one review
+        solves: init skipping every part that already exists, so new rules and CI checks never reach existing hosts
+        draft: true
+      - metric: Host edits lost when upgrading the set-up
+        expected: "None: simple mode keeps every edited part, and advanced mode shows the diff first"
+        solves: People refusing upgrades because a tool once overwrote their own rules
+        draft: true
+  - id: v0-7-9
+    title: "0.7.9: Rules in CI and claim checks"
+    summary: story-map diff shows the map changes only a person should make, CI fails an agent's PR that makes one without a person's approval, and property and model-based tests check the audience filter, the edit safeguards and concurrent claims.
+    notes: |
+      Planning proposal only. The rest of Rules as checks, after ESM-180 and ESM-159 to ESM-161 in 0.7.7. ESM-162 to ESM-164 guard the draft confirmation and local editing from 0.7.6, and the upgrade review from 0.7.8 offers pr-check (ESM-163) to existing hosts. ESM-162 shares diff code with ESM-114 in 0.8.2. ESM-165 matters most once several agents regularly work on one map at the same time.
+
+      Plan: docs/plans/rules-as-checks.md
+    impact:
+      - metric: Map changes only a person should make that reach main without a person approving them
+        expected: "None from agent-written commits: pr-check fails the PR until a person approves"
+        solves: Drafts confirmed, estimates set or stories deleted by an agent, unnoticed in review
+        draft: true
+      - metric: Rules in AGENTS.md that nothing checks
+        expected: Only rules that need judgement, such as when customer copy is approved and when to set updatedBy
+        solves: Agents breaking written rules that a reviewer then has to catch in a YAML diff
+        draft: true
+      - metric: Stories held by two agents at once
+        expected: None, with the claim rules checked by a model-based test on every CI run
+        solves: Two agents building the same story when they claim it at the same moment
+        draft: true
+  - id: v0-8-0
+    title: "0.8.0: Agent briefs"
     summary: Agents and scripts print a brief for a story, release or activity with story-map brief.
     notes: |
       Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting a local agent from the preview (ESM-127) was cut: Open in Claude Code (ESM-144) and Copy brief (ESM-124) already cover it.
@@ -484,11 +536,11 @@ releases:
         expected: One story-map brief command or get_brief call
         solves: Copying a brief from the board and pasting it into a terminal
         draft: true
-  - id: v0-7-9
-    title: "0.7.9: Dependency planning and graph"
+  - id: v0-8-1
+    title: "0.8.1: Dependency planning and graph"
     summary: See a dependency-respecting build order and dependency risks, in the release panel, CLI and agent briefs, and explore a release's or a story's dependency chain as an internal, read-only graph, without maintaining another planning system.
     notes: |
-      Planning proposal only, built on the existing dependsOn links from ESM-129 and the readiness from ESM-139, which moved to 0.7.6. A suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). Then an internal Dependencies tab with a server-rendered graph and list (ESM-140), and release and story focus with a full-chain option (ESM-141), which moved here from 0.8.5 and reuse the readiness and order. No editable graph or new dependency storage.
+      Planning proposal only, built on the existing dependsOn links from ESM-129 and the readiness from ESM-139, which moved to 0.7.6. A suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). Then an internal Dependencies tab with a server-rendered graph and list (ESM-140), and release and story focus with a full-chain option (ESM-141), which moved here from the former 0.8.5: Dependency graph and reuse the readiness and order. No editable graph or new dependency storage.
 
       Plan: docs/plans/visual-dependency-map.md
       Mockup: docs/plans/visual-dependency-map.md#ui-mockup
@@ -505,8 +557,8 @@ releases:
         expected: One view of the release and its prerequisites from other releases, instead of following links story by story
         solves: Long prerequisite chains that span several releases
         draft: true
-  - id: v0-8-0
-    title: "0.8.0: Map versions, steps and audit"
+  - id: v0-8-2
+    title: "0.8.2: Map versions, steps and audit"
     summary: Earlier versions of the map can be read, compared and viewed on the board, activities expand into steps, and a scheduled audit proposes map corrections from the code.
     notes: |
       Split from the original 0.7.6. Reading and comparing versions (ESM-113 and ESM-114) come before the board's Version picker (ESM-115), which depends on both. The audit (ESM-109) uses the evidence from ESM-105 in 0.7.5.
@@ -528,9 +580,9 @@ releases:
         solves: Losing track of the column and lane on maps with many releases
         draft: true
     customer:
-      title: "0.8.0"
-  - id: v0-8-2
-    title: "0.8.2: Delivery visibility"
+      title: "0.8.2"
+  - id: v0-8-3
+    title: "0.8.3: Delivery visibility"
     summary: Git-native burn-up, burn-down, throughput, velocity and release progress without maintaining sprints.
     notes: |
       Planning proposal only. Calculated from the map and the history file from story-map history, with no new generated file; metrics remain internal.
@@ -542,11 +594,11 @@ releases:
         expected: One analytics view without manual reporting
         solves: Reading multiple commits and manually calculating remaining work
         draft: true
-  - id: v0-8-3
-    title: "0.8.3: Delivery intelligence"
+  - id: v0-8-4
+    title: "0.8.4: Delivery intelligence"
     summary: Lead time, release baselines and cumulative flow to find bottlenecks.
     notes: |
-      Builds on 0.8.2's history events and daily series. No mandatory estimates or new database.
+      Builds on 0.8.3's history events and daily series. No mandatory estimates or new database.
       Plan: docs/plans/delivery-metrics.md
     impact:
       - metric: Effort to assess release predictability and bottlenecks
@@ -847,7 +899,7 @@ stories:
   - id: ESM-108
     title: Expand activities into steps
     activity: explore
-    release: v0-8-0
+    release: v0-8-2
     status: planned
     estimate: 8
     priority: could
@@ -861,7 +913,7 @@ stories:
   - id: ESM-109
     title: Audit the map against the code on a schedule
     activity: review
-    release: v0-8-0
+    release: v0-8-2
     status: planned
     estimate: 5
     priority: must
@@ -949,7 +1001,7 @@ stories:
   - id: ESM-113
     title: Read the map as it was at a version
     activity: explore
-    release: v0-8-0
+    release: v0-8-2
     status: planned
     estimate: 3
     priority: could
@@ -962,7 +1014,7 @@ stories:
   - id: ESM-114
     title: List the map's versions and compare any two
     activity: review
-    release: v0-8-0
+    release: v0-8-2
     status: planned
     estimate: 3
     priority: should
@@ -975,7 +1027,7 @@ stories:
   - id: ESM-115
     title: Switch the board to an earlier version
     activity: explore
-    release: v0-8-0
+    release: v0-8-2
     status: planned
     estimate: 8
     priority: could
@@ -989,6 +1041,50 @@ stories:
     notes: Internal only. Snapshots are off by default and capped at 30, so existing history files keep their size.
     sources:
       - docs/plans/map-versions.md#3-switch-the-board-to-an-earlier-version
+  - id: ESM-162
+    title: Show the map changes only a person should make
+    activity: review
+    release: v0-7-9
+    status: planned
+    jobs:
+      - ground-work-in-customer-needs
+      - update-the-map
+    personas:
+      - founder
+      - agent
+    summary: story-map diff lists confirmed drafts, estimate changes, removed or renumbered stories, customer copy and settings changes under Needs a person, in Markdown and JSON.
+    sources:
+      - docs/plans/rules-as-checks.md#5-show-the-changes-only-a-person-should-make
+  - id: ESM-163
+    title: Check pull requests for map rules in CI
+    activity: review
+    release: v0-7-9
+    status: planned
+    dependsOn:
+      - ESM-162
+    jobs:
+      - update-the-map
+      - plan-and-build
+    personas:
+      - agent
+      - founder
+    summary: story-map pr-check fails a PR whose agent-written commits make a change only a person should make, unless a person approves it, or that marks a story merged without a Tokens used section.
+    sources:
+      - docs/plans/rules-as-checks.md#6-check-pull-requests-in-ci
+  - id: ESM-164
+    title: Property-test the audience filter and edit safeguards
+    activity: review
+    release: v0-7-9
+    status: planned
+    jobs:
+      - see-whats-coming
+      - share-roadmap
+    personas:
+      - customer
+      - founder
+    summary: fast-check tests over generated maps check that the customer view never shows internal work, that edits keep IDs, drafts and comments, and that the diff is exact.
+    sources:
+      - docs/plans/rules-as-checks.md#7-property-test-the-audience-filter-and-edit-safeguards
   - id: ESM-157
     title: Keep activity and release titles in view while scrolling
     activity: explore
@@ -1852,6 +1948,8 @@ stories:
     release: v0-7-7
     status: planned
     priority: must
+    dependsOn:
+      - ESM-160
     jobs:
       - agree-first-release-plan
       - plan-and-build
@@ -1931,10 +2029,48 @@ stories:
     summary: Delivery plans are opt in. init, validate and the AGENTS.md section prompt the agent to ask the person whether to use them, with a link to the guide, and the answer is kept in settings.plans so it is asked once.
     sources:
       - docs/plans/host-planning-guidance.md#2-ask-whether-to-use-delivery-plans
+  - id: ESM-180
+    title: Choose the lowest free story ID in add
+    activity: plan
+    release: v0-7-7
+    status: planned
+    jobs:
+      - update-the-map
+    personas:
+      - agent
+    summary: "With settings.storyIds: lowest-free, story-map add takes the lowest unused number in the map's main prefix, counting cut stories, so AGENTS.md no longer needs a rule to work around it."
+    sources:
+      - docs/plans/rules-as-checks.md#1-choose-the-lowest-free-story-id-in-add
+  - id: ESM-159
+    title: Give each validation issue a rule and a link to the guide
+    activity: review
+    release: v0-7-7
+    status: planned
+    jobs:
+      - update-the-map
+    personas:
+      - agent
+    summary: Every validate issue carries a stable rule ID and a link to the guide section that explains it, in text, GitHub and JSON output, so an agent can fix a problem without reading the whole guide.
+    sources:
+      - docs/plans/rules-as-checks.md#2-give-each-issue-a-rule-and-a-link
+  - id: ESM-160
+    title: Warn when a plan's status line disagrees with the map
+    activity: review
+    release: v0-7-7
+    status: planned
+    jobs:
+      - update-the-map
+      - get-oriented
+    personas:
+      - agent
+      - founder
+    summary: validate --plans warns when a plan's status line is behind the stories it names, uses words other than the map's statuses, or names a release title the map no longer has.
+    sources:
+      - docs/plans/rules-as-checks.md#3-check-plan-status-lines-against-the-map
   - id: ESM-126
     title: Write agent briefs from the command line
     activity: plan
-    release: v0-7-8
+    release: v0-8-0
     status: planned
     estimate: 3
     priority: must
@@ -1952,7 +2088,7 @@ stories:
   - id: ESM-127
     title: Start Claude Code or Codex on a brief from the local preview
     activity: plan
-    release: v0-7-8
+    release: v0-8-0
     status: cut
     statusReason: ESM-144 already starts Claude Code on the brief in the repository, and ESM-124 lets you copy the brief into a local claude or codex session. What is left, a local or Codex launch, is not worth 5 points or the open terminal spike in Decision B.
     estimate: 5
@@ -1971,13 +2107,13 @@ stories:
   - id: ESM-174
     title: Spike delivery totals in an Analytics tab
     activity: track
-    release: v0-8-2
+    release: v0-8-3
     status: planned
     jobs:
       - get-oriented
       - agree-first-release-plan
     summary: A new internal Analytics tab shows stories, points, tokens and spend completed per day, week or month, from the map and the history file, with coverage for missing estimates and tokens.
-    notes: "Spike before the full 0.8.2 metrics: values are today's, not at the time, and it shows no scope change or remaining work. ESM-132, ESM-133 and ESM-134 follow on from it. Estimate not agreed yet."
+    notes: "Spike before the full 0.8.3 metrics: values are today's, not at the time, and it shows no scope change or remaining work. ESM-132, ESM-133 and ESM-134 follow on from it. Estimate not agreed yet."
     sources:
       - docs/plans/delivery-metrics.md#spike-show-delivery-totals-in-an-analytics-tab
       - docs/plans/delivery-metrics-mockup.html
@@ -1985,7 +2121,7 @@ stories:
   - id: ESM-130
     title: Reconstruct delivery events from Git
     activity: track
-    release: v0-8-2
+    release: v0-8-3
     status: planned
     estimate: 5
     priority: should
@@ -1998,7 +2134,7 @@ stories:
   - id: ESM-131
     title: Calculate historical scope and completion
     activity: track
-    release: v0-8-2
+    release: v0-8-3
     status: planned
     estimate: 8
     priority: should
@@ -2013,7 +2149,7 @@ stories:
   - id: ESM-132
     title: Show burn-up and burn-down in Analytics
     activity: track
-    release: v0-8-2
+    release: v0-8-3
     status: planned
     estimate: 8
     priority: should
@@ -2029,7 +2165,7 @@ stories:
   - id: ESM-133
     title: Report throughput and velocity
     activity: track
-    release: v0-8-2
+    release: v0-8-3
     status: planned
     estimate: 3
     priority: could
@@ -2045,7 +2181,7 @@ stories:
   - id: ESM-134
     title: Summarise delivery on each release lane
     activity: track
-    release: v0-8-2
+    release: v0-8-3
     status: planned
     estimate: 3
     priority: should
@@ -2060,7 +2196,7 @@ stories:
   - id: ESM-135
     title: Measure lead time
     activity: track
-    release: v0-8-3
+    release: v0-8-4
     status: planned
     estimate: 5
     priority: could
@@ -2075,7 +2211,7 @@ stories:
   - id: ESM-136
     title: Baseline releases and expose scope changes
     activity: track
-    release: v0-8-3
+    release: v0-8-4
     status: planned
     estimate: 5
     priority: could
@@ -2091,7 +2227,7 @@ stories:
   - id: ESM-138
     title: Display cumulative flow and bottlenecks
     activity: track
-    release: v0-8-3
+    release: v0-8-4
     status: planned
     estimate: 8
     priority: could
@@ -2140,7 +2276,7 @@ stories:
   - id: ESM-140
     title: Explore dependencies as a visual graph
     activity: explore
-    release: v0-7-9
+    release: v0-8-1
     status: planned
     estimate: 8
     priority: could
@@ -2156,7 +2292,7 @@ stories:
   - id: ESM-141
     title: Focus dependency views on a release or story
     activity: explore
-    release: v0-7-9
+    release: v0-8-1
     status: planned
     estimate: 5
     priority: could
@@ -2172,7 +2308,7 @@ stories:
   - id: ESM-142
     title: Suggest a delivery order for a release and highlight dependency risks
     activity: track
-    release: v0-7-9
+    release: v0-8-1
     status: planned
     estimate: 5
     priority: should
@@ -2189,7 +2325,7 @@ stories:
   - id: ESM-143
     title: List prerequisites and readiness in agent briefs
     activity: plan
-    release: v0-7-9
+    release: v0-8-1
     status: planned
     estimate: 3
     priority: should
@@ -2201,3 +2337,145 @@ stories:
     summary: Add each target's prerequisites and readiness to the handoff brief, put waiting and at-risk targets in its open decisions, and list a release brief's targets in suggested order.
     sources:
       - docs/plans/visual-dependency-map.md#3-list-prerequisites-in-agent-briefs
+  - id: ESM-161
+    title: Check plan mockups and their links
+    activity: review
+    release: v0-7-7
+    status: planned
+    jobs:
+      - update-the-map
+    personas:
+      - agent
+    summary: validate --plans checks that a plan's UI mockup section links an HTML file and embeds a PNG that both exist, and that a story lists the section in its sources.
+    sources:
+      - docs/plans/rules-as-checks.md#4-check-plan-mockups
+  - id: ESM-165
+    title: Model-test concurrent story claims
+    activity: review
+    release: v0-7-9
+    status: planned
+    jobs:
+      - pick-up-work
+    personas:
+      - agent
+    summary: A model-based fast-check test runs random, interleaved claims, renewals, take-overs and releases by several agents and checks that each story has at most one live claim.
+    sources:
+      - docs/plans/rules-as-checks.md#8-model-test-concurrent-claims
+  - id: ESM-166
+    title: Record the version each set-up part was installed from
+    activity: set-up
+    release: v0-7-8
+    status: planned
+    jobs:
+      - keep-setup-current
+    personas:
+      - founder
+    summary: init records the package version and a template hash in the AGENTS.md markers and the first line of the guide and workflow, and the package ships the hashes of earlier templates, so the review can tell host edits from package changes.
+    sources:
+      - docs/plans/upgrade-review.md#1-record-the-version-each-part-was-installed-from
+  - id: ESM-167
+    title: Report the state of each set-up part with story-map upgrade
+    activity: set-up
+    release: v0-7-8
+    status: planned
+    dependsOn:
+      - ESM-166
+    jobs:
+      - keep-setup-current
+      - update-the-map
+    personas:
+      - founder
+      - agent
+    summary: story-map upgrade lists the AGENTS.md section, guide, CI workflow, skill and map settings choices, with each one's state, the version it came from and what this version changes, in text, Markdown or JSON, without writing anything.
+    sources:
+      - docs/plans/upgrade-review.md#2-report-the-state-of-each-part
+  - id: ESM-168
+    title: Explain set-up changes in plain words
+    activity: set-up
+    release: v0-7-8
+    status: planned
+    dependsOn:
+      - ESM-167
+    jobs:
+      - keep-setup-current
+    personas:
+      - founder
+    summary: "The review opens with a short overview generated from lines shipped with each part and each release: how the set-up works on install, and what changes for the team on upgrade, for only the parts being applied."
+    sources:
+      - docs/plans/upgrade-review.md#3-explain-the-changes-in-plain-words
+  - id: ESM-169
+    title: Apply the recommended set-up changes in simple mode
+    activity: set-up
+    release: v0-7-8
+    status: planned
+    dependsOn:
+      - ESM-167
+      - ESM-168
+    jobs:
+      - keep-setup-current
+      - update-the-map
+    personas:
+      - founder
+      - agent
+    summary: story-map upgrade --mode simple --write replaces unedited parts, adds what is missing, keeps every part the host edited and asks the product choices not yet made. --apply applies the parts chosen in advanced mode.
+    sources:
+      - docs/plans/upgrade-review.md#4-apply-the-recommended-changes-in-simple-mode
+  - id: ESM-170
+    title: Ask once for simple or advanced upgrade mode
+    activity: set-up
+    release: v0-7-8
+    status: planned
+    dependsOn:
+      - ESM-169
+    jobs:
+      - keep-setup-current
+    personas:
+      - founder
+    summary: settings.upgrade keeps the person's choice of simple or advanced mode, which an agent asks for and records only from their answer. At an interactive terminal the review asks itself and walks through each part.
+    sources:
+      - docs/plans/upgrade-review.md#5-ask-for-simple-or-advanced-mode-once
+  - id: ESM-171
+    title: Choose the set-up parts at install
+    activity: set-up
+    release: v0-7-8
+    status: planned
+    dependsOn:
+      - ESM-169
+    jobs:
+      - keep-setup-current
+      - get-oriented
+    personas:
+      - founder
+    summary: init shows the install overview and the parts, adds the recommended set in simple mode or the chosen parts in advanced mode, and hands over to upgrade on a host that is already set up.
+    sources:
+      - docs/plans/upgrade-review.md#6-choose-the-parts-at-install
+  - id: ESM-172
+    title: Remind hosts whose set-up falls behind the package
+    activity: set-up
+    release: v0-7-8
+    status: planned
+    dependsOn:
+      - ESM-166
+      - ESM-153
+    jobs:
+      - keep-setup-current
+    personas:
+      - founder
+    summary: validate prints one notice, never failing even with --strict, when a part of the set-up comes from an older version whose template has changed since, pointing to story-map upgrade.
+    sources:
+      - docs/plans/upgrade-review.md#7-remind-hosts-that-fall-behind
+  - id: ESM-173
+    title: Review edited AGENTS.md rules one at a time
+    activity: set-up
+    release: v0-7-8
+    status: planned
+    dependsOn:
+      - ESM-167
+      - ESM-159
+    jobs:
+      - keep-setup-current
+    personas:
+      - founder
+    summary: Each rule in the AGENTS.md template carries a rule ID, so the review updates unchanged rules, keeps reworded and added ones, and offers each changed rule separately in advanced mode.
+    sources:
+      - docs/plans/upgrade-review.md#8-review-edited-rules-one-at-a-time

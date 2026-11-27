@@ -331,7 +331,7 @@ jobs:
 - The job lanes are drawn on the Personas tab, so they are built with item 11, as items 7 and 8 leave their full display to it.
 - Validate warns about a step whose activity has no active stories for its job.
 - `src/diff.ts` and the JSON export: steps and their coverage.
-- Steps point to activities. Activity steps (ESM-108) come later, in 0.8.0. When they land, a job step can also point to an activity step, as an optional addition that leaves this format unchanged.
+- Steps point to activities. Activity steps (ESM-108) come later, in 0.8.2. When they land, a job step can also point to an activity step, as an optional addition that leaves this format unchanged.
 
 **Docs.** Steps in the persona section, and how they relate to activities.
 
