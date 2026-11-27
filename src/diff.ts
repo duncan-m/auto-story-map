@@ -616,7 +616,8 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
   return lines.join("\n");
 }
 
-const needsPersonLabels: Record<NeedsPersonChange["rule"], string> = {
+/** A short label for each kind of change that needs a person, as the diff and `pr-check` show it. */
+export const needsPersonLabels: Record<NeedsPersonChange["rule"], string> = {
   "draft-confirmed": "Draft confirmed",
   "estimate-changed": "Estimate",
   "story-removed": "Story removed",

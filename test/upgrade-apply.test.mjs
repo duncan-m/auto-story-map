@@ -74,7 +74,7 @@ test("ESM-169: simple mode upgrades a host set up from 0.7.5, and a second run c
   assert.match(dry.stdout, /^What changes for you since 0\.7\.5$/m);
   assert.match(dry.stdout, new RegExp(`^AGENTS\\.md section +replace +replace with ${version}$`, "m"));
   assert.match(dry.stdout, new RegExp(`^Guide +replace +replace with ${version}$`, "m"));
-  assert.doesNotMatch(dry.stdout, /^CI workflow +/m, "the 0.7.5 workflow is this version's");
+  assert.match(dry.stdout, new RegExp(`^CI workflow +replace +replace with ${version}$`, "m"), "the 0.7.5 workflow has no pr-check step");
   assert.match(dry.stdout, /^- Do you want to use delivery plans.* Answer with --plans <folder>\|off\./m);
   assert.match(dry.stdout, /^- Should story-map add number new stories.* Answer with --story-ids next\|lowest-free\./m);
   assert.match(dry.stdout, /^Apply these changes\? Run again with --write\./m);
@@ -83,16 +83,16 @@ test("ESM-169: simple mode upgrades a host set up from 0.7.5, and a second run c
   // Without a terminal, --write applies the files and lists the choices instead of guessing them.
   const applied = run(root, "upgrade", "--mode", "simple", "--write");
   assert.equal(applied.status, 0, applied.stderr);
-  assert.match(applied.stdout, /^Wrote AGENTS\.md, docs\/story-map\.md\. /m);
+  assert.match(applied.stdout, /^Wrote AGENTS\.md, docs\/story-map\.md, \.github\/workflows\/story-map\.yml\. /m);
   assert.match(applied.stdout, /^To ask the person, and record only their answer:$/m);
   assert.equal(await read(root, "product/story-map.yaml"), before["product/story-map.yaml"][0], "no choice is recorded without an answer");
-  assert.equal(await read(root, ".github/workflows/story-map.yml"), before[".github/workflows/story-map.yml"][0]);
 
   // Each replaced file carries this version's marker, and matches this version's template.
   assert.equal(await read(root, "docs/story-map.md"), stampSetupFile("guide", await packaged("docs/story-map.md"), storyMapVersion));
   assert.equal(await read(root, "AGENTS.md"), stampSetupFile("agents", await packaged("templates/AGENTS.md"), storyMapVersion));
+  assert.match(await read(root, ".github/workflows/story-map.yml"), new RegExp(`^# auto-story-map ${version} sha256:[\\s\\S]*story-map pr-check`));
   const parts = byPart(await upgradeReport({ root }));
-  for (const id of ["agents", "guide"]) assert.deepEqual([parts[id].state, parts[id].version.recordedVersion], ["current", storyMapVersion], id);
+  for (const id of ["agents", "guide", "workflow"]) assert.deepEqual([parts[id].state, parts[id].version.recordedVersion], ["current", storyMapVersion], id);
   assert.doesNotMatch(validate().stderr, /setup-behind/, "the reminder goes quiet");
 
   // Nothing left to apply: every file stays byte for byte as it is.
@@ -245,7 +245,7 @@ test("ESM-169: an edited workflow gains its missing steps and keeps the host's o
   const root = await host(t, { ".github/workflows/story-map.yml": edited });
 
   const result = await applyUpgrade({ root, known: empty, write: true });
-  assert.deepEqual([byChange(result).workflow.action, byChange(result).workflow.change], ["update", "add the story-map diff step"]);
+  assert.deepEqual([byChange(result).workflow.action, byChange(result).workflow.change], ["update", "add the story-map diff, story-map pr-check steps"]);
   const text = await read(root, ".github/workflows/story-map.yml");
   assert.match(text, new RegExp(`^# auto-story-map ${version} sha256:`));
   assert.match(text, /node-version: 22/);

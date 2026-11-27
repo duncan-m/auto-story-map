@@ -7,7 +7,7 @@ import { loadHistoricalStoryMap, parseStoryMap, StoryMapValidationError, type Hi
 import { defineCommand, optionValue, report, UsageError } from "./shared.js";
 
 /** Reads the base version leniently, since it may use an earlier format. The current map is always checked strictly. */
-async function readMapAt(ref: string, mapPath: string): Promise<HistoricalStoryMap | null> {
+export async function readMapAt(ref: string, mapPath: string): Promise<HistoricalStoryMap | null> {
   if (ref.startsWith("-")) throw new UsageError(`'${ref}' is not a Git reference.`);
   const gitPath = `./${relative(process.cwd(), resolve(mapPath)).split(sep).join("/")}`;
   let source: string;

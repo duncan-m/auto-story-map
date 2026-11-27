@@ -1,0 +1,198 @@
+import { needsPersonLabels, type StoryMapDiff } from "./diff.js";
+import type { NeedsPersonChange } from "./needs-person.js";
+import type { StoryMapRuleId } from "./rules.js";
+import type { StoryMapDocument, StoryMapIssue } from "./schema.js";
+
+/** The rules only `pr-check` reports, beside the ones `story-map diff` lists under Needs a person. */
+export const prCheckRules = ["missing-tokens-used"] as const satisfies readonly StoryMapRuleId[];
+
+/**
+ * Names in a commit's author or `Co-Authored-By` trailers that mark it as
+ * written with a coding agent. Matched as whole words, ignoring case.
+ */
+export const knownAgentNames = ["Claude", "Codex", "Copilot", "Cursor", "Devin", "Gemini", "Aider", "Jules", "OpenHands"] as const;
+
+/** One commit in the pull request that changes the map. */
+export interface PrCheckCommit {
+  sha: string;
+  /** The author's name. */
+  author: string;
+  /** The author's email, when known. */
+  email?: string;
+  /** The whole commit message, for its trailers. */
+  message: string;
+}
+
+export interface PrCheckOptions {
+  /** The comparison of the base map with the pull request's, from `diffStoryMaps`. */
+  diff: StoryMapDiff;
+  /** The pull request's map, to locate each problem. */
+  after: StoryMapDocument;
+  /** The non-merge commits in the pull request that change the map. */
+  commits: readonly PrCheckCommit[];
+  /** Commit authors that are bots, as for `story-map history --bot-names`. Authors ending in `[bot]` always are. */
+  botNames?: readonly string[];
+  /** True when a person approved the changes that need a person, such as with the `map-approved` label. */
+  approved?: boolean;
+  /** The pull request's description. When absent, the Tokens used section is not checked. */
+  body?: string;
+}
+
+/** Why a commit counts as an agent's: its author is a bot, or a trailer names an agent. */
+export interface PrCheckAgentCommit {
+  sha: string;
+  /** The bot author or the agent the trailer names, such as `Claude`. */
+  agent: string;
+}
+
+/** One problem `pr-check` found. `line` and `column` locate it in the map when they can. */
+export interface PrCheckIssue extends Pick<StoryMapIssue, "severity" | "path" | "message" | "rule" | "itemId"> {}
+
+export interface PrCheckResult {
+  /** False when any issue is an error. */
+  passed: boolean;
+  /** Commits in the pull request that change the map and were written with an agent. */
+  agentCommits: PrCheckAgentCommit[];
+  /** The changes that need a person, whether or not they fail the check. */
+  needsPerson: NeedsPersonChange[];
+  /** True when changes that need a person were let through because a person approved them. */
+  approved: boolean;
+  /** Stories this pull request marks merged. */
+  merged: string[];
+  /** Whether the body was checked for a Tokens used section. */
+  checkedBody: boolean;
+  issues: PrCheckIssue[];
+}
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const agentPattern = new RegExp(`\\b(${knownAgentNames.map(escapeRegExp).join("|")})\\b`, "i");
+
+/**
+ * Says which agent wrote a commit, or undefined when it looks like a person's.
+ * A commit is an agent's when its author is a bot or a `Co-Authored-By`
+ * trailer names a known agent. The author's own name is not matched against
+ * agent names, so a person called Jules is not mistaken for one.
+ */
+export function commitAgent(commit: PrCheckCommit, botNames: readonly string[] = []): string | undefined {
+  const bots = new Set(botNames.map(name => name.trim().toLowerCase()).filter(Boolean));
+  const author = commit.author.trim();
+  if (author.toLowerCase().endsWith("[bot]") || bots.has(author.toLowerCase())) return author;
+  // Read the trailers line by line rather than with a regex, so a long line cannot make matching slow.
+  const trailer = "co-authored-by:";
+  for (const line of commit.message.split(/\r?\n/)) {
+    if (line.slice(0, trailer.length).toLowerCase() !== trailer) continue;
+    const agent = agentPattern.exec(line.slice(trailer.length));
+    if (agent) return knownAgentNames.find(name => name.toLowerCase() === agent[1].toLowerCase()) ?? agent[1];
+  }
+  return undefined;
+}
+
+/**
+ * The text of the body's “Tokens used” section, without HTML comments, up to
+ * the next heading of the same or a higher level. Undefined when there is no
+ * such heading.
+ */
+export function tokensUsedSection(body: string): string | undefined {
+  const lines = body.replace(/\r\n?/g, "\n").replace(/<!--[\s\S]*?(-->|$)/g, "").split("\n");
+  const start = lines.findIndex(line => /^ {0,3}#{1,6}[ \t]+tokens used[ \t#]*$/i.test(line));
+  if (start === -1) return undefined;
+  const level = /^ *(#+)/.exec(lines[start])![1].length;
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex(line => {
+    const heading = /^ {0,3}(#{1,6})[ \t]/.exec(line);
+    return heading !== null && heading[1].length <= level;
+  });
+  return (end === -1 ? rest : rest.slice(0, end)).join("\n").trim();
+}
+
+const idPattern = (id: string) => new RegExp(`(^|[^A-Za-z0-9-])${escapeRegExp(id)}(?![A-Za-z0-9]|-[0-9])`, "i");
+
+/** Where a change that needs a person sits in the pull request's map, so annotations land on its line. */
+function changePath(change: NeedsPersonChange, after: StoryMapDocument): { path: (string | number)[]; itemId?: string } {
+  const at = (items: readonly { id: string }[] | undefined, key: string) => {
+    const index = items?.findIndex(item => item.id === change.itemId) ?? -1;
+    return index === -1 ? [] : [key, index];
+  };
+  switch (change.itemType) {
+    case "story": return { path: at(after.stories, "stories"), itemId: change.itemId };
+    case "activity": return { path: at(after.activities, "activities"), itemId: change.itemId };
+    case "release": return { path: at(after.releases, "releases"), itemId: change.itemId };
+    case "persona": return { path: at(after.personas, "personas"), itemId: change.itemId };
+    case "job": {
+      for (const [index, persona] of (after.personas ?? []).entries()) {
+        const job = persona.jobs?.findIndex(item => item.id === change.itemId) ?? -1;
+        if (job !== -1) return { path: ["personas", index, "jobs", job], itemId: change.itemId };
+      }
+      return { path: [], itemId: change.itemId };
+    }
+    case "map":
+      if (change.rule === "settings-changed") return { path: after.settings && change.itemId in after.settings ? ["settings", change.itemId] : [] };
+      return { path: change.change.startsWith("visibility") ? ["visibility"] : after.customer ? ["customer"] : [] };
+  }
+}
+
+const shortSha = (sha: string) => sha.slice(0, 7);
+
+/**
+ * Checks a pull request against the map rules a check can see. Each change
+ * that only a person should make is an error when any commit that changes the
+ * map was written with an agent, unless a person approved it. With a body,
+ * each story the pull request marks merged needs a Tokens used section that
+ * names it, or that explains, without naming any story, why there is no count.
+ */
+export function checkPullRequest(options: PrCheckOptions): PrCheckResult {
+  const { diff, after } = options;
+  const issues: PrCheckIssue[] = [];
+
+  const agentCommits = options.commits.flatMap(commit => {
+    const agent = commitAgent(commit, options.botNames);
+    return agent ? [{ sha: commit.sha, agent }] : [];
+  });
+  const approved = !!options.approved && diff.needsPerson.length > 0 && agentCommits.length > 0;
+  if (agentCommits.length && !options.approved) {
+    const shown = agentCommits.slice(0, 3).map(commit => `${shortSha(commit.sha)} (${commit.agent})`).join(", ");
+    const more = agentCommits.length > 3 ? ` and ${agentCommits.length - 3} more` : "";
+    for (const change of diff.needsPerson) {
+      issues.push({
+        severity: "error",
+        ...changePath(change, after),
+        rule: change.rule,
+        message: `${needsPersonLabels[change.rule]}: ${change.change}. Only a person should make this change, and the map was changed in commits written with an agent: ${shown}${more}. Have a person make it, or approve it with the map-approved label.`,
+      });
+    }
+  }
+
+  const merged = [
+    ...diff.stories.added.filter(story => story.status === "merged").map(story => story.id),
+    ...diff.stories.updated.filter(story => story.status?.to === "merged").map(story => story.id),
+  ];
+  const checkedBody = options.body !== undefined;
+  if (checkedBody && merged.length) {
+    const section = tokensUsedSection(options.body!);
+    const index = (id: string) => after.stories.findIndex(story => story.id === id);
+    const missing = (id: string, why: string) => issues.push({ severity: "error", path: ["stories", index(id)], itemId: id, rule: "missing-tokens-used", message: why });
+    if (section === undefined) {
+      for (const id of merged) missing(id, `This pull request marks ${id} merged, but its description has no Tokens used section. Paste the output of story-map tokens --format markdown ${id} there, or say why the tokens could not be counted.`);
+    } else if (!section) {
+      for (const id of merged) missing(id, `This pull request marks ${id} merged, but the Tokens used section in its description is empty. Paste the output of story-map tokens --format markdown ${id} there, or say why the tokens could not be counted.`);
+    } else {
+      // A section that names no story ID is an explanation for all of them, such as why nothing could be counted.
+      const names = after.stories.some(story => idPattern(story.id).test(section));
+      if (names) {
+        for (const id of merged) {
+          if (!idPattern(id).test(section)) missing(id, `This pull request marks ${id} merged, but the Tokens used section in its description does not name it. Add the output of story-map tokens --format markdown ${id}, or say why its tokens could not be counted.`);
+        }
+      }
+    }
+  }
+
+  return {
+    passed: !issues.some(issue => issue.severity === "error"),
+    agentCommits,
+    needsPerson: diff.needsPerson,
+    approved,
+    merged,
+    checkedBody,
+    issues,
+  };
+}

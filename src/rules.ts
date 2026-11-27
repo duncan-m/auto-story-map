@@ -68,6 +68,8 @@ export const storyMapRules = {
   "possible-renumber": { section: "changes-that-need-a-person", summary: "A story was removed and one with the same title added, so it may have been renumbered." },
   "customer-copy-changed": { section: "audience-settings", summary: "Customer-facing copy was added or changed, or the map was switched to all-users." },
   "settings-changed": { section: "changes-that-need-a-person", summary: "A map setting was changed." },
+  // Problems only `story-map pr-check` reports.
+  "missing-tokens-used": { section: "record-the-tokens-used-on-a-story", summary: "A pull request marks a story merged, but its description has no Tokens used section that names it or says why there is no count." },
 } as const satisfies Record<string, StoryMapRuleInfo>;
 
 /** The stable ID of a validation rule, such as `missing-status-reason`. */

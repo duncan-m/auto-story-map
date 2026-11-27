@@ -1002,8 +1002,9 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `possible-renumber` | needs a person | A story was removed and one with the same title added, so it may have been renumbered. | [Changes that need a person](#changes-that-need-a-person) |
 | `customer-copy-changed` | needs a person | Customer-facing copy was added or changed, or the map was switched to all-users. | [Audience settings](#audience-settings) |
 | `settings-changed` | needs a person | A map setting was changed. | [Changes that need a person](#changes-that-need-a-person) |
+| `missing-tokens-used` | pull request | A pull request marks a story merged, but its description has no Tokens used section that names it or says why there is no count. | [Record the tokens used on a story](#record-the-tokens-used-on-a-story) |
 
-A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule. Validate never reports the **needs a person** rules: they compare two versions of the map, so [`story-map diff`](#changes-that-need-a-person) lists them.
+A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule. Validate never reports the **needs a person** rules: they compare two versions of the map, so [`story-map diff`](#changes-that-need-a-person) lists them. The **needs a person** and **pull request** rules are what [`story-map pr-check`](#check-a-pull-request-in-ci) reports.
 
 ### Check the map as you edit
 
@@ -1080,6 +1081,32 @@ Each line names the item, what changed and its rule. The section says what chang
 
 In JSON, `needsPerson` lists them, each with `rule`, `itemType` (`story`, `activity`, `release`, `persona`, `job` or `map`), `itemId`, `title` and `change`. A possible renumber also has `addedId`, the new story's ID. The list is empty when there is nothing to list. In code, `needsPersonChanges(before, after, diff)` returns the list, and `needsPersonRules` lists its rules, which are also in `storyMapRules`.
 
+
+### Check a pull request in CI
+
+`story-map pr-check <base-ref>` fails a pull request that breaks the map rules a check can see, so a reviewer does not have to find them in the YAML diff:
+
+- **Changes that need a person.** When any commit in the pull request that changes the map was written with an agent, each change listed under [Needs a person](#changes-that-need-a-person) is an error, with its rule, unless `--approved` is passed. A commit is an agent's when its author is in `--bot-names` or ends in `[bot]`, or when a `Co-Authored-By` trailer names a known agent: Claude, Codex, Copilot, Cursor, Devin, Gemini, Aider, Jules or OpenHands. Most agent commits are authored as a person, with a trailer, so the author alone would miss them. Merge commits are skipped, since they bring in work already on the base branch.
+- **Tokens used.** With `--body-file <file>`, or `--body-file -` for stdin, each story the pull request marks `merged` needs a **Tokens used** heading in the description whose text names the story, as the output of [`story-map tokens --format markdown`](#record-the-tokens-used-on-a-story) does. A section that names no story at all, such as one saying the agent's tool reports no count, explains the missing count for every story. HTML comments, such as the template's placeholder, do not count. Without `--body-file`, tokens are not checked, so a product that does not record tokens sees no token errors.
+
+Problems are printed as `validate` prints them, with `--format text`, `github` or `json`, and each one links to the part of this guide that explains it. It exits 1 when there is an error, and 2 for a bad option or Git reference. `--head <ref>` checks a range ending somewhere other than `HEAD`.
+
+A person approves a change only they should make by adding the `map-approved` label to the pull request. The workflow from `npx story-map init` runs the check on every pull request that changes the map, and again when the description or labels change, passing `--approved` when the label is there:
+
+```yaml
+- name: Check the pull request against the map rules
+  env:
+    BASE_REF: ${{ github.base_ref }}
+    PR_BODY: ${{ github.event.pull_request.body }}
+    APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'map-approved') && 'yes' || '' }}
+  run: printf '%s' "$PR_BODY" | npx --no-install story-map pr-check --format github ${APPROVED:+--approved} --body-file - "origin/$BASE_REF"
+```
+
+Check out with `fetch-depth: 0`, as for the diff summary, and add `edited`, `labeled` and `unlabeled` to the workflow's `pull_request` types so editing the description or the label runs the check again. Pass the description through an environment variable, as above, never straight into the script.
+
+This is a guardrail for agents that follow their own attribution rules, not a security boundary: an agent can leave out the trailer, and a person still reviews the pull request. What it removes is the need to read the YAML diff for these changes.
+
+In code, `checkPullRequest({ diff, after, commits, botNames, approved, body })` returns the result, `commitAgent(commit, botNames)` says which agent wrote a commit, `tokensUsedSection(body)` returns the section's text, and `prCheckRules` lists the rules only `pr-check` reports.
 ## Read the map from the command line
 
 Read the map with `story-map story`, `stories` and `releases` instead of opening the YAML file. They print text for people, or JSON with `--format json` for agents and scripts. Reads are always the internal view, because whoever runs them has the file. Each takes `--map <path>`, which defaults to `product/story-map.yaml`, and the files from [`story-map history`](#show-status-history) and [`story-map tests`](#link-tests-to-stories) as `--history <file>` and `--tests-index <file>`, for dates, changes and tagged tests.

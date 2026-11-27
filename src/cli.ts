@@ -10,6 +10,7 @@ import history from "./commands/history.js";
 import init from "./commands/init.js";
 import mcp from "./commands/mcp.js";
 import plan from "./commands/plan.js";
+import prCheck from "./commands/pr-check.js";
 import preview from "./commands/preview.js";
 import { releases, stories, story } from "./commands/read.js";
 import { ArgumentError, type Command } from "./commands/shared.js";
@@ -25,6 +26,7 @@ const usage = `Usage:
   story-map upgrade [--format text|markdown|json] [--diff] [--root <path>] [--map <path>] [--mode simple|advanced] [--apply <parts>] [--plans <folder>|off] [--story-ids next|lowest-free] [--write]
   story-map validate [--format text|github|json] [--strict] [--check-sources] [--plans <path>] [--tests <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
+  story-map pr-check [--format text|github|json] [--map <path>] [--head <ref>] [--bot-names <names>] [--approved] [--body-file <file>|-] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
   story-map tests [--tests <path>] [--root <path>] [--out <file>] [<map.yaml>]
   story-map export --format vsdx|csv|json [--output <file>] [--history <file>] [--tests-index <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
@@ -133,6 +135,30 @@ diff
 
   --map <path>       Map to compare. Defaults to product/story-map.yaml.
   --format json      Print the comparison as JSON instead.
+
+pr-check
+  Checks a pull request against the map rules a check can see, and exits 1
+  when it breaks one. When any commit in <base-ref>..HEAD that changes the map
+  was written with an agent, each change story-map diff lists under Needs a
+  person, such as a confirmed draft or a new estimate, is an error unless
+  --approved is passed. A commit is an agent's when its author is a bot or a
+  Co-Authored-By trailer names a known agent, such as Claude or Codex. With
+  --body-file, each story the pull request marks merged needs a Tokens used
+  section in the description that names it, or says why there is no count.
+  It is a guardrail for agents that follow their attribution rules, not a
+  security boundary.
+
+  --format text      Print file:line:column: problem (default).
+  --format github    Print GitHub Actions annotations on the map's lines.
+  --format json      Print the result, with the agent commits and each issue.
+  --map <path>       Map to check. Defaults to product/story-map.yaml.
+  --head <ref>       Last commit of the pull request. Defaults to HEAD.
+  --bot-names <names>
+                     Comma-separated commit authors that are bots, as for
+                     history. Authors ending in [bot] always are.
+  --approved         A person approved the changes that need a person, such
+                     as with a map-approved label.
+  --body-file <file> The pull request's description, or - for stdin.
 
 history
   Reads the map's Git history and writes when each story was added, each
@@ -524,7 +550,7 @@ mcp
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, upgrade, validate, diff, history, tests, export: exportMap, story, stories, releases, actions, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
+const commands: Record<string, Command<any>> = { init, upgrade, validate, diff, "pr-check": prCheck, history, tests, export: exportMap, story, stories, releases, actions, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {

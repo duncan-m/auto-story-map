@@ -1065,7 +1065,9 @@ stories:
     title: Check pull requests for map rules in CI
     activity: review
     release: v0-7-9
-    status: planned
+    status: merged
+    tokens: 7161516
+    estimatedCostUsd: 3.15
     dependsOn:
       - ESM-162
     jobs:
