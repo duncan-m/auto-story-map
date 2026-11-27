@@ -151,6 +151,8 @@ test("ESM-128: groups actions by kind in order, then by release, with who acts a
   assert.equal(countStoryMapActions(groups), storyMapWarnings(map).length + 1);
 
   const byKind = Object.fromEntries(groups.map(group => [group.kind, group]));
+  assert.equal(byKind["job-without-stories"].title, "Review JTBD with no stories");
+  assert.equal(byKind["job-without-stories"].label, "Review JTBD");
   assert.equal(byKind["confirm-draft-job"].needsPerson, true);
   assert.equal(byKind["missing-estimate"].needsPerson, true);
   assert.equal(byKind["missing-impact"].needsPerson, false);
@@ -220,6 +222,9 @@ test("ESM-128: the Actions tab lists every action in one table, with counts that
   assert.match(html, new RegExp(`<b>${people}</b> need a person</span><span>[\\s\\S]*?<b>${total - people}</b> a person or an agent can do`));
   // Each row has its type, coloured by category, and who can act.
   assert.match(html, /<tr data-category="draft" data-kind="confirm-draft-job">[\s\S]*?<span class="esm-kind" data-category="draft" title="[^"]+">Confirm a drafted job<\/span><span class="esm-action-who" data-person="">[\s\S]*?Needs a person<\/span>/);
+  // The filter chip and the row badge use the kind's short label; the full title is in the badge's tooltip.
+  assert.match(html, /<a class="esm-kind-chip" data-category="gap" href="[^"]+" title="[^"]+"><span class="esm-kind-dot" aria-hidden="true"><\/span>Review JTBD <span class="esm-kind-chip-count">1<\/span><\/a>/);
+  assert.match(html, /<span class="esm-kind" data-category="gap" title="Review JTBD with no stories\. [^"]+">Review JTBD<\/span>/);
   // Each row links to its item: a story's permalink, a release's, or a persona's page.
   assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?story=S-2#esm-story-S-2">S-2 Save a draft quote<\/a><span class="esm-action-release">First<\/span><\/th>/);
   assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?release=r2#esm-release-r2">Second<\/a><\/th>/);
@@ -307,7 +312,7 @@ stories: []
   assert.doesNotMatch(html, /esm-actions-filters/);
 });
 
-test("ESM-128: story and release panels and the persona page show their own actions", () => {
+test("ESM-128: story and release panels show their own actions, and the persona page leaves them to the tab", () => {
   const view = getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("status=all"), tests, now });
   const html = render(view);
   const panels = html.match(/<div class="esm-detail[" ][\s\S]*?(?=<div class="esm-detail[" ]|<\/section>$)/g);
@@ -328,8 +333,9 @@ test("ESM-128: story and release panels and the persona page show their own acti
   assert.equal(releaseActions.match(/<li class="esm-action">/g).length, 1, "a release's row lists only the release's own actions");
 
   const personaPage = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=personas&persona=builder"), now }));
-  assert.match(personaPage, /<section class="esm-page-actions esm-item-actions"[\s\S]*Confirm a drafted job[\s\S]*Confirm a persona&#x27;s drafted context/);
-  assert.match(personaPage, /href="\?persona=builder&amp;view=actions&amp;action-item=builder">See them on the Actions tab/);
+  // A job with no stories already says so on its lane, so the page lists no actions of its own.
+  assert.doesNotMatch(personaPage, /esm-item-actions|esm-action-list|See them on the Actions tab/);
+  assert.match(personaPage, /No stories yet/);
 });
 
 test("ESM-128: customers never see actions, in HTML or JSON", () => {

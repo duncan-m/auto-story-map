@@ -1941,7 +1941,7 @@ function ActionLine({ action, links }: { action: StoryMapAction; links: ActionLi
 
 /** An action's type, coloured by its category, so the table can be scanned by kind. */
 function ActionKindBadge({ group }: { group: StoryMapActionGroup }) {
-  return <span className="esm-kind" data-category={group.category} title={group.why}>{group.title}</span>;
+  return <span className="esm-kind" data-category={group.category} title={`${group.title}. ${group.why}`}>{group.label}</span>;
 }
 
 /** What the Category column calls each kind of item. */
@@ -2127,7 +2127,7 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
             {kindGroups.map(group => (
               <li key={group.kind}>
                 <a className="esm-kind-chip" data-category={group.category} href={href({ kind: group.kind })} aria-current={chosen.kind === group.kind ? "true" : undefined} title={group.why}>
-                  <span className="esm-kind-dot" aria-hidden="true" />{group.title} <span className="esm-kind-chip-count">{group.actions.length}</span>
+                  <span className="esm-kind-dot" aria-hidden="true" />{group.label} <span className="esm-kind-chip-count">{group.actions.length}</span>
                 </a>
               </li>
             ))}
@@ -2166,12 +2166,10 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
   );
 }
 
-/** An item's own actions, in its panel or page, with a link to the tab narrowed to it. */
-function ItemActions({ groups, type, id, panelId, links, tabHref, page = false }: {
-  /** True on the persona page, which is not a panel. */
-  page?: boolean;
+/** A story's or release's own actions, in its panel, with a link to the tab narrowed to it. */
+function ItemActions({ groups, type, id, panelId, links, tabHref }: {
   groups: readonly StoryMapActionGroup[];
-  type: "story" | "release" | "persona";
+  type: "story" | "release";
   id: string;
   panelId: string;
   links: ActionLinks;
@@ -2184,14 +2182,14 @@ function ItemActions({ groups, type, id, panelId, links, tabHref, page = false }
   if (!mine.length) return null;
   const headingId = `${panelId}-actions`;
   return (
-    <section className={page ? "esm-page-actions esm-item-actions" : "esm-detail-section esm-item-actions"} aria-labelledby={headingId}>
+    <section className="esm-detail-section esm-item-actions" aria-labelledby={headingId}>
       <h4 id={headingId}>Actions</h4>
       <ul className="esm-action-list">
         {mine.flatMap(group => group.actions.map((action, index) => (
           <li className="esm-action" key={`${group.kind}-${index}`}>
             <div className="esm-action-text">
               <p className="esm-action-head">
-                <span className="esm-action-item">{group.title}</span>
+                <span className="esm-action-item">{group.label}</span>
                 <WhoActs needsPerson={action.needsPerson} />
                 {action.line !== undefined && <span className="esm-action-line">Line <ActionLine action={action} links={links} /></span>}
               </p>
@@ -2227,9 +2225,8 @@ function PersonaLink({ persona, href, current }: { persona: PersonaLabel; href: 
  * their context and their jobs as lanes, core job first, each with its steps in order.
  * Counts come from the whole map, so they do not change with the filters.
  */
-function PersonasPage({ personas, filter, preservedParams, baseId, editing, actions }: {
+function PersonasPage({ personas, filter, preservedParams, baseId, editing }: {
   personas: readonly PersonaLabel[];
-  actions?: Omit<PanelActionsInfo, "tabHref">;
   filter: NonNullable<StoryMapView["filter"]>;
   preservedParams?: Readonly<Record<string, string>>;
   baseId: string;
@@ -2286,7 +2283,6 @@ function PersonasPage({ personas, filter, preservedParams, baseId, editing, acti
             <span>{`${plural(persona.jobs.length, "job")} · ${plural(persona.activeStories, "active story", "active stories")}`}</span>
           </p>
         </div>
-        {actions && <ItemActions groups={actions.groups} type="persona" id={persona.id} panelId={`${baseId}-persona`} links={actions.links} tabHref={actionsHref(filter, preservedParams, { item: persona.id })} page />}
         <PersonaContext persona={persona} baseId={`${baseId}-context`} editing={!!editing} />
         <section className="esm-persona-jobs" aria-labelledby={jobsId}>
           <h4 className="esm-section-title" id={jobsId}>Jobs to be done {persona.jobs.length > 0 && <span>Core job first, each with its steps in order</span>}</h4>
@@ -2755,7 +2751,7 @@ export function StoryMapBoard({
             actions={countStoryMapActions(actionGroups)}
           />
         )}
-        {personasTab && <PersonasPage personas={personaList} filter={tabs!} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} actions={{ groups: actionGroups, links: actionLinks }} />}
+        {personasTab && <PersonasPage personas={personaList} filter={tabs!} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} />}
         {actionsTab && map.audience === "internal" && (
           <ActionsPage
             groups={actionGroups}

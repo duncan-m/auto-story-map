@@ -764,8 +764,6 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-action .esm-action-message { margin: 4px 0 0; font-size: .875rem; }
 .esm-item-actions .esm-action { padding: 8px 10px; }
 .esm-item-actions-link { margin: 8px 0 0; font-size: .875rem; }
-.esm-page-actions { margin: 0 0 18px; }
-.esm-page-actions h4 { margin: 0 0 10px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 
 /* Personas tab: the persona list beside the chosen persona */
 .esm-persona-page { display: grid; grid-template-columns: 15.5rem minmax(0, 1fr); }

@@ -7,8 +7,10 @@ export type StoryMapActionCategory = "gap" | "draft" | "estimate" | "test" | "ot
 /** What the Actions tab says about one kind of action. */
 export interface StoryMapActionKindInfo {
   category: StoryMapActionCategory;
-  /** A short heading, such as “Confirm a drafted job”. */
+  /** A heading, such as “Confirm a drafted job”. */
   title: string;
+  /** The short name the board's filter and row badge use, such as “Review JTBD”. */
+  label: string;
   /** One sentence on why it matters. */
   why: string;
   /** True when only a person may act on it. Agents leave these alone. */
@@ -23,79 +25,92 @@ export interface StoryMapActionKindInfo {
 export const storyMapActionKinds: Readonly<Record<StoryMapWarningKind, StoryMapActionKindInfo>> = {
   "job-without-stories": {
     category: "gap",
-    title: "Fill a job with no stories",
-    why: "Nothing on the map serves this job yet. A core job with no stories is the biggest gap a map can have.",
+    title: "Review JTBD with no stories",
+    label: "Review JTBD",
+    why: "No story on the map serves this job to be done. Plan or tag stories for it, or review whether the job is still right.",
     needsPerson: false,
   },
   "step-without-stories": {
     category: "gap",
     title: "Fill a step with no stories",
+    label: "Fill a step with no stories",
     why: "The job has stories, but none in the activity where this step happens.",
     needsPerson: false,
   },
   "persona-without-stories": {
     category: "gap",
     title: "Tag stories for a persona",
+    label: "Tag stories for a persona",
     why: "No story says it is for this persona, so the map cannot show what they get.",
     needsPerson: false,
   },
   "stories-without-personas": {
     category: "gap",
     title: "Say who stories are for",
+    label: "Say who stories are for",
     why: "Most active stories name no persona or job, so the Personas tab and filters miss them.",
     needsPerson: false,
   },
   "persona-without-job": {
     category: "gap",
     title: "Link a story to a job",
+    label: "Link a story to a job",
     why: "The story is for a persona but serves none of their jobs, so it may not match a known need.",
     needsPerson: false,
   },
   "confirm-draft-job": {
     category: "draft",
     title: "Confirm a drafted job",
+    label: "Confirm a drafted job",
     why: "Stories that serve this job have shipped, but nobody has agreed the job is right.",
     needsPerson: true,
   },
   "confirm-draft-context": {
     category: "draft",
     title: "Confirm a persona's drafted context",
+    label: "Confirm a persona's drafted context",
     why: "Stories for this persona have shipped, but nobody has agreed what success means to them.",
     needsPerson: true,
   },
   "confirm-draft-impact": {
     category: "draft",
     title: "Confirm a release's drafted impact",
+    label: "Confirm a release's drafted impact",
     why: "The release has shipped stories, but its expected impact is still a draft.",
     needsPerson: true,
   },
   "missing-estimate": {
     category: "estimate",
     title: "Agree an estimate",
+    label: "Agree an estimate",
     why: "Other stories in the release are estimated, so its total leaves this one out.",
     needsPerson: true,
   },
   "story-without-tests": {
     category: "test",
     title: "Tag a test",
+    label: "Tag a test",
     why: "The story is in progress or merged, but no test names it, so nobody can see what checks it.",
     needsPerson: false,
   },
   "missing-impact": {
     category: "other",
     title: "Add a release's impact",
+    label: "Add a release's impact",
     why: "The release has active stories but says nothing about what it should change.",
     needsPerson: false,
   },
   "missing-status-reason": {
     category: "other",
     title: "Say why a story stopped",
+    label: "Say why a story stopped",
     why: "The story is blocked or cut with no reason, so nobody can tell what would unblock it.",
     needsPerson: false,
   },
   "depends-on-cut": {
     category: "other",
     title: "Replan a dependency on cut work",
+    label: "Replan a dependency on cut work",
     why: "The story waits for work that will not land.",
     needsPerson: false,
   },
