@@ -198,7 +198,10 @@ export interface InternalStoryCard extends StoryCard {
 }
 
 /** A test or group tagged with a story, as internal viewers see it. */
-export type StoryTestLink = Omit<StoryTestEntry, "storyIds">;
+export type StoryTestLink = Omit<StoryTestEntry, "storyIds" | "inheritedIds"> & {
+  /** True when the test is linked to the story only by a tagged `describe` or `suite` block around it. */
+  inherited?: true;
+};
 
 /** Present when the host has applied `filterStoryMapView`. The board shows its search toolbar only then. */
 export interface StoryMapFilterState {
@@ -407,11 +410,12 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       entries.reverse().sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
     }
     const testsByStory = new Map<string, StoryTestLink[]>();
-    for (const { storyIds, ...test } of options.tests?.tests ?? []) {
+    for (const { storyIds, inheritedIds, ...test } of options.tests?.tests ?? []) {
       for (const id of new Set(storyIds)) {
+        const link: StoryTestLink = inheritedIds?.includes(id) ? { ...test, inherited: true } : { ...test };
         const entries = testsByStory.get(id);
-        if (entries) entries.push({ ...test });
-        else testsByStory.set(id, [{ ...test }]);
+        if (entries) entries.push(link);
+        else testsByStory.set(id, [link]);
       }
     }
     const moreTestsByStory = new Map<string, { file: string; count: number }[]>();

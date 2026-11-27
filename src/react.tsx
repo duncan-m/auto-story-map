@@ -698,7 +698,8 @@ function TestsSection({ story, panelId, sourceBaseUrl }: { story: InternalStoryC
                   <li className="esm-test" key={`${test.line}:${test.name}`} data-kind={test.kind}>
                     {href ? <a href={href} {...newTab}>{label}<NewTabHint /></a> : <span>{label}</span>}
                     <span className="esm-test-line">
-                      {test.kind === "group" ? "All tests in this group · " : ""}line {test.line}
+                      {test.kind === "group" && !test.inherited ? "All tests in this group · " : ""}
+                      {test.inherited ? "Covered by its group · " : ""}line {test.line}
                     </span>
                   </li>
                 );
