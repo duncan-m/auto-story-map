@@ -126,11 +126,25 @@ export interface AgentsRuleReview {
 }
 
 /** The state of each part of a host's set-up, as `story-map upgrade` reports it. */
+/** How the upgrade review runs: `simple` applies the recommended changes, `advanced` shows each part's diff to accept or keep. */
+export type UpgradeMode = "simple" | "advanced";
+
+/** The question to ask when the map's `settings.upgrade` is not set. Ask the person, and record only their answer. */
+export const upgradeModeQuestion = {
+  question: "Do you want simple or advanced upgrades? Simple shows what changes for your team and applies the recommended changes, keeping your own edits. Advanced also shows each part's diff, for you to accept or keep.",
+  link: "docs/story-map.md#choose-simple-or-advanced-mode",
+  option: "story-map settings --upgrade simple|advanced",
+} as const;
+
 export interface UpgradeReport {
   /** This version of the package, which every part is compared with. */
   packageVersion: string;
   /** The map the choices are read from, relative to the root. */
   map: string;
+  /** The person's choice of mode, from the map's `settings.upgrade`. Left out when nobody has chosen. */
+  mode?: UpgradeMode;
+  /** When `mode` is left out: the question to ask the person. */
+  modeQuestion?: typeof upgradeModeQuestion;
   /** A short overview in plain words, from `templates/changes.yaml`, of what the review would apply. Show it to people as written. */
   overview: UpgradeOverview;
   /** Every part, in the order of `upgradePartIds`. */
@@ -525,7 +539,8 @@ export async function upgradeReport(options: UpgradeReportOptions = {}): Promise
   const settings = mapSettings(mapText);
   parts.push(choice("plans", mapPath, settings), choice("storyIds", mapPath, settings));
   const overview = upgradeOverview(parts, options.changes ?? (await loadSetupChanges()), storyMapVersion);
-  return { packageVersion: storyMapVersion, map: mapPath, overview, parts };
+  const mode = settings?.upgrade === "simple" || settings?.upgrade === "advanced" ? settings.upgrade : undefined;
+  return { packageVersion: storyMapVersion, map: mapPath, ...(mode ? { mode } : { modeQuestion: upgradeModeQuestion }), overview, parts };
 }
 
 const stateWords: Record<UpgradePartState, string> = {

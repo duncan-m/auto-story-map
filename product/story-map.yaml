@@ -2491,7 +2491,7 @@ stories:
     title: Ask once for simple or advanced upgrade mode
     activity: set-up
     release: v0-7-8
-    status: planned
+    status: merged
     dependsOn:
       - ESM-169
     jobs:
@@ -2501,6 +2501,7 @@ stories:
     summary: settings.upgrade keeps the person's choice of simple or advanced mode, which an agent asks for and records only from their answer. At an interactive terminal the review asks itself and walks through each part.
     sources:
       - docs/plans/upgrade-review.md#5-ask-for-simple-or-advanced-mode-once
+      - docs/story-map.md#choose-simple-or-advanced-mode
   - id: ESM-171
     title: Choose the set-up parts at install
     activity: set-up

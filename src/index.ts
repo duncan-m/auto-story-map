@@ -78,8 +78,8 @@ export { hasAgentsSection, knownSetupVersionsFrom, loadKnownSetupVersions, readS
 export { currentSetupTemplateHashes, findSetupBehind, isSetupPartBehind, setupBehindMessage, setupPartPaths } from "./setup-behind.js";
 export type { FindSetupBehindOptions, SetupPartBehind } from "./setup-behind.js";
 export type { KnownSetupVersions, ReleasedSetupTemplate, SetupFileVersion, SetupPart } from "./setup-versions.js";
-export { describeUpgradeState, isUpgradePartBehind, runCommands, upgradePartIds, upgradeReport, upgradeTemplates, workflowCommands } from "./upgrade.js";
-export type { UpgradePart, UpgradePartId, UpgradePartState, UpgradeRecommendation, UpgradeReport, UpgradeReportOptions, UpgradeTemplates } from "./upgrade.js";
+export { describeUpgradeState, isUpgradePartBehind, runCommands, upgradeModeQuestion, upgradePartIds, upgradeReport, upgradeTemplates, workflowCommands } from "./upgrade.js";
+export type { UpgradeMode, UpgradePart, UpgradePartId, UpgradePartState, UpgradeRecommendation, UpgradeReport, UpgradeReportOptions, UpgradeTemplates } from "./upgrade.js";
 export { addWorkflowSteps, applyUpgrade, mergeAgentsSection, parseUpgradeParts, UpgradeApplyError } from "./upgrade-apply.js";
 export type { UpgradeAnswers, UpgradeApplyMode, UpgradeApplyOptions, UpgradeApplyResult, UpgradeChange, UpgradeChangeAction, UpgradeQuestion } from "./upgrade-apply.js";
 export { loadSetupChanges, maxOverviewLines, parseSetupChanges, setupChangeParts, upgradeOverview, upgradeOverviewLines } from "./upgrade-overview.js";

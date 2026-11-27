@@ -83,6 +83,14 @@
             "next",
             "lowest-free"
           ]
+        },
+        "upgrade": {
+          "description": "How `story-map upgrade` reviews the set-up. simple shows what changes for the team and applies the recommended changes, keeping the host's own edits. advanced also shows each part's diff, to accept or keep one at a time. Leave it out until a person has chosen, and the review asks. --mode overrides it for one run. Set it with `story-map settings --upgrade`. See Choose simple or advanced mode in docs/story-map.md.",
+          "type": "string",
+          "enum": [
+            "simple",
+            "advanced"
+          ]
         }
       },
       "additionalProperties": false,

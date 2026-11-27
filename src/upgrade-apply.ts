@@ -6,7 +6,7 @@ import { proposeStoryMapEdit, unifiedDiff, type StoryIdScheme, type StoryMapEdit
 import { destination, skillPath } from "./init.js";
 import { replaceAgentsSection, setupBody, setupBodyHash, stampSetupFile, type SetupPart } from "./setup-versions.js";
 import { upgradeOverview, loadSetupChanges, type UpgradeOverview } from "./upgrade-overview.js";
-import { runCommands, upgradePartIds, upgradeReport, upgradeTemplates, workflowCommands, type AgentsRuleReview, type UpgradePart, type UpgradePartId, type UpgradeReport, type UpgradeReportOptions } from "./upgrade.js";
+import { runCommands, upgradePartIds, upgradeReport, upgradeTemplates, workflowCommands, type AgentsRuleReview, type UpgradePart, type UpgradePartId, type UpgradeMode, type UpgradeReport, type UpgradeReportOptions } from "./upgrade.js";
 import { storyMapVersion } from "./version.js";
 
 /**
@@ -18,19 +18,21 @@ import { storyMapVersion } from "./version.js";
  * - `advanced`: only the parts the person accepted, given as `parts`. An
  *   accepted part is replaced with this version's, even when the host edited it.
  */
-export type UpgradeApplyMode = "simple" | "advanced";
+export type UpgradeApplyMode = UpgradeMode;
 
 /** The person's answers to the product choices. Only ever an answer they gave: leave a choice out for "not now". */
 export interface UpgradeAnswers {
   /** A repository-relative folder for delivery plans, or false for none. */
   plans?: string | false;
   storyIds?: StoryIdScheme;
+  /** The mode the person chose for later reviews, recorded in `settings.upgrade`. */
+  upgrade?: UpgradeMode;
 }
 
 export interface UpgradeApplyOptions extends UpgradeReportOptions {
   /** Defaults to `simple`. */
   mode?: UpgradeApplyMode;
-  /** For `advanced`: the parts the person accepted. Every other part is kept. */
+  /** For `advanced`: the parts the person accepted. Every other part is kept. Empty keeps every part, as when the person accepts none in the walk-through. */
   parts?: readonly UpgradePartId[];
   /** The person's answers to the product choices. */
   answers?: UpgradeAnswers;
@@ -88,6 +90,8 @@ export interface UpgradeApplyResult {
   changes: UpgradeChange[];
   /** The product choices nobody has made, and the person has not answered. */
   questions: UpgradeQuestion[];
+  /** The mode recorded in the map's `settings.upgrade`, from `answers.upgrade`, when it changes. */
+  modeRecorded?: UpgradeMode;
   /** True when at least one file changes. */
   changed: boolean;
   /** True when the changes were written. */
@@ -322,7 +326,7 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
  */
 export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<UpgradeApplyResult> {
   const mode = options.mode ?? "simple";
-  if (mode === "advanced" && !options.parts?.length) throw new UpgradeApplyError("Advanced mode applies only the parts you name, such as --apply guide,workflow.");
+  if (mode === "advanced" && !options.parts) throw new UpgradeApplyError("Advanced mode applies only the parts you name, such as --apply guide,workflow.");
   if (mode === "simple" && options.parts?.length) throw new UpgradeApplyError("Simple mode applies the recommended changes. Name parts only in advanced mode.");
   const root = await realpath(options.root ?? ".");
   const mapPath = options.map ?? "product/story-map.yaml";
@@ -463,7 +467,9 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
   const operations: StoryMapEditOperation[] = [
     ...(answers.plans === undefined ? [] : [{ op: "plans", plans: answers.plans } as StoryMapEditOperation]),
     ...(answers.storyIds === undefined ? [] : [{ op: "story-ids", storyIds: answers.storyIds } as StoryMapEditOperation]),
+    ...(answers.upgrade === undefined ? [] : [{ op: "upgrade-mode", upgrade: answers.upgrade } as StoryMapEditOperation]),
   ];
+  let modeRecorded: UpgradeMode | undefined;
   if (operations.length) {
     const recorded = changes.filter(change => change.action === "record");
     if (mapText === undefined) {
@@ -473,7 +479,8 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
       if (!edit.valid) throw new UpgradeApplyError(`${mapPath} would not be valid with the answers, so nothing was written. Run story-map validate to see why.`);
       if (edit.changed) {
         const diff = unifiedDiff(mapText, edit.source);
-        recorded[0].diff = diff;
+        if (recorded[0]) recorded[0].diff = diff;
+        if (answers.upgrade !== undefined && report.mode !== answers.upgrade) modeRecorded = answers.upgrade;
         plan(mapPath, mapText, edit.source);
       } else {
         for (const change of recorded) Object.assign(change, { action: "keep", change: "none; the map already has this answer" });
@@ -498,5 +505,5 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
     }
   }
 
-  return { mode, report, overview, changes, questions: asked, changed: planned.length > 0, written: !!options.write && planned.length > 0, files };
+  return { mode, report, overview, changes, questions: asked, ...(modeRecorded ? { modeRecorded } : {}), changed: planned.length > 0, written: !!options.write && planned.length > 0, files };
 }
