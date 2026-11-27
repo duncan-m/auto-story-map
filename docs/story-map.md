@@ -32,6 +32,46 @@ The JSON has `format: "auto-story-map.survey"` and `version: 1`, with the signal
 
 In code, `surveyRepository(options)` returns the same result.
 
+### Choose the parts at install
+
+`story-map init` starts with the same review as [`story-map upgrade`](#review-the-set-up-after-an-upgrade). It prints how Auto Story Map works in the repository and the list of parts, all not added yet, and what it will do with each:
+
+```bash
+npx story-map init
+```
+
+```text
+How Auto Story Map works in this repository
+
+- Agents follow the rules in AGENTS.md and keep product/story-map.yaml, the plan of who the product is for and what is being built, up to date in the same pull request as the code.
+- docs/story-map.md is the guide your team and its agents look things up in, from writing a story to recording a release.
+- CI checks the map on every pull request and adds a summary of what changed in it, so problems show up before review.
+
+To decide: whether to use delivery plans and the story ID policy.
+More: docs/story-map.md
+
+Parts of the set-up, from auto-story-map 0.7.8
+
+Part               State       Change
+AGENTS.md section  not added   add
+Guide              not added   add
+CI workflow        not added   add
+Story map skill    not added   not added; add it with --skill
+Delivery plans     not chosen  ask the person; not now leaves it unset
+Story ID policy    not chosen  ask the person; not now leaves it unset
+```
+
+Then it writes the starter map and the parts, and lists each file it created, updated or skipped.
+
+- **Simple mode**, the default, adds the recommended set: every part, as `init` always has. `--no-ci` leaves out the workflow, and `--skill` adds the skill, with a short pointer to it in `AGENTS.md` instead of the full rules.
+- **Advanced mode** adds only the parts you choose. Name them with `--apply`, such as `--apply agents,guide`. The parts are `agents`, `guide`, `workflow` and `skill`. `--mode advanced` alone asks which parts at a terminal, and otherwise prints the list and writes nothing.
+
+`--mode` picks the mode. Without it, `init` uses the map's `settings.upgrade` when the map is already there, and simple mode otherwise.
+
+In both modes, the product choices, [delivery plans](#choose-whether-to-use-delivery-plans) and the [story ID policy](#change-the-map-from-the-command-line), are asked at a terminal, and pressing Enter means not now. Agents run without a terminal, so `init` lists them instead. An agent asks the person and passes only their answer, with `--plans <folder>` or `--plans off`, and `--story-ids next` or `--story-ids lowest-free`, or records it afterwards with `story-map settings`.
+
+`init` never overwrites a file. In a repository that is already set up, where the story map section of `AGENTS.md`, the guide or the workflow is there, `init` hands over to `story-map upgrade` instead of skipping every file. It prints the upgrade report, or the dry run of the mode or parts you gave, and writes nothing. Run `story-map upgrade` with `--write` to apply the changes, as [Apply the changes](#apply-the-changes) describes.
+
 ### What the set-up markers mean
 
 `story-map init` records, in each part it sets up, the package version it came from and a hash of the text it wrote:
@@ -216,7 +256,7 @@ Each file it replaces or adds records this version in its [marker](#what-the-set
 
 `--format json` adds `mode`, `changes`, `questions`, `changed`, `written` and `files` to the report. Each change has `part`, `title`, `path`, `action` (`add`, `replace`, `update`, `record`, `ask` or `keep`), `change`, and `diff` or `value` where they apply. Each question has `part`, `question`, `link` and `option`. `--format markdown` gives the overview and a table of the changes, for the pull request that commits them. Commit the changes in a branch and pull request, like any other change, so they can be reviewed and reverted.
 
-In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and `init` build on it.
+In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and [`init`](#choose-the-parts-at-install) build on it.
 
 ## Upgrade to 0.7.7
 

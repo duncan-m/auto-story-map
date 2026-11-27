@@ -160,7 +160,7 @@ Run `npx story-map init` in the host repo. It creates:
 
 Pass `--skill` to put the rules and common commands in a skill at `.claude/skills/story-map/SKILL.md` instead. `AGENTS.md` then gets a short pointer to the skill, so agents read the full rules only when a task needs them. The skill and the full section come from the same template.
 
-It never overwrites an existing file, so it is safe to run again. [This library’s own map][example-map] shows a fuller map.
+First it prints how Auto Story Map works and the list of parts. Simple mode, the default, adds them all. `--mode advanced` or `--apply agents,guide` adds only the parts you choose. See [Choose the parts at install](docs/story-map.md#choose-the-parts-at-install). It never overwrites an existing file. In a repo that is already set up, it hands over to `story-map upgrade`, which reports what this version changes and writes only with `--write`. [This library’s own map][example-map] shows a fuller map.
 
 For a repo that already has history, `npx story-map survey --format json` lists its release tags and changelog versions, its docs and their headings, and its open plans and `TODO` comments, for the agent to draft the map from. It reads and suggests only. See [Survey a repository](docs/story-map.md#survey-a-repository).
 

@@ -139,13 +139,15 @@ test("ESM-153: init asks about delivery plans until the map records the answer",
   t.after(() => rm(root, { recursive: true, force: true }));
   const first = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
   assert.equal(first.status, 0, first.stderr);
-  assert.match(first.stdout, /^ask {6}delivery plans \(not chosen yet; see docs\/story-map\.md#write-a-delivery-plan\)$/m);
-  assert.match(first.stdout, /Then ask me whether to use delivery plans, linking to Write a delivery plan\n {2}in docs\/story-map\.md, and record my answer with `story-map settings`\./);
+  assert.match(first.stdout, /^ask {6}delivery plans \(not chosen yet; see docs\/story-map\.md#choose-whether-to-use-delivery-plans\)$/m);
+  assert.match(first.stdout, /Then ask me whether to use delivery plans and which story ID policy to use,\n {2}linking to the guide sections listed above, and record my answers with\n {2}`story-map settings`\./);
 
   const map = join(root, "product/story-map.yaml");
   await writeFile(map, (await readFile(map, "utf8")).replace("visibility: internal\n", "visibility: internal\nsettings:\n  plans: false\n"));
+  // Run again, init hands over to the upgrade review, which reports the answer as chosen.
   const again = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
-  assert.doesNotMatch(again.stdout, /delivery plans/);
+  assert.doesNotMatch(again.stdout, /^ask +delivery plans/m);
+  assert.match(again.stdout, /^Delivery plans +chosen: false/m);
 });
 
 test("ESM-149: the example plan follows the guide's structure and ships in the package", async () => {

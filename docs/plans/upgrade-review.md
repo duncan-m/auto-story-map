@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-169, ESM-172 and ESM-173 are merged, and ESM-170 and ESM-171 are planned. Decisions A to E are made. None has an agreed estimate yet.
+Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-169 and ESM-171 to ESM-173 are merged, and ESM-170 is planned. Decisions A to E are made. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 
@@ -178,6 +178,8 @@ As built, `applyUpgrade()` in `src/upgrade-apply.ts` does both, and `story-map u
 - `--no-ci` still works, and leaves out the workflow.
 
 An `init` run on a host that is already set up hands over to `upgrade`, instead of skipping every file.
+
+As built, `init` reads `upgradeReport()` first. When its overview is `install`, meaning the `AGENTS.md` section, the guide and the workflow are all missing, it prints that overview and the parts with what it will do to each, then writes the starter map and the parts through `initStoryMap()`, which takes a `parts` list. `--mode` picks the mode, or else the map's `settings.upgrade`, or simple. Advanced mode without `--apply` asks for the parts at a terminal, and otherwise lists them and writes nothing. The choices are recorded through `applyUpgrade()` in advanced mode with only `plans` and `storyIds`, so the answers pass the same checks as `story-map settings`, and are asked at a terminal with the upgrade command's prompt. Any other host is handed to the `upgrade` command with the same mode, parts and answers, as a dry run, and `init` writes nothing. See [Choose the parts at install](../story-map.md#choose-the-parts-at-install).
 
 ## 7. Remind hosts that fall behind
 

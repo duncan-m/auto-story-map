@@ -489,7 +489,9 @@ test("init refuses links that lead outside the repository", async t => {
   await assert.rejects(readFile(join(outside, "missing", "story-map.md")));
 
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
-  const run = spawnSync(process.execPath, [cli, "init", "--dir", agentsLink], { encoding: "utf8" });
+  const freshLink = await host("fresh-agents-link");
+  await symlink(join(outside, "AGENTS.md"), join(freshLink, "AGENTS.md"));
+  const run = spawnSync(process.execPath, [cli, "init", "--dir", freshLink], { encoding: "utf8" });
   assert.equal(run.status, 1);
   assert.match(run.stderr, /points outside the repository/);
 
@@ -525,9 +527,12 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.match(run.stdout, /Next, ask an agent/);
   assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- auto-story-map:start \S+ sha256:/);
 
-  await writeFile(join(root, "package-lock.json"), "{}");
-  const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
+  const npm = await mkdtemp(join(tmpdir(), "story-map-host-"));
+  t.after(() => rm(npm, { recursive: true, force: true }));
+  await writeFile(join(npm, "package-lock.json"), "{}");
+  const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", npm], { encoding: "utf8" });
   assert.doesNotMatch(noCi.stdout, /workflows/);
+  await assert.rejects(readFile(join(npm, ".github/workflows/story-map.yml")));
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
 });
 
@@ -594,7 +599,9 @@ test("ESM-117: init --skill writes the skill and a short pointer in AGENTS.md", 
   const plainAgents = await readFile(join(plain, "AGENTS.md"), "utf8");
   assert.equal(plainAgents.replace(/^<!-- auto-story-map:start \S+ sha256:[0-9a-f]{64} -->/, "<!-- auto-story-map:start -->"), full);
   await assert.rejects(readFile(join(plain, skillPath)));
-  const run = spawnSync(process.execPath, [cli, "init", "--skill", "--no-ci", "--dir", plain], { encoding: "utf8" });
+  const fresh = await mkdtemp(join(tmpdir(), "story-map-skill-"));
+  t.after(() => rm(fresh, { recursive: true, force: true }));
+  const run = spawnSync(process.execPath, [cli, "init", "--skill", "--no-ci", "--dir", fresh], { encoding: "utf8" });
   assert.equal(run.status, 0);
   assert.match(run.stdout, /created  \.claude\/skills\/story-map\/SKILL\.md/);
 });

@@ -195,9 +195,9 @@ export default defineCommand({
 });
 
 /** True when a person is at a terminal to answer questions, and the output is for them. */
-const atTerminal = (options: UpgradeOptions) => options.format === "text" && !!process.stdin.isTTY && !!process.stdout.isTTY;
+export const atTerminal = (options: { format: string }) => options.format === "text" && !!process.stdin.isTTY && !!process.stdout.isTTY;
 
-async function askOnTerminal(questions: readonly UpgradeQuestion[]): Promise<UpgradeAnswers> {
+export async function askOnTerminal(questions: readonly UpgradeQuestion[]): Promise<UpgradeAnswers> {
   const lines = createInterface({ input: process.stdin, output: process.stderr });
   const answers: UpgradeAnswers = {};
   try {
