@@ -44,7 +44,7 @@ const usage = `Usage:
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
-  story-map settings [--plans <folder>|off] [--story-ids next|lowest-free] [common edit options]
+  story-map settings [--plans <folder>|off] [--story-ids next|lowest-free] [--upgrade simple|advanced] [common edit options]
   story-map plan [--map <path>] [--release <ID>] [<ID> ...]
   story-map confirm [--format text|json] [--map <path>] [--write] <job ID> | <persona ID> | <release ID> --impact <n> | --all-in <persona ID>
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--read-only] [<map.yaml>]
@@ -81,6 +81,12 @@ upgrade
   listed for the person to answer with --plans and --story-ids. Only record
   an answer they gave.
 
+  Without --mode, the review runs in the mode kept in the map's
+  settings.upgrade. Left out, it asks at an interactive terminal, and in
+  advanced mode walks through each part that would change, asking whether to
+  take it. Agents get the report, with the question to ask the person: record
+  their answer with story-map settings --upgrade simple|advanced.
+
   --format markdown  Print a table for a pull request, with each diff folded.
   --format json      Print each part's state, from, change, recommendation,
                      additions and diff, for agents and scripts.
@@ -89,7 +95,8 @@ upgrade
   --map <path>       Map whose settings hold the choices, relative to the
                      root. Defaults to product/story-map.yaml.
   --mode <mode>      simple applies the recommended changes; advanced shows
-                     every diff, for --apply.
+                     every diff, for --apply. Overrides settings.upgrade for
+                     this run.
   --apply <parts>    Apply these parts: agents, guide, workflow, skill, plans
                      or storyIds, separated by commas. Implies advanced.
   --plans <folder>|off, --story-ids next|lowest-free
@@ -421,7 +428,7 @@ edit
                      remove-source, add-job, remove-job, add-persona,
                      remove-persona, add-dependency, remove-dependency,
                      customer-title, customer-summary, add,
-                     release-impact, plans and story-ids.
+                     release-impact, plans, story-ids and upgrade-mode.
 
   Common edit options:
   --write            Save the change, only when the edited map is valid.
@@ -455,7 +462,8 @@ release-impact
 
 settings
   Records the person's answer to whether to use delivery plans, in the map's
-  settings.plans, or to the story ID policy, in settings.storyIds. Only
+  settings.plans, to the story ID policy, in settings.storyIds, or to which
+  mode story-map upgrade runs in, in settings.upgrade. Only
   record an answer they gave: "not now" changes nothing, so the question is
   asked again. A dry run unless --write is given. Takes the common edit
   options in story-map help edit.
@@ -468,6 +476,10 @@ settings
                      How add numbers new stories: one after the highest
                      number, or the lowest free number. Both count cut
                      stories, so an ID is never reused.
+  --upgrade simple|advanced
+                     How story-map upgrade reviews the set-up: apply the
+                     recommended changes, or show each part's diff to accept
+                     or keep.
 
 plan
   Prints a delivery plan skeleton for the stories given, in the structure

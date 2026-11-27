@@ -98,7 +98,7 @@ A choice is **not chosen** until a person answers, and **chosen** after. Ask the
 - **The workflow** is compared by the commands its steps run, such as `story-map validate` and `story-map diff`, not line by line, since hosts change job names, Node versions and triggers. A step this version runs that yours does not is listed as an addition.
 - **The skill** records no version, so a skill that differs from this version's is reported as edited and outdated. It is only needed when your `AGENTS.md` section points to it.
 - **Diffs** are two-way, from your copy to this version's. `--diff` prints them after the table. The `AGENTS.md` section is compared [rule by rule](#review-the-agentsmd-section-rule-by-rule) instead, so `--diff` prints each rule's diff rather than the whole section's.
-- **`--format markdown`** gives the overview and the table for a pull request, with each diff folded. **`--format json`** gives `format: "auto-story-map.upgrade"`, `packageVersion`, `map`, the `overview` and `parts`, each with its `part`, `kind`, `title`, `path`, `state`, `from`, `change`, `recommendation` (`add`, `optional`, `replace`, `review`, `keep` or `ask`), and, where they apply, `additions`, `diff`, the chosen `value` and `version`, the marker reading below.
+- **`--format markdown`** gives the overview and the table for a pull request, with each diff folded. **`--format json`** gives `format: "auto-story-map.upgrade"`, `packageVersion`, `map`, the chosen `mode` or the `modeQuestion` to ask, the `overview` and `parts`, each with its `part`, `kind`, `title`, `path`, `state`, `from`, `change`, `recommendation` (`add`, `optional`, `replace`, `review`, `keep` or `ask`), and, where they apply, `additions`, `diff`, the chosen `value` and `version`, the marker reading below.
 - `--root <path>` reads another repository, and `--map <path>` another map's settings.
 
 #### The overview
@@ -155,6 +155,25 @@ The review recommends replacing only rules you never changed. A rule you reworde
 Sections set up before 0.7.8 have no rule markers. Their rules are recognised by their text, from the hash of each rule in every earlier release, kept under `rules` in `templates/known-versions.json`. A rule you reworded is recognised by its opening words. One whose opening words changed too counts as your own rule, and the rule it replaced as removed, so neither is lost or doubled. When such a section is edited, so its version is unknown, the newest release that shipped all of its unedited rules stands in for it.
 
 In JSON, the `agents` part has `rules`, this version's rules first, in its order, then the rules only you have. Each has `id` (left out for a paragraph of your own), `title`, `state`, `recommendation`, `change`, and, where they apply, `matchedBy` (`marker`, `text` or `opening`), `text` (your wording), `template` (this version's) and `diff`. In code, `reviewAgentsRules()` does the comparison and `agentsRules` lists every rule ID.
+
+### Choose simple or advanced mode
+
+The review runs in one of two modes, and the person who looks after the set-up chooses which, once:
+
+- **Simple** shows what changes for your team and applies the recommended changes. It never replaces a part you edited, and it still asks each product choice.
+- **Advanced** shows the same overview, then each part's diff, and you accept or keep each part.
+
+The choice is kept in the map's `settings.upgrade`, as `simple` or `advanced`. Left out, the review asks:
+
+> Do you want simple or advanced upgrades? Simple shows what changes for your team and applies the recommended changes, keeping your own edits. Advanced also shows each part's diff, for you to accept or keep.
+
+- **Agents** run without an interactive terminal, so they get the report, with the question after it, or under `modeQuestion` in `--format json`. Ask the person the question word for word, and record only the answer they give, as for [delivery plans](#choose-whether-to-use-delivery-plans): `npx --no-install story-map settings --upgrade simple --write` or `--upgrade advanced --write`. If they say not now, leave it unset, and run the review with `--mode` for this time only.
+- **At a terminal**, when standard input is interactive and no `--format` is given, `story-map upgrade` asks you itself. With `--write`, your answer is recorded in `settings.upgrade` along with the changes, so the review does not ask again. Pressing Enter means not now, and the review only reports.
+- **`--mode simple`** or **`--mode advanced`** overrides the setting for one run, and `--apply <parts>` always means advanced.
+
+Once a mode is set, `story-map upgrade` runs in it. In simple mode it is the same as `--mode simple`, below. In advanced mode at a terminal it walks through each part that would change: it shows the part's diff, or its rules for the `AGENTS.md` section, and asks whether to take this version's. Enter takes the recommendation, which is yes for a part to add or replace and no for a part you edited. It then asks the product choices, and applies the parts you took, with `--write`. Without a terminal, advanced mode prints the report with every diff, for `--apply`. `--write` with no mode chosen and no `--mode` exits 2, because the review would not know what to apply.
+
+`story-map diff` lists a change to `settings.upgrade` under **Settings**, so the choice is reviewed like any map change.
 
 ### Apply the changes
 
@@ -216,7 +235,9 @@ Each file it replaces or adds records this version in its [marker](#what-the-set
 
 `--format json` adds `mode`, `changes`, `questions`, `changed`, `written` and `files` to the report. Each change has `part`, `title`, `path`, `action` (`add`, `replace`, `update`, `record`, `ask` or `keep`), `change`, and `diff` or `value` where they apply. Each question has `part`, `question`, `link` and `option`. `--format markdown` gives the overview and a table of the changes, for the pull request that commits them. Commit the changes in a branch and pull request, like any other change, so they can be reviewed and reverted.
 
-In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and `init` build on it.
+`answers.upgrade` records the person's choice of mode, and the result's `modeRecorded` names it when the map changes.
+
+In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and `init` build on it: in advanced mode, an empty `parts` keeps every part, as when the person takes none.
 
 ## Upgrade to 0.7.7
 

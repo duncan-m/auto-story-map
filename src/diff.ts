@@ -171,6 +171,8 @@ export interface StoryMapDiff {
   plans?: Change<string | false | undefined>;
   /** How `add` numbers new stories, including the default of next when the map does not set it. */
   storyIds?: Change<"next" | "lowest-free">;
+  /** How `story-map upgrade` reviews the set-up: simple, advanced, or undefined when nobody has chosen. */
+  upgrade?: Change<"simple" | "advanced" | undefined>;
   /**
    * Changes that `AGENTS.md` leaves to people, such as a confirmed draft or a new estimate,
    * each with its rule. They also appear in the lists above. Empty for most changes.
@@ -415,6 +417,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     stalledAfterWeeks: before && stalledBefore !== stalledAfter ? { from: stalledBefore, to: stalledAfter } : undefined,
     plans: before && before.settings?.plans !== after.settings?.plans ? { from: before.settings?.plans, to: after.settings?.plans } : undefined,
     storyIds: before && (before.settings?.storyIds ?? "next") !== (after.settings?.storyIds ?? "next") ? { from: before.settings?.storyIds ?? "next", to: after.settings?.storyIds ?? "next" } : undefined,
+    upgrade: before && before.settings?.upgrade !== after.settings?.upgrade ? { from: before.settings?.upgrade, to: after.settings?.upgrade } : undefined,
   };
   return { ...diff, needsPerson: needsPersonChanges(before, after, diff) };
 }
@@ -426,7 +429,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
     || groups(diff.activities) || groups(diff.releases) || groups(diff.personas) || Object.values(diff.jobs).some(list => list.length)
     || Object.values(diff.personaContexts).some(list => list.length)
-    || diff.releaseDetails.length || diff.stalledAfterWeeks || diff.plans || diff.storyIds || diff.needsPerson.length);
+    || diff.releaseDetails.length || diff.stalledAfterWeeks || diff.plans || diff.storyIds || diff.upgrade || diff.needsPerson.length);
 }
 
 /**
@@ -603,6 +606,10 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
   if (diff.storyIds) {
     const scheme = (value: "next" | "lowest-free") => value === "lowest-free" ? "the lowest free number" : "one after the highest number";
     settings.push(`- \`add\` gives new stories ${scheme(diff.storyIds.to)} (was ${scheme(diff.storyIds.from)}).`);
+  }
+  if (diff.upgrade) {
+    const mode = (value: "simple" | "advanced" | undefined) => value === undefined ? "not chosen" : `${value} mode`;
+    settings.push(`- Upgrade review: ${mode(diff.upgrade.to)} (was ${mode(diff.upgrade.from)}).`);
   }
   if (settings.length) lines.push("### Settings", "", ...settings, "");
 

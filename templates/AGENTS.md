@@ -9,6 +9,11 @@ Treat [product/story-map.yaml](product/story-map.yaml) as the source of truth fo
 <!-- rule: populate-first-map -->
 When `product/story-map.yaml` is missing, still contains the builder estimates demo, or is the starter map from `story-map init` (its summary begins “Starter map”), follow the [first-run workflow](docs/story-map.md#populate-the-first-map). Run `npx --no-install story-map survey --format json` first, then inspect this product, draft its initial internal map from what you find, and validate it. Use an existing Markdown heading for each engineering overview you can verify. If the product already has a map, keep its story IDs and update only the requested scope.
 
+### Upgrade the set-up
+
+<!-- rule: choose-upgrade-mode -->
+Before you run `npx --no-install story-map upgrade` with `--write`, check `settings.upgrade` in `product/story-map.yaml`. If it is not set, ask the person whether they want simple or advanced upgrades, with the question and link in [Choose simple or advanced mode](docs/story-map.md#choose-simple-or-advanced-mode), and record their answer with `npx --no-install story-map settings --upgrade simple --write` or `--upgrade advanced --write`. Only record an answer they gave you. If they say not now, leave it unset and pass `--mode` for this run only.
+
 ### Plan the work
 
 <!-- rule: choose-delivery-plans -->
