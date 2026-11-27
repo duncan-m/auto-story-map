@@ -58,7 +58,7 @@ function isInside(realRoot: string, path: string) {
  * links along the way only while they stay inside it. The result contains no
  * links, so later writes cannot be redirected outside the root by one.
  */
-async function destination(realRoot: string, path: string) {
+export async function destination(realRoot: string, path: string) {
   let current = realRoot;
   const parts = path.split("/");
   for (const [index, part] of parts.entries()) {

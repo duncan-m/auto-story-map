@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-168, ESM-172 and ESM-173 are merged, and ESM-169 to ESM-171 are planned. Decisions A to E are made. None has an agreed estimate yet.
+Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-169, ESM-172 and ESM-173 are merged, and ESM-170 and ESM-171 are planned. Decisions A to E are made. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 
@@ -157,6 +157,8 @@ As built, `templates/changes.yaml` holds both kinds of line: `install` has one f
 Without `--write`, it prints the overview and the list of changes, and writes nothing.
 
 For advanced mode, `--apply <parts>` applies the parts the person accepted, such as `--apply guide,workflow`, including edited parts they chose to replace.
+
+As built, `applyUpgrade()` in `src/upgrade-apply.ts` does both, and `story-map upgrade --mode simple` and `--apply` run it. In simple mode an edited `AGENTS.md` section is rebuilt from this version's template with ESM-173's per-rule result, by `mergeAgentsSection()`: rules marked `replace` or `add` take this version's text, `remove` and removed rules go, and every other rule keeps the host's text, with the host's own rules and headings placed after the block they followed. An edited workflow gains its missing steps, by `addWorkflowSteps()`, at the end of the job that runs `story-map validate`. A part that keeps edits records this version and the template's hash, so it reads as edited, and ESM-172's reminder goes quiet. A section that still has reworded rules to review keeps its old marker, so the review and the reminder still offer them. The choices are asked at a terminal before writing, and listed otherwise. Agents pass the person's answer with `--plans` and `--story-ids`, and `story-map settings --story-ids` records the story ID policy too. Every planned file is read again before any is written, and a file whose text would not change is not written. `--mode advanced` alone prints the report with every diff. See [Apply the changes](../story-map.md#apply-the-changes).
 
 ## 5. Ask for simple or advanced mode once
 
