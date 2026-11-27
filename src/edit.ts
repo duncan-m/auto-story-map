@@ -49,6 +49,8 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("release-impact"), release: text, metric: text, expected: text, solves: text.optional() }).strict(),
   // Records the person's answer to whether to use delivery plans: a folder, or false for no plans.
   z.object({ op: z.literal("plans"), plans: z.union([text, z.literal(false)]) }).strict(),
+  // Records the person's answer to which story ID policy `add` follows.
+  z.object({ op: z.literal("story-ids"), storyIds: z.enum(["next", "lowest-free"]) }).strict(),
   // Persona edits reword what is there. IDs, order, customer copy and draft are left alone.
   z.object({ op: z.literal("set-persona"), persona: text, title: text.optional(), summary: z.string().trim().optional() }).strict(),
   z.object({
@@ -513,14 +515,15 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       return;
     }
 
-    if (operation.op === "plans") {
+    if (operation.op === "plans" || operation.op === "story-ids") {
+      const [key, value] = operation.op === "plans" ? ["plans", operation.plans] as const : ["storyIds", operation.storyIds] as const;
       const settings = intended.settings as Raw | undefined;
-      if (settings?.plans === operation.plans) return;
+      if (settings?.[key] === value) return;
       if (settings) {
-        settings.plans = operation.plans;
-        editor.setFieldAt(["settings"], "plans", operation.plans, settingsKeyOrder);
+        settings[key] = value;
+        editor.setFieldAt(["settings"], key, value, settingsKeyOrder);
       } else {
-        intended.settings = { plans: operation.plans };
+        intended.settings = { [key]: value };
         editor.setFieldAt([], "settings", intended.settings, mapKeyOrder);
       }
       return;

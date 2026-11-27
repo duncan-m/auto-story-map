@@ -91,10 +91,19 @@ const choiceWords: Partial<Record<UpgradePartId, string>> = {
 };
 
 /**
+ * True when simple mode updates part of an edited `AGENTS.md` section: the
+ * rules the host left as an earlier release wrote them, new rules, and rules
+ * this version drops.
+ */
+const mergesRules = (part: UpgradePart) =>
+  part.part === "agents" && !!part.rules?.some(rule => rule.recommendation === "replace" || rule.recommendation === "add" || rule.recommendation === "remove");
+
+/**
  * Builds the overview from the report's parts and the shipped lines. Only the
  * parts the review would apply count: a part being added gets its install
- * line, an outdated one the lines from each release since it came from, and an
- * edited workflow the lines for the steps it gains. Parts the host edited that
+ * line, an outdated one the lines from each release since it came from, an
+ * edited workflow the lines for the steps it gains, and an edited `AGENTS.md`
+ * section the lines for its rules that simple mode updates. Parts the host edited that
  * this version also changes are kept, and the choices are asked, so both are
  * named after the lines instead.
  */
@@ -110,11 +119,13 @@ export function upgradeOverview(parts: readonly UpgradePart[], changes: SetupCha
     const id = part.part as SetupChangePart;
     if (part.recommendation === "add") {
       added.push(changes.install[id]);
-    } else if (part.recommendation === "replace" || (part.recommendation === "review" && part.additions?.length)) {
+    } else if (part.recommendation === "replace" || (part.recommendation === "review" && (part.additions?.length || mergesRules(part)))) {
       const releases = releaseLines(changes, id, part.from).filter(release => release.lines.length);
       if (part.from) froms.push(part.from);
       if (releases.length) byVersion.push(...releases.map(release => ({ ...release, order })));
       else if (part.additions?.length) byVersion.push({ version: packageVersion, order, lines: [`CI runs the ${listed(part.additions)} ${part.additions.length === 1 ? "step" : "steps"} too.`] });
+      // An edited section whose unchanged rules are updated still keeps the rules the host reworded.
+      if (part.rules?.some(rule => rule.recommendation === "review")) kept.push(`${part.title} (your reworded rules)`);
     } else if (part.recommendation === "review") {
       kept.push(part.title);
     }

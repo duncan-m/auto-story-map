@@ -22,7 +22,7 @@ import { defaultExportMaxStories } from "./export.js";
 
 const usage = `Usage:
   story-map init [--no-ci] [--skill] [--dir <path>]
-  story-map upgrade [--format text|markdown|json] [--diff] [--root <path>] [--map <path>]
+  story-map upgrade [--format text|markdown|json] [--diff] [--root <path>] [--map <path>] [--mode simple|advanced] [--apply <parts>] [--plans <folder>|off] [--story-ids next|lowest-free] [--write]
   story-map validate [--format text|github|json] [--strict] [--check-sources] [--plans <path>] [--tests <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
@@ -42,7 +42,7 @@ const usage = `Usage:
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
-  story-map settings --plans <folder>|off [common edit options]
+  story-map settings [--plans <folder>|off] [--story-ids next|lowest-free] [common edit options]
   story-map plan [--map <path>] [--release <ID>] [<ID> ...]
   story-map confirm [--format text|json] [--map <path>] [--write] <job ID> | <persona ID> | <release ID> --impact <n> | --all-in <persona ID>
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--read-only] [<map.yaml>]
@@ -61,13 +61,23 @@ init
 
 upgrade
   Reports the state of each part of the set-up, compared with this version of
-  the package, and writes nothing: the story map section of AGENTS.md, the
-  guide, the CI workflow, the story map skill, and the choices kept in the
-  map's settings, delivery plans and the story ID policy. Each part is not
+  the package: the story map section of AGENTS.md, the guide, the CI
+  workflow, the story map skill, and the choices kept in the map's settings,
+  delivery plans and the story ID policy. Each part is not
   added, current, outdated (unedited, from an earlier version), edited,
   edited and outdated, not chosen or chosen, with the version it came from
   and what this version changes. Workflow steps are compared by the commands
   they run, so a missing step, such as story-map diff, is an addition.
+
+  --mode simple applies what the review recommends: it replaces unedited
+  parts, adds missing ones and missing workflow steps, updates the rules of
+  an edited AGENTS.md section that you left as the package wrote them, and
+  keeps everything you edited. --apply <parts> applies only the parts you
+  accept, such as --apply guide,workflow, replacing them even when edited.
+  --mode advanced alone prints the report with every diff. Both are a dry run
+  until --write. A product choice nobody has made is asked at a terminal, or
+  listed for the person to answer with --plans and --story-ids. Only record
+  an answer they gave.
 
   --format markdown  Print a table for a pull request, with each diff folded.
   --format json      Print each part's state, from, change, recommendation,
@@ -76,6 +86,13 @@ upgrade
   --root <path>      Repository root. Defaults to the current directory.
   --map <path>       Map whose settings hold the choices, relative to the
                      root. Defaults to product/story-map.yaml.
+  --mode <mode>      simple applies the recommended changes; advanced shows
+                     every diff, for --apply.
+  --apply <parts>    Apply these parts: agents, guide, workflow, skill, plans
+                     or storyIds, separated by commas. Implies advanced.
+  --plans <folder>|off, --story-ids next|lowest-free
+                     Record the person's answer to a product choice.
+  --write            Write the changes. Without it, nothing is written.
 
 validate
   Errors make the map invalid and exit 1. Warnings, such as a blocked story
@@ -378,7 +395,7 @@ edit
                      remove-source, add-job, remove-job, add-persona,
                      remove-persona, add-dependency, remove-dependency,
                      customer-title, customer-summary, add,
-                     release-impact and plans.
+                     release-impact, plans and story-ids.
 
   Common edit options:
   --write            Save the change, only when the edited map is valid.
@@ -412,14 +429,19 @@ release-impact
 
 settings
   Records the person's answer to whether to use delivery plans, in the map's
-  settings.plans. Only record an answer they gave: "not now" changes nothing,
-  so the question is asked again. A dry run unless --write is given. Takes the
-  common edit options in story-map help edit.
+  settings.plans, or to the story ID policy, in settings.storyIds. Only
+  record an answer they gave: "not now" changes nothing, so the question is
+  asked again. A dry run unless --write is given. Takes the common edit
+  options in story-map help edit.
 
   --plans <folder>   Keep delivery plans in this repository-relative folder,
                      such as docs/plans. validate --check-sources then checks
                      the story IDs in it.
   --plans off        Do not use delivery plans. Nothing asks again.
+  --story-ids next|lowest-free
+                     How add numbers new stories: one after the highest
+                     number, or the lowest free number. Both count cut
+                     stories, so an ID is never reused.
 
 plan
   Prints a delivery plan skeleton for the stories given, in the structure

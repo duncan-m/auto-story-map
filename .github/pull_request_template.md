@@ -13,7 +13,7 @@ such as "ESM-601: Limit author names in the history file".
 
 ## Story map changes
 
-<!-- Paste the summary from: npx story-map diff origin/main. If you could not run it, say so and keep the PR as a draft. -->
+<!-- Paste the summary from: npx story-map diff origin/main. If you could not run it, say so and keep the PR as a draft. For each item under Needs a person, say which person made or agreed it. -->
 
 ## Customer-facing changes
 

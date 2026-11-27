@@ -202,14 +202,21 @@ export function workflowCommands(text: string): Map<string, string> {
     for (const step of steps) {
       const run = (step as { run?: unknown } | null)?.run;
       if (typeof run !== "string") continue;
-      for (const line of run.split("\n")) {
-        const command = line.trim().replace(/\s+/g, " ");
-        if (!command || command.startsWith("#")) continue;
-        const storyMap = /(?:^|[\s/])story-map ([a-z][a-z-]*)/.exec(command);
-        const key = storyMap ? `story-map ${storyMap[1]}` : command;
-        if (!commands.has(key)) commands.set(key, command);
-      }
+      for (const [key, command] of runCommands(run)) if (!commands.has(key)) commands.set(key, command);
     }
+  }
+  return commands;
+}
+
+/** The commands in one step's `run`, keyed as `workflowCommands` keys them. */
+export function runCommands(run: string): Map<string, string> {
+  const commands = new Map<string, string>();
+  for (const line of run.split("\n")) {
+    const command = line.trim().replace(/\s+/g, " ");
+    if (!command || command.startsWith("#")) continue;
+    const storyMap = /(?:^|[\s/])story-map ([a-z][a-z-]*)/.exec(command);
+    const key = storyMap ? `story-map ${storyMap[1]}` : command;
+    if (!commands.has(key)) commands.set(key, command);
   }
   return commands;
 }
@@ -412,6 +419,54 @@ function choice(part: "plans" | "storyIds", map: string, settings: Record<string
   return { ...base, state: "chosen", change: "none; the answer is kept", recommendation: "keep", value };
 }
 
+/** This version's template for each part, as it would be written in one host. */
+export interface UpgradeTemplates {
+  /** True when the host keeps the rules in the skill, so its `AGENTS.md` section is the short pointer. */
+  usesSkill: boolean;
+  /** This version's `AGENTS.md` section body for the host, without a marker. */
+  agents: string;
+  /** The guide, without a marker. */
+  guide: string;
+  /** The workflow for the host, with its `--tests` folder, without a marker. */
+  workflow: string;
+  /** The skill file. */
+  skill: string;
+  /** Every body that counts as current: both forms of the section, and the workflow with each `--tests` folder. */
+  bodies: { agents: string[]; workflow: string[] };
+}
+
+/**
+ * This version's templates as they apply to one host: the full rules or the
+ * pointer to the skill in `AGENTS.md`, and the workflow with the host's
+ * `--tests` folder. Give it the host's current files, or undefined for the
+ * ones that are not there.
+ */
+export async function upgradeTemplates(root: string, host: { agents?: string; workflow?: string; skill?: string }): Promise<UpgradeTemplates> {
+  const [fullAgents, skillAgents, guide, workflow, skill] = await Promise.all([
+    packaged("templates/AGENTS.md"),
+    packaged("templates/AGENTS-skill.md"),
+    packaged("docs/story-map.md"),
+    packaged("templates/story-map-ci.yml"),
+    skillFile(),
+  ]);
+  // The host keeps the rules as a skill when it has the skill or its section points to one.
+  const usesSkill = host.skill !== undefined || (host.agents !== undefined && (setupBody("agents", host.agents) ?? "").includes(skillPath));
+  const agentsBodies = [agentsTemplateBody(fullAgents), agentsTemplateBody(skillAgents)];
+  const folder = await testFolder(root);
+  const testsInHost = host.workflow ? /--tests (\S+)/.exec(host.workflow)?.[1] : undefined;
+  return {
+    usesSkill,
+    agents: usesSkill ? agentsBodies[1] : agentsBodies[0],
+    guide,
+    workflow: workflowWithTests(workflow, testsInHost ?? folder),
+    skill,
+    bodies: {
+      agents: agentsBodies,
+      workflow: [undefined, "test", "tests", "__tests__", ...(testsInHost ? [testsInHost] : [])].map(name => workflowWithTests(workflow, name)),
+    },
+  };
+}
+
 /**
  * Reports the state of each part of a host's set-up, compared with this
  * version of the package. It reads the repository and writes nothing.
@@ -432,24 +487,10 @@ export async function upgradeReport(options: UpgradeReportOptions = {}): Promise
   const [agentsText, guideText, workflowText, skillText, mapText] = await Promise.all(
     ["AGENTS.md", "docs/story-map.md", ".github/workflows/story-map.yml", skillPath, mapPath].map(at),
   );
-  const [fullAgents, skillAgents, guide, workflow, skill] = await Promise.all([
-    packaged("templates/AGENTS.md"),
-    packaged("templates/AGENTS-skill.md"),
-    packaged("docs/story-map.md"),
-    packaged("templates/story-map-ci.yml"),
-    skillFile(),
-  ]);
+  const targets = await upgradeTemplates(root, { agents: agentsText, workflow: workflowText, skill: skillText });
+  const { usesSkill, bodies: { agents: agentsBodies, workflow: workflowBodies } } = targets;
+  const [agentsTarget, guide, workflowTarget, skill] = [targets.agents, targets.guide, targets.workflow, targets.skill];
 
-  // The host keeps the rules as a skill when it has the skill or its section points to one.
-  const usesSkill = skillText !== undefined || (agentsText !== undefined && (setupBody("agents", agentsText) ?? "").includes(skillPath));
-  const agentsBodies = [agentsTemplateBody(fullAgents), agentsTemplateBody(skillAgents)];
-
-  const folder = await testFolder(root);
-  const testsInHost = workflowText ? /--tests (\S+)/.exec(workflowText)?.[1] : undefined;
-  const workflowTarget = workflowWithTests(workflow, testsInHost ?? folder);
-  const workflowBodies = [undefined, "test", "tests", "__tests__", ...(testsInHost ? [testsInHost] : [])].map(name => workflowWithTests(workflow, name));
-
-  const agentsTarget = usesSkill ? agentsBodies[1] : agentsBodies[0];
   const agents = compareFile({ part: "agents", path: "AGENTS.md", text: agentsText, target: agentsTarget, current: agentsBodies, known });
   if (agents.version && ["outdated", "edited", "edited-outdated"].includes(agents.state)) {
     agents.rules = reviewAgentsRules({

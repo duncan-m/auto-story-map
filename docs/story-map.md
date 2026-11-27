@@ -56,7 +56,7 @@ It names every part that is behind, in one notice, and never fails validation, e
 
 ### Review the set-up after an upgrade
 
-`story-map upgrade` compares each part of the set-up with the installed version of the package and says what this version would change. It writes nothing:
+`story-map upgrade` compares each part of the set-up with the installed version of the package and says what this version would change. On its own it writes nothing. To take the changes, see [Apply the changes](#apply-the-changes).
 
 ```bash
 npx --no-install story-map upgrade
@@ -106,7 +106,7 @@ A choice is **not chosen** until a person answers, and **chosen** after. Ask the
 The review opens with a short overview in plain words, for the people who use the set-up rather than for library developers. Agents show it to the person as written, without summarising it.
 
 - **On install**, when none of the files is there yet, it says how the set-up works, with a line for each part being added.
-- **On upgrade**, it says what changes for the team since the version each part came from, newest first. It covers only the parts the review would apply: a part being added, an unedited outdated part, and the new steps of an edited workflow. Parts you edited that this version also changes are kept, and named after the lines instead. A part that is current, or edited with nothing new, is not mentioned.
+- **On upgrade**, it says what changes for the team since the version each part came from, newest first. It covers only the parts the review would apply: a part being added, an unedited outdated part, the new steps of an edited workflow, and the rules [simple mode](#apply-the-changes) updates in an edited `AGENTS.md` section. Parts you edited that this version also changes are kept, and named after the lines instead. A part that is current, or edited with nothing new, is not mentioned.
 - **The choices** not made yet are listed under **To decide**.
 
 It lists at most 8 lines, and ends with a link to this guide. In JSON, `overview` has `kind` (`install`, `upgrade` or `current`), `heading`, `lines`, and `kept`, `decide` and `more` where they apply.
@@ -155,6 +155,68 @@ The review recommends replacing only rules you never changed. A rule you reworde
 Sections set up before 0.7.8 have no rule markers. Their rules are recognised by their text, from the hash of each rule in every earlier release, kept under `rules` in `templates/known-versions.json`. A rule you reworded is recognised by its opening words. One whose opening words changed too counts as your own rule, and the rule it replaced as removed, so neither is lost or doubled. When such a section is edited, so its version is unknown, the newest release that shipped all of its unedited rules stands in for it.
 
 In JSON, the `agents` part has `rules`, this version's rules first, in its order, then the rules only you have. Each has `id` (left out for a paragraph of your own), `title`, `state`, `recommendation`, `change`, and, where they apply, `matchedBy` (`marker`, `text` or `opening`), `text` (your wording), `template` (this version's) and `diff`. In code, `reviewAgentsRules()` does the comparison and `agentsRules` lists every rule ID.
+
+### Apply the changes
+
+`story-map upgrade --mode simple` applies what the review recommends. It is a dry run until you add `--write`, like the [edit commands](#change-the-map-from-the-command-line):
+
+```bash
+npx --no-install story-map upgrade --mode simple
+npx --no-install story-map upgrade --mode simple --write
+```
+
+```text
+What changes for you since 0.7.5
+
+- Each rule in the AGENTS.md section carries a hidden marker, so later upgrades update the rules you left alone and keep the ones you reworded or added.
+- Agents survey the repository before they draft its first map.
+
+Kept as you have them: 1 part you edited, Guide. Run story-map upgrade --diff to compare it with this version.
+To decide: whether to use delivery plans.
+More: docs/story-map.md#review-the-set-up-after-an-upgrade
+
+Changes:
+
+Part               Action   Change
+AGENTS.md section  replace  replace with 0.7.8
+CI workflow        update   add the story-map diff step
+
+To ask the person, and record only their answer:
+
+- Do you want to use delivery plans, and if so, in which folder, such as docs/plans? Answer with --plans <folder>|off. See docs/story-map.md#choose-whether-to-use-delivery-plans
+
+Not now leaves a choice unset, so it is asked again.
+
+Apply these changes? Run again with --write. Add --diff to see each file's diff.
+```
+
+What simple mode does with each part:
+
+| Part | What happens |
+| --- | --- |
+| Not added | Added, as `init` adds it. The section goes at the end of your own `AGENTS.md`, and the workflow needs a `package-lock.json`, as with `init` |
+| Outdated | Replaced with this version's |
+| Edited `AGENTS.md` section | Updated [rule by rule](#review-the-agentsmd-section-rule-by-rule): rules marked `replace` or `add` take this version's wording, and rules marked `remove` go. Rules you reworded or removed, and your own rules and headings, are kept where you put them |
+| Edited workflow | Gains the steps it is missing, at the end of the job that runs `story-map validate`, as the template writes them. Everything else in it is kept |
+| Any other edited part, such as the guide or the skill | Kept as it is, and named after the overview |
+| A choice not made | Asked, as below |
+
+The choices are product decisions, so the review never makes them for you. At a terminal, `--write` asks each one before it writes, and pressing Enter means not now. Agents run without a terminal, so the review lists the questions instead. An agent asks the person, and passes only their answer: `--plans <folder>` or `--plans off`, and `--story-ids next` or `--story-ids lowest-free`. "Not now" leaves the choice unset, so it is asked again next time.
+
+**Advanced mode.** `--mode advanced` prints the report with every diff. `--apply <parts>` then applies only the parts you accept, such as `--apply guide,workflow`, replacing each with this version's even when you edited it. The parts are `agents`, `guide`, `workflow`, `skill`, `plans` and `storyIds`. Every part you leave out is kept.
+
+The writes are safe:
+
+- **Your edits are kept.** Simple mode never replaces a part you edited. It merges in only what this version changes and you did not.
+- **Nothing changes without a reason.** A file whose text would stay the same is not written, so a run with nothing to apply leaves every file byte for byte as it was, and so does running it twice.
+- **All or nothing.** Every file is read again before anything is written. If one changed while the review ran, nothing is written.
+- **The rest of `AGENTS.md` is yours.** Only the text between the markers changes, and a file with Windows line endings keeps them.
+
+Each file it replaces or adds records this version in its [marker](#what-the-set-up-markers-mean). A part that keeps your edits on top of this version, such as a workflow that gained a step, records this version and its template's hash, so it still reads as edited and is never replaced as unedited later. The `validate` reminder then goes quiet for it. An `AGENTS.md` section that still has reworded rules to review keeps its old marker, so the report and the reminder keep offering them until you review them in advanced mode.
+
+`--format json` adds `mode`, `changes`, `questions`, `changed`, `written` and `files` to the report. Each change has `part`, `title`, `path`, `action` (`add`, `replace`, `update`, `record`, `ask` or `keep`), `change`, and `diff` or `value` where they apply. Each question has `part`, `question`, `link` and `option`. `--format markdown` gives the overview and a table of the changes, for the pull request that commits them. Commit the changes in a branch and pull request, like any other change, so they can be reviewed and reverted.
+
+In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and `init` build on it.
 
 ## Upgrade to 0.7.7
 
@@ -913,8 +975,14 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `missing-impact` | warning | A release with active stories has no impact. | [Release notes and impact](#release-notes-and-impact) |
 | `missing-status-reason` | warning | A blocked or cut story has no `statusReason`. | [Blocked and cut stories](#blocked-and-cut-stories) |
 | `depends-on-cut` | warning | A story depends on a cut story. | [Record dependencies](#record-dependencies) |
+| `draft-confirmed` | needs a person | A drafted job, persona context or impact item was confirmed. | [Confirm a draft](#confirm-a-draft) |
+| `estimate-changed` | needs a person | A story's estimate was set, changed or removed. | [Estimate effort](#estimate-effort) |
+| `story-removed` | needs a person | A story was removed from the map rather than cut. | [Blocked and cut stories](#blocked-and-cut-stories) |
+| `possible-renumber` | needs a person | A story was removed and one with the same title added, so it may have been renumbered. | [Changes that need a person](#changes-that-need-a-person) |
+| `customer-copy-changed` | needs a person | Customer-facing copy was added or changed, or the map was switched to all-users. | [Audience settings](#audience-settings) |
+| `settings-changed` | needs a person | A map setting was changed. | [Changes that need a person](#changes-that-need-a-person) |
 
-A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule.
+A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule. Validate never reports the **needs a person** rules: they compare two versions of the map, so [`story-map diff`](#changes-that-need-a-person) lists them.
 
 ### Check the map as you edit
 
@@ -961,7 +1029,7 @@ Each group gives its rule in brackets and a `help:` link, which goes to your rep
 npx --no-install story-map diff origin/main
 ```
 
-The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Next, **Blocked and cut** lists stories that became blocked or cut, with their reasons, and stories that are no longer blocked or cut. Then it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
+The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Next, **Needs a person** lists the changes that only a person should make, described [below](#changes-that-need-a-person). Then **Blocked and cut** lists stories that became blocked or cut, with their reasons, and stories that are no longer blocked or cut. After that it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
 
 The base version may use an older format of the map, such as when this change upgrades the package. It is read leniently: fields the format no longer has, and stories that no longer validate, are left out of the comparison, and the summary starts with a note saying what was left out. The JSON has the same counts as `baseDropped`. Your current map is still validated strictly.
 
@@ -975,6 +1043,21 @@ The workflow from `npx story-map init` adds the summary to each PR’s job summa
 ```
 
 In code, `diffStoryMaps(before, after)` returns the same comparison and `formatStoryMapDiff` renders it.
+
+### Changes that need a person
+
+`AGENTS.md` leaves some map changes to people. The summary lists them under **Needs a person**, after **Customer-facing changes**, so a reviewer does not have to read the YAML diff to find them:
+
+- **Draft confirmed** (`draft-confirmed`): `draft: true` was removed from a job, a persona's context or a release's impact item. See [Confirm a draft](#confirm-a-draft).
+- **Estimate** (`estimate-changed`): a story's estimate was set, changed or removed, including on a new story. See [Estimate effort](#estimate-effort).
+- **Story removed** (`story-removed`): a story was deleted rather than set to `cut`. See [Blocked and cut stories](#blocked-and-cut-stories).
+- **Possible renumber** (`possible-renumber`): a story was removed and a story with the same title, ignoring case and spacing, was added. Story IDs never change, so give the new story its old ID back unless the change was meant.
+- **Customer copy** (`customer-copy-changed`): customer-facing copy was added to or changed on the map, an activity, a release, a persona or a story, or the map was switched to `all-users`. Whether the copy is approved is for a person to judge. See [Audience settings](#audience-settings).
+- **Setting** (`settings-changed`): a value under `settings` was added, changed or removed.
+
+Each line names the item, what changed and its rule. The section says what changed, not who changed it, and is left out when there is nothing to list, as in most PRs. The same changes also appear in the sections below it.
+
+In JSON, `needsPerson` lists them, each with `rule`, `itemType` (`story`, `activity`, `release`, `persona`, `job` or `map`), `itemId`, `title` and `change`. A possible renumber also has `addedId`, the new story's ID. The list is empty when there is nothing to list. In code, `needsPersonChanges(before, after, diff)` returns the list, and `needsPersonRules` lists its rules, which are also in `storyMapRules`.
 
 ## Read the map from the command line
 
@@ -1051,7 +1134,7 @@ npx --no-install story-map release-impact v0-7-5 --metric "Agents starting the s
 npx --no-install story-map settings --plans docs/plans
 ```
 
-`settings --plans <folder>` or `--plans off` records whether this product uses [delivery plans](#choose-whether-to-use-delivery-plans), in `settings.plans`. Record only an answer a person gave.
+`settings --plans <folder>` or `--plans off` records whether this product uses [delivery plans](#choose-whether-to-use-delivery-plans), in `settings.plans`, and `settings --story-ids next` or `--story-ids lowest-free` records how `add` numbers new stories, in `settings.storyIds`. Record only an answer a person gave.
 
 - **Dry run first.** Each command prints the line diff of the YAML, the [`story-map diff`](#review-a-map-change) summary for the PR, and any errors, plus any warnings the edit introduces. Nothing is saved until you add `--write`, and only a valid map is saved. Check the dry run before you write.
 - **Only the change moves.** Comments, key order and every line outside the changed fields stay exactly as they were. An edit that cannot be made that way, such as one that changes a value another story shares through a YAML alias, is refused.

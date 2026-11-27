@@ -53,6 +53,8 @@ export {
 export type { OmittedStoryTests, StoryMapTests, StoryTestEntry } from "./tests-index.js";
 export { storyMapCommit, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
+export { needsPersonChanges, needsPersonRules } from "./needs-person.js";
+export type { NeedsPersonChange, NeedsPersonItemType, NeedsPersonRule } from "./needs-person.js";
 export type { CoreJobChange, CustomerStoryChange, GroupChanges, InactiveStoryChange, JobChanges, JobDiffRef, JobStepsChange, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";
@@ -72,12 +74,14 @@ export { evidenceItemsMaxItems, evidenceTextMaxLength, gatherStoryEvidence, Stor
 export type { EvidenceBranch, EvidenceClaim, EvidenceCommit, EvidenceMention, EvidenceTag, EvidenceTest, StoryEvidence, StoryEvidenceOptions, StoryEvidenceResult } from "./evidence.js";
 export { changelogVersions, RepositorySurveyError, suggestedReleaseId, surveyCodeFileMaxBytes, surveyEntriesMaxItems, surveyHeadingsMaxItems, surveyItemsMaxItems, surveyRepository, surveyTextMaxLength, surveyTodosMaxItems, tagVersion } from "./survey.js";
 export type { RepositorySurvey, RepositorySurveyOptions, SurveyChangelogVersion, SurveyDoc, SurveyHeading, SurveyPlan, SurveyRelease, SurveyTag, SurveyTodo } from "./survey.js";
-export { hasAgentsSection, knownSetupVersionsFrom, loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, setupParts, stampSetupFile } from "./setup-versions.js";
+export { hasAgentsSection, knownSetupVersionsFrom, loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, setupParts, replaceAgentsSection, stampSetupFile } from "./setup-versions.js";
 export { currentSetupTemplateHashes, findSetupBehind, isSetupPartBehind, setupBehindMessage, setupPartPaths } from "./setup-behind.js";
 export type { FindSetupBehindOptions, SetupPartBehind } from "./setup-behind.js";
 export type { KnownSetupVersions, ReleasedSetupTemplate, SetupFileVersion, SetupPart } from "./setup-versions.js";
-export { describeUpgradeState, isUpgradePartBehind, upgradePartIds, upgradeReport, workflowCommands } from "./upgrade.js";
-export type { UpgradePart, UpgradePartId, UpgradePartState, UpgradeRecommendation, UpgradeReport, UpgradeReportOptions } from "./upgrade.js";
+export { describeUpgradeState, isUpgradePartBehind, runCommands, upgradePartIds, upgradeReport, upgradeTemplates, workflowCommands } from "./upgrade.js";
+export type { UpgradePart, UpgradePartId, UpgradePartState, UpgradeRecommendation, UpgradeReport, UpgradeReportOptions, UpgradeTemplates } from "./upgrade.js";
+export { addWorkflowSteps, applyUpgrade, mergeAgentsSection, parseUpgradeParts, UpgradeApplyError } from "./upgrade-apply.js";
+export type { UpgradeAnswers, UpgradeApplyMode, UpgradeApplyOptions, UpgradeApplyResult, UpgradeChange, UpgradeChangeAction, UpgradeQuestion } from "./upgrade-apply.js";
 export { loadSetupChanges, maxOverviewLines, parseSetupChanges, setupChangeParts, upgradeOverview, upgradeOverviewLines } from "./upgrade-overview.js";
 export type { SetupChangePart, SetupChanges, UpgradeOverview } from "./upgrade-overview.js";
 export { agentsRuleHash, agentsRuleIds, agentsRules, agentsSectionBlocks, isAgentsRuleId, templateRules } from "./agents-rules.js";

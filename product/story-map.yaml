@@ -1048,7 +1048,9 @@ stories:
     title: Show the map changes only a person should make
     activity: review
     release: v0-7-9
-    status: planned
+    status: merged
+    tokens: 4193614
+    estimatedCostUsd: 2.18
     jobs:
       - ground-work-in-customer-needs
       - update-the-map
@@ -1058,6 +1060,7 @@ stories:
     summary: story-map diff lists confirmed drafts, estimate changes, removed or renumbered stories, customer copy and settings changes under Needs a person, in Markdown and JSON.
     sources:
       - docs/plans/rules-as-checks.md#5-show-the-changes-only-a-person-should-make
+      - docs/story-map.md#changes-that-need-a-person
   - id: ESM-163
     title: Check pull requests for map rules in CI
     activity: review
@@ -1078,7 +1081,9 @@ stories:
     title: Property-test the audience filter and edit safeguards
     activity: review
     release: v0-7-9
-    status: planned
+    status: merged
+    tokens: 6660801
+    estimatedCostUsd: 3.02
     jobs:
       - see-whats-coming
       - share-roadmap
@@ -2466,7 +2471,9 @@ stories:
     title: Apply the recommended set-up changes in simple mode
     activity: set-up
     release: v0-7-8
-    status: planned
+    status: merged
+    tokens: 9500544
+    estimatedCostUsd: 4.62
     dependsOn:
       - ESM-167
       - ESM-168
@@ -2479,6 +2486,7 @@ stories:
     summary: story-map upgrade --mode simple --write replaces unedited parts, adds what is missing, keeps every part the host edited and asks the product choices not yet made. --apply applies the parts chosen in advanced mode.
     sources:
       - docs/plans/upgrade-review.md#4-apply-the-recommended-changes-in-simple-mode
+      - docs/story-map.md#apply-the-changes
   - id: ESM-170
     title: Ask once for simple or advanced upgrade mode
     activity: set-up

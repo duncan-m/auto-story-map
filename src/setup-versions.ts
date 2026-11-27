@@ -106,6 +106,23 @@ function splitSetupFile(part: SetupPart, text: string): SplitFile | undefined {
   return { version: marker[1], hash: marker[2], body: normal.slice(marker[0].length) };
 }
 
+/**
+ * Replaces the story map section of a whole `AGENTS.md` with `section`, a
+ * section with its markers, leaving the rest of the file byte for byte as it
+ * is. A file with Windows line endings keeps them. Returns undefined when the
+ * file has no complete section.
+ */
+export function replaceAgentsSection(text: string, section: string): string | undefined {
+  const start = agentsStart.exec(text);
+  if (!start) return undefined;
+  const lineEnd = text.indexOf("\n", start.index + start[0].length);
+  const end = text.indexOf(agentsEnd, lineEnd === -1 ? text.length : lineEnd + 1);
+  if (lineEnd === -1 || end === -1) return undefined;
+  const old = text.slice(start.index, end + agentsEnd.length);
+  const replacement = normalise(section).replace(/\n$/, "");
+  return text.slice(0, start.index) + (old.includes("\r\n") ? replacement.replace(/\n/g, "\r\n") : replacement) + text.slice(end + agentsEnd.length);
+}
+
 /** The body of a template or a host's copy, without any version marker, as the hash covers it. */
 export function setupBody(part: SetupPart, text: string): string | undefined {
   return splitSetupFile(part, text)?.body;
@@ -146,12 +163,18 @@ export function readSetupFileVersion(part: SetupPart, text: string, known?: Know
  * Records the version and the body's hash in a part's template, as `init`
  * writes it: in the `AGENTS.md` start marker, or as a comment on the first
  * line of the guide and the workflow. Any marker already there is replaced.
+ *
+ * `templateHash` records the template the body is based on instead of the
+ * body's own hash. `story-map upgrade` gives it when the body keeps the
+ * host's edits on top of this version's template, so the part still reads as
+ * edited, from this version, and its edits are never replaced as unedited.
  */
-export function stampSetupFile(part: SetupPart, text: string, version: string): string {
+export function stampSetupFile(part: SetupPart, text: string, version: string, templateHash?: string): string {
   const normal = normalise(text);
   const body = setupBody(part, normal);
   if (body === undefined) throw new Error("The AGENTS.md template has no complete story map section");
-  const hash = setupBodyHash(body);
+  // A body that keeps the host's edits records the template it is based on, so it still reads as edited.
+  const hash = templateHash ?? setupBodyHash(body);
   if (part === "agents") return normal.replace(agentsStart, `<!-- auto-story-map:start ${version} ${hash} -->`);
   const line = part === "guide" ? `<!-- auto-story-map ${version} ${hash} -->` : `# auto-story-map ${version} ${hash}`;
   return `${line}\n${body}`;
