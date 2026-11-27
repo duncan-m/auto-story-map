@@ -1,6 +1,6 @@
 # Plan: turn agent rules into checks
 
-Status: proposed. The work is split across three releases of the map: ESM-180, ESM-159, ESM-160 and ESM-161 in **0.7.7: Delivery plans and test tags**, and ESM-162 to ESM-165 in **0.7.9: Rules in CI and claim checks**, straight after the [upgrade review](upgrade-review.md) in **0.7.8: Upgrade review**. None has an agreed estimate yet.
+Status: merged. The work is split across three releases of the map: ESM-180, ESM-159, ESM-160 and ESM-161 in **0.7.7: Delivery plans and test tags**, and ESM-162 to ESM-165 in **0.7.9: Rules in CI and claim checks**, straight after the [upgrade review](upgrade-review.md) in **0.7.8: Upgrade review**. None has an agreed estimate yet.
 
 Most of what keeps agent work on this map correct is written in `AGENTS.md`: about 20 rules, read in every session. Some are already enforced by code, such as the branch name check and the story IDs in test names. The rest depend on an agent reading the rule and following it, and on a reviewer noticing when it did not. Two kinds of drift show what that costs:
 
