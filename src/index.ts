@@ -52,9 +52,11 @@ export {
 } from "./tests-index.js";
 export type { OmittedStoryTests, StoryMapTests, StoryTestEntry } from "./tests-index.js";
 export { storyMapCommit, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
-export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
+export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges, needsPersonLabels } from "./diff.js";
 export { needsPersonChanges, needsPersonRules } from "./needs-person.js";
 export type { NeedsPersonChange, NeedsPersonItemType, NeedsPersonRule } from "./needs-person.js";
+export { checkPullRequest, commitAgent, knownAgentNames, prCheckRules, tokensUsedSection } from "./pr-check.js";
+export type { PrCheckAgentCommit, PrCheckCommit, PrCheckIssue, PrCheckOptions, PrCheckResult } from "./pr-check.js";
 export type { CoreJobChange, CustomerStoryChange, GroupChanges, InactiveStoryChange, JobChanges, JobDiffRef, JobStepsChange, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";

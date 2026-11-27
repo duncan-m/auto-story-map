@@ -12,6 +12,7 @@ import {
   isStoryMapRuleId,
   needsPersonRules,
   parseStoryMap,
+  prCheckRules,
   storyMapPackagedGuideUrl,
   storyMapRuleHelp,
   storyMapRuleIds,
@@ -148,8 +149,8 @@ test("ESM-159: every validate issue has a rule and a help link to a heading that
   seen.add(issue.rule);
 
   // Every rule that is not a warning kind has a case above. Warning kinds are covered by the Actions tests,
-  // and the rules diff lists under Needs a person by the ESM-162 tests.
-  const untested = storyMapRuleIds.filter(rule => !seen.has(rule) && !storyMapWarningKinds.includes(rule) && !needsPersonRules.includes(rule));
+  // the rules diff lists under Needs a person by the ESM-162 tests, and the pr-check rules by the ESM-163 tests.
+  const untested = storyMapRuleIds.filter(rule => !seen.has(rule) && !storyMapWarningKinds.includes(rule) && !needsPersonRules.includes(rule) && !prCheckRules.includes(rule));
   assert.deepEqual(untested, [], "add a case that breaks each new rule");
 });
 
