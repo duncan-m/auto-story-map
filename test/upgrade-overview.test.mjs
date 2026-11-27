@@ -43,6 +43,9 @@ async function host(t, files = {}) {
   return root;
 }
 
+/** Text as a regular expression that matches it literally. */
+const escapeRegExp = text => text.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+
 const run = (root, ...args) => spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8" });
 
 /** Lines to build overviews from in tests, so they do not change with the shipped file. */
@@ -191,9 +194,9 @@ test("ESM-168: story-map upgrade opens with the overview in text, Markdown and J
   for (const line of shipped.releases[olderVersion].guide) assert.ok(!report.overview.lines.includes(line), `not ${olderVersion}'s own line`);
 
   const text = run(root, "upgrade");
-  assert.match(text.stdout, new RegExp(`^What changes for you since ${olderVersion.replace(/\./g, "\\.")}\n\n- `));
+  assert.match(text.stdout, new RegExp(`^What changes for you since ${escapeRegExp(olderVersion)}\n\n- `));
   const markdown = run(root, "upgrade", "--format", "markdown");
-  assert.match(markdown.stdout, new RegExp(`^### What changes for you since ${olderVersion.replace(/\./g, "\\.")}\n\n- The guide`));
+  assert.match(markdown.stdout, new RegExp(`^### What changes for you since ${escapeRegExp(olderVersion)}\n\n- The guide`));
   assert.match(markdown.stdout, /\nMore: docs\/story-map\.md\\#review-the-set-up-after-an-upgrade\n\n### Set-up compared with/);
   const json = JSON.parse(run(root, "upgrade", "--format", "json").stdout);
   assert.equal(json.packageVersion, storyMapVersion);
