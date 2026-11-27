@@ -1,6 +1,6 @@
 # Plan: offer the planning approach to host products
 
-Status: proposed. The work is ESM-148, ESM-153, ESM-150, ESM-149, ESM-151 and ESM-152 in the **0.8.0: Delivery plans and test tags** release of the map. None has an agreed estimate yet.
+Status: proposed. The work is ESM-148, ESM-153, ESM-150, ESM-149, ESM-151 and ESM-152 in the **0.7.7: Delivery plans and test tags** release of the map. None has an agreed estimate yet.
 
 Hosts that install auto-story-map get the map mechanics: the format, the validator, the board and the commands. They do not get the way this repository plans the work that goes into the map. That lives in this repository's own `AGENTS.md` and, mostly, as habits the plans in `docs/plans/` share: a status line, numbered items in build order, the stories the work builds on, a UI mockup, decisions, Not now and an effort table. None of it is in [the guide](../story-map.md), the host [`AGENTS.md` template](../../templates/AGENTS.md) leaves out the UI mockup and builds-on rules, and `docs/plans/` is not in the package.
 
@@ -90,7 +90,7 @@ ESM-153 gives the choice a place in the map and makes the tools ask for it.
 
 - **`init`** adds a line to its steps, `ask     delivery plans (not chosen yet; see docs/story-map.md#write-a-delivery-plan)`, and its closing prompt for the agent gains a sentence: "Then ask me whether to use delivery plans, linking to Write a delivery plan in docs/story-map.md, and record my answer with `story-map settings`." The person sees it in the terminal, and so does an agent that ran `init` for them.
 - **`story-map validate`** reports the unset choice once per map, at the top: "Delivery plans: not chosen yet. Ask the person whether to use them, see docs/story-map.md#write-a-delivery-plan, and record the answer with `story-map settings --plans`." Agents run validate after every map change, so the question comes up the first time one touches the map. In CI it appears as a notice on the PR. It does not fail `--strict`: see [decision B](#decisions-to-make).
-- **The link.** Messages link to the host's own copy of the guide. When that copy has no **Write a delivery plan** heading, because the host has not updated its guide, they link to the section on GitHub at the installed version's tag instead, such as `https://github.com/duncan-m/auto-story-map/blob/v0.8.0/docs/story-map.md#write-a-delivery-plan`, so the link always opens the right text.
+- **The link.** Messages link to the host's own copy of the guide. When that copy has no **Write a delivery plan** heading, because the host has not updated its guide, they link to the section on GitHub at the installed version's tag instead, such as `https://github.com/duncan-m/auto-story-map/blob/v0.7.7/docs/story-map.md#write-a-delivery-plan`, so the link always opens the right text.
 
 **Once chosen**, the setting does two more things: `validate --check-sources` checks the story IDs in that folder, as `--plans` does today, without the flag, and `story-map plan` (ESM-151) suggests a path in it. With `false`, nothing mentions plans again.
 
@@ -155,7 +155,7 @@ These are proposals. Each is easy to change during review.
 | C. Whether `init` replaces an existing `AGENTS.md` section | No. It reports the difference, as it does for the guide. Hosts edit this section, and `init` has never overwritten anything. The validator prompt reaches existing hosts without it. A `--update-agents` flag that replaces the text between the markers can follow if people ask |
 | D. Where the answer is kept | In the map's `settings.plans`, so it is in Git, reviewed and shared by every agent. Keeping it in `AGENTS.md` would need an agent to edit the marked section, which `init` compares against the template |
 | E. What "not now" does | Leaves the setting unset, so the next session asks again. If that turns out to nag, a `settings.plans: later` that the validator reports once a month is the fallback |
-| F. The release | 0.8.0, beside ESM-117, since ESM-152 adds to the skill and the release is about adoption. ESM-148, ESM-153 and ESM-150 do not depend on 0.8.0 work, so they could ship in a 0.7.x release instead |
+| F. The release | 0.7.7, beside ESM-117, since ESM-152 adds to the skill and the release is about adoption. ESM-148, ESM-153 and ESM-150 do not depend on 0.7.7 work, so they could ship in a 0.7.x release instead |
 
 ## Not now
 
@@ -177,4 +177,4 @@ These are proposals. Each is easy to change during review.
 | ESM-152: Carry the planning rules in the story map skill | not agreed |
 | **Total** | **not agreed** |
 
-None of these has an agreed estimate, so the map leaves them out of the 0.8.0 total and validation warns about each. The team should size them in review. ESM-153 is the largest after ESM-151: a schema setting, a command, an `init` change and possibly a new severity. ESM-148, ESM-150 and ESM-149 are mostly docs. ESM-151 could move to 0.8.1 beside ESM-126, whose code it shares. ESM-152 depends on ESM-117 and moves with it.
+None of these has an agreed estimate, so the map leaves them out of the 0.7.7 total and validation warns about each. The team should size them in review. ESM-153 is the largest after ESM-151: a schema setting, a command, an `init` change and possibly a new severity. ESM-148, ESM-150 and ESM-149 are mostly docs. ESM-151 could move to 0.7.8 beside ESM-126, whose code it shares. ESM-152 depends on ESM-117 and moves with it.

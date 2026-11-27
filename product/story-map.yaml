@@ -388,7 +388,7 @@ releases:
     notes: |
       The second half of the native CLI plan. It comes before the scheduled audit (ESM-109), which uses the evidence from ESM-105.
 
-      Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief and local launch in 0.8.1. Open in Claude Code (ESM-144) follows ESM-125, so a brief can start a Claude Code session on the web in the repository, not only a web chat. Its mockup is docs/plans/open-in-claude-code-mockup.html.
+      Agent briefs (ESM-123, ESM-124 and ESM-125) come early, to test the brief format on real stories before the command-line brief in 0.7.8. Open in Claude Code (ESM-144) follows ESM-125, so a brief can start a Claude Code session on the web in the repository, not only a web chat. Its mockup is docs/plans/open-in-claude-code-mockup.html.
 
       Token counts (ESM-145) record the tokens used to deliver each story, in the pull request that finishes it. Mockup: docs/plans/token-usage.md#ui-mockup
 
@@ -420,9 +420,9 @@ releases:
     notes: |
       The Actions tab (ESM-128) lists validate warnings on the board, beside the draft confirmation and triage work it points to (ESM-110 to ESM-112).
 
-      From 0.8.4, readiness (ESM-139) says what can start now. ESM-142 and ESM-143 stay there.
+      From 0.7.9, readiness (ESM-139) says what can start now. ESM-142 and ESM-143 stay there.
 
-      From 0.8.0, the skill, MCP server and survey (ESM-116 to ESM-118). They reuse the evidence and claim commands from 0.7.5.
+      From 0.7.7, the skill, MCP server and survey (ESM-116 to ESM-118). They reuse the evidence and claim commands from 0.7.5.
 
       The Export menu gains a Spreo item (ESM-137) with a guide to building a story board in Spreo through its MCP integration.
 
@@ -456,7 +456,55 @@ releases:
     customer:
       title: "0.7.6"
   - id: v0-7-7
-    title: "0.7.7: Map versions, steps and audit"
+    title: "0.7.7: Delivery plans and test tags"
+    summary: Hosts learn to write delivery plans from the guide, an example and a plan skeleton, with the rules in AGENTS.md and the story map skill, and a tag on a describe block covers every test inside it.
+    notes: |
+      The skill, the MCP server and the survey (ESM-116 to ESM-118) moved to 0.7.6. ESM-152 adds the planning rules to the skill from ESM-117.
+
+      Plan: docs/plans/0.8.0-agents-and-adoption.md
+      Plan for host planning guidance (ESM-148 to ESM-153): docs/plans/host-planning-guidance.md
+    impact:
+      - metric: Host plans that name what they build on and what they leave out
+        expected: Plans written from the guide's structure, with builds-on, Not now and effort sections
+        solves: Hosts getting the map mechanics but not the planning discipline behind them
+        draft: true
+    customer:
+      title: "0.7.7"
+  - id: v0-7-8
+    title: "0.7.8: Agent briefs"
+    summary: Agents and scripts print a brief for a story, release or activity with story-map brief.
+    notes: |
+      Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting a local agent from the preview (ESM-127) was cut: Open in Claude Code (ESM-144) and Copy brief (ESM-124) already cover it.
+
+      Plan: docs/plans/agent-briefs.md
+    impact:
+      - metric: Steps to start a local agent on a story
+        expected: One story-map brief command or get_brief call
+        solves: Copying a brief from the board and pasting it into a terminal
+        draft: true
+  - id: v0-7-9
+    title: "0.7.9: Dependency planning and graph"
+    summary: See a dependency-respecting build order and dependency risks, in the release panel, CLI and agent briefs, and explore a release's or a story's dependency chain as an internal, read-only graph, without maintaining another planning system.
+    notes: |
+      Planning proposal only, built on the existing dependsOn links from ESM-129 and the readiness from ESM-139, which moved to 0.7.6. A suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). Then an internal Dependencies tab with a server-rendered graph and list (ESM-140), and release and story focus with a full-chain option (ESM-141), which moved here from 0.8.5 and reuse the readiness and order. No editable graph or new dependency storage.
+
+      Plan: docs/plans/visual-dependency-map.md
+      Mockup: docs/plans/visual-dependency-map.md#ui-mockup
+    impact:
+      - metric: Time to find a feasible sequence for a release
+        expected: A ready set and dependency-respecting order in the release panel and CLI
+        solves: Repeated manual tracing of story links
+        draft: true
+      - metric: Release-order conflicts identified before implementation
+        expected: Warnings for prerequisites that are cut, blocked or in later releases
+        solves: Hidden cross-release, cut and blocked prerequisites
+        draft: true
+      - metric: Time to see why a release cannot start
+        expected: One view of the release and its prerequisites from other releases, instead of following links story by story
+        solves: Long prerequisite chains that span several releases
+        draft: true
+  - id: v0-8-0
+    title: "0.8.0: Map versions, steps and audit"
     summary: Earlier versions of the map can be read, compared and viewed on the board, activities expand into steps, and a scheduled audit proposes map corrections from the code.
     notes: |
       Split from the original 0.7.6. Reading and comparing versions (ESM-113 and ESM-114) come before the board's Version picker (ESM-115), which depends on both. The audit (ESM-109) uses the evidence from ESM-105 in 0.7.5.
@@ -478,34 +526,7 @@ releases:
         solves: Losing track of the column and lane on maps with many releases
         draft: true
     customer:
-      title: "0.7.7"
-  - id: v0-8-0
-    title: "0.8.0: Delivery plans and test tags"
-    summary: Hosts learn to write delivery plans from the guide, an example and a plan skeleton, with the rules in AGENTS.md and the story map skill, and a tag on a describe block covers every test inside it.
-    notes: |
-      The skill, the MCP server and the survey (ESM-116 to ESM-118) moved to 0.7.6. ESM-152 adds the planning rules to the skill from ESM-117.
-
-      Plan: docs/plans/0.8.0-agents-and-adoption.md
-      Plan for host planning guidance (ESM-148 to ESM-153): docs/plans/host-planning-guidance.md
-    impact:
-      - metric: Host plans that name what they build on and what they leave out
-        expected: Plans written from the guide's structure, with builds-on, Not now and effort sections
-        solves: Hosts getting the map mechanics but not the planning discipline behind them
-        draft: true
-    customer:
       title: "0.8.0"
-  - id: v0-8-1
-    title: "0.8.1: Agent briefs"
-    summary: Agents and scripts print a brief for a story, release or activity with story-map brief.
-    notes: |
-      Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting a local agent from the preview (ESM-127) was cut: Open in Claude Code (ESM-144) and Copy brief (ESM-124) already cover it.
-
-      Plan: docs/plans/agent-briefs.md
-    impact:
-      - metric: Steps to start a local agent on a story
-        expected: One story-map brief command or get_brief call
-        solves: Copying a brief from the board and pasting it into a terminal
-        draft: true
   - id: v0-8-2
     title: "0.8.2: Delivery visibility"
     summary: Git-native burn-up, burn-down, throughput, velocity and release progress without maintaining sprints.
@@ -527,36 +548,6 @@ releases:
       - metric: Effort to assess release predictability and bottlenecks
         expected: Review lead time, scope change since baseline and observed flow in one place
         solves: Guessing delivery dates from recent commits or individual stories
-        draft: true
-  - id: v0-8-4
-    title: "0.8.4: Dependency planning"
-    summary: See a dependency-respecting build order and dependency risks, in the release panel, CLI and agent briefs, without maintaining another planning system.
-    notes: |
-      Planning proposal only, built on the existing dependsOn links from ESM-129 and the readiness from ESM-139, which moved to 0.7.6. A suggested order in the release panel and CLI (ESM-142) and prerequisites in agent briefs (ESM-143). The internal Dependencies tab and its focus views (ESM-140, ESM-141) follow in 0.8.5. No new dependency storage.
-
-      Plan: docs/plans/visual-dependency-map.md
-      Mockup: docs/plans/visual-dependency-map.md#ui-mockup
-    impact:
-      - metric: Time to find a feasible sequence for a release
-        expected: A ready set and dependency-respecting order in the release panel and CLI
-        solves: Repeated manual tracing of story links
-        draft: true
-      - metric: Release-order conflicts identified before implementation
-        expected: Warnings for prerequisites that are cut, blocked or in later releases
-        solves: Hidden cross-release, cut and blocked prerequisites
-        draft: true
-  - id: v0-8-5
-    title: "0.8.5: Dependency graph"
-    summary: Explore a release's or a story's dependency chain as an internal, read-only graph, with the suggested order and risks from 0.8.4 beside it.
-    notes: |
-      Planning proposal only. An internal Dependencies tab with a server-rendered graph and list (ESM-140), then release and story focus with a full-chain option (ESM-141). Reuses the readiness and order from 0.8.4. No editable graph or new dependency storage.
-
-      Plan: docs/plans/visual-dependency-map.md
-      Mockup: docs/plans/visual-dependency-map.md#ui-mockup
-    impact:
-      - metric: Time to see why a release cannot start
-        expected: One view of the release and its prerequisites from other releases, instead of following links story by story
-        solves: Long prerequisite chains that span several releases
         draft: true
 stories:
   # 0.1.0
@@ -852,7 +843,7 @@ stories:
   - id: ESM-108
     title: Expand activities into steps
     activity: explore
-    release: v0-7-7
+    release: v0-8-0
     status: planned
     estimate: 8
     jobs:
@@ -865,7 +856,7 @@ stories:
   - id: ESM-109
     title: Audit the map against the code on a schedule
     activity: review
-    release: v0-7-7
+    release: v0-8-0
     status: planned
     estimate: 5
     dependsOn:
@@ -951,7 +942,7 @@ stories:
   - id: ESM-113
     title: Read the map as it was at a version
     activity: explore
-    release: v0-7-7
+    release: v0-8-0
     status: planned
     estimate: 3
     jobs:
@@ -963,7 +954,7 @@ stories:
   - id: ESM-114
     title: List the map's versions and compare any two
     activity: review
-    release: v0-7-7
+    release: v0-8-0
     status: planned
     estimate: 3
     jobs:
@@ -975,7 +966,7 @@ stories:
   - id: ESM-115
     title: Switch the board to an earlier version
     activity: explore
-    release: v0-7-7
+    release: v0-8-0
     status: planned
     estimate: 8
     dependsOn:
@@ -991,7 +982,7 @@ stories:
   - id: ESM-157
     title: Keep activity and release titles in view while scrolling
     activity: explore
-    release: v0-7-7
+    release: v0-8-0
     status: in-progress
     jobs:
       - get-oriented
@@ -1831,7 +1822,7 @@ stories:
   - id: ESM-119
     title: Tag a describe block for all its tests
     activity: explore
-    release: v0-8-0
+    release: v0-7-7
     status: planned
     estimate: 3
     jobs:
@@ -1842,7 +1833,7 @@ stories:
   - id: ESM-148
     title: Show hosts how to write a delivery plan
     activity: plan
-    release: v0-8-0
+    release: v0-7-7
     status: planned
     jobs:
       - agree-first-release-plan
@@ -1854,7 +1845,7 @@ stories:
   - id: ESM-149
     title: Ship an example delivery plan that follows the guide
     activity: plan
-    release: v0-8-0
+    release: v0-7-7
     status: planned
     dependsOn:
       - ESM-148
@@ -1867,7 +1858,7 @@ stories:
   - id: ESM-150
     title: Tell host agents how to plan work in AGENTS.md
     activity: set-up
-    release: v0-8-0
+    release: v0-7-7
     status: planned
     dependsOn:
       - ESM-148
@@ -1881,7 +1872,7 @@ stories:
   - id: ESM-151
     title: Scaffold a delivery plan from the map
     activity: plan
-    release: v0-8-0
+    release: v0-7-7
     status: planned
     dependsOn:
       - ESM-148
@@ -1895,7 +1886,7 @@ stories:
   - id: ESM-152
     title: Carry the planning rules in the story map skill
     activity: set-up
-    release: v0-8-0
+    release: v0-7-7
     status: planned
     dependsOn:
       - ESM-117
@@ -1908,7 +1899,7 @@ stories:
   - id: ESM-153
     title: Ask each host whether to use delivery plans
     activity: set-up
-    release: v0-8-0
+    release: v0-7-7
     status: planned
     dependsOn:
       - ESM-148
@@ -1921,7 +1912,7 @@ stories:
   - id: ESM-126
     title: Write agent briefs from the command line
     activity: plan
-    release: v0-8-1
+    release: v0-7-8
     status: planned
     estimate: 3
     dependsOn:
@@ -1938,7 +1929,7 @@ stories:
   - id: ESM-127
     title: Start Claude Code or Codex on a brief from the local preview
     activity: plan
-    release: v0-8-1
+    release: v0-7-8
     status: cut
     statusReason: ESM-144 already starts Claude Code on the brief in the repository, and ESM-124 lets you copy the brief into a local claude or codex session. What is left, a local or Codex launch, is not worth 5 points or the open terminal spike in Decision B.
     estimate: 5
@@ -2084,7 +2075,7 @@ stories:
   - id: ESM-140
     title: Explore dependencies as a visual graph
     activity: explore
-    release: v0-8-5
+    release: v0-7-9
     status: planned
     estimate: 8
     dependsOn:
@@ -2099,7 +2090,7 @@ stories:
   - id: ESM-141
     title: Focus dependency views on a release or story
     activity: explore
-    release: v0-8-5
+    release: v0-7-9
     status: planned
     estimate: 5
     dependsOn:
@@ -2114,7 +2105,7 @@ stories:
   - id: ESM-142
     title: Suggest a delivery order for a release and highlight dependency risks
     activity: track
-    release: v0-8-4
+    release: v0-7-9
     status: planned
     estimate: 5
     dependsOn:
@@ -2130,7 +2121,7 @@ stories:
   - id: ESM-143
     title: List prerequisites and readiness in agent briefs
     activity: plan
-    release: v0-8-4
+    release: v0-7-9
     status: planned
     estimate: 3
     dependsOn:
