@@ -682,19 +682,41 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-action-chip a { padding: 0 5px; border-radius: 999px; color: var(--esm-muted); text-decoration: none; }
 .esm-actions-filters .esm-clear { color: var(--esm-accent-ink); font-size: .875rem; font-weight: 650; }
 .esm-actions-filters .esm-results { margin-left: auto; color: var(--esm-muted); font-size: .8125rem; }
-.esm-action-group + .esm-action-group { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--esm-line); }
-.esm-action-group h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1rem; }
+.esm-action-group + .esm-action-group { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--esm-line); }
+.esm-action-group h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 1rem; }
 .esm-action-why { margin: 0 0 10px; color: var(--esm-muted); font-size: .875rem; }
-.esm-action-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.esm-action { padding: 10px 12px; border: 1px solid var(--esm-card-line); border-radius: 9px; background: var(--esm-paper); }
-.esm-action-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-size: .875rem; }
-.esm-action-item { color: var(--esm-ink); font-weight: 650; }
-a.esm-action-item { color: var(--esm-accent-ink); }
 .esm-action-who { color: var(--esm-muted); font-size: .75rem; font-weight: 650; }
 .esm-action-who[data-person] { padding: 1px 6px; border-radius: 5px; background: var(--esm-stalled-bg); color: var(--esm-stalled); }
-.esm-action-line { margin-left: auto; color: var(--esm-muted); font-size: .75rem; }
-.esm-action-message { margin: 4px 0 0; font-size: .875rem; line-height: 1.45; overflow-wrap: anywhere; }
-.esm-action-command { margin-top: 8px; }
+.esm-action-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; }
+.esm-action-bulk[hidden] { display: none; }
+.esm-action-bulk .esm-change-copy { border: 1px solid var(--esm-line); }
+.esm-action-bulk-note { color: var(--esm-muted); font-size: .8125rem; }
+.esm-action-table-wrap { overflow-x: auto; }
+.esm-action-table { width: 100%; border: 1px solid var(--esm-card-line); border-radius: 9px; border-collapse: separate; border-spacing: 0; background: var(--esm-paper); font-size: .875rem; }
+.esm-action-table th, .esm-action-table td { padding: 9px 12px; border-bottom: 1px solid var(--esm-line); text-align: left; vertical-align: top; }
+.esm-action-table tbody tr:last-child > * { border-bottom: 0; }
+.esm-action-table thead th { color: var(--esm-muted); font-size: .75rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
+.esm-action-table tbody tr:hover { background: var(--esm-hover); }
+.esm-action-table tbody tr:has(input[data-esm-select]:checked) { background: var(--esm-activity-bg); }
+.esm-action-table .esm-action-item { min-width: 9rem; font-weight: 650; }
+.esm-action-table .esm-action-item a { color: var(--esm-accent-ink); }
+.esm-action-release { min-width: 7rem; color: var(--esm-muted); }
+.esm-action-message { line-height: 1.45; overflow-wrap: anywhere; }
+.esm-action-table .esm-action-line { width: 1%; color: var(--esm-muted); white-space: nowrap; }
+.esm-action-line a { color: var(--esm-muted); }
+.esm-action-select { display: none; width: 1%; }
+.esm-board[data-esm-actions] .esm-action-select { display: table-cell; }
+.esm-action-select input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--esm-accent); }
+.esm-action-copy-cell { width: 1%; text-align: right; white-space: nowrap; }
+.esm-action-table .esm-action-copy-cell { padding-top: 5px; padding-bottom: 5px; }
+.esm-action-copy { border: 1px solid var(--esm-line); }
+.esm-action-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.esm-action { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--esm-card-line); border-radius: 9px; background: var(--esm-paper); }
+.esm-action-text { flex: 1; min-width: 0; }
+.esm-action-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-size: .875rem; }
+.esm-action .esm-action-item { color: var(--esm-ink); font-weight: 650; }
+.esm-action .esm-action-line { margin-left: auto; color: var(--esm-muted); font-size: .75rem; }
+.esm-action .esm-action-message { margin: 4px 0 0; font-size: .875rem; }
 .esm-item-actions .esm-action { padding: 8px 10px; }
 .esm-item-actions-link { margin: 8px 0 0; font-size: .875rem; }
 .esm-page-actions { margin: 0 0 18px; }
@@ -875,7 +897,20 @@ a.esm-action-item { color: var(--esm-accent-ink); }
   .esm-persona-page { display: block; }
   .esm-actions { padding: 14px 12px 20px; }
   .esm-actions-filters .esm-results { margin-left: 0; flex-basis: 100%; }
-  .esm-action-line { margin-left: 0; }
+  .esm-action .esm-action-line { margin-left: 0; }
+  .esm-action-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .esm-action-table, .esm-action-table tbody, .esm-action-table tr { display: block; }
+  .esm-action-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 10px 12px; border-bottom: 1px solid var(--esm-line); }
+  .esm-action-table tbody tr:last-child { border-bottom: 0; }
+  .esm-action-table th, .esm-action-table td { display: block; padding: 0; border: 0; }
+  .esm-action-table .esm-action-item, .esm-action-table .esm-action-release, .esm-action-table .esm-action-message, .esm-action-table td.esm-action-line { grid-column: 1; min-width: 0; width: auto; }
+  .esm-action-table .esm-action-copy-cell { grid-column: 2; grid-row: 1 / span 4; }
+  /* With board.js, a checkbox column goes first. */
+  .esm-board[data-esm-actions] .esm-action-table tr:has(> .esm-action-select) { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .esm-board[data-esm-actions] .esm-action-table .esm-action-select { display: block; grid-column: 1; grid-row: 1 / span 4; }
+  .esm-board[data-esm-actions] .esm-action-table tr:has(> .esm-action-select) > :not(.esm-action-select, .esm-action-copy-cell) { grid-column: 2; }
+  .esm-board[data-esm-actions] .esm-action-table tr:has(> .esm-action-select) > .esm-action-copy-cell { grid-column: 3; }
+  .esm-action-table td.esm-action-line:not(:empty)::before { content: "Line "; }
   .esm-persona-list { display: none; }
   .esm-persona-picker { display: block; padding: 12px 12px 0; }
   .esm-persona-picker > .esm-select { display: flex; align-items: center; gap: 8px; width: 100%; }

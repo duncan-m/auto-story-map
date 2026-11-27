@@ -1901,35 +1901,93 @@ function WhoActs({ needsPerson }: { needsPerson: boolean }) {
     : <span className="esm-action-who">A person or an agent</span>;
 }
 
-/** The fixing command with a **Copy** button that board.js shows when it can copy. */
-function ActionCommand({ command, id }: { command: string; id: string }) {
+/**
+ * Copies one action's command. The command is not shown: it travels in `data-esm-command`,
+ * and board.js shows the button once it can copy. `label` names the item for screen readers.
+ */
+function CopyCommandButton({ command, label }: { command: string; label: string }) {
   return (
-    <div className="esm-change-command esm-action-command">
-      <code id={id}>{command}</code>
-      <button type="button" className="esm-change-copy" data-esm-copy-command={id} aria-describedby={id} hidden>
-        <BriefIcon /><span data-esm-copy-label="">Copy</span>
-      </button>
-    </div>
+    <button type="button" className="esm-change-copy esm-action-copy" data-esm-copy-command={command} title={command} hidden>
+      <BriefIcon /><span data-esm-copy-label="">Copy</span><span className="esm-visually-hidden">{` the command for ${label}`}</span>
+    </button>
   );
 }
 
-/** One action: its item, what to do, who can do it, its line in the map and its command. */
-function ActionEntry({ action, id, links, title }: { action: StoryMapAction; id: string; links: ActionLinks; title?: string }) {
-  // In a panel the item is the panel's own, so the row names the kind instead.
-  const item = title ? { label: title } : links.item(action);
-  const lineHref = links.line(action);
+/** The cell that links to an action's line in the map, or names it. */
+function ActionLine({ action, links }: { action: StoryMapAction; links: ActionLinks }) {
+  if (action.line === undefined) return null;
+  const href = links.line(action);
+  return href
+    ? <a href={href} {...newTab}>{action.line}<NewTabHint /></a>
+    : <>{action.line}</>;
+}
+
+/**
+ * One kind's actions as a table: a row per item, with its release, the problem, its line and,
+ * where a command fixes it, a **Copy** button. Rows with a command get a checkbox, and the
+ * **Copy commands** button above copies the chosen rows' commands, one per line. board.js
+ * shows the checkboxes and buttons once it can copy, so without it the table only reads.
+ */
+function ActionTable({ group, links, caption, releaseTitles, tableId }: {
+  group: StoryMapActionGroup;
+  links: ActionLinks;
+  caption: string;
+  releaseTitles: ReadonlyMap<string, string>;
+  tableId: string;
+}) {
+  const commands = group.actions.filter(action => action.command).length;
+  // A release's own actions are in that release, so the column only helps for stories.
+  const showRelease = group.actions.some(action => action.release && action.item.type === "story");
+  const showLine = group.actions.some(action => action.line !== undefined);
   return (
-    <li className="esm-action">
-      <p className="esm-action-head">
-        {item && (item.href ? <a className="esm-action-item" href={item.href}>{item.label}</a> : <span className="esm-action-item">{item.label}</span>)}
-        <WhoActs needsPerson={action.needsPerson} />
-        {action.line !== undefined && (lineHref
-          ? <a className="esm-action-line" href={lineHref} {...newTab}>{`Line ${action.line}`}<NewTabHint /></a>
-          : <span className="esm-action-line">{`Line ${action.line}`}</span>)}
-      </p>
-      <p className="esm-action-message">{action.message}</p>
-      {action.command && <ActionCommand command={action.command} id={id} />}
-    </li>
+    <div className="esm-action-table-wrap" data-esm-action-table={commands ? "" : undefined}>
+      {commands > 1 && (
+        <p className="esm-action-bulk" hidden>
+          <button type="button" className="esm-change-copy" data-esm-copy-selected={tableId} disabled>
+            <BriefIcon /><span data-esm-copy-label="">Copy commands</span>
+          </button>
+          <span className="esm-action-bulk-note" data-esm-selected-note="">Choose rows to copy their commands, one per line.</span>
+        </p>
+      )}
+      <table className="esm-action-table" id={tableId}>
+        <caption className="esm-visually-hidden">{caption}</caption>
+        <thead>
+          <tr>
+            {commands > 1 && (
+              <th scope="col" className="esm-action-select">
+                <input type="checkbox" data-esm-select-all="" aria-label={`Choose every row in ${group.title}`} />
+              </th>
+            )}
+            <th scope="col">Item</th>
+            {showRelease && <th scope="col">Release</th>}
+            <th scope="col">Problem</th>
+            {showLine && <th scope="col" className="esm-action-line">Line</th>}
+            {commands > 0 && <th scope="col" className="esm-action-copy-cell"><span className="esm-visually-hidden">Copy command</span></th>}
+          </tr>
+        </thead>
+        <tbody>
+          {group.actions.map((action, index) => {
+            const item = links.item(action);
+            return (
+              <tr key={index}>
+                {commands > 1 && (
+                  <td className="esm-action-select">
+                    {action.command && <input type="checkbox" data-esm-select={action.command} aria-label={`Choose ${item?.label ?? "this row"}`} />}
+                  </td>
+                )}
+                <th scope="row" className="esm-action-item">
+                  {item && (item.href ? <a href={item.href}>{item.label}</a> : item.label)}
+                </th>
+                {showRelease && <td className="esm-action-release">{action.item.type === "story" && action.release ? releaseTitles.get(action.release) ?? action.release : ""}</td>}
+                <td className="esm-action-message">{action.message}</td>
+                {showLine && <td className="esm-action-line"><ActionLine action={action} links={links} /></td>}
+                {commands > 0 && <td className="esm-action-copy-cell">{action.command && <CopyCommandButton command={action.command} label={item?.label ?? group.title} />}</td>}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -1973,8 +2031,16 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
     delete next[key];
     return actionsHref(filter, preservedParams, next);
   };
-  const releaseIds = new Set(groups.flatMap(group => group.actions.flatMap(action => action.release ? [action.release] : [])));
-  const releaseTitle = (id: string) => releases.find(release => release.id === id)?.title ?? id;
+  // Each menu offers only choices that still match the other filters, so a choice never empties the list.
+  const otherThan = (key: keyof StoryMapActionFilter) => {
+    const rest = { ...chosen };
+    delete rest[key];
+    return filterStoryMapActions(groups, rest);
+  };
+  const kindGroups = otherThan("kind");
+  const releaseIds = new Set(otherThan("release").flatMap(group => group.actions.flatMap(action => action.release ? [action.release] : [])));
+  const releaseTitles = new Map(releases.map(release => [release.id, release.title]));
+  const releaseTitle = (id: string) => releaseTitles.get(id) ?? id;
   const itemLabel = chosen.item;
   const filtering = Object.keys(chosen).length > 0;
   return (
@@ -1994,7 +2060,7 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
             chosen={chosen.kind && storyMapActionKinds[chosen.kind].title}
             options={[
               { label: "All kinds", href: without("kind"), current: !chosen.kind },
-              ...groups.map(group => ({ label: `${group.title} (${group.actions.length})`, href: href({ kind: group.kind }), current: chosen.kind === group.kind })),
+              ...kindGroups.map(group => ({ label: `${group.title} (${group.actions.length})`, href: href({ kind: group.kind }), current: chosen.kind === group.kind })),
             ]}
           />
           {releaseIds.size > 0 && (
@@ -2020,13 +2086,9 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
         const headingId = `${baseId}-action-group-${groupIndex}`;
         return (
           <section className="esm-action-group" aria-labelledby={headingId} key={group.kind} data-kind={group.kind}>
-            <h3 id={headingId}>{group.title} <span className="esm-tab-count">{group.actions.length}</span></h3>
-            <p className="esm-action-why">{group.why} <WhoActs needsPerson={group.needsPerson} /></p>
-            <ul className="esm-action-list">
-              {group.actions.map((action, index) => (
-                <ActionEntry action={action} id={`${baseId}-action-${groupIndex}-${index}`} links={links} key={index} />
-              ))}
-            </ul>
+            <h3 id={headingId}>{group.title} <span className="esm-tab-count">{group.actions.length}</span> <WhoActs needsPerson={group.needsPerson} /></h3>
+            <p className="esm-action-why">{group.why}</p>
+            <ActionTable group={group} links={links} caption={group.title} releaseTitles={releaseTitles} tableId={`${baseId}-action-table-${groupIndex}`} />
           </section>
         );
       })}
@@ -2055,8 +2117,18 @@ function ItemActions({ groups, type, id, panelId, links, tabHref, page = false }
     <section className={page ? "esm-page-actions esm-item-actions" : "esm-detail-section esm-item-actions"} aria-labelledby={headingId}>
       <h4 id={headingId}>Actions</h4>
       <ul className="esm-action-list">
-        {mine.flatMap((group, groupIndex) => group.actions.map((action, index) => (
-          <ActionEntry action={action} id={`${panelId}-action-${groupIndex}-${index}`} links={links} title={group.title} key={`${group.kind}-${index}`} />
+        {mine.flatMap(group => group.actions.map((action, index) => (
+          <li className="esm-action" key={`${group.kind}-${index}`}>
+            <div className="esm-action-text">
+              <p className="esm-action-head">
+                <span className="esm-action-item">{group.title}</span>
+                <WhoActs needsPerson={action.needsPerson} />
+                {action.line !== undefined && <span className="esm-action-line">Line <ActionLine action={action} links={links} /></span>}
+              </p>
+              <p className="esm-action-message">{action.message}</p>
+            </div>
+            {action.command && <CopyCommandButton command={action.command} label={group.title} />}
+          </li>
         )))}
       </ul>
       {tabHref && <p className="esm-item-actions-link"><a href={tabHref}>See them on the Actions tab<span aria-hidden="true"> →</span></a></p>}

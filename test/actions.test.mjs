@@ -212,15 +212,27 @@ test("ESM-128: the Actions tab lists the actions in groups, with counts that ign
   assert.doesNotMatch(html, /esm-grid|esm-toolbar|esm-detail"/);
   const headings = [...html.matchAll(/<section class="esm-action-group"[^>]*data-kind="([^"]+)"/g)].map(match => match[1]);
   assert.deepEqual(headings, view.actions.map(group => group.kind));
-  assert.match(html, /<h3 id="[^"]+">Confirm a drafted job <span class="esm-tab-count">1<\/span><\/h3>/);
+  assert.match(html, /<h3 id="[^"]+">Confirm a drafted job <span class="esm-tab-count">1<\/span> <span class="esm-action-who" data-person="">Needs a person<\/span><\/h3>/);
   assert.match(html, /<span class="esm-action-who" data-person="">Needs a person<\/span>/);
   // Each action links to its item: a story's permalink, a release's, or a persona's page.
-  assert.match(html, /<a class="esm-action-item" href="\?story=S-2#esm-story-S-2">S-2 Save a draft quote<\/a>/);
-  assert.match(html, /<a class="esm-action-item" href="\?release=r2#esm-release-r2">Second<\/a>/);
-  assert.match(html, /<a class="esm-action-item" href="\?q=archive&amp;persona=builder&amp;view=personas">Builder<\/a>/);
-  assert.match(html, /<span class="esm-action-item">The whole map<\/span>/);
-  // Commands are text, with a Copy button that board.js shows.
-  assert.match(html, /<code id="([^"]+)">npx story-map confirm price --write<\/code><button type="button" class="esm-change-copy" data-esm-copy-command="\1" aria-describedby="\1" hidden="">/);
+  // A table per kind, a row per item, linking to a story's permalink, a release's, or a persona's page.
+  assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?story=S-2#esm-story-S-2">S-2 Save a draft quote<\/a><\/th>/);
+  assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?release=r2#esm-release-r2">Second<\/a><\/th>/);
+  assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?q=archive&amp;persona=builder&amp;view=personas">Builder<\/a><\/th>/);
+  assert.match(html, /<th scope="row" class="esm-action-item">The whole map<\/th>/);
+  // Commands are never shown: each row's Copy button carries its command, and board.js shows the button.
+  assert.doesNotMatch(html, /<code/);
+  assert.match(html, /<button type="button" class="esm-change-copy esm-action-copy" data-esm-copy-command="npx story-map confirm price --write" title="npx story-map confirm price --write" hidden="">/);
+  // Story rows say their release.
+  assert.match(html, /<td class="esm-action-release">First<\/td>/);
+  // A kind with several commands gets row checkboxes and Copy commands; one with none gets neither.
+  const reasons = html.match(/<section class="esm-action-group"[^>]*data-kind="missing-estimate"[\s\S]*?<\/section>/)[0];
+  assert.doesNotMatch(reasons, /data-esm-copy|data-esm-select/);
+  const several = parseStoryMap(source.replace("    title: Archive a quote\n    activity: prepare\n    release: r2\n", "    title: Archive a quote\n    activity: prepare\n    release: r2\n    status: blocked\n").replace("    title: Copy a quote\n    activity: prepare\n    release: r2\n", "    title: Copy a quote\n    activity: prepare\n    release: r2\n    status: blocked\n"));
+  const reasonTable = render(getStoryMapPage(several, engineer, { searchParams: new URLSearchParams("view=actions&action-kind=missing-status-reason"), now }));
+  assert.match(reasonTable, /<p class="esm-action-bulk" hidden=""><button type="button" class="esm-change-copy" data-esm-copy-selected="([^"]+)" disabled="">[\s\S]*<table class="esm-action-table" id="\1">/);
+  assert.equal(reasonTable.match(/<input type="checkbox" data-esm-select="npx story-map edit S-\d /g).length, 3);
+  assert.match(reasonTable, /<input type="checkbox" data-esm-select-all="" aria-label="Choose every row in Say why a story stopped"\/>/);
   assert.match(html, /Checked <time dateTime="2026-11-27T09:00:00.000Z">/);
 });
 
@@ -239,9 +251,9 @@ test("ESM-128: links each action's line under sourceBaseUrl, and shows the line 
   const view = getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions&action-kind=missing-estimate"), now, mapFile: { path: "product/story-map.yaml", source } });
   const line = source.split("\n").indexOf("  - id: S-2") + 1;
   const linked = render(view, { sourceBaseUrl: "https://github.com/acme/app/blob/main/" });
-  assert.match(linked, new RegExp(`<a class="esm-action-line" href="https://github.com/acme/app/blob/main/product/story-map.yaml#L${line}" target="_blank" rel="noopener noreferrer">Line ${line}`));
+  assert.match(linked, new RegExp(`<td class="esm-action-line"><a href="https://github.com/acme/app/blob/main/product/story-map.yaml#L${line}" target="_blank" rel="noopener noreferrer">${line}`));
   const plain = render(view);
-  assert.match(plain, new RegExp(`<span class="esm-action-line">Line ${line}</span>`));
+  assert.match(plain, new RegExp(`<td class="esm-action-line">${line}</td>`));
   // Without the source, actions have no lines.
   const unlocated = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions"), now }));
   assert.doesNotMatch(unlocated, /esm-action-line/);
@@ -273,6 +285,7 @@ test("ESM-128: story and release panels and the persona page show their own acti
   const estimate = panel("Save a draft quote");
   assert.match(estimate, /<h4 id="[^"]+">Actions<\/h4>/);
   assert.match(estimate, /<span class="esm-action-item">Agree an estimate<\/span><span class="esm-action-who" data-person="">Needs a person<\/span>/);
+  assert.doesNotMatch(estimate.match(/<section class="esm-detail-section esm-item-actions"[\s\S]*?<\/section>/)[0], /<code/);
   assert.match(estimate, /<a href="\?status=[^"]*&amp;view=actions&amp;action-item=S-2">See them on the Actions tab/);
   const send = panel("Send the quote");
   assert.match(send, /Link a story to a job[\s\S]*Tag a test[\s\S]*Replan a dependency on cut work/);
@@ -332,26 +345,39 @@ test("ESM-128: story-map actions prints the tab's list, filtered, as text or JSO
   }
 });
 
-test("ESM-128: board.js shows each action's Copy button and copies its command", async t => {
+test("ESM-128: board.js copies a row's command, and the chosen rows' commands one per line", async t => {
   const written = [];
   const status = { textContent: "" };
-  const label = { textContent: "Copy", dataset: {} };
-  const code = { textContent: "npx story-map confirm price --write" };
-  const button = { hidden: true, dataset: { esmCopyCommand: "a-0-0" }, querySelector: () => label, closest: () => null };
-  class FakeElement { closest(selector) { return selector === "button[data-esm-copy-command]" ? button : null; } }
-  let click;
-  let listeners = 0;
+  const fakeLabel = () => ({ textContent: "Copy", dataset: {} });
+  const rowLabel = fakeLabel();
+  const bulkLabel = fakeLabel();
+  const boxes = ["npx story-map confirm a --write", "npx story-map confirm b --write", "npx story-map confirm c --write"]
+    .map(command => ({ checked: false, dataset: { esmSelect: command }, matches: () => false }));
+  const all = { checked: false, indeterminate: false, matches: selector => selector === "[data-esm-select-all]" };
+  const bulk = { hidden: true };
+  let wrap;
+  const rowButton = { hidden: true, dataset: { esmCopyCommand: "npx story-map confirm a --write" }, querySelector: () => rowLabel, closest: () => null };
+  const bulkButton = { disabled: true, dataset: {}, querySelector: () => bulkLabel, closest: selector => selector === "[data-esm-action-table]" ? wrap : null };
+  wrap = {
+    querySelectorAll: selector => selector === "input[data-esm-select]" ? boxes : [],
+    querySelector: selector => selector === "input[data-esm-select-all]" ? all : selector === "button[data-esm-copy-selected]" ? bulkButton : null,
+  };
+  for (const box of [...boxes, all]) box.closest = selector => selector === "[data-esm-action-table]" ? wrap : selector.includes("input") ? box : null;
+  class FakeElement {
+    constructor(target) { this.target = target; }
+    closest(selector) { return this.target.closest?.(selector) ?? null; }
+  }
+  rowButton.closest = selector => selector === "button[data-esm-copy-command]" ? rowButton : null;
+  const bulkClosest = bulkButton.closest;
+  bulkButton.closest = selector => selector === "button[data-esm-copy-selected]" ? bulkButton : bulkClosest(selector);
+  const handlers = {};
   const board = {
-    contains: node => node === code,
+    dataset: {},
     querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
-    querySelectorAll: selector => selector === "button[data-esm-copy-command]" ? [button] : [],
-    addEventListener: (type, handler) => { listeners++; click = handler; },
+    querySelectorAll: selector => selector === "button[data-esm-copy-command]" ? [rowButton] : selector === ".esm-action-bulk" ? [bulk] : [],
+    addEventListener: (type, handler) => { handlers[type] = (handlers[type] ?? 0) + 1; board[`on${type}`] = handler; },
   };
-  const globals = {
-    Element: FakeElement,
-    navigator: { clipboard: { writeText: async text => { written.push(text); } } },
-    document: { readyState: "complete", querySelectorAll: () => [], getElementById: id => id === "a-0-0" ? code : null },
-  };
+  const globals = { Element: FakeElement, navigator: { clipboard: { writeText: async text => { written.push(text); } } }, document: { readyState: "complete", querySelectorAll: () => [] } };
   const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
   t.after(() => {
@@ -360,15 +386,40 @@ test("ESM-128: board.js shows each action's Copy button and copies its command",
       else delete globalThis[key];
     }
   });
+  const settle = () => new Promise(resolve => setTimeout(resolve, 80));
 
   const { enhanceStoryMapActions } = await import("auto-story-map/board.js");
   enhanceStoryMapActions({ querySelectorAll: () => [board] });
   enhanceStoryMapActions({ querySelectorAll: () => [board] });
-  assert.equal(button.hidden, false);
-  assert.equal(listeners, 1, "enhancing twice adds one listener");
-  click({ target: new FakeElement() });
-  await new Promise(resolve => setTimeout(resolve, 80));
-  assert.deepEqual(written, ["npx story-map confirm price --write"]);
-  assert.equal(label.textContent, "Copied");
+  assert.deepEqual(handlers, { change: 1, click: 1 }, "enhancing twice adds one listener of each");
+  assert.equal(rowButton.hidden, false);
+  assert.equal(bulk.hidden, false);
+  assert.ok("esmActions" in board.dataset, "turns on the checkbox column");
+
+  board.onclick({ target: new FakeElement(rowButton) });
+  await settle();
+  assert.deepEqual(written, ["npx story-map confirm a --write"]);
+  assert.equal(rowLabel.textContent, "Copied");
   assert.equal(status.textContent, "Copied command");
+
+  boxes[0].checked = true;
+  boxes[2].checked = true;
+  board.onchange({ target: new FakeElement(boxes[2]) });
+  assert.equal(bulkButton.disabled, false);
+  assert.equal(bulkLabel.textContent, "Copy 2 commands");
+  assert.equal(all.indeterminate, true);
+  board.onclick({ target: new FakeElement(bulkButton) });
+  await settle();
+  assert.equal(written[1], "npx story-map confirm a --write\nnpx story-map confirm c --write");
+  assert.equal(status.textContent, "Copied 2 commands");
+
+  all.checked = true;
+  board.onchange({ target: new FakeElement(all) });
+  assert.ok(boxes.every(box => box.checked));
+  assert.equal(bulkLabel.textContent, "Copy 3 commands");
+  all.checked = false;
+  board.onchange({ target: new FakeElement(all) });
+  assert.ok(boxes.every(box => !box.checked));
+  assert.equal(bulkButton.disabled, true);
+  assert.equal(bulkLabel.textContent, "Copy commands");
 });
