@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: proposed. The work is ESM-166 to ESM-173 in the **0.8.4: Upgrade review** release of the map. None has an agreed estimate yet.
+Status: proposed. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 
@@ -70,7 +70,7 @@ More: docs/story-map.md
 ```text
 Part                  State                  Change
 AGENTS.md section     edited, from 0.7.5     3 rules now checked by CI; diff below
-Guide                 from 0.7.5, unedited   replace with 0.8.4
+Guide                 from 0.7.5, unedited   replace with 0.7.8
 CI workflow           edited, from 0.7.5     add the pr-check step; diff below
 Story map skill       not added              add (see Install a story map skill)
 Delivery plans        not chosen             ask
@@ -101,7 +101,7 @@ Planned, and overlapping:
 - **ESM-150**, [Plan the work in AGENTS.md](host-planning-guidance.md#3-plan-the-work-in-agentsmd): its last part makes `init` report an outdated `AGENTS.md` section, and its decision C leaves replacing the section for later. This plan replaces both. ESM-150 keeps its new paragraphs, and ESM-167 is how existing hosts get them.
 - **ESM-153**, [Ask whether to use delivery plans](host-planning-guidance.md#2-ask-whether-to-use-delivery-plans): keeps the answer in `settings.plans` and proposes a `notice` severity. Delivery plans become one of the choices the review asks, and ESM-170 and ESM-172 reuse the setting pattern and the severity.
 - **ESM-117**, [Install a story map skill](0.8.0-agents-and-adoption.md#2-install-a-story-map-skill): the skill becomes one more part. Hosts rarely edit a skill file, so it is the easiest part to keep current.
-- **ESM-175** and **ESM-159**, [Rules as checks](rules-as-checks.md): the story ID policy becomes a choice the review asks, and ESM-173 names `AGENTS.md` rules with ESM-159's rule IDs. Its stories land in 0.7.7 and 0.8.0, before this review, because they help build auto-story-map itself. New installs get them from `init`, and existing hosts get them through this review, or by hand from the guide until it ships.
+- **ESM-180** and **ESM-159**, [Rules as checks](rules-as-checks.md): the story ID policy becomes a choice the review asks, and ESM-173 names `AGENTS.md` rules with ESM-159's rule IDs. ESM-180 and ESM-159 to ESM-161 land in 0.7.7, before this review, and ESM-162 to ESM-165 in 0.7.9, straight after it, because they help build auto-story-map itself. New installs get them from `init`. Existing hosts get them through this review, and 0.7.9's items add their own parts and "what changes for you" lines to it.
 
 No board changes, so this plan has no UI mockup.
 
@@ -109,12 +109,12 @@ No board changes, so this plan has no UI mockup.
 
 Each file `init` writes records the package version it came from and a hash of the template text:
 
-- **`AGENTS.md`:** the start marker becomes `<!-- auto-story-map:start 0.8.4 sha256:… -->`. Markers without a version still work.
+- **`AGENTS.md`:** the start marker becomes `<!-- auto-story-map:start 0.7.8 sha256:… -->`. Markers without a version still work.
 - **The guide and the workflow:** the same, as a comment on the first line.
 
 With the hash, the review can tell "the host edited this" from "the package changed this". A part whose text still matches its hash is unedited and safe to replace.
 
-**Hosts set up before 0.8.4** have no version in their files. The package ships `templates/known-versions.json`, with the hash of each template from every earlier release, generated from the release tags. A part that matches one is treated as unedited from that version. A part that matches none is treated as edited, from an unknown version.
+**Hosts set up before 0.7.8** have no version in their files. The package ships `templates/known-versions.json`, with the hash of each template from every earlier release, generated from the release tags. A part that matches one is treated as unedited from that version. A part that matches none is treated as edited, from an unknown version.
 
 ## 2. Report the state of each part
 
@@ -175,7 +175,7 @@ An `init` run on a host that is already set up hands over to `upgrade`, instead 
 
 `story-map validate` prints a notice when a part's recorded version is older than the installed package, and its template has changed since:
 
-> This repository's set-up is from 0.7.5, and the package is 0.8.4. Run `story-map upgrade` to see what changes.
+> This repository's set-up is from 0.7.5, and the package is 0.7.8. Run `story-map upgrade` to see what changes.
 
 It uses the `notice` severity proposed in ESM-153, so it never fails validation, even with `--strict`. It shows once per run, not once per part. Agents run validate after each map change, so the reminder reaches the person through them soon after an upgrade.
 
@@ -190,6 +190,12 @@ For a host that edited its `AGENTS.md` section, a whole-section diff is hard to 
 
 Advanced mode then offers each rule separately. Simple mode still keeps every edited rule, but can update the rules around it. Until this item lands, an edited section is offered as one diff.
 
+## Decisions made
+
+| Question | Decision |
+| --- | --- |
+| The release | **0.7.8: Upgrade review**, straight after 0.7.7 and before the rest of Rules as checks in 0.7.9. The delivery planning work in 0.7.7 is mostly changes to hosts' `AGENTS.md` and guide, which existing hosts only get through this review, so it comes before agent briefs, dependency planning, map versions and delivery metrics. ESM-166 to ESM-169 are the minimum. ESM-172 needs ESM-153 and ESM-173 needs ESM-159, both in 0.7.7 |
+
 ## Decisions to make
 
 These are proposals. Each is easy to change during review.
@@ -198,10 +204,9 @@ These are proposals. Each is easy to change during review.
 | --- | --- |
 | A. A new command or an `init` flag | A new command, `story-map upgrade`, which `init` calls when a host is already set up. "Upgrade" is the word people use, and `init --review` would hide the main use |
 | B. Where the version is recorded | In each file, as a marker or first-line comment, because the review compares file contents and a file can be copied between repositories. The map's `settings` keep only the person's choices |
-| C. Recognising hosts set up before 0.8.4 | Ship the hashes of each earlier template, in `templates/known-versions.json`, regenerated by the release script from the tags. Without them, every existing host would look edited, and simple mode would change nothing |
+| C. Recognising hosts set up before 0.7.8 | Ship the hashes of each earlier template, in `templates/known-versions.json`, regenerated by the release script from the tags. Without them, every existing host would look edited, and simple mode would change nothing |
 | D. Simple mode and product choices | Ask them. A product choice is not an upgrade, and leaving it to a default would mean the package decides for the team |
 | E. Where "what changes for you" lines live | A `templates/changes.yaml` file in the package, not the changelog, which is written for people building with the library rather than the people who use the set-up. A test keeps it in step with the templates |
-| F. The release | A new **0.8.4: Upgrade review**. ESM-166 to ESM-169 are the minimum. The delivery planning work in 0.7.7 is mostly changes to hosts' `AGENTS.md` and guide, which existing hosts only get through this review, so the minimum could move to just before 0.7.7. ESM-173 needs ESM-159, which lands in 0.7.7 |
 
 ## Not now
 

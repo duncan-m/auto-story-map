@@ -3,7 +3,7 @@
 Status: proposed. The work is split across two releases of the map. Copying a brief and opening it in a web agent come first, to test how briefs work in practice. The command-line brief and starting a local agent follow once the format has settled.
 
 - **0.7.5: Evidence and claims for agents**: ESM-123, ESM-124, ESM-125 and ESM-144
-- **0.7.8: Agent briefs**: ESM-126 and ESM-127
+- **0.8.0: Agent briefs**: ESM-126 and ESM-127
 
 The estimates below are agreed.
 
@@ -186,7 +186,7 @@ npx story-map brief --activity explore
 - **In flight from Git.** The `<in_flight>` section adds what `story-map evidence` (ESM-105) finds for each target: branches that name it, commits on the default branch, claims (ESM-106) and broken sources. The brief calls the evidence code rather than reading Git a second time, so the two stay consistent.
 - When the MCP server from ESM-116 exists, it gets a `get_brief` tool that wraps this command.
 
-This is why this item is in 0.7.8: it comes after evidence and claims in 0.7.5, after the MCP server in 0.7.6, and after the brief format has been tested from the panel in 0.7.5.
+This is why this item is in 0.8.0: it comes after evidence and claims in 0.7.5, after the MCP server in 0.7.6, and after the brief format has been tested from the panel in 0.7.5.
 
 Estimate: 3 points, agreed.
 
@@ -240,7 +240,7 @@ These are proposals. Each is easy to change during review.
 | ESM-124: Copy an agent brief from the story and release panels | 0.7.5 | 2, agreed |
 | ESM-125: Open an agent brief in Claude or ChatGPT | 0.7.5 | 2, agreed |
 | ESM-144: Open an agent brief in Claude Code on the web | 0.7.5 | 1, agreed |
-| ESM-126: Write agent briefs from the command line | 0.7.8 | 3, agreed |
-| ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.7.8 | 5, agreed |
+| ESM-126: Write agent briefs from the command line | 0.8.0 | 3, agreed |
+| ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.8.0 | 5, agreed |
 
 ESM-123 to ESM-125 depend on nothing else in 0.7.5, so they can be built before or alongside the evidence and claim work. ESM-126 uses the evidence code from ESM-105.

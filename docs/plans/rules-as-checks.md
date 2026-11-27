@@ -1,6 +1,6 @@
 # Plan: turn agent rules into checks
 
-Status: proposed. The work is split across three releases of the map: ESM-175, ESM-159 and ESM-160 in **0.7.7: Delivery plans and test tags**, ESM-162, ESM-163 and ESM-164 in **0.8.0: Map versions, steps and audit**, and ESM-161 and ESM-165 in **0.8.5: Mockup and claim checks**. None has an agreed estimate yet.
+Status: proposed. The work is split across three releases of the map: ESM-180, ESM-159, ESM-160 and ESM-161 in **0.7.7: Delivery plans and test tags**, and ESM-162 to ESM-165 in **0.7.9: Rules in CI and claim checks**, straight after the [upgrade review](upgrade-review.md) in **0.7.8**. None has an agreed estimate yet.
 
 Most of what keeps agent work on this map correct is written in `AGENTS.md`: about 20 rules, read in every session. Some are already enforced by code, such as the branch name check and the story IDs in test names. The rest depend on an agent reading the rule and following it, and on a reviewer noticing when it did not. Two kinds of drift show what that costs:
 
@@ -11,7 +11,7 @@ The approach comes from Lauren Tan's talk *All Code Is Slop (Except Mine)*, on k
 
 Items are numbered in the order they should be built:
 
-1. [Choose the lowest free story ID in add](#1-choose-the-lowest-free-story-id-in-add) (ESM-175)
+1. [Choose the lowest free story ID in add](#1-choose-the-lowest-free-story-id-in-add) (ESM-180)
 2. [Give each issue a rule and a link](#2-give-each-issue-a-rule-and-a-link) (ESM-159)
 3. [Check plan status lines against the map](#3-check-plan-status-lines-against-the-map) (ESM-160)
 4. [Check plan mockups](#4-check-plan-mockups) (ESM-161)
@@ -20,7 +20,7 @@ Items are numbered in the order they should be built:
 7. [Property-test the audience filter and edit safeguards](#7-property-test-the-audience-filter-and-edit-safeguards) (ESM-164)
 8. [Model-test concurrent claims](#8-model-test-concurrent-claims) (ESM-165)
 
-ESM-175 is the quickest win and depends on nothing. ESM-159 comes before the new checks so they carry rule IDs from the start. ESM-163 needs ESM-162. ESM-164 and ESM-165 are tests only and can be built at any point.
+ESM-180 is the quickest win and depends on nothing. ESM-159 comes before the new checks so they carry rule IDs from the start. ESM-163 needs ESM-162. ESM-164 and ESM-165 are tests only and can be built at any point.
 
 Most of this plan helps build auto-story-map itself, because agents build every later release in this repository, and each check protects all the work after it. So the stories that do that most are pulled into the next two releases, built before the rest of each, as [decision D](#decisions-to-make) explains.
 
@@ -28,11 +28,11 @@ Most of this plan helps build auto-story-map itself, because agents build every 
 
 | Her suggestion | What we do today | Gap | In this plan |
 | --- | --- | --- | --- |
-| Fix the mistake in the code or the API first | `edit` has no delete and no way to remove `draft` or set an estimate, and refuses customer copy without `--customer`. `claim` exits 3 when someone holds the story | `add` picks the wrong next ID here, so a rule works around it | ESM-175 |
+| Fix the mistake in the code or the API first | `edit` has no delete and no way to remove `draft` or set an estimate, and refuses customer copy without `--customer`. `claim` exits 3 when someone holds the story | `add` picks the wrong next ID here, so a rule works around it | ESM-180 |
 | Turn every correction into a lint rule or check | `validate` checks the schema, references, customer copy, sources, story IDs in plans and test names. `pr-naming.yml` checks branch names and titles. The JSON Schema checks the map in the editor | About seven `AGENTS.md` rules have no check: see [the rules table](#agentsmd-rules-and-what-enforces-them) | ESM-160 to ESM-163 |
 | Ban what takes nuance to use well | Nothing banned. `updatedBy` and hand edits to the YAML rely on judgement | Some of this is real judgement and stays prose | [Not now](#not-now) |
 | Error messages that point to the root cause | Some messages say what to do, such as "Confirm the drafted job… and remove draft: true" | No stable rule ID and no link to the guide, so an agent reads 1,100 lines to find the rule | ESM-159 |
-| Comments and Markdown become escape hatches, or over-rotate on one correction | The ESM-912 workaround in `AGENTS.md`. Hand-written plan status lines | Two plans disagree with the map today | ESM-175, ESM-160 |
+| Comments and Markdown become escape hatches, or over-rotate on one correction | The ESM-912 workaround in `AGENTS.md`. Hand-written plan status lines | Two plans disagree with the map today | ESM-180, ESM-160 |
 | The codebase is a garden: agents copy what is there | Warnings for blocked or cut stories with no reason, releases with no impact, stories with no jobs, and stalled stories | Stale plans are the main weed, and nothing reports them | ESM-160. Wider hygiene is in [Not now](#not-now) |
 | A feature map gives agents shared vocabulary for runtime verification | The map is a user's-eye view of the product. JSON export for agents (ESM-706), briefs (ESM-123) | No link from a story to where it lives in the UI | [Not now](#not-now): a separate plan |
 | Review verification artifacts instead of the diff | Mockups in `sources`, tests (ESM-801), Changes (ESM-121) and evidence (ESM-105) on the story panel | The panel shows intent and tests, but not the result: a screenshot or recording of what was built | [Not now](#not-now): a separate plan |
@@ -42,14 +42,14 @@ Most of this plan helps build auto-story-map itself, because agents build every 
 | Statecharts to review behaviour | The status lifecycle is prose in the guide | Small | [Not now](#not-now) |
 | Most tokens go to verification | Tokens recorded per story (ESM-145) | Not split by building and verifying | [Not now](#not-now) |
 | Let agents merge their own PRs once nothing is left to review | A person reviews every PR, with the map diff in the job summary (ESM-304) | No way to tell a safe map change from one a person must see | ESM-162 and ESM-163 make the gate possible. Auto-merge itself is not proposed |
-| Measure quality beside volume, such as the revert rate | Delivery metrics are planned for 0.8.2 and 0.8.3, with no reverts | No quality counterweight to throughput | [Not now](#not-now): belongs in the delivery metrics plan |
+| Measure quality beside volume, such as the revert rate | Delivery metrics are planned for 0.8.3 and 0.8.4, with no reverts | No quality counterweight to throughput | [Not now](#not-now): belongs in the delivery metrics plan |
 | Drive-by contributors with little context | Briefs (ESM-123, ESM-125) and the first-run workflow | None | No change |
 
 ## AGENTS.md rules and what enforces them
 
 | Rule | Enforced today by | After this plan |
 | --- | --- | --- |
-| New IDs take the lowest free number from ESM-123 | Nothing. `add` picks the wrong number | `add` with `settings.storyIds` (ESM-175). The sentence is deleted |
+| New IDs take the lowest free number from ESM-123 | Nothing. `add` picks the wrong number | `add` with `settings.storyIds` (ESM-180). The sentence is deleted |
 | Never remove `draft` yourself | `edit` has no way to. Hand edits are not checked | `pr-check` fails an agent's PR that confirms a draft (ESM-162, ESM-163) |
 | Set an estimate only when the team agreed it | `edit` has no estimate option. Hand edits are not checked | Same as above |
 | Never delete a story, set `blocked` or `cut` | `edit` has no delete. Hand edits are not checked | Same as above |
@@ -74,7 +74,7 @@ Shipped:
 - **ESM-401**, [Warn about map problems without failing CI](../story-map.md#validate-a-change): the warning severity the new plan checks use.
 - **ESM-303** and **ESM-742**: validation problems as GitHub annotations and as JSON. ESM-159 adds a rule and a link to both.
 - **ESM-304**, [Summarise map changes in pull requests](../story-map.md#review-a-map-change): the diff that ESM-162 extends. It already reports confirmed drafts and estimate changes in its JSON.
-- **ESM-744**, [Propose map edits from the command line](../story-map.md#change-the-map-from-the-command-line): `add` and the edit safeguards that ESM-175 and ESM-164 build on.
+- **ESM-744**, [Propose map edits from the command line](../story-map.md#change-the-map-from-the-command-line): `add` and the edit safeguards that ESM-180 and ESM-164 build on.
 - **ESM-307**, [Show status history from Git](../story-map.md#show-status-history): its `--bot-names` option, which ESM-163 reuses to tell agent commits apart.
 - **ESM-145**, [Record the tokens used on a story](../story-map.md#record-the-tokens-used-on-a-story): the **Tokens used** section ESM-163 checks for.
 - **ESM-106**, [Coordinate several agents](../story-map.md#coordinate-several-agents): the claims that ESM-165 tests.
@@ -92,12 +92,12 @@ Planned, and overlapping:
 
 Hosts that install the package get the rule IDs (ESM-159), the **Needs a person** section of the diff (ESM-162) and the fixes the new tests find (ESM-164, ESM-165) when they upgrade. The rest needs a change to the host's own files or settings:
 
-- the story ID policy (ESM-175), a choice in the map's settings
+- the story ID policy (ESM-180), a choice in the map's settings
 - the plan checks (ESM-160, ESM-161), which run with `--plans`, and on the folder in `settings.plans` without the flag once ESM-153 lands, so a host that has said yes to delivery plans needs no new flag
 - the `pr-check` step (ESM-163), in the CI workflow
 - the shorter rules, in the `AGENTS.md` section
 
-`init` never changes those files once they exist, so an existing host would keep its old set-up. The [upgrade review](upgrade-review.md) in 0.8.4 offers each of these changes, explains them in plain words and applies the ones the person accepts. Until then, the guide's upgrade section for each release gives the workflow step and the `AGENTS.md` changes to make by hand, and new installs get them from `init`. Each item here adds a "what changes for you" line for its part, as [Explain the changes in plain words](upgrade-review.md#3-explain-the-changes-in-plain-words) requires.
+`init` never changes those files once they exist, so an existing host would keep its old set-up. The [upgrade review](upgrade-review.md) in 0.7.8 offers each of these changes, explains them in plain words and applies the ones the person accepts. Until then, the guide's upgrade section for each release gives the workflow step and the `AGENTS.md` changes to make by hand, and new installs get them from `init`. Each item here adds a "what changes for you" line for its part, as [Explain the changes in plain words](upgrade-review.md#3-explain-the-changes-in-plain-words) requires.
 
 ## 1. Choose the lowest free story ID in add
 
@@ -193,7 +193,7 @@ These are proposals. Each is easy to change during review.
 | A. Fix `add` for everyone, or behind a setting | A setting, `settings.storyIds: lowest-free`. Changing the default would change the IDs that hosts' agents choose with no warning. Lowest-free fills gaps, which some teams leave on purpose |
 | B. How CI tells agent commits from a person's | `--bot-names`, as in history, plus `Co-Authored-By` trailers naming known agents. Most agent commits here are authored as a person, with a trailer, so the author alone misses them. A label from a person overrides. The alternative, failing every PR with a **Needs a person** change until it is labelled, is simpler but noisy |
 | C. Warning or error for a stale plan status | A warning. A stale plan misleads, but should not block an unrelated PR |
-| D. The releases | Three, by how much each story helps build the releases after it. **0.7.7:** ESM-175 first, since every session reads its workaround. ESM-159 before more checks and tools are built on validation messages. The Actions tab, MCP server and skill (ESM-128, ESM-116, ESM-117) shipped in 0.7.6 without rule IDs, so ESM-159 adds them there too. ESM-160, because plan status lines are being fixed by hand as releases are replanned. **0.8.0:** ESM-162 to ESM-164 first, to guard the draft confirmation and local editing from 0.7.6 and the Version picker in 0.8.0. ESM-162 shares diff code with ESM-114. **0.8.5:** ESM-161 and ESM-165, which help least now. This adds three unestimated stories to each of 0.7.7 and 0.8.0, so the team should size them before agreeing |
+| D. The releases | Decided: two, both before agent briefs, dependency planning, map versions and delivery metrics, because each check protects all the work agents build after it. **0.7.7:** the plan checks. ESM-180 first, since every session reads its workaround. ESM-159 before more checks and tools are built on validation messages. The Actions tab, MCP server and skill (ESM-128, ESM-116, ESM-117) shipped in 0.7.6 without rule IDs, so ESM-159 adds them there too. ESM-160, because plan status lines are being fixed by hand as releases are replanned, and ESM-161 beside it, since both check plans. **0.7.9:** ESM-162 to ESM-165, after the upgrade review in 0.7.8, so existing hosts get 0.7.7's changes first. ESM-162 to ESM-164 guard the draft confirmation and local editing from 0.7.6 and the Version picker in 0.8.2, and ESM-163's `pr-check` reaches existing hosts through the review. ESM-162 shares diff code with ESM-114. This adds four unestimated stories to each of 0.7.7 and 0.7.9, so the team should size them |
 | E. Whether `init` adds `pr-check` to hosts' workflows | Yes, since the host template has the same rules. A host that has not adopted token recording sees no token errors, because the check only runs with `--body-file` |
 
 ## Not now
@@ -202,7 +202,7 @@ These are proposals. Each is easy to change during review.
 - **A formatting check for hand edits.** Once ESM-163 checks the outcome, how a change was made matters less, and a formatting check would fail correct hand edits.
 - **Checking `updatedBy` and approval of customer copy.** Both are judgement about who a change is for. ESM-162 shows customer copy changes to a person, which is what can be checked.
 - **A wider hygiene report**, such as planned stories with no sources, or sources that point to cut work. The Actions tab (ESM-128) is where such warnings would surface. Worth revisiting once it ships and ESM-160 shows how noisy plan checks are.
-- **The revert rate as a quality metric.** It belongs beside throughput in the [delivery metrics plan](delivery-metrics.md), for 0.8.3, rather than here.
+- **The revert rate as a quality metric.** It belongs beside throughput in the [delivery metrics plan](delivery-metrics.md), for 0.8.4, rather than here.
 - **Splitting tokens by building and verifying.** Interesting, but nothing would act on it yet.
 - **A statechart of the status lifecycle.** Small, and better done with the guide's next rewrite of [Merged and shipped](../story-map.md#merged-and-shipped).
 - **Banning comments, as she does.** The written docs here are part of the product: the schema field descriptions and the guide.
@@ -212,14 +212,14 @@ These are proposals. Each is easy to change during review.
 
 | Story | Release | Points |
 | --- | --- | --- |
-| ESM-175: Choose the lowest free story ID in add | 0.7.7 | not agreed |
+| ESM-180: Choose the lowest free story ID in add | 0.7.7 | not agreed |
 | ESM-159: Give each validation issue a rule and a link to the guide | 0.7.7 | not agreed |
 | ESM-160: Warn when a plan's status line disagrees with the map | 0.7.7 | not agreed |
-| ESM-162: Show the map changes only a person should make | 0.8.0 | not agreed |
-| ESM-163: Check pull requests for map rules in CI | 0.8.0 | not agreed |
-| ESM-164: Property-test the audience filter and edit safeguards | 0.8.0 | not agreed |
-| ESM-161: Check plan mockups and their links | 0.8.5 | not agreed |
-| ESM-165: Model-test concurrent story claims | 0.8.5 | not agreed |
+| ESM-161: Check plan mockups and their links | 0.7.7 | not agreed |
+| ESM-162: Show the map changes only a person should make | 0.7.9 | not agreed |
+| ESM-163: Check pull requests for map rules in CI | 0.7.9 | not agreed |
+| ESM-164: Property-test the audience filter and edit safeguards | 0.7.9 | not agreed |
+| ESM-165: Model-test concurrent story claims | 0.7.9 | not agreed |
 | **Total** | | **not agreed** |
 
-None of these has an agreed estimate. Validation warns about each one in 0.7.7 and 0.8.0, because the other stories there have estimates, so the release totals leave them out until they are sized. The team should size them in review. ESM-163 is the largest: a new command, commit trailer reading, PR body checks and two workflows. ESM-175 and ESM-161 are the smallest. ESM-159 touches every validation message but changes none of the checks.
+None of these has an agreed estimate. Validation warns about each one in 0.7.7 and 0.7.9, because the other stories there have estimates, so the release totals leave them out until they are sized. The team should size them in review. ESM-163 is the largest: a new command, commit trailer reading, PR body checks and two workflows. ESM-180 and ESM-161 are the smallest. ESM-159 touches every validation message but changes none of the checks.
