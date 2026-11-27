@@ -1066,8 +1066,8 @@ stories:
     activity: review
     release: v0-7-9
     status: merged
-    tokens: 6290746
-    estimatedCostUsd: 2.92
+    tokens: 7161516
+    estimatedCostUsd: 3.15
     dependsOn:
       - ESM-162
     jobs:
