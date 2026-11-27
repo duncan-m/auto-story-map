@@ -202,7 +202,10 @@ test("ESM-128: reads the Actions tab's parameters, keeping only values the view 
   assert.equal(customerView.filter.actions, undefined);
 });
 
-test("ESM-128: the Actions tab lists the actions in groups, with counts that ignore the board's filters", () => {
+/** The kinds of the Actions table's rows, in order. */
+const rowKinds = html => [...html.matchAll(/<tr data-category="[^"]+" data-kind="([^"]+)">/g)].map(match => match[1]);
+
+test("ESM-128: the Actions tab lists every action in one table, with counts that ignore the board's filters", () => {
   const view = getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions&q=archive"), tests, now });
   const html = render(view);
   const total = countStoryMapActions(view.actions);
@@ -210,41 +213,46 @@ test("ESM-128: the Actions tab lists the actions in groups, with counts that ign
   assert.match(html, /<a class="esm-tab" href="\?q=archive&amp;view=actions" aria-current="page">Actions/);
   // The tab replaces the map, its panels and its toolbar.
   assert.doesNotMatch(html, /esm-grid|esm-toolbar|esm-detail"/);
-  const headings = [...html.matchAll(/<section class="esm-action-group"[^>]*data-kind="([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(headings, view.actions.map(group => group.kind));
-  assert.match(html, /<h3 id="[^"]+">Confirm a drafted job <span class="esm-tab-count">1<\/span> <span class="esm-action-who" data-person="">Needs a person<\/span><\/h3>/);
-  assert.match(html, /<span class="esm-action-who" data-person="">Needs a person<\/span>/);
-  // Each action links to its item: a story's permalink, a release's, or a persona's page.
-  // A table per kind, a row per item, linking to a story's permalink, a release's, or a persona's page.
-  assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?story=S-2#esm-story-S-2">S-2 Save a draft quote<\/a><\/th>/);
+  assert.equal(html.match(/<table class="esm-action-table"/g).length, 1);
+  assert.deepEqual(rowKinds(html), view.actions.flatMap(group => group.actions.map(() => group.kind)));
+  assert.match(html, new RegExp(`<h3 class="esm-actions-title">${total} actions waiting on the map</h3>`));
+  const people = countStoryMapActions(view.actions.filter(group => group.needsPerson));
+  assert.match(html, new RegExp(`<b>${people}</b> need a person</span><span>[\\s\\S]*?<b>${total - people}</b> a person or an agent can do`));
+  // Each row has its type, coloured by category, and who can act.
+  assert.match(html, /<tr data-category="draft" data-kind="confirm-draft-job">[\s\S]*?<span class="esm-kind" data-category="draft" title="[^"]+">Confirm a drafted job<\/span><span class="esm-action-who" data-person="">[\s\S]*?Needs a person<\/span>/);
+  // Each row links to its item: a story's permalink, a release's, or a persona's page.
+  assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?story=S-2#esm-story-S-2">S-2 Save a draft quote<\/a><span class="esm-action-release">First<\/span><\/th>/);
   assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?release=r2#esm-release-r2">Second<\/a><\/th>/);
   assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?q=archive&amp;persona=builder&amp;view=personas">Builder<\/a><\/th>/);
-  assert.match(html, /<th scope="row" class="esm-action-item">The whole map<\/th>/);
+  assert.match(html, /<th scope="row" class="esm-action-item"><span>The whole map<\/span><\/th>/);
   // Commands are never shown: each row's Copy button carries its command, and board.js shows the button.
   assert.doesNotMatch(html, /<code/);
   assert.match(html, /<button type="button" class="esm-change-copy esm-action-copy" data-esm-copy-command="npx story-map confirm price --write" title="npx story-map confirm price --write" hidden="">/);
-  // Story rows say their release.
-  assert.match(html, /<td class="esm-action-release">First<\/td>/);
-  // A kind with several commands gets row checkboxes and Copy commands; one with none gets neither.
-  const reasons = html.match(/<section class="esm-action-group"[^>]*data-kind="missing-estimate"[\s\S]*?<\/section>/)[0];
-  assert.doesNotMatch(reasons, /data-esm-copy|data-esm-select/);
-  const several = parseStoryMap(source.replace("    title: Archive a quote\n    activity: prepare\n    release: r2\n", "    title: Archive a quote\n    activity: prepare\n    release: r2\n    status: blocked\n").replace("    title: Copy a quote\n    activity: prepare\n    release: r2\n", "    title: Copy a quote\n    activity: prepare\n    release: r2\n    status: blocked\n"));
-  const reasonTable = render(getStoryMapPage(several, engineer, { searchParams: new URLSearchParams("view=actions&action-kind=missing-status-reason"), now }));
-  assert.match(reasonTable, /<p class="esm-action-bulk" hidden=""><button type="button" class="esm-change-copy" data-esm-copy-selected="([^"]+)" disabled="">[\s\S]*<table class="esm-action-table" id="\1">/);
-  assert.equal(reasonTable.match(/<input type="checkbox" data-esm-select="npx story-map edit S-\d /g).length, 3);
-  assert.match(reasonTable, /<input type="checkbox" data-esm-select-all="" aria-label="Choose every row in Say why a story stopped"\/>/);
+  // Rows with a command get a checkbox for Copy commands; rows without one get neither.
+  assert.match(html, /<div class="esm-action-bulk" hidden=""><button type="button" class="esm-action-bulk-copy" data-esm-copy-selected="([^"]+)" disabled="">[\s\S]*<table class="esm-action-table" id="\1">/);
+  assert.match(html, /<input type="checkbox" data-esm-select-all="" aria-label="Choose every row with a command"\/>/);
+  const withCommand = view.actions.flatMap(group => group.actions).filter(action => action.command).length;
+  assert.equal(html.match(/<input type="checkbox" data-esm-select="/g).length, withCommand);
+  const estimate = html.match(/<tr data-category="estimate"[\s\S]*?<\/tr>/)[0];
+  assert.doesNotMatch(estimate, /data-esm-copy|data-esm-select/);
   assert.match(html, /Checked <time dateTime="2026-11-27T09:00:00.000Z">/);
 });
 
 test("ESM-128: the tab's filters are links that keep the board's filters and narrow the list", () => {
   const view = getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions&q=archive&needs-person=1&action-release=r1"), now });
   const html = render(view);
-  const kinds = [...html.matchAll(/<section class="esm-action-group"[^>]*data-kind="([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(kinds, ["confirm-draft-impact", "missing-estimate"]);
-  assert.match(html, /<a class="esm-action-toggle" href="\?q=archive&amp;view=actions&amp;action-release=r1" aria-current="true">Needs a person<\/a>/);
-  assert.match(html, /<a href="\?q=archive&amp;view=actions&amp;action-kind=missing-estimate&amp;action-release=r1&amp;needs-person=1">Agree an estimate \(1\)<\/a>/);
-  assert.match(html, /<a class="esm-clear" href="\?q=archive&amp;view=actions">Clear<\/a>/);
+  assert.deepEqual(rowKinds(html), ["confirm-draft-impact", "missing-estimate"]);
+  assert.match(html, /<a class="esm-action-toggle" href="\?q=archive&amp;view=actions&amp;action-release=r1" aria-current="true"><svg[\s\S]*?<\/svg>Needs a person<\/a>/);
+  // The action type chips offer only types that match the other filters, with their counts.
+  const chips = [...html.matchAll(/<a class="esm-kind-chip"[^>]*>([\s\S]*?)<\/a>/g)].map(match => match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").replace(/&#x27;/g, "'").trim());
+  assert.deepEqual(chips, ["All types 2", "Confirm a release's drafted impact 1", "Agree an estimate 1"]);
+  assert.match(html, /<a class="esm-kind-chip" data-category="estimate" href="\?q=archive&amp;view=actions&amp;action-kind=missing-estimate&amp;action-release=r1&amp;needs-person=1"/);
+  assert.match(html, /<a class="esm-kind-chip" href="\?q=archive&amp;view=actions&amp;action-release=r1&amp;needs-person=1" aria-current="true">/);
+  assert.match(html, /<a class="esm-clear" href="\?q=archive&amp;view=actions">Clear filters<\/a>/);
   assert.match(html, /<span class="esm-results">2 of \d+ actions<\/span>/);
+  const chosen = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions&action-kind=missing-estimate"), now }));
+  assert.deepEqual(rowKinds(chosen), ["missing-estimate"]);
+  assert.match(chosen, /<a class="esm-kind-chip" data-category="estimate" href="[^"]+" aria-current="true"/);
 });
 
 test("ESM-128: links each action's line under sourceBaseUrl, and shows the line without it", () => {
@@ -273,7 +281,7 @@ stories: []
 `);
   const html = render(getStoryMapPage(clean, engineer, { searchParams: new URLSearchParams("view=actions"), now }));
   assert.match(html, />Actions<span class="esm-tab-count"><span aria-hidden="true">0<\/span>/);
-  assert.match(html, /Nothing is waiting on the map\. <span class="esm-actions-checked">Checked <time/);
+  assert.match(html, /<h3 class="esm-actions-title">Nothing is waiting on the map\.<\/h3><p><span class="esm-actions-checked">Checked <time/);
   assert.doesNotMatch(html, /esm-actions-filters/);
 });
 
@@ -284,7 +292,7 @@ test("ESM-128: story and release panels and the persona page show their own acti
   const panel = title => panels.find(item => item.includes(`>${title}</h3>`));
   const estimate = panel("Save a draft quote");
   assert.match(estimate, /<h4 id="[^"]+">Actions<\/h4>/);
-  assert.match(estimate, /<span class="esm-action-item">Agree an estimate<\/span><span class="esm-action-who" data-person="">Needs a person<\/span>/);
+  assert.match(estimate, /<span class="esm-action-item">Agree an estimate<\/span><span class="esm-action-who" data-person="">[\s\S]*?Needs a person<\/span>/);
   assert.doesNotMatch(estimate.match(/<section class="esm-detail-section esm-item-actions"[\s\S]*?<\/section>/)[0], /<code/);
   assert.match(estimate, /<a href="\?status=[^"]*&amp;view=actions&amp;action-item=S-2">See them on the Actions tab/);
   const send = panel("Send the quote");

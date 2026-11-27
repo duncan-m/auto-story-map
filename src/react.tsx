@@ -1897,8 +1897,24 @@ interface ActionLinks {
 
 function WhoActs({ needsPerson }: { needsPerson: boolean }) {
   return needsPerson
-    ? <span className="esm-action-who" data-person="">Needs a person</span>
-    : <span className="esm-action-who">A person or an agent</span>;
+    ? <span className="esm-action-who" data-person=""><PersonIcon />Needs a person</span>
+    : <span className="esm-action-who"><AgentIcon />Person or agent</span>;
+}
+
+function PersonIcon() {
+  return (
+    <svg className="esm-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="8" cy="5" r="2.75" /><path d="M2.75 14c.6-2.9 2.6-4.5 5.25-4.5s4.65 1.6 5.25 4.5" />
+    </svg>
+  );
+}
+
+function AgentIcon() {
+  return (
+    <svg className="esm-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2.75" y="4.5" width="10.5" height="8.5" rx="2" /><path d="M8 2v2.5M6 8.5h.01M10 8.5h.01" />
+    </svg>
+  );
 }
 
 /**
@@ -1922,71 +1938,88 @@ function ActionLine({ action, links }: { action: StoryMapAction; links: ActionLi
     : <>{action.line}</>;
 }
 
-/**
- * One kind's actions as a table: a row per item, with its release, the problem, its line and,
- * where a command fixes it, a **Copy** button. Rows with a command get a checkbox, and the
- * **Copy commands** button above copies the chosen rows' commands, one per line. board.js
- * shows the checkboxes and buttons once it can copy, so without it the table only reads.
- */
-function ActionTable({ group, links, caption, releaseTitles, tableId }: {
+/** An action's type, coloured by its category, so the table can be scanned by kind. */
+function ActionKindBadge({ group }: { group: StoryMapActionGroup }) {
+  return <span className="esm-kind" data-category={group.category} title={group.why}>{group.title}</span>;
+}
+
+/** One row of the Actions table: an action and the kind it belongs to. */
+interface ActionRow {
   group: StoryMapActionGroup;
+  action: StoryMapAction;
+}
+
+/**
+ * Every shown action in one table: its type, who can act, the item, its release, the problem,
+ * its line and, where a command fixes it, a **Copy** button. Rows with a command get a checkbox,
+ * and **Copy commands** above copies the chosen rows' commands, one per line. board.js shows the
+ * checkboxes and buttons once it can copy, so without it the table only reads.
+ */
+function ActionTable({ rows, links, releaseTitles, tableId }: {
+  rows: readonly ActionRow[];
   links: ActionLinks;
-  caption: string;
   releaseTitles: ReadonlyMap<string, string>;
   tableId: string;
 }) {
-  const commands = group.actions.filter(action => action.command).length;
-  // A release's own actions are in that release, so the column only helps for stories.
-  const showRelease = group.actions.some(action => action.release && action.item.type === "story");
-  const showLine = group.actions.some(action => action.line !== undefined);
+  const commands = rows.filter(({ action }) => action.command).length;
+  const showLine = rows.some(({ action }) => action.line !== undefined);
   return (
     <div className="esm-action-table-wrap" data-esm-action-table={commands ? "" : undefined}>
       {commands > 1 && (
-        <p className="esm-action-bulk" hidden>
-          <button type="button" className="esm-change-copy" data-esm-copy-selected={tableId} disabled>
+        <div className="esm-action-bulk" hidden>
+          <button type="button" className="esm-action-bulk-copy" data-esm-copy-selected={tableId} disabled>
             <BriefIcon /><span data-esm-copy-label="">Copy commands</span>
           </button>
-          <span className="esm-action-bulk-note" data-esm-selected-note="">Choose rows to copy their commands, one per line.</span>
-        </p>
+          <span className="esm-action-bulk-note" data-esm-selected-note="">Tick rows to copy their commands at once, one per line, for a terminal or an agent.</span>
+        </div>
       )}
-      <table className="esm-action-table" id={tableId}>
-        <caption className="esm-visually-hidden">{caption}</caption>
-        <thead>
-          <tr>
-            {commands > 1 && (
-              <th scope="col" className="esm-action-select">
-                <input type="checkbox" data-esm-select-all="" aria-label={`Choose every row in ${group.title}`} />
-              </th>
-            )}
-            <th scope="col">Item</th>
-            {showRelease && <th scope="col">Release</th>}
-            <th scope="col">Problem</th>
-            {showLine && <th scope="col" className="esm-action-line">Line</th>}
-            {commands > 0 && <th scope="col" className="esm-action-copy-cell"><span className="esm-visually-hidden">Copy command</span></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {group.actions.map((action, index) => {
-            const item = links.item(action);
-            return (
-              <tr key={index}>
-                {commands > 1 && (
-                  <td className="esm-action-select">
-                    {action.command && <input type="checkbox" data-esm-select={action.command} aria-label={`Choose ${item?.label ?? "this row"}`} />}
-                  </td>
-                )}
-                <th scope="row" className="esm-action-item">
-                  {item && (item.href ? <a href={item.href}>{item.label}</a> : item.label)}
+      <div className="esm-action-scroll">
+        <table className="esm-action-table" id={tableId}>
+          <caption className="esm-visually-hidden">Actions on the map</caption>
+          <thead>
+            <tr>
+              {commands > 1 && (
+                <th scope="col" className="esm-action-select">
+                  <input type="checkbox" data-esm-select-all="" aria-label="Choose every row with a command" />
                 </th>
-                {showRelease && <td className="esm-action-release">{action.item.type === "story" && action.release ? releaseTitles.get(action.release) ?? action.release : ""}</td>}
-                <td className="esm-action-message">{action.message}</td>
-                {showLine && <td className="esm-action-line"><ActionLine action={action} links={links} /></td>}
-                {commands > 0 && <td className="esm-action-copy-cell">{action.command && <CopyCommandButton command={action.command} label={item?.label ?? group.title} />}</td>}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              )}
+              <th scope="col" className="esm-action-kind">Action</th>
+              <th scope="col">Item</th>
+              <th scope="col" className="esm-action-message">Problem</th>
+              {showLine && <th scope="col" className="esm-action-line">Line</th>}
+              {commands > 0 && <th scope="col" className="esm-action-copy-cell"><span className="esm-visually-hidden">Copy command</span></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ group, action }, index) => {
+              const item = links.item(action);
+              const release = action.item.type === "story" && action.release ? releaseTitles.get(action.release) ?? action.release : undefined;
+              return (
+                <tr key={index} data-category={group.category} data-kind={group.kind}>
+                  {commands > 1 && (
+                    <td className="esm-action-select">
+                      {action.command && <input type="checkbox" data-esm-select={action.command} aria-label={`Choose ${group.title}: ${item?.label ?? ""}`} />}
+                    </td>
+                  )}
+                  <td className="esm-action-kind">
+                    <div className="esm-action-kind-stack">
+                      <ActionKindBadge group={group} />
+                      <WhoActs needsPerson={action.needsPerson} />
+                    </div>
+                  </td>
+                  <th scope="row" className="esm-action-item">
+                    {item && (item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>)}
+                    {release && <span className="esm-action-release">{release}</span>}
+                  </th>
+                  <td className="esm-action-message">{action.message}</td>
+                  {showLine && <td className="esm-action-line"><ActionLine action={action} links={links} /></td>}
+                  {commands > 0 && <td className="esm-action-copy-cell">{action.command && <CopyCommandButton command={action.command} label={`${group.title}, ${item?.label ?? ""}`} />}</td>}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -2025,6 +2058,7 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
   const shown = filterStoryMapActions(groups, chosen);
   const total = countStoryMapActions(groups);
   const shownCount = countStoryMapActions(shown);
+  const forPeople = countStoryMapActions(groups.filter(group => group.needsPerson));
   const href = (change: StoryMapActionFilter) => actionsHref(filter, preservedParams, { ...chosen, ...change });
   const without = (key: keyof StoryMapActionFilter) => {
     const next = { ...chosen };
@@ -2046,52 +2080,65 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
   return (
     <div className="esm-actions">
       <div className="esm-actions-intro">
-        <p>
-          {total
-            ? `${plural(total, "action")} on the map, from what validate warns about. Each goes away when the map changes.`
-            : "Nothing is waiting on the map."}
-          {" "}<span className="esm-actions-checked">Checked <time dateTime={checkedAt}>{formatDate(checkedAt, settings)}</time>.</span>
-        </p>
+        <div>
+          <h3 className="esm-actions-title">{total ? `${plural(total, "action")} waiting on the map` : "Nothing is waiting on the map."}</h3>
+          <p>
+            {total ? "From what validate warns about. Each goes away when the map changes. " : ""}
+            <span className="esm-actions-checked">Checked <time dateTime={checkedAt}>{formatDate(checkedAt, settings)}</time>.</span>
+          </p>
+        </div>
+        {total > 0 && (
+          <p className="esm-actions-split">
+            <span data-person=""><PersonIcon /><b>{forPeople}</b> need a person</span>
+            <span><AgentIcon /><b>{total - forPeople}</b> a person or an agent can do</span>
+          </p>
+        )}
       </div>
       {total > 0 && (
         <nav className="esm-actions-filters" aria-label="Filter actions">
-          <ActionFilterMenu
-            label="Kind"
-            chosen={chosen.kind && storyMapActionKinds[chosen.kind].title}
-            options={[
-              { label: "All kinds", href: without("kind"), current: !chosen.kind },
-              ...kindGroups.map(group => ({ label: `${group.title} (${group.actions.length})`, href: href({ kind: group.kind }), current: chosen.kind === group.kind })),
-            ]}
-          />
-          {releaseIds.size > 0 && (
-            <ActionFilterMenu
-              label="Release"
-              chosen={chosen.release && releaseTitle(chosen.release)}
-              options={[
-                { label: "All releases", href: without("release"), current: !chosen.release },
-                ...releases.filter(release => releaseIds.has(release.id)).map(release => ({ label: release.title, href: href({ release: release.id }), current: chosen.release === release.id })),
-              ]}
-            />
-          )}
-          <a className="esm-action-toggle" href={chosen.needsPerson ? without("needsPerson") : href({ needsPerson: true })} aria-current={chosen.needsPerson ? "true" : undefined}>
-            Needs a person
-          </a>
-          {itemLabel && <span className="esm-action-chip">{`Only ${itemLabel}`} <a href={without("item")} aria-label={`Show actions for every item, not only ${itemLabel}`}>×</a></span>}
-          {filtering && <a className="esm-clear" href={actionsHref(filter, preservedParams)}>Clear</a>}
-          <span className="esm-results">{filtering ? `${shownCount} of ${plural(total, "action")}` : plural(total, "action")}</span>
+          <ul className="esm-kind-chips" aria-label="Action type">
+            <li>
+              <a className="esm-kind-chip" href={without("kind")} aria-current={!chosen.kind ? "true" : undefined}>
+                All types <span className="esm-kind-chip-count">{countStoryMapActions(kindGroups)}</span>
+              </a>
+            </li>
+            {kindGroups.map(group => (
+              <li key={group.kind}>
+                <a className="esm-kind-chip" data-category={group.category} href={href({ kind: group.kind })} aria-current={chosen.kind === group.kind ? "true" : undefined} title={group.why}>
+                  <span className="esm-kind-dot" aria-hidden="true" />{group.title} <span className="esm-kind-chip-count">{group.actions.length}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="esm-actions-filter-row">
+            {releaseIds.size > 0 && (
+              <ActionFilterMenu
+                label="Release"
+                chosen={chosen.release && releaseTitle(chosen.release)}
+                options={[
+                  { label: "All releases", href: without("release"), current: !chosen.release },
+                  ...releases.filter(release => releaseIds.has(release.id)).map(release => ({ label: release.title, href: href({ release: release.id }), current: chosen.release === release.id })),
+                ]}
+              />
+            )}
+            <a className="esm-action-toggle" href={chosen.needsPerson ? without("needsPerson") : href({ needsPerson: true })} aria-current={chosen.needsPerson ? "true" : undefined}>
+              <PersonIcon />Needs a person
+            </a>
+            {itemLabel && <span className="esm-action-chip">{`Only ${itemLabel}`} <a href={without("item")} aria-label={`Show actions for every item, not only ${itemLabel}`}>×</a></span>}
+            {filtering && <a className="esm-clear" href={actionsHref(filter, preservedParams)}>Clear filters</a>}
+            <span className="esm-results">{filtering ? `${shownCount} of ${plural(total, "action")}` : plural(total, "action")}</span>
+          </div>
         </nav>
       )}
       {total > 0 && !shown.length && <p className="esm-release-hidden">No actions match these filters.</p>}
-      {shown.map((group, groupIndex) => {
-        const headingId = `${baseId}-action-group-${groupIndex}`;
-        return (
-          <section className="esm-action-group" aria-labelledby={headingId} key={group.kind} data-kind={group.kind}>
-            <h3 id={headingId}>{group.title} <span className="esm-tab-count">{group.actions.length}</span> <WhoActs needsPerson={group.needsPerson} /></h3>
-            <p className="esm-action-why">{group.why}</p>
-            <ActionTable group={group} links={links} caption={group.title} releaseTitles={releaseTitles} tableId={`${baseId}-action-table-${groupIndex}`} />
-          </section>
-        );
-      })}
+      {shown.length > 0 && (
+        <ActionTable
+          rows={shown.flatMap(group => group.actions.map(action => ({ group, action })))}
+          links={links}
+          releaseTitles={releaseTitles}
+          tableId={`${baseId}-action-table`}
+        />
+      )}
     </div>
   );
 }
