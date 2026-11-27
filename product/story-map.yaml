@@ -2083,6 +2083,8 @@ stories:
     activity: review
     release: v0-7-7
     status: merged
+    tokens: 5035570
+    estimatedCostUsd: 2.45
     jobs:
       - update-the-map
       - get-oriented
