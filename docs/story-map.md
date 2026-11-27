@@ -86,11 +86,52 @@ A choice is **not chosen** until a person answers, and **chosen** after. Ask the
 
 - **The workflow** is compared by the commands its steps run, such as `story-map validate` and `story-map diff`, not line by line, since hosts change job names, Node versions and triggers. A step this version runs that yours does not is listed as an addition.
 - **The skill** records no version, so a skill that differs from this version's is reported as edited and outdated. It is only needed when your `AGENTS.md` section points to it.
-- **Diffs** are two-way, from your copy to this version's. `--diff` prints them after the table.
+- **Diffs** are two-way, from your copy to this version's. `--diff` prints them after the table. The `AGENTS.md` section is compared [rule by rule](#review-the-agentsmd-section-rule-by-rule) instead, so `--diff` prints each rule's diff rather than the whole section's.
 - **`--format markdown`** gives the table for a pull request, with each diff folded. **`--format json`** gives `format: "auto-story-map.upgrade"`, `packageVersion`, `map` and `parts`, each with its `part`, `kind`, `title`, `path`, `state`, `from`, `change`, `recommendation` (`add`, `optional`, `replace`, `review`, `keep` or `ask`), and, where they apply, `additions`, `diff`, the chosen `value` and `version`, the marker reading below.
 - `--root <path>` reads another repository, and `--map <path>` another map's settings.
 
 In code, `upgradeReport({ root, map, known })` returns the same report, and `isUpgradePartBehind(part)` is true for an outdated part or an edited one this version also changes.
+
+### Review the AGENTS.md section rule by rule
+
+Each rule in the story map section of `AGENTS.md` is one paragraph, with a marker on the line before it that names the rule:
+
+```markdown
+<!-- rule: agreed-estimates -->
+A story's `estimate` is the team's agreed size in story points, …
+```
+
+The IDs follow the [validation rule IDs](#validation-rules): lower-case words joined by hyphens, never taken from the rule's text, so a reworded rule keeps its ID. A rule that a validation rule also checks shares its ID, such as `choose-delivery-plans`. Leave the markers in place when you reword a rule. Your own rules need no marker: a paragraph without one is yours, unless its text is one the package shipped. HTML comments do not show when the Markdown is rendered, and the skill from `init --skill` leaves them out.
+
+When the section is outdated or edited, `story-map upgrade` compares it with this version's, rule by rule, and lists each rule that is not current:
+
+```text
+AGENTS.md section, rule by rule (12 more are current):
+
+Rule                  State                       Change
+record-tokens         outdated                    update to this version's
+outstanding-actions   new                         add this version's new rule
+test-names            reworded, changed here too  yours is kept; compare it with this version's
+pr-diff-summary       removed by you              none; you removed it
+“Deploy from main…”   yours                       none; your own rule
+```
+
+| State | In JSON | Meaning | Recommendation |
+| --- | --- | --- | --- |
+| current | `current` | The same as this version's | `keep` |
+| outdated | `outdated` | An earlier release's wording, unedited | `replace` |
+| reworded | `edited` | You reworded it, and this version has not changed it since your version | `keep` |
+| reworded, changed here too | `edited-outdated` | You reworded it, and this version changed it too, or your version is unknown | `review` |
+| removed by you | `removed` | Your version had it, and you removed it, so it stays removed | `keep` |
+| new | `new` | This version adds it | `add` |
+| dropped here | `dropped` | An earlier release had it, and this version does not. Unedited, it can go. Reworded, it is yours to review | `remove` or `review` |
+| yours | `added` | Your own rule, which the package never shipped | `keep` |
+
+The review recommends replacing only rules you never changed. A rule you reworded is kept, or marked `review` with this version's wording beside it, so each one can be offered on its own. Your own rules are always kept.
+
+Sections set up before 0.7.8 have no rule markers. Their rules are recognised by their text, from the hash of each rule in every earlier release, kept under `rules` in `templates/known-versions.json`. A rule you reworded is recognised by its opening words. One whose opening words changed too counts as your own rule, and the rule it replaced as removed, so neither is lost or doubled. When such a section is edited, so its version is unknown, the newest release that shipped all of its unedited rules stands in for it.
+
+In JSON, the `agents` part has `rules`, this version's rules first, in its order, then the rules only you have. Each has `id` (left out for a paragraph of your own), `title`, `state`, `recommendation`, `change`, and, where they apply, `matchedBy` (`marker`, `text` or `opening`), `text` (your wording), `template` (this version's) and `diff`. In code, `reviewAgentsRules()` does the comparison and `agentsRules` lists every rule ID.
 
 ## Upgrade to 0.7.7
 

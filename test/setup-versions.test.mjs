@@ -206,7 +206,7 @@ test("ESM-166: the package ships the hashes of earlier release templates", async
   const known = await loadKnownSetupVersions();
   const file = JSON.parse(await packaged("templates/known-versions.json"));
   assert.match(file.$comment, /scripts\/known-versions\.mjs/);
-  assert.deepEqual(Object.keys(known), [...setupParts]);
+  assert.deepEqual(Object.keys(known), [...setupParts, "rules"]);
   for (const part of setupParts) {
     assert.ok(Object.keys(known[part]).length > 0, part);
     for (const [hash, versions] of Object.entries(known[part])) {

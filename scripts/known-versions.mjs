@@ -1,6 +1,7 @@
 // Writes templates/known-versions.json: the hash of each set-up template that every earlier release shipped,
 // read from the v* release tags. Hosts set up before versions were recorded have no marker in their files, so
-// the upgrade review matches their files against these hashes to tell an unedited part from an edited one.
+// the upgrade review matches their files against these hashes to tell an unedited part from an edited one. Under
+// `rules`, it also keeps the hash of each AGENTS.md rule, so an edited section can be compared rule by rule.
 //
 // Run it with `npm run known-versions` before tagging a release. The release workflow runs it again from the
 // tags and fails when the committed file differs. Tags at HEAD are left out, so the tag being released never
@@ -8,7 +9,8 @@
 import { execFileSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { workflowWithTests } from "../dist/init.js";
-import { knownSetupVersionsFrom } from "../dist/setup-versions.js";
+import { templateRules } from "../dist/agents-rules.js";
+import { knownSetupVersionsFrom, setupBody } from "../dist/setup-versions.js";
 
 const root = new URL("..", import.meta.url);
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 * 1024 * 1024 });
@@ -28,9 +30,17 @@ const testFolders = ["test", "tests", "__tests__"];
 const templates = [];
 for (const tag of tags) {
   const version = tag.slice(1);
-  for (const name of ["templates/AGENTS.md", "templates/AGENTS-skill.md"]) {
+  for (const [name, form] of [["templates/AGENTS.md", "full"], ["templates/AGENTS-skill.md", "skill"]]) {
     const text = show(tag, name);
-    if (text !== undefined) templates.push({ part: "agents", version, text });
+    if (text === undefined) continue;
+    templates.push({ part: "agents", version, text, form });
+    // Every rule needs an ID, from its marker or, before 0.7.8, its opening words in src/agents-rules.ts.
+    const body = setupBody("agents", text);
+    const unnamed = body === undefined ? [] : templateRules(body, form).unnamed;
+    if (unnamed.length) {
+      console.error(`${tag}:${name} has rules with no ID. Add their opening words to agentsRules in src/agents-rules.ts:\n${unnamed.map(rule => `  ${rule.slice(0, 80)}`).join("\n")}`);
+      process.exit(1);
+    }
   }
   const guide = show(tag, "docs/story-map.md");
   if (guide !== undefined) templates.push({ part: "guide", version, text: guide });

@@ -78,6 +78,10 @@ export type { FindSetupBehindOptions, SetupPartBehind } from "./setup-behind.js"
 export type { KnownSetupVersions, ReleasedSetupTemplate, SetupFileVersion, SetupPart } from "./setup-versions.js";
 export { describeUpgradeState, isUpgradePartBehind, upgradePartIds, upgradeReport, workflowCommands } from "./upgrade.js";
 export type { UpgradePart, UpgradePartId, UpgradePartState, UpgradeRecommendation, UpgradeReport, UpgradeReportOptions } from "./upgrade.js";
+export { agentsRuleHash, agentsRuleIds, agentsRules, agentsSectionBlocks, isAgentsRuleId, templateRules } from "./agents-rules.js";
+export type { AgentsRuleForm, AgentsRuleId, AgentsRuleInfo, AgentsSectionBlock, KnownAgentsRules } from "./agents-rules.js";
+export { reviewAgentsRules, summariseAgentsRules } from "./upgrade.js";
+export type { AgentsRuleRecommendation, AgentsRuleReview, AgentsRuleState } from "./upgrade.js";
 export { claimAgentMaxLength, claimBranchMaxLength, claimRefPrefix, claimStory, claimTime, claimTtlMaxMs, defaultClaimTtlMs, describeClaim, listStoryClaims, parseClaimTtl, releaseStoryClaim, StoryClaimError, StoryClaimHeldError } from "./claims.js";
 export type { ClaimStoryOptions, ClaimStoryResult, StoryClaim, StoryClaimOptions, StoryClaimSource } from "./claims.js";
 export { storyMapReadiness, storyReadinessLabels, storyReadinessStates, storyReadinessText } from "./readiness.js";

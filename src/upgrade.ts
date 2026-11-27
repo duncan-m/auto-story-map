@@ -1,9 +1,10 @@
 import { readFile, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
+import { agentsRuleByOpening, agentsRuleHash, agentsRules, agentsSectionBlocks, isAgentsRuleId, templateRules, type AgentsRuleForm, type KnownAgentsRules } from "./agents-rules.js";
 import { unifiedDiff } from "./edit.js";
 import { skillFile, skillPath, testFolder, workflowWithTests } from "./init.js";
-import { loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, type KnownSetupVersions, type SetupFileVersion, type SetupPart } from "./setup-versions.js";
+import { compareVersions, loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, type KnownSetupVersions, type SetupFileVersion, type SetupPart } from "./setup-versions.js";
 import { storyMapVersion } from "./version.js";
 
 /**
@@ -72,6 +73,55 @@ export interface UpgradePart {
   value?: unknown;
   /** For a file `init` stamps: what ESM-166's marker reading found. */
   version?: SetupFileVersion;
+  /**
+   * For an `AGENTS.md` section that is outdated or edited: each rule compared
+   * with this version's, so an edited section can be reviewed rule by rule.
+   * This version's rules come first, in its order, then the rules only the
+   * host has, in the host's order.
+   */
+  rules?: AgentsRuleReview[];
+}
+
+/**
+ * The state of one `AGENTS.md` rule, compared with this version's:
+ *
+ * - `current`: the host's rule matches this version's
+ * - `outdated`: the host's rule is an earlier release's, unedited, so it is safe to update
+ * - `edited`: the host reworded it, and this version did not change it since the host's version
+ * - `edited-outdated`: the host reworded it, and this version changed it too, or the host's version is unknown
+ * - `removed`: the host's version had the rule and the host removed it, so it stays removed
+ * - `new`: this version adds the rule
+ * - `dropped`: the host has a rule an earlier release shipped and this version no longer does
+ * - `added`: the host's own rule, which the package never shipped
+ */
+export type AgentsRuleState = "current" | "outdated" | "edited" | "edited-outdated" | "removed" | "new" | "dropped" | "added";
+
+/**
+ * What the review recommends for one rule: `keep` it as the host has it,
+ * `replace` it with this version's, `add` this version's new rule, `remove` a
+ * rule this version drops, or `review` it, when the host reworded a rule this
+ * version also changes or drops. Simple mode keeps every rule marked `review`.
+ */
+export type AgentsRuleRecommendation = "keep" | "replace" | "add" | "remove" | "review";
+
+/** One rule of the host's `AGENTS.md` section, compared with this version's. */
+export interface AgentsRuleReview {
+  /** The rule's ID, from its marker or recognised from its text. Left out for a paragraph of the host's own with no marker. */
+  id?: string;
+  /** The rule's name in the package, or the opening words of the host's own rule. */
+  title: string;
+  state: AgentsRuleState;
+  recommendation: AgentsRuleRecommendation;
+  /** What this version changes in the rule, in a few words. */
+  change: string;
+  /** How the host's rule was recognised: by its marker, by matching a template's text, or by its opening words. */
+  matchedBy?: "marker" | "text" | "opening";
+  /** The host's text of the rule, without its marker, when the host has it. */
+  text?: string;
+  /** This version's text of the rule, when this version has it and it differs from the host's. */
+  template?: string;
+  /** A unified diff from the host's rule to this version's, for an outdated or reworded rule. */
+  diff?: string;
 }
 
 /** The state of each part of a host's set-up, as `story-map upgrade` reports it. */
@@ -211,6 +261,126 @@ function compareFile({ part, path, text, target, current, known }: FileCompare):
   return { ...base, state: "edited-outdated", ...from, change, recommendation: "review", ...withAdditions, diff, version };
 }
 
+interface AgentsRuleCompare {
+  /** The host's section body. */
+  body: string;
+  /** This version's section body for the host, without a marker. */
+  target: string;
+  form: AgentsRuleForm;
+  version: SetupFileVersion;
+  /** The hashes of every body that counts as current. */
+  currentHashes: string[];
+  known?: KnownAgentsRules;
+}
+
+const openingWords = (text: string) => {
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > 40 ? `${flat.slice(0, 40).trimEnd()}…` : flat;
+};
+
+/** The newest version in every list, or undefined when they share none. */
+function inferredVersion(lists: string[][]) {
+  if (!lists.length) return undefined;
+  const shared = lists.reduce((left, right) => left.filter(version => right.includes(version)));
+  return shared.sort(compareVersions).at(-1);
+}
+
+const ruleTitle = (id: string) => (isAgentsRuleId(id) ? agentsRules[id].title : id);
+
+/**
+ * Compares the host's `AGENTS.md` section with this version's, rule by rule.
+ *
+ * Each host paragraph is matched to a rule by its marker. A paragraph with no
+ * marker, as in sections set up before 0.7.8, is matched by its text, against
+ * this version's rules and the known rules of earlier releases, and then by
+ * its opening words. A rule whose text is an earlier release's is unedited.
+ * Whether this version changed a rule since the host's version, or had it
+ * then, comes from the version the section came from and the known rules.
+ */
+export function reviewAgentsRules({ body, target, form, version, currentHashes, known = {} }: AgentsRuleCompare): AgentsRuleReview[] {
+  const template = templateRules(target, form).rules;
+  const knownVersions = (id: string, text: string) => known[id]?.[agentsRuleHash(text)] ?? [];
+  const isKnown = (id: string, text: string) => knownVersions(id, text).length > 0;
+
+  // Match the host's paragraphs to rules: markers first, then text, then opening words.
+  const blocks = agentsSectionBlocks(body).filter(block => block.kind === "rule");
+  const matched = new Map<string, { text: string; matchedBy: "marker" | "text" | "opening" }>();
+  const own: { id?: string; text: string }[] = [];
+  const unmarked: string[] = [];
+  for (const block of blocks) {
+    if (block.id === undefined) unmarked.push(block.text);
+    else if (matched.has(block.id)) own.push({ text: block.text });
+    else matched.set(block.id, { text: block.text, matchedBy: "marker" });
+  }
+  const free = (id: string) => !matched.has(id);
+  for (const text of unmarked) {
+    const hash = agentsRuleHash(text);
+    const byText =
+      [...template].find(([id, rule]) => free(id) && agentsRuleHash(rule) === hash)?.[0] ??
+      Object.keys(known).find(id => free(id) && known[id][hash]);
+    const byOpening = byText ? undefined : agentsRuleByOpening(text, form);
+    if (byText) matched.set(byText, { text, matchedBy: "text" });
+    else if (byOpening && free(byOpening)) matched.set(byOpening, { text, matchedBy: "opening" });
+    else own.push({ text });
+  }
+
+  // An edited section with no marker comes from an unknown version. Its unedited rules say which
+  // release it most likely came from: the newest one that shipped all of them.
+  const from = version.from ?? inferredVersion([...matched].map(([id, host]) => knownVersions(id, host.text)).filter(versions => versions.length));
+  // The host's section came from this version's template, so no rule changed since.
+  const fromCurrent = from === storyMapVersion || (version.recordedHash !== undefined && currentHashes.includes(version.recordedHash));
+  const changedSince = (id: string, text: string) => !fromCurrent && !(from && knownVersions(id, text).includes(from));
+  const existedAt = (id: string) =>
+    fromCurrent || (from ? Object.values(known[id] ?? {}).some(versions => versions.includes(from)) : Object.keys(known[id] ?? {}).length > 0);
+
+  const reviews: AgentsRuleReview[] = [];
+  for (const [id, rule] of template) {
+    const title = ruleTitle(id);
+    const host = matched.get(id);
+    if (!host) {
+      reviews.push(existedAt(id)
+        ? { id, title, state: "removed", recommendation: "keep", change: "none; you removed it", template: rule }
+        : { id, title, state: "new", recommendation: "add", change: "add this version's new rule", template: rule });
+      continue;
+    }
+    const base = { id, title, matchedBy: host.matchedBy, text: host.text };
+    if (agentsRuleHash(host.text) === agentsRuleHash(rule)) {
+      reviews.push({ ...base, state: "current", recommendation: "keep", change: "none" });
+    } else if (isKnown(id, host.text)) {
+      reviews.push({ ...base, state: "outdated", recommendation: "replace", change: "update to this version's", template: rule, diff: unifiedDiff(`${host.text}\n`, `${rule}\n`) });
+    } else if (!changedSince(id, rule)) {
+      reviews.push({ ...base, state: "edited", recommendation: "keep", change: "none; your wording is kept" });
+    } else {
+      reviews.push({ ...base, state: "edited-outdated", recommendation: "review", change: "yours is kept; compare it with this version's", template: rule, diff: unifiedDiff(`${host.text}\n`, `${rule}\n`) });
+    }
+  }
+  for (const [id, host] of matched) {
+    if (template.has(id)) continue;
+    const base = { id, title: ruleTitle(id), matchedBy: host.matchedBy, text: host.text };
+    if (!known[id] && !isAgentsRuleId(id)) reviews.push({ ...base, state: "added", recommendation: "keep", change: "none; your own rule" });
+    else if (isKnown(id, host.text)) reviews.push({ ...base, state: "dropped", recommendation: "remove", change: "this version drops it" });
+    else reviews.push({ ...base, state: "dropped", recommendation: "review", change: "this version drops it; yours is kept" });
+  }
+  for (const { text } of own) reviews.push({ title: openingWords(text), state: "added", recommendation: "keep", change: "none; your own rule", text });
+  return reviews;
+}
+
+/** The rules that need something, counted, such as "2 rules to update, 1 new rule to add, 1 reworded rule to review". */
+export function summariseAgentsRules(rules: AgentsRuleReview[]) {
+  const count = (test: (rule: AgentsRuleReview) => boolean, one: string, many: string) => {
+    const total = rules.filter(test).length;
+    return total ? [`${total} ${total === 1 ? one : many}`] : [];
+  };
+  const parts = [
+    ...count(rule => rule.recommendation === "replace", "rule to update", "rules to update"),
+    ...count(rule => rule.recommendation === "add", "new rule to add", "new rules to add"),
+    ...count(rule => rule.recommendation === "remove", "dropped rule to remove", "dropped rules to remove"),
+    ...count(rule => rule.recommendation === "review", "reworded rule to review", "reworded rules to review"),
+    ...count(rule => rule.state === "added" || rule.state === "edited", "rule of yours kept", "rules of yours kept"),
+  ];
+  return parts.length ? parts.join(", ") : "no rule changes";
+}
+
 function agentsTemplateBody(text: string) {
   return setupBody("agents", text) ?? "";
 }
@@ -274,8 +444,23 @@ export async function upgradeReport(options: UpgradeReportOptions = {}): Promise
   const workflowTarget = workflowWithTests(workflow, testsInHost ?? folder);
   const workflowBodies = [undefined, "test", "tests", "__tests__", ...(testsInHost ? [testsInHost] : [])].map(name => workflowWithTests(workflow, name));
 
+  const agentsTarget = usesSkill ? agentsBodies[1] : agentsBodies[0];
+  const agents = compareFile({ part: "agents", path: "AGENTS.md", text: agentsText, target: agentsTarget, current: agentsBodies, known });
+  if (agents.version && ["outdated", "edited", "edited-outdated"].includes(agents.state)) {
+    agents.rules = reviewAgentsRules({
+      body: setupBody("agents", agentsText!)!,
+      target: agentsTarget,
+      form: usesSkill ? "skill" : "full",
+      version: agents.version,
+      currentHashes: agentsBodies.map(setupBodyHash),
+      known: known.rules,
+    });
+    if (agents.state === "edited-outdated") {
+      agents.change = `the story map section changed ${agents.from ? `since ${agents.from}` : "since an unknown version"}: ${summariseAgentsRules(agents.rules)}`;
+    }
+  }
   const parts: UpgradePart[] = [
-    compareFile({ part: "agents", path: "AGENTS.md", text: agentsText, target: usesSkill ? agentsBodies[1] : agentsBodies[0], current: agentsBodies, known }),
+    agents,
     compareFile({ part: "guide", path: "docs/story-map.md", text: guideText, target: guide, current: [guide], known }),
     compareFile({ part: "workflow", path: ".github/workflows/story-map.yml", text: workflowText, target: workflowTarget, current: workflowBodies, known }),
   ];

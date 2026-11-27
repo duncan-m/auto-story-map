@@ -24,13 +24,14 @@ export const skillPath = ".claude/skills/story-map/SKILL.md";
 
 /**
  * Builds the skill from the `AGENTS.md` section, so the two carry the same
- * rules. Headings move up a level, and links to the host's files gain the path
- * back to the root from the skill's folder.
+ * rules. Rule markers are left out, headings move up a level, and links to
+ * the host's files gain the path back to the root from the skill's folder.
  */
 export async function skillFile() {
   const rules = (await template("AGENTS.md"))
     .replace(/^<!-- auto-story-map:start -->\n## Story map\n\n/, "")
     .replace(/\n<!-- auto-story-map:end -->\n$/, "")
+    .replace(/^<!-- rule: [a-z0-9-]+ -->\n/gm, "")
     .replace(/^### /gm, "## ")
     .replace(/\]\((product|docs)\//g, "](../../../$1/");
   return (await template("SKILL.md")).replace("__RULES__", () => rules);

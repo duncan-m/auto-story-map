@@ -96,5 +96,145 @@
       "0.7.5",
       "0.7.6"
     ]
+  },
+  "rules": {
+    "agreed-estimates": {
+      "sha256:cca4bea3d81b57729e9a4d9a37e9a956c1aa0462e6ce43319fc493dbf6fbe6ce": [
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "audience-and-status": {
+      "sha256:f2161e4bbdfbaef7bb4f6c3d8cdb3f73f4bbf8aa81d18b898c6c3bfda37194b2": [
+        "0.6.1",
+        "0.7.0",
+        "0.7.1",
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "branch-and-title-names": {
+      "sha256:0b01674fa9f1a68c691912a41d100746d36951ef69d4d89398aef31fed851b18": [
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "jobs-to-be-done": {
+      "sha256:0178afa1bdad5acc4ab3aba8d7ec661ae6c1d7db79fe0af92bbb91ffd922687c": [
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "link-mockups": {
+      "sha256:4fe480cbc4ba0f3b6355db6e0d1c7f0b72b83bc55868f5c25266a5aa4530e73e": [
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "outstanding-actions": {
+      "sha256:ccf24a9ed46bc2db767d03a0b8c5a769159789adec3e1a4b4e81f6b545000dc6": [
+        "0.7.6"
+      ]
+    },
+    "populate-first-map": {
+      "sha256:9d7e19ca44f05d519bcc7c2473231d0cf15e1ac74f982ecb2fc6cbe234677a47": [
+        "0.6.1",
+        "0.7.0",
+        "0.7.1",
+        "0.7.4",
+        "0.7.5"
+      ],
+      "sha256:f1bbd7b9bd97a2019dd977d001523215b2aa05564d65f156ac0f2d495c24c768": [
+        "0.7.6"
+      ]
+    },
+    "pr-diff-summary": {
+      "sha256:7049c919512a1fbff225ea063eaf74fcf9c0d9f92a7e6a9d34b6aec93e862e6a": [
+        "0.6.1",
+        "0.7.0",
+        "0.7.1",
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "record-tokens": {
+      "sha256:c64dc73cfe2eab8c02b6dacba032a8f6b87aaad269072eb885bcb4d824eab4eb": [
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "release-notes-and-impact": {
+      "sha256:0944c1fe39499cf8fd7df2a29df0e9fc50c64a607eeedec2be17a3010db441ac": [
+        "0.6.1",
+        "0.7.0",
+        "0.7.1",
+        "0.7.4",
+        "0.7.5"
+      ],
+      "sha256:72f2d4820ed0bcd4d59b556545e2311a298f929ad45e0f3b2d1fd19fc1a0acd1": [
+        "0.7.6"
+      ]
+    },
+    "skill-short-rules": {
+      "sha256:d517096965926305292d18baae2c3732bc0227d7f6dbb295629a0147e41fb71b": [
+        "0.7.6"
+      ]
+    },
+    "skill-source-of-truth": {
+      "sha256:0eff51de698753d50b8119c488db9c4e0bca8bb8fac0d49927dfbaa2681a7cb2": [
+        "0.7.6"
+      ]
+    },
+    "source-of-truth": {
+      "sha256:22fb5963e2127efb48676404fc8dab1636540b790deaac6422d4ebbdf78e70de": [
+        "0.6.1",
+        "0.7.0",
+        "0.7.1",
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "test-names": {
+      "sha256:955c8040776ec11f7b940d88920c58c5c6f2d96ba52c1aed91394586e21f0e69": [
+        "0.7.0",
+        "0.7.1",
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "update-map-in-pr": {
+      "sha256:bfbe5b1c9254702a4d4a0ac7786b6981863c1e609b55abe9f8a5c02067eddab9": [
+        "0.6.1",
+        "0.7.0",
+        "0.7.1"
+      ],
+      "sha256:5f42226845e5e1ffafe734c72f6e391fac4b907585c6916a9ea7859a5d43c455": [
+        "0.7.4"
+      ],
+      "sha256:0ac4cc6ebe56583ff6b073749260821b140eea50e90d7a9ade72fe17ec9e2fcf": [
+        "0.7.5",
+        "0.7.6"
+      ]
+    },
+    "validate-after-change": {
+      "sha256:51727f3b0464af179978284d55fabb71d20bcbc0bcbe505a8174178e82c6b9b7": [
+        "0.6.1"
+      ],
+      "sha256:8dce011dadd75ce44091bb666841b972b40d415056858b0ba2d025c846151a17": [
+        "0.7.0",
+        "0.7.1",
+        "0.7.4",
+        "0.7.5",
+        "0.7.6"
+      ]
+    }
   }
 }
