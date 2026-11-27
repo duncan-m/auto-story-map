@@ -2141,8 +2141,7 @@ stories:
     notes: "Spike before the full 0.8.3 metrics: values are today's, not at the time, and it shows no scope change or remaining work. ESM-132, ESM-133 and ESM-134 follow on from it. Estimate not agreed yet."
     sources:
       - docs/plans/delivery-metrics.md#spike-show-delivery-totals-in-an-analytics-tab
-      - docs/plans/delivery-metrics-mockup.html
-      - docs/plans/delivery-metrics-mockup.png
+      - docs/plans/delivery-metrics.md#ui-mockup
   - id: ESM-130
     title: Reconstruct delivery events from Git
     activity: track
@@ -2366,7 +2365,7 @@ stories:
     title: Check plan mockups and their links
     activity: review
     release: v0-7-7
-    status: planned
+    status: merged
     jobs:
       - update-the-map
     personas:

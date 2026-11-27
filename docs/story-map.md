@@ -650,6 +650,8 @@ When a delivery plan has a mockup, screenshot, prototype or design file, link it
 2. **Add the link to the `sources` of every story the mockup shows**, after the story’s own plan section, such as `docs/plans/payments.md#ui-mockup`. Order matters: the first Markdown heading link becomes the **Engineering overview**, and the mockup appears under it in the panel’s source list. Link an image, HTML file or design tool URL directly only when the plan has no section for it.
 3. **Name it in the release `notes`** when the mockup covers most of the release, on a line of its own, such as `Mockup: docs/plans/payments.md#ui-mockup`. Notes are plain text, so the path is shown, not linked, but the release panel and the JSON export both carry it.
 
+`validate --plans` checks each plan's `## UI mockup` section: it links an `.html` mockup and embeds a `.png` with `![…](file.png)`, both files exist next to where the links point, and at least one story lists the section, such as `docs/plans/payments.md#ui-mockup`, in its `sources`. A section with no links or images, such as “No mockup: this work changes docs, not the board”, is not checked. Whether a plan needs a mockup is a judgement the check leaves to you.
+
 Before you change a story, read its `sources`: they point to its plan section, mockups and other supporting material.
 
 ## Audience settings
@@ -688,7 +690,7 @@ Some problems are warnings rather than errors, such as a blocked or cut story wi
 Three optional checks look beyond the map file. Run them from the repository root, or pass `--root`:
 
 - `--check-sources` checks that each repository-relative source exists and that each Markdown `#heading` fragment matches a heading in that file, using GitHub’s anchor rules. Absolute URLs and free text such as “Agreed in planning” are not checked. Once the map's `settings.plans` names a folder, it also checks the story IDs in that folder, as `--plans` does.
-- `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. Repeat the option for several folders.
+- `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. Repeat the option for several folders. It also checks each plan's `## UI mockup` section, as [Link mockups and designs](#link-mockups-and-designs) describes.
 - `--tests <path>` checks the story IDs in test names, as described in [Link tests to stories](#link-tests-to-stories): an error for an ID that is not in the map, and a warning for an `in-progress` or `merged` story with no tagged tests. Repeat the option for several paths.
 - All three checks stay inside the repository. A source, plan or test file that points outside it, directly or through a symbolic link, is reported and never read. Symbolic links that stay inside the repository are followed as usual.
 - Heading links are checked in Markdown files of up to 5 MB. A `#heading` source in a larger file is reported, so link to a smaller file.
@@ -747,6 +749,10 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `outside-repository` | error | A source, plan or test path leaves the repository. | [Validate a change](#validate-a-change) |
 | `plans-not-found` | error | A `--plans` path has no Markdown files. | [Validate a change](#validate-a-change) |
 | `unknown-plan-story` | error | A plan mentions a story ID that is not in the map. | [Validate a change](#validate-a-change) |
+| `mockup-without-html` | error | A plan's UI mockup section links no HTML mockup. | [Link mockups and designs](#link-mockups-and-designs) |
+| `mockup-without-image` | error | A plan's UI mockup section embeds no PNG. | [Link mockups and designs](#link-mockups-and-designs) |
+| `missing-mockup-file` | error | A mockup HTML or PNG file that a plan links does not exist. | [Link mockups and designs](#link-mockups-and-designs) |
+| `unlinked-mockup` | error | No story lists a plan's UI mockup section in its sources. | [Link mockups and designs](#link-mockups-and-designs) |
 | `tests-not-found` | error | A `--tests` path has no test files. | [Link tests to stories](#link-tests-to-stories) |
 | `unknown-test-story` | error | A test name has a story ID that is not in the map. | [Link tests to stories](#link-tests-to-stories) |
 | `test-file-too-large` | warning | A test file is too large to read. | [Link tests to stories](#link-tests-to-stories) |
