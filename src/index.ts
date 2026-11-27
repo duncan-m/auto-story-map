@@ -76,6 +76,8 @@ export { hasAgentsSection, knownSetupVersionsFrom, loadKnownSetupVersions, readS
 export { currentSetupTemplateHashes, findSetupBehind, isSetupPartBehind, setupBehindMessage, setupPartPaths } from "./setup-behind.js";
 export type { FindSetupBehindOptions, SetupPartBehind } from "./setup-behind.js";
 export type { KnownSetupVersions, ReleasedSetupTemplate, SetupFileVersion, SetupPart } from "./setup-versions.js";
+export { describeUpgradeState, isUpgradePartBehind, upgradePartIds, upgradeReport, workflowCommands } from "./upgrade.js";
+export type { UpgradePart, UpgradePartId, UpgradePartState, UpgradeRecommendation, UpgradeReport, UpgradeReportOptions } from "./upgrade.js";
 export { claimAgentMaxLength, claimBranchMaxLength, claimRefPrefix, claimStory, claimTime, claimTtlMaxMs, defaultClaimTtlMs, describeClaim, listStoryClaims, parseClaimTtl, releaseStoryClaim, StoryClaimError, StoryClaimHeldError } from "./claims.js";
 export type { ClaimStoryOptions, ClaimStoryResult, StoryClaim, StoryClaimOptions, StoryClaimSource } from "./claims.js";
 export { storyMapReadiness, storyReadinessLabels, storyReadinessStates, storyReadinessText } from "./readiness.js";

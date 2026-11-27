@@ -2427,7 +2427,9 @@ stories:
     title: Report the state of each set-up part with story-map upgrade
     activity: set-up
     release: v0-7-8
-    status: planned
+    status: merged
+    tokens: 3233087
+    estimatedCostUsd: 1.9
     dependsOn:
       - ESM-166
     jobs:
@@ -2439,6 +2441,7 @@ stories:
     summary: story-map upgrade lists the AGENTS.md section, guide, CI workflow, skill and map settings choices, with each one's state, the version it came from and what this version changes, in text, Markdown or JSON, without writing anything.
     sources:
       - docs/plans/upgrade-review.md#2-report-the-state-of-each-part
+      - docs/story-map.md#review-the-set-up-after-an-upgrade
   - id: ESM-168
     title: Explain set-up changes in plain words
     activity: set-up

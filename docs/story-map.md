@@ -54,6 +54,44 @@ Once a part comes from an older version than the installed package, and the pack
 
 It names every part that is behind, in one notice, and never fails validation, even with `--strict`. It stays quiet for a part that is current, missing, or unmarked and matching an earlier template that has not changed since. A part that matches no known template is from an unknown version, so it never triggers the notice either: run `story-map upgrade` to compare it. Your edits to a part do not matter here, only the version it came from. In code, `findSetupBehind(root)` returns the parts that are behind.
 
+### Review the set-up after an upgrade
+
+`story-map upgrade` compares each part of the set-up with the installed version of the package and says what this version would change. It writes nothing:
+
+```bash
+npx --no-install story-map upgrade
+```
+
+```text
+Part               State                            Change
+AGENTS.md section  outdated, from 0.7.5             replace with 0.7.8
+Guide              edited, from 0.7.5               none; your edits are kept
+CI workflow        edited and outdated, from 0.7.5  add the story-map diff step
+Story map skill    not added                        none; AGENTS.md has the full rules (see Install a story map skill)
+Delivery plans     not chosen                       ask the person (see docs/story-map.md#choose-whether-to-use-delivery-plans)
+Story ID policy    chosen: "lowest-free"            none; the answer is kept
+```
+
+The parts are the story map section of `AGENTS.md`, `docs/story-map.md`, `.github/workflows/story-map.yml`, the skill at `.claude/skills/story-map/SKILL.md`, and two choices kept in the map's `settings`: `plans` and `storyIds`. Each file is in one of these states, read from its [set-up marker](#what-the-set-up-markers-mean):
+
+| State | Meaning |
+| --- | --- |
+| not added | The file, or the `AGENTS.md` section, is not there |
+| current | It matches this version's template |
+| outdated | It is an earlier release's template, unedited, so it is safe to replace |
+| edited | You changed it, and this version's template is the one it came from, so there is nothing new to take |
+| edited and outdated | You changed it, and this version's template has changed too, or the version it came from is unknown. Compare the two |
+
+A choice is **not chosen** until a person answers, and **chosen** after. Ask the person, and record only the answer they give, as for [delivery plans](#choose-whether-to-use-delivery-plans).
+
+- **The workflow** is compared by the commands its steps run, such as `story-map validate` and `story-map diff`, not line by line, since hosts change job names, Node versions and triggers. A step this version runs that yours does not is listed as an addition.
+- **The skill** records no version, so a skill that differs from this version's is reported as edited and outdated. It is only needed when your `AGENTS.md` section points to it.
+- **Diffs** are two-way, from your copy to this version's. `--diff` prints them after the table.
+- **`--format markdown`** gives the table for a pull request, with each diff folded. **`--format json`** gives `format: "auto-story-map.upgrade"`, `packageVersion`, `map` and `parts`, each with its `part`, `kind`, `title`, `path`, `state`, `from`, `change`, `recommendation` (`add`, `optional`, `replace`, `review`, `keep` or `ask`), and, where they apply, `additions`, `diff`, the chosen `value` and `version`, the marker reading below.
+- `--root <path>` reads another repository, and `--map <path>` another map's settings.
+
+In code, `upgradeReport({ root, map, known })` returns the same report, and `isUpgradePartBehind(part)` is true for an outdated part or an edited one this version also changes.
+
 ## Upgrade to 0.7.7
 
 These steps work from 0.7.0 or later. Existing maps stay valid.
