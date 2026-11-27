@@ -488,6 +488,9 @@
 }
 .esm-close:hover { background: var(--esm-hover); }
 .esm-detail-actions { display: flex; flex: none; align-items: center; gap: 4px; }
+/* Panel menus open from the right of the whole row, so a menu on the left of it stays on screen. */
+.esm-detail-actions { position: relative; }
+.esm-detail-actions > .esm-panel-menu { position: static; }
 .esm-copy-link { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 9px; border-radius: 6px; color: var(--esm-muted); font-size: .8125rem; text-decoration: none; white-space: nowrap; }
 .esm-copy-link:hover { background: var(--esm-hover); color: var(--esm-accent-ink); }
 .esm-copy-link[data-copied] { color: var(--esm-accent-ink); }
@@ -505,24 +508,20 @@
 .esm-menu-item-text .esm-external { margin-left: 5px; color: var(--esm-faint); vertical-align: -1px; }
 .esm-menu-item-hint { color: var(--esm-muted); font-size: .75rem; line-height: 1.35; }
 .esm-menu-panel > li:not(.esm-menu-agent) + .esm-menu-agent:not([hidden]) { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--esm-line); }
-.esm-change-section[hidden], .esm-change-field[hidden], .esm-change-copy[hidden] { display: none; }
-.esm-change-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 12px; margin: 0; }
+.esm-change-menu[hidden], .esm-change-field[hidden], .esm-change-copy[hidden] { display: none; }
+.esm-panel-menu .esm-change-panel { width: min(19rem, calc(100vw - 40px)); padding: 12px; }
+.esm-change-form { display: grid; gap: 10px; margin: 0; }
 .esm-change-field { display: grid; gap: 4px; min-width: 0; color: var(--esm-muted); font-size: .8125rem; font-weight: 650; }
 .esm-change-field .esm-select { width: 100%; min-width: 0; font-weight: 400; }
-.esm-change-reason { grid-column: 1 / -1; order: 1; }
 .esm-change-input { min-height: 38px; padding: 6px 10px; border: 1px solid var(--esm-line); border-radius: 8px; background: var(--esm-paper); color: var(--esm-ink); font: inherit; font-size: .875rem; font-weight: 400; }
 .esm-change-input:focus-visible, .esm-change-field .esm-select:focus-visible { outline: 2px solid var(--esm-accent); outline-offset: 2px; }
-.esm-change-command { display: flex; grid-column: 1 / -1; order: 2; align-items: flex-start; gap: 8px; padding: 8px 8px 8px 12px; border: 1px solid var(--esm-line); border-radius: 6px; background: var(--esm-hover); }
-.esm-change-command code { flex: 1; min-width: 0; padding-top: 6px; font-size: .75rem; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; user-select: all; }
-.esm-change-command code[data-empty] { color: var(--esm-muted); font-family: inherit; user-select: auto; }
 .esm-change-copy { display: inline-flex; flex: none; align-items: center; gap: 5px; min-height: 32px; padding: 0 9px; border: 0; border-radius: 6px; background: var(--esm-paper); color: var(--esm-accent-ink); font: inherit; font-size: .8125rem; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .esm-change-copy:disabled { background: transparent; color: var(--esm-faint); opacity: .6; cursor: default; }
 .esm-change-copy:focus-visible { outline: 2px solid var(--esm-accent); outline-offset: 2px; }
-.esm-change-note { grid-column: 1 / -1; order: 3; margin: 0; color: var(--esm-muted); line-height: 1.5; }
-.esm-change-note code { font-size: .75rem; }
-.esm-change-error { grid-column: 1 / -1; order: 3; }
-.esm-change-actions { display: flex; grid-column: 1 / -1; order: 4; align-items: center; gap: 10px 12px; }
-.esm-change-actions .esm-change-note { order: 0; }
+.esm-change-actions .esm-change-copy { border: 1px solid var(--esm-line); }
+.esm-change-actions .esm-change-copy:not(:disabled):hover { background: var(--esm-hover); }
+.esm-change-note { margin: 0; color: var(--esm-muted); font-size: .75rem; line-height: 1.45; }
+.esm-change-actions { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
 .esm-change-save { flex: none; min-height: 32px; }
 .esm-change-save[disabled] { cursor: default; }
 .esm-change-save:focus-visible { outline: 2px solid var(--esm-accent); outline-offset: 2px; }
@@ -913,6 +912,9 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 }
 
 @media (max-width: 650px) {
+  /* With Actions beside Share, the buttons take their own row above the title. */
+  .esm-detail-head:has(.esm-change-menu:not([hidden])) { flex-wrap: wrap; row-gap: 6px; }
+  .esm-detail-head:has(.esm-change-menu:not([hidden])) > .esm-detail-actions { order: -1; flex: 1 1 100%; justify-content: flex-end; margin-right: -6px; }
   .esm-header { margin-bottom: 1.1rem; }
   .esm-toolbar { flex-direction: column; align-items: stretch; padding: 12px; }
   .esm-search { flex: 1 1 100%; min-width: 0; }

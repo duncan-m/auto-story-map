@@ -11,7 +11,7 @@
  * the board's export links so the downloaded file matches, and which job lanes
  * they collapsed on the Personas tab. It opens the panel a permalink names, and
  * turns each panel's **Copy link** into a button that copies the permalink. It builds the
- * `story-map edit` command for the story panel's **Change** pickers, to copy. It keeps
+ * `story-map edit` command for the story panel's **Actions** menu, to copy. It keeps
  * release names in view beside their lanes, and shrinks the activity row as the grid scrolls.
  * On `story-map preview` it lets the Personas tab edit personas in place. On a host's
  * board opened from `localhost` without a save route, it notes that editing is not set up.
@@ -406,7 +406,7 @@ type ChangeStory = { id: string; status: string; release: string; reason?: strin
 type ChangeChoice = { status: string; release: string; reason?: string };
 
 /**
- * What the story panel's **Change** pickers change, or why there is nothing yet: nothing
+ * What the story panel's **Actions** menu changes, or why there is nothing yet: nothing
  * differs from the story, or a blocked or cut story has no reason. Only what changed is
  * kept. A new reason for a story that stays blocked or cut repeats its status, since
  * `--reason` goes with `--status`.
@@ -426,7 +426,7 @@ function storyMapChange(story: ChangeStory, chosen: ChangeChoice): { change: Sto
   };
 }
 
-/** The command for what the story panel's **Change** pickers say, or why there is none yet, as `storyMapChange` decides. */
+/** The command for what the story panel's **Actions** menu chooses, or why there is none yet, as `storyMapChange` decides. */
 export function storyMapChangeCommand(story: ChangeStory, chosen: ChangeChoice): { command: string } | { message: string } {
   const result = storyMapChange(story, chosen);
   return "change" in result ? { command: storyMapEditCommand(result.change) } : result;
@@ -457,34 +457,35 @@ function storyPageUrl(id: string) {
 const enhancedChanges = new WeakSet<Element>();
 
 /**
- * Shows the **Change** section of each internal story panel and builds the matching
- * `story-map edit` command as its status, reason and release pickers change. The reason
- * field shows for blocked and cut. With clipboard access, **Copy** copies the command and
- * says what it copied, such as “Copied command: ESM-111”. When the page was rendered with
- * `storyEditing`, as `story-map preview` does, **Save** posts the change to the map file and
- * reopens the panel. A save the server refuses, such as from a page older than the file,
- * says why in the section and saves nothing. Safe to call more than once.
+ * Shows the **Actions** menu of each internal story panel, and keeps its buttons off until
+ * its status, reason and release pickers differ from the story. The reason field shows for
+ * blocked and cut, and they need one. With clipboard access, **Copy command** copies the
+ * matching `story-map edit` command without showing it, closes the menu, and says what it
+ * copied, such as “Copied command: ESM-111”. When the page was rendered with `storyEditing`,
+ * as `story-map preview` does, **Save** posts the change to the map file and reopens the
+ * panel. A save the server refuses, such as from a page older than the file, says why in
+ * the menu and saves nothing. A menu that can neither save nor copy stays hidden. Safe to
+ * call more than once.
  */
 export function enhanceStoryMapChanges(root: ParentNode = document) {
   const canCopy = typeof navigator !== "undefined" && !!navigator.clipboard?.writeText;
   for (const form of root.querySelectorAll<HTMLFormElement>("form[data-esm-change]")) {
     if (enhancedChanges.has(form)) continue;
     enhancedChanges.add(form);
-    const section = form.closest<HTMLElement>("section.esm-change-section");
-    if (section) section.hidden = false;
     const field = <Field extends HTMLElement>(selector: string) => form.querySelector<Field>(selector);
     const status = field<HTMLSelectElement>("[name=status]");
     const release = field<HTMLSelectElement>("[name=release]");
     const reason = field<HTMLInputElement>("[name=reason]");
     const reasonField = field<HTMLElement>("[data-esm-change-reason]");
-    const output = field<HTMLElement>("[data-esm-change-command]");
     const copy = field<HTMLButtonElement>("button[data-esm-change-copy]");
     const save = field<HTMLButtonElement>("button[data-esm-change-save]");
     const error = field<HTMLElement>(".esm-change-error");
-    if (!status || !release || !output) continue;
+    if (!status || !release) continue;
     const { esmChange: id = "", esmStatus: current = "", esmRelease: currentRelease = "", esmReason: currentReason = "" } = form.dataset;
     const { esmEditEndpoint: endpoint, esmEditToken: token, esmEditRevision: revision } = form.dataset;
     if (copy) copy.hidden = !canCopy;
+    const menu = form.closest<HTMLDetailsElement>("details.esm-change-menu");
+    if (menu) menu.hidden = !save && !canCopy;
     let pending: StoryMapEditChange | undefined;
     let saving = false;
 
@@ -495,9 +496,6 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
         { status: status.value, release: release.value, reason: reason?.value },
       );
       pending = "change" in result ? result.change : undefined;
-      output.textContent = pending ? storyMapEditCommand(pending) : (result as { message: string }).message;
-      if (pending) delete output.dataset.empty;
-      else output.dataset.empty = "";
       if (copy) copy.disabled = !pending;
       if (save) save.disabled = !pending || saving;
       if (error && !saving) error.hidden = true;
@@ -545,9 +543,10 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
         });
     });
     copy?.addEventListener("click", () => {
-      if (copy.disabled || !canCopy) return;
+      if (copy.disabled || !canCopy || !pending) return;
       const board = form.closest(".esm-board");
-      navigator.clipboard.writeText(output.textContent ?? "").then(() => {
+      navigator.clipboard.writeText(storyMapEditCommand(pending)).then(() => {
+        if (menu) menu.open = false;
         showCopied(copy, "Copied");
         if (board) announce(board, `Copied command: ${id}`);
       }, () => {

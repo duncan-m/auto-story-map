@@ -23,7 +23,7 @@ export interface StoryMapPreviewOptions {
   /** Base URL that repository-relative sources link to, such as a GitHub `blob/main/` URL. */
   sourceBaseUrl?: string;
   /**
-   * Lets the Personas tab and the story panels' **Change** section save edits to the map
+   * Lets the Personas tab and the story panels' **Actions** menu save edits to the map
    * file, through `POST /api/story-map/edit`.
    * On by default, because the preview only runs on this machine. Pass `false` for a
    * read-only preview. Saves are checked as `createStoryMapEditServer` describes.
