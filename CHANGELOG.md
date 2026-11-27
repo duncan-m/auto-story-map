@@ -7,6 +7,16 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 - **Tag a describe block for all its tests:** A story ID at the start of a `describe` or `suite` name now links every test inside it, including tests in nested blocks, so renaming a test no longer unlinks it from its story. A test that names its own story inside a tagged block counts for both. This applies to `story-map tests`, `validate --tests`, `story-map evidence` and `story-map actions`. The story panel lists those tests under the story, marked “Covered by its group”, and the tests index marks the IDs each test has from its block in a new optional `inheritedIds` field, which older boards ignore. An unknown ID in a block's name is reported once, at the block. Internal viewers only. See [Link tests to stories](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-tests-to-stories).
 - **Fill gaps in story IDs:** With `settings.storyIds: lowest-free` in the map, `story-map add` takes the lowest unused number in the map's main prefix, counting cut stories, instead of one after the highest. Maps without the setting number stories as before. `story-map diff` lists a change to it under **Settings**, and `nextStoryId` takes the scheme as a new optional third argument. See [Change the map from the command line](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#change-the-map-from-the-command-line).
 
+### Upgrade review
+
+- **Record the version each set-up part came from:** `story-map init` now records the package version and a hash of the text it wrote in each part it sets up: in the `AGENTS.md` start marker, as `<!-- auto-story-map:start 0.7.8 sha256:… -->`, and as a comment on the first line of `docs/story-map.md` and `.github/workflows/story-map.yml`. A later upgrade review uses them to tell your edits from the package's changes. Parts set up earlier, with no version, still work as before. See [What the set-up markers mean](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#what-the-set-up-markers-mean).
+
+**For developers**
+
+- The package ships `templates/known-versions.json`, the hash of each set-up template from every earlier release, so parts set up before versions were recorded can be matched to the release they came from. `npm run known-versions` writes it from the release tags, and the release workflow stops when the committed file is out of date.
+- `readSetupFileVersion`, `stampSetupFile`, `loadKnownSetupVersions`, `knownSetupVersionsFrom`, `setupBody`, `setupBodyHash`, `hasAgentsSection` and `setupParts` are exported, with the `SetupPart`, `SetupFileVersion`, `KnownSetupVersions` and `ReleasedSetupTemplate` types.
+- `init` compares an existing guide and `AGENTS.md` section with this version's by their body, so a stamped copy counts as up to date.
+
 ### Delivery plans for host products
 
 - **Write a delivery plan:** The guide has a new [Write a delivery plan](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#write-a-delivery-plan) section: the question an agent asks before a product adopts plans, and the parts of a plan, from the status line to the effort table. Plans are opt in, and nothing changes until a person says yes.

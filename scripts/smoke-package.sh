@@ -16,6 +16,9 @@ npm install --no-audit --no-fund "./$archive" "react@$react_major" "react-dom@$r
 ./node_modules/.bin/story-map init
 ./node_modules/.bin/story-map validate product/story-map.yaml
 test -s docs/story-map.md && test -s AGENTS.md && test -s .github/workflows/story-map.yml
+# init records the version each part came from, and the package ships the hashes of earlier templates.
+head -n 1 docs/story-map.md | grep -Eq '^<!-- auto-story-map [^ ]+ sha256:[0-9a-f]{64} -->$'
+test -s node_modules/auto-story-map/templates/known-versions.json
 
 node --input-type=module - "$repo_dir/product/story-map.yaml" "$react_major" <<'NODE'
 import assert from "node:assert/strict";

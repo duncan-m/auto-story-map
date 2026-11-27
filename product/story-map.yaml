@@ -2412,7 +2412,7 @@ stories:
     title: Record the version each set-up part was installed from
     activity: set-up
     release: v0-7-8
-    status: planned
+    status: merged
     jobs:
       - keep-setup-current
     personas:
@@ -2420,6 +2420,7 @@ stories:
     summary: init records the package version and a template hash in the AGENTS.md markers and the first line of the guide and workflow, and the package ships the hashes of earlier templates, so the review can tell host edits from package changes.
     sources:
       - docs/plans/upgrade-review.md#1-record-the-version-each-part-was-installed-from
+      - docs/story-map.md#what-the-set-up-markers-mean
   - id: ESM-167
     title: Report the state of each set-up part with story-map upgrade
     activity: set-up

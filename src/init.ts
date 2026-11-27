@@ -1,6 +1,8 @@
 import { constants } from "node:fs";
 import { access, lstat, mkdir, open, readFile, realpath, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
+import { hasAgentsSection, setupBody, stampSetupFile } from "./setup-versions.js";
+import { storyMapVersion } from "./version.js";
 
 export interface InitOptions {
   /** Write a GitHub Actions workflow that validates the map. Defaults to true. */
@@ -18,8 +20,6 @@ export interface InitStep {
 
 const packageRoot = new URL("../", import.meta.url);
 const template = (name: string) => readFile(new URL(`templates/${name}`, packageRoot), "utf8");
-const agentsMarker = "<!-- auto-story-map:start -->";
-const agentsEndMarker = "<!-- auto-story-map:end -->";
 export const skillPath = ".claude/skills/story-map/SKILL.md";
 
 /**
@@ -131,7 +131,7 @@ async function appendGuidance(realRoot: string, path: string, agents: string) {
     const reader = await open(target, constants.O_RDONLY | noFollow).catch(() => undefined);
     if (!reader) throw error;
     try {
-      if ((await reader.stat()).isFile() && (await reader.readFile("utf8")).includes(agentsMarker)) return false;
+      if ((await reader.stat()).isFile() && hasAgentsSection(await reader.readFile("utf8"))) return false;
     } finally {
       await reader.close();
     }
@@ -140,7 +140,7 @@ async function appendGuidance(realRoot: string, path: string, agents: string) {
   try {
     if (!(await handle.stat()).isFile()) throw new Error(`${path} is not a file`);
     const current = await handle.readFile("utf8");
-    if (current.includes(agentsMarker)) return false;
+    if (hasAgentsSection(current)) return false;
     const separator = current.length === 0 || current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
     await handle.appendFile(separator + agents);
     return true;
@@ -149,13 +149,13 @@ async function appendGuidance(realRoot: string, path: string, agents: string) {
   }
 }
 
-/** The text between the story map markers, inclusive, with line endings evened out, or undefined without them. */
+/**
+ * The text between the story map markers, without them, with line endings
+ * evened out, or undefined without them. The start marker's version and hash
+ * are left out, so a section matches its template whichever version stamped it.
+ */
 export function agentsSection(text: string): string | undefined {
-  const normal = text.replace(/\r\n?/g, "\n");
-  const start = normal.indexOf(agentsMarker);
-  const end = normal.indexOf(agentsEndMarker, start);
-  if (start === -1 || end === -1) return undefined;
-  return normal.slice(start, end + agentsEndMarker.length);
+  return setupBody("agents", text);
 }
 
 async function productName(root: string) {
@@ -181,7 +181,9 @@ export function describeProduct(name: string) {
  * Sets up Auto Story Map in a host repository: a starter map, the story
  * map guide, the agent instructions, optionally as a skill, and a validation
  * workflow. Existing files
- * are never overwritten, so it is safe to run again.
+ * are never overwritten, so it is safe to run again. Each part except the map
+ * and the skill records the package version and a hash of its template, so a
+ * later review can tell the host's edits from the package's changes.
  */
 export async function initStoryMap(root: string, options: InitOptions = {}): Promise<InitStep[]> {
   const steps: InitStep[] = [];
@@ -201,9 +203,9 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
   const guidePath = "docs/story-map.md";
   const guide = await readFile(new URL("docs/story-map.md", packageRoot), "utf8");
   if (!(await exists(await at(guidePath)))) {
-    await writeNew(realRoot, guidePath, guide);
+    await writeNew(realRoot, guidePath, stampSetupFile("guide", guide, storyMapVersion));
     steps.push({ path: guidePath, action: "created" });
-  } else if (await readFile(await at(guidePath), "utf8") === guide) {
+  } else if (setupBody("guide", await readFile(await at(guidePath), "utf8")) === setupBody("guide", guide)) {
     steps.push({ path: guidePath, action: "skipped", reason: "already up to date" });
   } else {
     steps.push({
@@ -226,7 +228,7 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
   }
 
   const agentsPath = "AGENTS.md";
-  const agents = await template(options.skill ? "AGENTS-skill.md" : "AGENTS.md");
+  const agents = stampSetupFile("agents", await template(options.skill ? "AGENTS-skill.md" : "AGENTS.md"), storyMapVersion);
   if (!(await exists(await at(agentsPath)))) {
     await writeNew(realRoot, agentsPath, agents);
     steps.push({ path: agentsPath, action: "created" });
@@ -255,7 +257,8 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
         reason: "no package-lock.json; add `story-map validate --format github product/story-map.yaml` to your CI",
       });
     } else {
-      await writeNew(realRoot, workflowPath, workflowWithTests(await template("story-map-ci.yml"), await testFolder(realRoot)));
+      const workflow = workflowWithTests(await template("story-map-ci.yml"), await testFolder(realRoot));
+      await writeNew(realRoot, workflowPath, stampSetupFile("workflow", workflow, storyMapVersion));
       steps.push({ path: workflowPath, action: "created" });
     }
   }
