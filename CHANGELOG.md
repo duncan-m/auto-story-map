@@ -2,18 +2,92 @@
 
 All notable changes to `auto-story-map` are recorded here. The project follows [semantic versioning](https://semver.org). Before 1.0.0, a minor version can include breaking changes, and each one is listed with its upgrade steps.
 
-## Unreleased
+## 0.7.6
 
-- **See what the map is waiting for:** Internal boards have an **Actions** tab next to **Story map** and **Personas**. It lists what validate warns about in one table, with each action's type as a badge coloured by category: gaps, drafts to confirm, estimates, tests and the rest. Each row says who can act, links to its story, release or persona, and shows the problem and its line, and a **Copy** button copies the command that fixes it. Tick several rows to copy their commands at once, one per line. Columns run Category (persona, story, release or map), Item, Problem, Action and Line. One row of filters, a category switch, action and release dropdowns and **Needs a person**, narrows the table, with counts, with links that work without JavaScript. Story and release panels show their own actions. `story-map actions` prints the same list for agents and people at a terminal, and `validate --format json` gives each warning a `kind`. Pass `mapFile` to `getStoryMapPage` to show each action's line. Customers never see actions. `story-map preview` no longer lists warnings above the board, since the tab shows them. See [See what the map is waiting for](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#see-what-the-map-is-waiting-for).
-- **Tag stories as must, should or could have:** Stories take an optional `priority` of `must`, `should` or `could`. Internal cards show it as an **MH**, **SH** or **CH** tag before the estimate, and the story panel lists it in full. Set it with `story-map edit <ID> --priority must`, or remove it with `--priority none`. `story-map story` and `story-map diff` show it. Internal viewers only. See [Prioritise stories](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#prioritise-stories).
-- **Change a story from the board:** Internal story panels have a **Change** section with status, reason and release pickers. The board does not save: it shows the matching `story-map edit` command, with each value quoted for the shell, and a **Copy** button, to paste into a terminal or an agent's chat. It needs `board.js`. Internal viewers only. See [Change a story from the board](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#change-a-story-from-the-board).
-- **Save status and release changes from the local preview:** On `story-map preview`, the story panel's **Change** section has a **Save** button that writes the new status, reason or release to the map file, through the same checks as `story-map edit --write`, then reopens the panel. The preview's edit route now accepts `status` and `release` operations beside persona edits, and still refuses a page older than the file, another origin, or a request without its token. `--read-only` turns it off. A host's board saves the same way with the new `storyEditing` prop, set from `createStoryMapEditServer`'s `read`. Deployed boards stay read-only. See [Save from the local preview](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#save-from-the-local-preview).
-- **Edit personas in your own app running locally:** A host's board can now edit personas on the Personas tab, like `story-map preview`, while the app runs on your machine. `createStoryMapEditServer` gains `read(request)`, which reads the map on each request and returns edit props only for a loopback `Host` outside a production build, and `handleRequest(request)` for Fetch routes such as App Router, vinext, Remix, Hono and Workers. Its new `authorize` option is required, so a host decides who may edit: pass the same rule as the board's `canViewInternal`. An internal Personas tab opened from `localhost` without a save route notes that editing is not set up, with a link to the steps; `personaEditing={false}` skips the note. Deployed boards stay read-only. See [In your own app](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#in-your-own-app).
-- **Serve the CLI over MCP:** `story-map mcp` runs a local Model Context Protocol server over standard input and output, for agents that call tools rather than run commands. Its tools, `list_stories`, `get_story`, `list_releases`, `validate_map`, `get_evidence`, `propose_edit` and `claim_story`, wrap the matching commands and return their JSON, with the same safeguards: edits are dry runs unless the call sets `write`, paths stay inside the repository, and there is no tool to confirm drafts. `--read-only` leaves out the tools that write. It needs `@modelcontextprotocol/sdk`, a new optional peer dependency that only this command loads. See [Serve the map over MCP](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#serve-the-map-over-mcp).
-- **Survey a repository for its first map:** `story-map survey --format json` lists what an agent needs to draft a first map for a repository that already has history: release tags and `CHANGELOG.md` versions, with dates, as suggested releases; Markdown docs and their headings as candidate sources; and open plans and `TODO` and `FIXME` comments, with file and line, as planned work. It needs no map, reads and suggests only, and makes no network calls. The [first-run workflow](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#populate-the-first-map) now starts with it. See [Survey a repository](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#survey-a-repository).
-- **See which stories are ready to start:** The board and the CLI work out from the `dependsOn` links whether each planned or in-progress story is ready to start, waiting for prerequisites that are not merged yet, or at risk because a prerequisite is cut, blocked or in a later release. The story panel shows it beside the status and at the top of its **Dependencies** section, `story-map story` prints it, `story-map stories --readiness ready|waiting|at-risk` filters by it, and the JSON export carries each story's `readiness` with its blocking prerequisites. Readiness never changes a status. Internal viewers only. See [See which stories are ready to start](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#see-which-stories-are-ready-to-start).
-- **Install the rules as a skill:** `story-map init --skill` writes the story map rules and common commands to `.claude/skills/story-map/SKILL.md`, and gives `AGENTS.md` a short pointer to it instead of the full section, so agents read the rules only when a task needs them. Existing files are never overwritten. See [Populate the first map](https://github.com/duncan-m/auto-story-map/blob/main/README.md#populate-the-first-map).
-- **Take the map into Spreo:** The board's **Export** menu has a new item, *Spreo, guide to an interactive board*. It opens a guide, in a new tab, to building an interactive Spreo board from the map through Spreo's MCP server, from ChatGPT, Claude or Claude Code, with a prompt you can copy. Internal viewers only, as for the rest of the menu. See [Spreo](https://github.com/duncan-m/auto-story-map/blob/main/docs/integrations.md#spreo).
+0.7.6 lets people triage the map without editing the YAML, and gives agents new ways into it.
+
+- **See what the map is waiting for:** An **Actions** tab on the internal board lists the drafts to confirm, estimates to agree and gaps in the map, with the command that deals with each one.
+- **Triage without the YAML:** Confirm an agent's drafts from the terminal, and change a story's status or release from its panel, saving straight to the map on the local preview.
+- **Edit personas on your machine:** Add and reword personas, and add, reword and delete their jobs, on the Personas tab, on the local preview or in your own app running locally.
+- **Prioritise stories:** Tag stories as must, should or could have.
+- **See which stories are ready to start:** Each planned story says whether the stories it depends on have landed.
+- **Give agents the map:** Agents can use the map through an MCP server or an installable skill, and draft a first map for an existing repository from a survey of it.
+- **Take the map into Spreo:** The Export menu has a guide to building a Spreo board from the map.
+
+Nothing needs an upgrade step: existing maps, history files and host code keep working, and everything new is optional. `story-map preview` no longer lists warnings above the board, because the Actions tab shows them.
+
+Hosts that copied the `AGENTS.md` template can copy its new paragraph on `story-map actions`, and its changes on the survey and `story-map confirm`, from `node_modules/auto-story-map/templates/AGENTS.md`. To edit personas in their own app running locally, hosts add a save route with `createStoryMapEditServer`, as [In your own app](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#in-your-own-app) describes.
+
+### Actions tab
+
+- **See what the map is waiting for:** The internal board has an **Actions** tab beside **Story map** and **Personas**. It lists everything the map is waiting for, such as drafts to confirm, estimates to agree and stories that serve no job, says who can act on each, and copies the command that deals with it. Story and release panels show their own actions, and agents get the same list from `story-map actions`. Customers never see actions.
+
+**For developers**
+
+- Internal boards have an **Actions** tab next to **Story map** and **Personas**. It lists what validate warns about in one table, with each action's type as a badge coloured by category: gaps, drafts to confirm, estimates, tests and the rest. Each row says who can act, links to its story, release or persona, and shows the problem and its line, and a **Copy** button copies the command that fixes it. Tick several rows to copy their commands at once, one per line. Columns run Category (persona, story, release or map), Item, Problem, Action and Line. One row of filters, a category switch, action and release dropdowns and **Needs a person**, narrows the table, with counts, with links that work without JavaScript. Story and release panels show their own actions. `story-map actions` prints the same list for agents and people at a terminal, and `validate --format json` gives each warning a `kind`. Pass `mapFile` to `getStoryMapPage` to show each action's line. Customers never see actions. `story-map preview` no longer lists warnings above the board, since the tab shows them. See [See what the map is waiting for](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#see-what-the-map-is-waiting-for).
+
+### Triage without the YAML
+
+- **Confirm drafts from the command line:** When a person has reviewed a job, a persona's context or an impact item that an agent drafted, `story-map confirm` shows it as the board does and, once they type its ID back, removes its `draft: true`. Agents can show a person the draft but never confirm it.
+- **Change a story from the board:** A story's panel has a **Change** section to pick a new status, reason or release. It gives the matching command to copy into a terminal or an agent's chat.
+- **Save changes from the local preview:** On `story-map preview`, the **Change** section saves the new status or release straight to the map file. Deployed boards stay read-only.
+
+**For developers**
+
+- New `story-map confirm <job | persona | release --impact <n>>` and `story-map confirm --all-in <persona>` print each draft as the board shows it, then the line diff and the `story-map diff` summary, where it shows under “Confirmed”. `--write` removes only the `draft: true` line, after the person types the ID back, and refuses when standard input is not a terminal, so agents cannot confirm a draft. `--format json` never writes.
+
+  New export `proposeDraftConfirmation(source, target)`, which returns the drafts and the same result as `proposeStoryMapEdit` without writing. See [Confirm a draft](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#confirm-a-draft).
+- Internal story panels have a **Change** section with status, reason and release pickers. The board does not save: it shows the matching `story-map edit` command, with each value quoted for the shell, and a **Copy** button, to paste into a terminal or an agent's chat. It needs `board.js`. Internal viewers only. See [Change a story from the board](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#change-a-story-from-the-board).
+- On `story-map preview`, the story panel's **Change** section has a **Save** button that writes the new status, reason or release to the map file, through the same checks as `story-map edit --write`, then reopens the panel. The preview's edit route now accepts `status` and `release` operations beside persona edits, and still refuses a page older than the file, another origin, or a request without its token. `--read-only` turns it off. A host's board saves the same way with the new `storyEditing` prop, set from `createStoryMapEditServer`'s `read`. Deployed boards stay read-only. See [Save from the local preview](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#save-from-the-local-preview).
+
+### Personas on your machine
+
+- **Edit personas on your machine:** On a board running on your own machine, the Personas tab rewords a persona's title, summary, context and jobs where they are, adds and deletes jobs, and adds personas, saving each change to the map file. Rewording a draft keeps it a draft, and deployed boards stay read-only.
+- **Set up personas from an empty tab:** A map with no personas still shows internal viewers the Personas tab, with an example of how to add them.
+
+**For developers**
+
+- A map without personas keeps the **Personas** tab for internal viewers. It shows an example `personas` list, how to tag stories with their jobs, and a link to the guide. See [Personas tab](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#personas-tab).
+- On `story-map preview` and the example host, the Personas tab has **Edit** on a persona's title, summary, **Success means**, **Uses today**, **Constraints** and each job's statement, **Add job** and **Delete job** for jobs, and **+ Add persona**.
+
+  Each save writes only the fields that changed, through the same edit as `story-map edit`, keeping comments and every untouched line, and refuses a change that would make the map invalid. New jobs and personas get IDs from their text and are not drafts. IDs, order, customer copy and `draft` are left alone. `story-map preview --read-only` turns editing off. See [Edit personas on your machine](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#edit-personas-on-your-machine).
+- A host's board can now edit personas on the Personas tab, like `story-map preview`, while the app runs on your machine. `createStoryMapEditServer` gains `read(request)`, which reads the map on each request and returns edit props only for a loopback `Host` outside a production build, and `handleRequest(request)` for Fetch routes such as App Router, vinext, Remix, Hono and Workers. Its new `authorize` option is required, so a host decides who may edit: pass the same rule as the board's `canViewInternal`. An internal Personas tab opened from `localhost` without a save route notes that editing is not set up, with a link to the steps; `personaEditing={false}` skips the note. Deployed boards stay read-only. See [In your own app](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#in-your-own-app).
+
+### Priorities
+
+- **Tag stories as must, should or could have:** Internal cards show each story's priority as **MH**, **SH** or **CH**, so the team can see what a release cannot go without.
+
+**For developers**
+
+- Stories take an optional `priority` of `must`, `should` or `could`. Internal cards show it as an **MH**, **SH** or **CH** tag before the estimate, and the story panel lists it in full. Set it with `story-map edit <ID> --priority must`, or remove it with `--priority none`. `story-map story` and `story-map diff` show it. Internal viewers only. See [Prioritise stories](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#prioritise-stories).
+
+### Readiness
+
+- **See which stories are ready to start:** A planned or in-progress story's panel says whether it is ready to start, waiting for the stories it depends on, or at risk because one of them is cut, blocked or in a later release. It never changes a status.
+
+**For developers**
+
+- The board and the CLI work out from the `dependsOn` links whether each planned or in-progress story is ready to start, waiting for prerequisites that are not merged yet, or at risk because a prerequisite is cut, blocked or in a later release. The story panel shows it beside the status and at the top of its **Dependencies** section, `story-map story` prints it, `story-map stories --readiness ready|waiting|at-risk` filters by it, and the JSON export carries each story's `readiness` with its blocking prerequisites. Readiness never changes a status. Internal viewers only. See [See which stories are ready to start](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#see-which-stories-are-ready-to-start).
+
+### Agent access
+
+- **Serve the map over MCP:** Agents that call tools rather than run commands can read the map, check it, propose edits and claim stories through `story-map mcp`, with the same safeguards as the commands.
+- **Install the rules as a skill:** `story-map init --skill` puts the story map rules in a skill, so agents read them only when a task needs them.
+- **Survey a repository for its first map:** For a repository with months of history, `story-map survey` lists its releases, docs, open plans and `TODO` comments, for an agent to draft the first map from.
+
+**For developers**
+
+- `story-map mcp` runs a local Model Context Protocol server over standard input and output, for agents that call tools rather than run commands. Its tools, `list_stories`, `get_story`, `list_releases`, `validate_map`, `get_evidence`, `propose_edit` and `claim_story`, wrap the matching commands and return their JSON, with the same safeguards: edits are dry runs unless the call sets `write`, paths stay inside the repository, and there is no tool to confirm drafts. `--read-only` leaves out the tools that write. It needs `@modelcontextprotocol/sdk`, a new optional peer dependency that only this command loads. See [Serve the map over MCP](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#serve-the-map-over-mcp).
+- `story-map init --skill` writes the story map rules and common commands to `.claude/skills/story-map/SKILL.md`, and gives `AGENTS.md` a short pointer to it instead of the full section, so agents read the rules only when a task needs them. Existing files are never overwritten. See [Populate the first map](https://github.com/duncan-m/auto-story-map/blob/main/README.md#populate-the-first-map).
+- `story-map survey --format json` lists what an agent needs to draft a first map for a repository that already has history: release tags and `CHANGELOG.md` versions, with dates, as suggested releases; Markdown docs and their headings as candidate sources; and open plans and `TODO` and `FIXME` comments, with file and line, as planned work. It needs no map, reads and suggests only, and makes no network calls. The [first-run workflow](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#populate-the-first-map) now starts with it. See [Survey a repository](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#survey-a-repository).
+
+### Spreo
+
+- **Take the map into Spreo:** The board's **Export** menu opens a guide to building an interactive Spreo board from the map, with a prompt to copy into ChatGPT, Claude or Claude Code.
+
+**For developers**
+
+- The board's **Export** menu has a new item, *Spreo, guide to an interactive board*. It opens a guide, in a new tab, to building an interactive Spreo board from the map through Spreo's MCP server, from ChatGPT, Claude or Claude Code, with a prompt you can copy. Internal viewers only, as for the rest of the menu. See [Spreo](https://github.com/duncan-m/auto-story-map/blob/main/docs/integrations.md#spreo).
 
 ## 0.7.5
 

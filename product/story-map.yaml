@@ -424,7 +424,9 @@ releases:
 
       From 0.7.7, the skill, MCP server and survey (ESM-116 to ESM-118). They reuse the evidence and claim commands from 0.7.5.
 
-      The Export menu gains a Spreo item (ESM-137) with a guide to building a story board in Spreo through its MCP integration.
+      The Export menu gains a Spreo guide (ESM-137).
+
+      Also: local persona editing (ESM-146, ESM-147, ESM-154 to ESM-156) and priorities (ESM-158).
 
       Plans: docs/plans/local-triage.md, docs/plans/actions-tab.md, docs/plans/0.8.0-agents-and-adoption.md and docs/plans/visual-dependency-map.md
       Mockups: docs/plans/export-to-external-tools.md#ui-mockup for the Spreo item, and docs/plans/visual-dependency-map.md#ui-mockup for readiness
@@ -893,7 +895,7 @@ stories:
     title: Confirm drafts from the command line
     activity: review
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 3
     tokens: 3529712
     estimatedCostUsd: 2.1
@@ -909,7 +911,7 @@ stories:
     title: Show the edit command in the story panel
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 3
     tokens: 5530403
     estimatedCostUsd: 2.75
@@ -927,7 +929,7 @@ stories:
     title: Save status and release changes from the local preview
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 5
     priority: must
     tokens: 6818989
@@ -1004,7 +1006,7 @@ stories:
     title: Show outstanding actions on an Actions tab
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 8
     priority: should
     tokens: 68512478
@@ -1021,7 +1023,7 @@ stories:
     title: Add export support for Spreo
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 2
     tokens: 2820188
     estimatedCostUsd: 1.51
@@ -1048,7 +1050,7 @@ stories:
     title: Show how to set up personas on an empty Personas tab
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 1
     tokens: 3490162
     estimatedCostUsd: 1.43
@@ -1064,7 +1066,7 @@ stories:
     title: Edit a persona in place on the local preview
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 8
     tokens: 42175625
     estimatedCostUsd: 12.91
@@ -1087,7 +1089,7 @@ stories:
     title: Add and delete jobs on the local Personas tab
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 3
     tokens: 24200001
     estimatedCostUsd: 8.23
@@ -1111,7 +1113,7 @@ stories:
     title: Add a persona on the local Personas tab
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 3
     dependsOn:
       - ESM-154
@@ -1134,7 +1136,7 @@ stories:
     title: Turn on persona editing in a host app running locally
     activity: explore
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 5
     tokens: 16614908
     estimatedCostUsd: 5.33
@@ -1711,7 +1713,7 @@ stories:
     title: Check that Miro and Lucidchart import a test file
     activity: explore
     release: v0-7-0
-    status: merged
+    status: shipped
     jobs:
       - share-roadmap
     summary: Import a hand-made Visio file and CSV into Miro, Lucidchart and LibreOffice before building the export, and record what survives.
@@ -1787,7 +1789,7 @@ stories:
     title: Serve the CLI over MCP
     activity: plan
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 5
     tokens: 5709742
     estimatedCostUsd: 2.86
@@ -1805,7 +1807,7 @@ stories:
     title: Install a story map skill
     activity: set-up
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 2
     tokens: 1567683
     estimatedCostUsd: 1.07
@@ -1819,7 +1821,7 @@ stories:
     title: Survey a repository for its first map
     activity: set-up
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 5
     tokens: 5140402
     estimatedCostUsd: 2.93
@@ -2108,7 +2110,7 @@ stories:
     title: Understand which stories are ready to start
     activity: track
     release: v0-7-6
-    status: merged
+    status: shipped
     estimate: 5
     tokens: 3510898
     estimatedCostUsd: 2.03
@@ -2124,7 +2126,7 @@ stories:
     title: Tag each story as must, should or could have
     activity: plan
     release: v0-7-6
-    status: merged
+    status: shipped
     tokens: 33147775
     estimatedCostUsd: 13.84
     jobs:
