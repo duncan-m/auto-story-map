@@ -9,6 +9,7 @@ customer:
   summary: What you can do with Auto Story Map today, and what is coming next.
 settings:
   plans: docs/plans
+  storyIds: lowest-free
 # Drafted with ESM-901 from the README, the guide and the stories below. Every job is a draft until a person confirms it.
 personas:
   - id: founder
@@ -2053,7 +2054,9 @@ stories:
     title: Choose the lowest free story ID in add
     activity: plan
     release: v0-7-7
-    status: planned
+    status: merged
+    tokens: 3166733
+    estimatedCostUsd: 1.45
     jobs:
       - update-the-map
     personas:
