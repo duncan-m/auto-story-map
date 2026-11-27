@@ -1,6 +1,6 @@
 # Plan: keep activity and release titles in view while scrolling
 
-Status: in progress. The work is ESM-157 in the **0.8.0: Map versions, steps and audit** release of the map. It has no agreed estimate yet.
+Status: shipped. The work is ESM-157 in the **0.7.6: Triage, readiness and agent access** release of the map. It has no agreed estimate yet.
 
 On a map with several releases, scrolling down takes the activity titles off the top of the screen, and a tall release lane takes its own title with them. Scrolling sideways on a narrow window takes the release titles off the left. The reader is left with cards and no sign of which activity or release they belong to.
 

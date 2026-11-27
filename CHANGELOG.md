@@ -13,8 +13,9 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 - **See which stories are ready to start:** Each planned story says whether the stories it depends on have landed.
 - **Give agents the map:** Agents can use the map through an MCP server or an installable skill, and draft a first map for an existing repository from a survey of it.
 - **Take the map into Spreo:** The Export menu has a guide to building a Spreo board from the map.
+- **Keep titles in view:** Activity and release titles stay on screen as you scroll the board.
 
-Nothing needs an upgrade step: existing maps, history files and host code keep working, and everything new is optional. `story-map preview` no longer lists warnings above the board, because the Actions tab shows them.
+Nothing needs an upgrade step: existing maps, history files and host code keep working, and everything new is optional. The board now scrolls in its own box, no taller than the window. A host with a fixed header or a taller footer sets `--esm-board-height` on `.esm-board`, or sets it to `none` to scroll with the page as before. `story-map preview` no longer lists warnings above the board, because the Actions tab shows them.
 
 Hosts that copied the `AGENTS.md` template can copy its new paragraph on `story-map actions`, and its changes on the survey and `story-map confirm`, from `node_modules/auto-story-map/templates/AGENTS.md`. To edit personas in their own app running locally, hosts add a save route with `createStoryMapEditServer`, as [In your own app](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#in-your-own-app) describes.
 
@@ -88,6 +89,16 @@ Hosts that copied the `AGENTS.md` template can copy its new paragraph on `story-
 **For developers**
 
 - The board's **Export** menu has a new item, *Spreo, guide to an interactive board*. It opens a guide, in a new tab, to building an interactive Spreo board from the map through Spreo's MCP server, from ChatGPT, Claude or Claude Code, with a prompt you can copy. Internal viewers only, as for the rest of the menu. See [Spreo](https://github.com/duncan-m/auto-story-map/blob/main/docs/integrations.md#spreo).
+
+### Board
+
+- **Keep activity and release titles in view:** On a map with several releases, the activity titles stay at the top of the board as it scrolls down, each release's name stays beside its lane, and the release column stays on the left as the board scrolls sideways, so every card keeps its activity and release in sight.
+
+**For developers**
+
+- The grid scrolls in its own box, no taller than the window less 7.5rem, so the activity row and the release column stay in view. Set `--esm-board-height` on `.esm-board`, such as `calc(100dvh - 12rem)`, for a fixed header or taller footer, or `none` to scroll with the page as before.
+
+  With `board.js`, each release's name also stays beside its lane and the activity row shrinks to its titles while the board scrolls, staying full size while one of its controls has focus. Permalinks scroll their target clear of the pinned titles. New board.js export `enhanceStoryMapHeadings`. See [Integrate with a product](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#integrate-with-a-product).
 
 ## 0.7.5
 

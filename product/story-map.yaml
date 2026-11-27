@@ -422,11 +422,11 @@ releases:
 
       From 0.7.9, readiness (ESM-139) says what can start now. ESM-142 and ESM-143 stay there.
 
-      From 0.7.7, the skill, MCP server and survey (ESM-116 to ESM-118). They reuse the evidence and claim commands from 0.7.5.
+      From 0.7.7, the skill, MCP server and survey (ESM-116 to ESM-118), reusing 0.7.5's evidence and claims.
 
       The Export menu gains a Spreo guide (ESM-137).
 
-      Also: local persona editing (ESM-146, ESM-147, ESM-154 to ESM-156) and priorities (ESM-158).
+      Also: local persona editing (ESM-146, ESM-147, ESM-154 to ESM-156), priorities (ESM-158) and sticky titles (ESM-157).
 
       Plans: docs/plans/local-triage.md, docs/plans/actions-tab.md, docs/plans/0.8.0-agents-and-adoption.md and docs/plans/visual-dependency-map.md
       Mockups: docs/plans/export-to-external-tools.md#ui-mockup for the Spreo item, and docs/plans/visual-dependency-map.md#ui-mockup for readiness
@@ -992,8 +992,8 @@ stories:
   - id: ESM-157
     title: Keep activity and release titles in view while scrolling
     activity: explore
-    release: v0-8-0
-    status: in-progress
+    release: v0-7-6
+    status: shipped
     priority: must
     jobs:
       - get-oriented
