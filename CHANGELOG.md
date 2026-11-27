@@ -55,6 +55,7 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 - `StoryMapIssue` has a required `rule`, and `StoryMapCheckIssue` adds `help`. A warning's `rule` is its `kind`. The `--format json` `version` stays 1, since the fields are additions.
 - Links go to the repository's own `docs/story-map.md` when it has the heading, otherwise to the guide on GitHub at the installed version's tag. `storyMapRules`, `storyMapRuleIds`, `storyMapRuleHelp`, `storyMapRuleLinker` and `isStoryMapRuleId` are exported, and `getStoryMapActions` takes a `help` option. Action groups gain `rule` and `help`.
 - Text output and annotation titles change, so scripts that compare them exactly should match on `rule` instead.
+- New property tests in `test/audience-edits.property.test.js` generate maps, filters and edits, and check that the customer view and page never show internal work, that `edit`, `add` and the local edit server change only what they name and keep every ID, draft and comment, and that `story-map diff` lists exactly the stories that changed. Set `FC_NUM_RUNS` for a longer run.
 
 ## 0.7.6
 
