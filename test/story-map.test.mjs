@@ -1327,7 +1327,9 @@ test("ESM-122: a story permalink keeps the story on the board whatever the filte
   assert.deepEqual(readStoryMapFilters(new URLSearchParams("story=FINANCE-202&release=finance-follow-up")), { query: undefined, status: undefined, story: "FINANCE-202", release: "finance-follow-up" });
   assert.deepEqual(readStoryMapFilters(new URLSearchParams("story=<script>&release=../x")), { query: undefined, status: undefined });
 
-  const page = (viewer, query) => getStoryMapPage(map, viewer, { searchParams: new URLSearchParams(query) });
+  // A fixed time, so pages built a millisecond apart still compare equal.
+  const now = new Date("2026-11-27T00:00:00Z");
+  const page = (viewer, query) => getStoryMapPage(map, viewer, { now, searchParams: new URLSearchParams(query) });
   // FINANCE-202 is cut, so the default status filter hides it, and the search does not match it.
   const linked = page(engineer, "story=FINANCE-202&q=prices");
   assert.deepEqual(linked.stories.map(story => story.id), ["BUILDER-102", "FINANCE-202"]);
