@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analytics tab mockup</title>
+<!-- Static mockup for docs/plans/delivery-metrics.md (ESM-174). The tab row and toolbar are copied from the real board markup; the Analytics classes are proposed. Numbers are this repository's map and its story-map history file on 27 November 2026, by day, merged view. -->
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { margin: 0; padding: 32px 40px 48px; background: #f4f5fa; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mock-label { margin: 0 0 10px; color: #5046d5; font: 700 .75rem/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+  .mock-note code { white-space: nowrap; }
+  .mock-note { margin: 0 0 18px; max-width: 80ch; color: #52617a; font-size: .875rem; line-height: 1.5; }
+  .mock-callout { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; background: #e2366d; color: #fff; font: 700 .7rem/1 system-ui, sans-serif; letter-spacing: 0; text-transform: none; vertical-align: middle; }
+  .mock-legend { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 24px; margin: 20px 0 0; padding: 0; list-style: none; color: #19223a; font-size: .8125rem; line-height: 1.45; }
+  .mock-legend li { display: flex; gap: 6px; }
+  .mock-legend .mock-callout { margin: 0; }
+
+  /* Proposed for ESM-174 */
+  .esm-analytics { padding: 0 17px 20px; color: var(--esm-ink); }
+  .esm-analytics-coverage { margin: 0 0 16px; color: var(--esm-muted); font-size: .875rem; line-height: 1.5; }
+  .esm-analytics-totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 0 0 18px; }
+  .esm-analytics-total { padding: 12px 14px; border: 1px solid var(--esm-line); border-radius: 10px; background: var(--esm-canvas); }
+  .esm-analytics-total dt { color: var(--esm-muted); font-size: .8125rem; font-weight: 600; }
+  .esm-analytics-total dd { margin: 4px 0 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; }
+  .esm-analytics-total small { display: block; margin-top: 2px; color: var(--esm-faint); font-size: .75rem; font-weight: 500; letter-spacing: 0; }
+  .esm-analytics-chart { display: grid; grid-template-columns: repeat(8, 1fr); align-items: end; gap: 10px; height: 150px; margin: 0 0 6px; padding: 0 4px; border-bottom: 1px solid var(--esm-line); }
+  .esm-analytics-bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; height: 100%; color: var(--esm-muted); font-size: .75rem; font-weight: 600; }
+  .esm-analytics-bar span:last-child { width: 100%; max-width: 46px; border-radius: 6px 6px 0 0; background: var(--esm-accent); }
+  .esm-analytics-axis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin: 0 0 18px; padding: 0 4px; color: var(--esm-faint); font-size: .75rem; text-align: center; }
+  .esm-analytics-table { width: 100%; border-collapse: collapse; font-size: .875rem; font-variant-numeric: tabular-nums; }
+  .esm-analytics-table th, .esm-analytics-table td { padding: 8px 10px; border-bottom: 1px solid var(--esm-line); text-align: right; }
+  .esm-analytics-table th:first-child, .esm-analytics-table td:first-child { text-align: left; }
+  .esm-analytics-table thead th { color: var(--esm-muted); font-size: .8125rem; font-weight: 650; }
+  .esm-analytics-table tfoot td { border-bottom: 0; font-weight: 700; }
+  .esm-analytics-table .esm-empty td { color: var(--esm-faint); }
+  .esm-analytics-cov { display: block; color: var(--esm-faint); font-size: .75rem; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<p class="mock-label">Analytics tab, by day, merged view</p>
+<p class="mock-note">This repository's map and its <code>story-map history</code> file, as the internal board would show them with <code>--history</code>. Customers never see the tab.</p>
+
+<section class="esm-board" data-theme="light">
+  <div class="esm-frame">
+    <nav class="esm-tabs" aria-label="Board views"><a class="esm-tab" href="#">Story map<span class="esm-tab-count"><span aria-hidden="true">109</span></span></a><a class="esm-tab" href="#">Personas<span class="esm-tab-count"><span aria-hidden="true">4</span></span></a><a class="esm-tab" href="#" aria-current="page">Analytics<span class="mock-callout">1</span></a><span class="esm-tabs-end">Internal only. Customers see the story map.</span></nav>
+    <div class="esm-toolbar">
+      <p class="esm-toolbar-label">Delivered<span class="esm-toolbar-count">last 8 days</span></p>
+      <form class="esm-filters" aria-label="Analytics options">
+        <select class="esm-select" aria-label="Period"><option selected>Day</option><option>Week</option><option>Month</option></select>
+        <select class="esm-select" aria-label="Completed when"><option selected>Merged</option><option>Shipped</option></select>
+        <select class="esm-select" aria-label="Chart"><option selected>Chart stories</option><option>Chart points</option><option>Chart tokens</option><option>Chart spend</option></select>
+        <span class="mock-callout">2</span>
+      </form>
+    </div>
+    <div class="esm-analytics">
+      <p class="esm-analytics-coverage">History known from 19 Nov 2026. Points, tokens and spend are each story's values today, not when it was completed. Stories without an estimate or recorded tokens are left out of those totals, not counted as zero.<span class="mock-callout">3</span></p>
+      <dl class="esm-analytics-totals">
+        <div class="esm-analytics-total"><dt>Stories</dt><dd>47</dd></div>
+        <div class="esm-analytics-total"><dt>Points</dt><dd>98<small>28 of 47 stories estimated</small></dd></div>
+        <div class="esm-analytics-total"><dt>Tokens</dt><dd>109.7M<small>recorded for 14 of 47</small></dd></div>
+        <div class="esm-analytics-total"><dt>Spend</dt><dd>$47.42<small>estimated, at API list prices</small></dd></div>
+      </dl>
+      <div class="esm-analytics-chart" aria-hidden="true">
+        <div class="esm-analytics-bar"><span>6</span><span style="height:45px"></span></div>
+        <div class="esm-analytics-bar"><span>7</span><span style="height:53px"></span></div>
+        <div class="esm-analytics-bar"><span>16</span><span style="height:120px"></span></div>
+        <div class="esm-analytics-bar"><span>9</span><span style="height:68px"></span></div>
+        <div class="esm-analytics-bar"><span>0</span><span style="height:0"></span></div>
+        <div class="esm-analytics-bar"><span>0</span><span style="height:0"></span></div>
+        <div class="esm-analytics-bar"><span>8</span><span style="height:60px"></span></div>
+        <div class="esm-analytics-bar"><span>1</span><span style="height:8px"></span></div>
+      </div>
+      <div class="esm-analytics-axis" aria-hidden="true"><span>Fri 20</span><span>Sat 21</span><span>Sun 22</span><span>Mon 23</span><span>Tue 24</span><span>Wed 25</span><span>Thu 26</span><span>Fri 27</span></div>
+      <table class="esm-analytics-table">
+        <caption class="esm-visually-hidden">Stories, points, tokens and spend completed each day</caption>
+        <thead><tr><th scope="col">Day (UTC)</th><th scope="col">Stories</th><th scope="col">Points</th><th scope="col">Tokens</th><th scope="col">Spend<span class="mock-callout">4</span></th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Fri 20 Nov</th><td>6</td><td>—<span class="esm-analytics-cov">0 of 6 estimated</span></td><td>—<span class="esm-analytics-cov">0 of 6 recorded</span></td><td>—</td></tr>
+          <tr><th scope="row">Sat 21 Nov</th><td>7</td><td>—<span class="esm-analytics-cov">0 of 7 estimated</span></td><td>—<span class="esm-analytics-cov">0 of 7 recorded</span></td><td>—</td></tr>
+          <tr><th scope="row">Sun 22 Nov</th><td>16</td><td>28<span class="esm-analytics-cov">10 of 16 estimated</span></td><td>24.8M<span class="esm-analytics-cov">1 of 16 recorded</span></td><td>$8.50</td></tr>
+          <tr><th scope="row">Mon 23 Nov</th><td>9</td><td>35</td><td>33.7M<span class="esm-analytics-cov">4 of 9 recorded</span></td><td>$15.30</td></tr>
+          <tr class="esm-empty"><th scope="row">Tue 24 Nov</th><td>0</td><td>0</td><td>0</td><td>$0.00</td></tr>
+          <tr class="esm-empty"><th scope="row">Wed 25 Nov</th><td>0</td><td>0</td><td>0</td><td>$0.00</td></tr>
+          <tr><th scope="row">Thu 26 Nov</th><td>8</td><td>30</td><td>44.4M</td><td>$20.58</td></tr>
+          <tr><th scope="row">Fri 27 Nov</th><td>1</td><td>5</td><td>6.8M</td><td>$3.04</td></tr>
+        </tbody>
+        <tfoot><tr><td>8 days</td><td>47</td><td>98</td><td>109.7M</td><td>$47.42</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+</section>
+
+<ol class="mock-legend">
+  <li><span class="mock-callout">1</span><span><strong>A third internal tab.</strong> Without a history file it explains how to add one. It never shows on the customer view.</span></li>
+  <li><span class="mock-callout">2</span><span><strong>Period, milestone and chart.</strong> Day, week or month in UTC; merged counts merged and shipped stories, shipped counts shipped only. The chart shows one measure at a time.</span></li>
+  <li><span class="mock-callout">3</span><span><strong>Honest about the data.</strong> It says where the history starts and that values are today's. The full version, ESM-130 and ESM-131, adds values at the time.</span></li>
+  <li><span class="mock-callout">4</span><span><strong>Coverage, not zeros.</strong> A period whose stories have no estimate or tokens shows a dash and how many are missing. Empty days stay in the table.</span></li>
+</ol>
+
+</body>
+</html>
