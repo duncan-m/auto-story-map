@@ -29,6 +29,7 @@ releases:
   "0.7.8":
     agents:
       - Each rule in the AGENTS.md section carries a hidden marker, so later upgrades update the rules you left alone and keep the ones you reworded or added.
+      - Agents ask once whether you want simple or advanced upgrades, and record only the answer a person gives.
     guide:
       - The guide explains how to review your set-up after an upgrade, rule by rule for AGENTS.md, how to apply the changes while keeping your own edits, and what the version markers in these files mean.
   "0.7.7":

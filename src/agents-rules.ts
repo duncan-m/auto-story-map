@@ -33,6 +33,7 @@ export interface AgentsRuleInfo {
 export const agentsRules = {
   "source-of-truth": { form: "full", title: "The map is the source of truth", openings: ["Treat [product/story-map.yaml]"] },
   "populate-first-map": { form: "full", title: "Populate the first map", openings: ["When `product/story-map.yaml` is missing"] },
+  "choose-upgrade-mode": { form: "full", title: "Ask for simple or advanced upgrades", openings: ["Before you run `npx --no-install story-map upgrade`"] },
   "choose-delivery-plans": { form: "full", title: "Ask whether to use delivery plans", openings: ["If `settings.plans` is not set in `product/story-map.yaml`"], check: "choose-delivery-plans" },
   "write-delivery-plans": { form: "full", title: "Write a delivery plan", openings: ["When `settings.plans` names a folder"] },
   "link-mockups": { form: "full", title: "Link mockups and designs", openings: ["When a plan has a mockup"] },
