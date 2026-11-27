@@ -117,3 +117,15 @@ test("ESM-746: preview exits 1 for a missing map and 2 for a bad port", () => {
   assert.match(missing.stderr, /no map here/);
   assert.equal(spawnSync(process.execPath, [cli, "preview", "--port", "http"]).status, 2);
 });
+
+test("ESM-128: preview leaves a valid map's warnings to the Actions tab, with each action's line", async t => {
+  // A blocked story with no reason is a warning, not an error.
+  const file = await scratchMap(t, sample.replace("    release: builder-mvp\n    status: in-progress\n", "    release: builder-mvp\n    status: blocked\n"));
+  const base = await startPreview(t, file);
+  const board = await get(`${base}/story-map`);
+  assert.equal(board.status, 200);
+  assert.doesNotMatch(board.body, /<section class="preview-issues|Validation warnings|The map is still valid|The map is not valid/);
+  const actions = await get(`${base}/story-map?view=actions&action-kind=missing-status-reason`);
+  assert.match(actions.body, /Say why a story stopped/);
+  assert.match(actions.body, /<td class="esm-action-line">\d+<\/td>/);
+});

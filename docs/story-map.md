@@ -991,7 +991,7 @@ See your map as a board before you add the board to your product. From the repos
 npx --no-install story-map preview
 ```
 
-Open the address it prints, `http://127.0.0.1:4173/story-map`. **Internal** shows what your team will see, and **Signed-in customer** shows the customer roadmap, or a note when the map is `visibility: internal`. The preview reads the map on every request, so an edit shows when you reload. When the map is not valid, the page lists the errors instead of the board, and an internal view lists any warnings above it.
+Open the address it prints, `http://127.0.0.1:4173/story-map`. **Internal** shows what your team will see, and **Signed-in customer** shows the customer roadmap, or a note when the map is `visibility: internal`. The preview reads the map on every request, so an edit shows when you reload. When the map is not valid, the page lists the errors instead of the board. Warnings are on the board's [Actions tab](#see-what-the-map-is-waiting-for).
 
 - Pass the map's path when it is not `product/story-map.yaml`, `--port <n>` for another port, and `--history <file>` and `--tests-index <file>` for dates, changes and tagged tests.
 - Add `--source-base-url https://github.com/<owner>/<repo>/blob/main/` to turn repository-relative sources into links.

@@ -51,8 +51,7 @@ body { margin: 0; font: 1rem system-ui, -apple-system, "Segoe UI", sans-serif; b
 .preview-bar a[aria-current="page"] { border-color: #dfe4ed; color: #4b43a8; }
 .preview-bar a:focus-visible { outline: 2px solid #5046d5; outline-offset: 2px; }
 main { max-width: 1700px; margin: 0 auto; padding: 28px clamp(1rem, 4vw, 3rem) 40px; }
-.preview-issues { margin: 0 0 1.5rem; padding: .9rem 1.1rem; border: 1px solid #e6c36a; border-radius: 10px; background: #fff8e6; }
-.preview-issues.error { border-color: #e39a9a; background: #fdeeee; }
+.preview-issues { margin: 0 0 1.5rem; padding: .9rem 1.1rem; border: 1px solid #e39a9a; border-radius: 10px; background: #fdeeee; }
 .preview-issues h2 { margin: 0 0 .5rem; font-size: 1rem; }
 .preview-issues ul { margin: 0; padding-left: 1.2rem; }
 .preview-issues code { font-size: .85em; }
@@ -61,32 +60,27 @@ main { max-width: 1700px; margin: 0 auto; padding: 28px clamp(1rem, 4vw, 3rem) 4
   .preview-bar { background: #181d2a; border-color: #2b3243; }
   .preview-bar a { color: #aab4c8; }
   .preview-bar a[aria-current="page"] { border-color: #2b3243; color: #b9b3ff; }
-  .preview-issues { background: #2a2411; border-color: #6b5a24; }
-  .preview-issues.error { background: #2c1616; border-color: #7a3434; }
+  .preview-issues { background: #2c1616; border-color: #7a3434; }
 }`;
 
-function Issues({ issues, kind }: { issues: StoryMapCheckIssue[]; kind: "error" | "warning" }) {
-  const shown = issues.filter(issue => issue.severity === kind);
-  if (!shown.length) return null;
-  const title = kind === "error"
-    ? `The map is not valid, so it cannot be shown. Fix ${shown.length === 1 ? "this error" : `these ${shown.length} errors`} and reload.`
-    : `${shown.length} ${shown.length === 1 ? "warning" : "warnings"}. The map is still valid.`;
-  const list = (
-    <ul>
-      {shown.map((issue, index) => (
-        <li key={index}>
-          {issue.line ? <code>{`line ${issue.line}${issue.column ? `:${issue.column}` : ""}`}</code> : null}
-          {issue.line ? " " : null}
-          {issue.target ? <code>{issue.target}</code> : null}
-          {issue.target ? ": " : null}
-          {issue.message}
-        </li>
-      ))}
-    </ul>
-  );
+/** The errors that stop an invalid map from showing. Warnings are on the board's Actions tab. */
+function Issues({ issues }: { issues: StoryMapCheckIssue[] }) {
+  const errors = issues.filter(issue => issue.severity === "error");
+  if (!errors.length) return null;
   return (
-    <section className={`preview-issues ${kind}`} aria-label={kind === "error" ? "Validation errors" : "Validation warnings"}>
-      {kind === "error" ? <><h2>{title}</h2>{list}</> : <details><summary>{title}</summary>{list}</details>}
+    <section className="preview-issues" aria-label="Validation errors">
+      <h2>{`The map is not valid, so it cannot be shown. Fix ${errors.length === 1 ? "this error" : `these ${errors.length} errors`} and reload.`}</h2>
+      <ul>
+        {errors.map((issue, index) => (
+          <li key={index}>
+            {issue.line ? <code>{`line ${issue.line}${issue.column ? `:${issue.column}` : ""}`}</code> : null}
+            {issue.line ? " " : null}
+            {issue.target ? <code>{issue.target}</code> : null}
+            {issue.target ? ": " : null}
+            {issue.message}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -192,7 +186,7 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
         response.writeHead(422, { ...headers, "Content-Type": "application/json; charset=utf-8" }).end(JSON.stringify({ error: "The map is not valid.", issues: checked.issues }));
         return;
       }
-      const html = page("Story map", view, options.map, <Issues issues={checked.issues} kind="error" />);
+      const html = page("Story map", view, options.map, <Issues issues={checked.issues} />);
       response.writeHead(200, { ...headers, "Content-Type": "text/html; charset=utf-8" }).end(html);
       return;
     }
@@ -233,7 +227,6 @@ export function createStoryMapPreviewServer(options: StoryMapPreviewOptions): Se
     }
     const body = (
       <>
-        {internal ? <Issues issues={checked.issues} kind="warning" /> : null}
         {map
           ? <StoryMapBoard map={map} sourceBaseUrl={options.sourceBaseUrl} preservedParams={{ view }} exportHref={internal ? "/story-map/export?view=internal" : undefined} personaEditing={internal ? editor?.editing(source) ?? false : undefined} storyEditing={internal ? editor?.editing(source) ?? false : undefined} />
           : <p>{message}</p>}
