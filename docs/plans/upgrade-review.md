@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 is merged, and ESM-167 to ESM-173 are planned. Decisions A to E are made. None has an agreed estimate yet.
+Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 and ESM-167 are merged, and ESM-168 to ESM-173 are planned. Decisions A to E are made. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 
@@ -127,6 +127,8 @@ As built, the guide's first line is `<!-- auto-story-map 0.7.8 sha256:… -->` a
 - **Workflow steps** are compared by the commands they run, not line by line, since hosts change job names, Node versions and triggers. A missing step, such as `pr-check`, is reported as an addition.
 - **Output:** text by default. `--format markdown` gives a PR description. `--format json` gives agents each part with its `state`, `from`, `change`, `diff` and recommendation.
 - **Diffs:** plain two-way diffs between the host's copy and this version's template, until ESM-173.
+
+As built, the report is `upgradeReport()` in `src/upgrade.ts`, and each part is an `UpgradePart` with `part`, `kind`, `state`, `from`, `change`, `recommendation`, and `additions`, `diff`, `value` and `version` where they apply. A chosen setting has the state `chosen`. Edited means the template a part came from is still this version's, so nothing is offered. A part with an unknown origin, and a skill that differs, count as edited and outdated, since an edit cannot be told apart from an old copy. `isUpgradePartBehind(part)` is the check ESM-172's reminder can share. The plan leaves the MCP server out, so the command is CLI only. See [Review the set-up after an upgrade](../story-map.md#review-the-set-up-after-an-upgrade).
 
 ## 3. Explain the changes in plain words
 

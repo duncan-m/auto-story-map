@@ -89,7 +89,7 @@ async function destination(realRoot: string, path: string) {
 }
 
 /** The host's first top-level test folder, as a real folder rather than a link, or undefined. */
-async function testFolder(realRoot: string) {
+export async function testFolder(realRoot: string) {
   for (const name of ["test", "tests", "__tests__"]) {
     const info = await lstat(join(realRoot, name)).catch(() => null);
     if (info?.isDirectory()) return name;

@@ -16,11 +16,13 @@ import { ArgumentError, type Command } from "./commands/shared.js";
 import tests from "./commands/tests.js";
 import tokens from "./commands/tokens.js";
 import survey from "./commands/survey.js";
+import upgrade from "./commands/upgrade.js";
 import validate from "./commands/validate.js";
 import { defaultExportMaxStories } from "./export.js";
 
 const usage = `Usage:
   story-map init [--no-ci] [--skill] [--dir <path>]
+  story-map upgrade [--format text|markdown|json] [--diff] [--root <path>] [--map <path>]
   story-map validate [--format text|github|json] [--strict] [--check-sources] [--plans <path>] [--tests <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
@@ -56,6 +58,24 @@ init
 
   --no-ci          Skip the GitHub Actions workflow.
   --dir <path>     Repository root. Defaults to the current directory.
+
+upgrade
+  Reports the state of each part of the set-up, compared with this version of
+  the package, and writes nothing: the story map section of AGENTS.md, the
+  guide, the CI workflow, the story map skill, and the choices kept in the
+  map's settings, delivery plans and the story ID policy. Each part is not
+  added, current, outdated (unedited, from an earlier version), edited,
+  edited and outdated, not chosen or chosen, with the version it came from
+  and what this version changes. Workflow steps are compared by the commands
+  they run, so a missing step, such as story-map diff, is an addition.
+
+  --format markdown  Print a table for a pull request, with each diff folded.
+  --format json      Print each part's state, from, change, recommendation,
+                     additions and diff, for agents and scripts.
+  --diff             Also print each outdated or edited part's diff.
+  --root <path>      Repository root. Defaults to the current directory.
+  --map <path>       Map whose settings hold the choices, relative to the
+                     root. Defaults to product/story-map.yaml.
 
 validate
   Errors make the map invalid and exit 1. Warnings, such as a blocked story
@@ -470,7 +490,7 @@ mcp
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, actions, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
+const commands: Record<string, Command<any>> = { init, upgrade, validate, diff, history, tests, export: exportMap, story, stories, releases, actions, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {
