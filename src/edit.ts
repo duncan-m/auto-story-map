@@ -128,7 +128,7 @@ const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusRe
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 const personaKeyOrder = ["id", "title", "summary", "context", "jobs", "customer"];
 const mapKeyOrder = ["version", "id", "title", "summary", "visibility", "customer", "settings", "personas", "activities", "releases", "stories"];
-const settingsKeyOrder = ["stalledAfterWeeks", "plans"];
+const settingsKeyOrder = ["stalledAfterWeeks", "plans", "storyIds"];
 const contextKeyOrder = ["success", "usesToday", "constraints", "draft"];
 const jobKeyOrder = ["id", "situation", "motivation", "outcome", "draft", "steps"];
 
@@ -283,19 +283,32 @@ function splitStoryId(id: string): SplitId | null {
   return start === id.length ? null : [id, id.slice(0, start), id.slice(start)];
 }
 
+/** How `add` chooses an ID: `next` takes one after the highest number, `lowest-free` the lowest unused one. */
+export type StoryIdScheme = "next" | "lowest-free";
+
 /**
- * The next number in sequence for the map: one after the highest number with the map's most used prefix, whatever release the story goes in.
- * Cut stories count, so an ID is never handed out twice. `release` is no longer used and is kept so existing callers still work.
+ * The ID `add` gives a new story, using the map's most used prefix, whatever release the story goes in. Cut stories count, so an ID is never handed out twice.
+ * `next`, the default, takes one after the highest number. `lowest-free` takes the lowest unused number above the lowest one in use, such as `ESM-103` in a
+ * map with ESM-101, ESM-102 and ESM-104. `release` is no longer used and is kept so existing callers still work.
  */
-export function nextStoryId(stories: readonly { id: string; release?: string }[], _release?: string): string {
+export function nextStoryId(stories: readonly { id: string; release?: string }[], _release?: string, scheme: StoryIdScheme = "next"): string {
   const all = stories.map(story => splitStoryId(story.id)).filter(Boolean) as SplitId[];
   if (!all.length) throw new StoryMapEditError("The map has no numbered story IDs to follow, so choose one with --id.");
-  // The most used prefix, so a map with one stray ID still follows its own scheme.
+  // The most used prefix, so a map with one stray ID still follows its own scheme. A tie goes to the prefix that comes first in the map.
   const counts = new Map<string, number>();
   for (const [, prefix] of all) counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
   const prefix = [...counts].sort((a, b) => b[1] - a[1])[0][0];
   const numbered = all.filter(match => match[1] === prefix);
-  const number = Math.max(...numbered.map(match => Number(match[2]))) + 1;
+  const numbers = numbered.map(match => Number(match[2]));
+  let number: number;
+  if (scheme === "lowest-free") {
+    const used = new Set(numbers);
+    number = Math.min(...numbers);
+    if (!Number.isSafeInteger(number)) throw new StoryMapEditError(`The ${prefix} numbers are too large to count, so choose an ID with --id.`);
+    while (used.has(number)) number++;
+  } else {
+    number = Math.max(...numbers) + 1;
+  }
   return `${prefix}${String(number).padStart(numbered[0][2].length, "0")}`;
 }
 
@@ -520,7 +533,7 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
     }
 
     if (operation.op === "add") {
-      const id = operation.id ?? nextStoryId(intended.stories);
+      const id = operation.id ?? nextStoryId(intended.stories, undefined, (intended.settings as Raw | undefined)?.storyIds === "lowest-free" ? "lowest-free" : "next");
       if (intended.stories.some(story => story.id === id)) throw new StoryMapEditError(`${id} is already in the map. IDs are never reused, so choose another or leave out --id.`, index);
       const status = operation.status ?? "planned";
       if ((status === "blocked" || status === "cut") !== !!operation.reason) {

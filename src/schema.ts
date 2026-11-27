@@ -179,6 +179,8 @@ function formatSchemas(strict: boolean) {
       z.literal(false),
     ]).optional()
       .describe("Whether this product keeps delivery plans: the repository-relative folder they go in, such as docs/plans, or false for no plans. Leave it out until a person has chosen, and validate asks for the choice. Set it with `story-map settings --plans`. See Write a delivery plan in docs/story-map.md."),
+    storyIds: z.enum(["next", "lowest-free"]).optional()
+      .describe("How `story-map add` numbers a new story when --id is left out. next, the default, takes one after the highest number. lowest-free takes the lowest unused number above the lowest one in use. Both use the prefix most stories have and count cut stories, so an ID is never reused."),
   }).describe("Optional settings for everyone who views the map. Hosts can override them.");
 
   const map = object({
