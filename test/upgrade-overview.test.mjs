@@ -183,8 +183,9 @@ test("ESM-168: story-map upgrade opens with the overview in text, Markdown and J
   const shipped = await loadSetupChanges();
   const [olderVersion] = Object.keys(shipped.releases).filter(version => shipped.releases[version].guide).sort(compare);
   const guide = stampSetupFile("guide", "# Using the story map\n\nAn old guide.\n", olderVersion);
-  const root = await host(t, { "docs/story-map.md": guide });
+  const root = await host(t);
   assert.equal(run(root, "init", "--dir", root).status, 0);
+  await writeFile(join(root, "docs/story-map.md"), guide);
   const report = await upgradeReport({ root, known: empty });
   assert.equal(report.overview.kind, "upgrade");
   assert.equal(report.overview.heading, `What changes for you since ${olderVersion}`);

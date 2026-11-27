@@ -9,7 +9,19 @@ export interface InitOptions {
   ci?: boolean;
   /** Write the rules as a skill, with a short pointer in `AGENTS.md`. Defaults to false. */
   skill?: boolean;
+  /**
+   * Only these parts, besides the map, which is always written when it is
+   * missing. Left out, every part is written: the `AGENTS.md` section, the
+   * guide, the workflow unless `ci` is false, and the skill with `skill`.
+   * Naming `skill` writes the skill and the short pointer form of the section.
+   */
+  parts?: readonly InitPart[];
 }
+
+/** The parts `init` can write besides the map, as the upgrade review names them. */
+export type InitPart = "agents" | "guide" | "workflow" | "skill";
+
+export const initParts: readonly InitPart[] = ["agents", "guide", "workflow", "skill"];
 
 export interface InitStep {
   /** Path relative to the host repository root. */
@@ -188,6 +200,8 @@ export function describeProduct(name: string) {
  */
 export async function initStoryMap(root: string, options: InitOptions = {}): Promise<InitStep[]> {
   const steps: InitStep[] = [];
+  const wants = (part: InitPart) => !options.parts || options.parts.includes(part);
+  const useSkill = !!options.skill || !!options.parts?.includes("skill");
   const realRoot = await realpath(root);
   const at = (path: string) => destination(realRoot, path);
 
@@ -203,7 +217,9 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
 
   const guidePath = "docs/story-map.md";
   const guide = await readFile(new URL("docs/story-map.md", packageRoot), "utf8");
-  if (!(await exists(await at(guidePath)))) {
+  if (!wants("guide")) {
+    // Left out by the person.
+  } else if (!(await exists(await at(guidePath)))) {
     await writeNew(realRoot, guidePath, stampSetupFile("guide", guide, storyMapVersion));
     steps.push({ path: guidePath, action: "created" });
   } else if (setupBody("guide", await readFile(await at(guidePath), "utf8")) === setupBody("guide", guide)) {
@@ -216,7 +232,7 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     });
   }
 
-  if (options.skill) {
+  if (useSkill) {
     const skill = await skillFile();
     if (!(await exists(await at(skillPath)))) {
       await writeNew(realRoot, skillPath, skill);
@@ -229,8 +245,10 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
   }
 
   const agentsPath = "AGENTS.md";
-  const agents = stampSetupFile("agents", await template(options.skill ? "AGENTS-skill.md" : "AGENTS.md"), storyMapVersion);
-  if (!(await exists(await at(agentsPath)))) {
+  const agents = stampSetupFile("agents", await template(useSkill ? "AGENTS-skill.md" : "AGENTS.md"), storyMapVersion);
+  if (!wants("agents")) {
+    // Left out by the person.
+  } else if (!(await exists(await at(agentsPath)))) {
     await writeNew(realRoot, agentsPath, agents);
     steps.push({ path: agentsPath, action: "created" });
   } else if (await appendGuidance(realRoot, agentsPath, agents)) {
@@ -243,11 +261,11 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     steps.push({
       path: agentsPath,
       action: "skipped",
-      reason: `has the story map section, but it differs from this version's; compare it with node_modules/auto-story-map/templates/${options.skill ? "AGENTS-skill.md" : "AGENTS.md"}`,
+      reason: `has the story map section, but it differs from this version's; compare it with node_modules/auto-story-map/templates/${useSkill ? "AGENTS-skill.md" : "AGENTS.md"}`,
     });
   }
 
-  if (options.ci !== false) {
+  if (options.ci !== false && wants("workflow")) {
     const workflowPath = ".github/workflows/story-map.yml";
     if (await exists(await at(workflowPath))) {
       steps.push({ path: workflowPath, action: "skipped", reason: "already exists" });

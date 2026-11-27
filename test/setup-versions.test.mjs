@@ -62,11 +62,12 @@ test("ESM-166: init records the package version and template hash in each part",
     assert.deepEqual(version.knownVersions, []);
   }
 
-  // Running init again leaves every stamped part alone.
+  // Running init again hands over to the upgrade review, which finds every stamped part current and writes nothing.
   const again = init(root);
   assert.equal(again.status, 0);
-  assert.match(again.stdout, /skipped  AGENTS\.md \(already has the story map section\)/);
-  assert.match(again.stdout, /skipped  docs\/story-map\.md \(already up to date\)/);
+  assert.match(again.stdout, /^This repository is already set up, so init hands over to story-map upgrade\./);
+  assert.match(again.stdout, /^AGENTS\.md section +current, from /m);
+  assert.match(again.stdout, /^Guide +current, from /m);
   assert.equal(await read(root, "AGENTS.md"), agents);
   assert.equal(await read(root, "docs/story-map.md"), guide);
 });
@@ -145,8 +146,9 @@ test("ESM-166: init and validate keep working for hosts set up without versions"
 
   const run = init(root, "--no-ci");
   assert.equal(run.status, 0, run.stderr);
-  assert.match(run.stdout, /skipped  AGENTS\.md \(already has the story map section\)/);
-  assert.match(run.stdout, /skipped  docs\/story-map\.md \(already up to date\)/);
+  assert.match(run.stdout, /hands over to story-map upgrade/);
+  assert.match(run.stdout, /^AGENTS\.md section +current/m);
+  assert.match(run.stdout, /^Guide +current/m);
   assert.equal(await read(root, "AGENTS.md"), `# House rules\n\n${agents}`);
   assert.equal(await read(root, "docs/story-map.md"), guide);
 
@@ -155,7 +157,8 @@ test("ESM-166: init and validate keep working for hosts set up without versions"
 
   // An edited, unmarked section is still reported, not replaced.
   await writeFile(join(root, "AGENTS.md"), `# House rules\n\n${agents.replace("## Story map\n", "## Story map\n\nOur own rule.\n")}`);
-  assert.match(init(root, "--no-ci").stdout, /skipped  AGENTS\.md \(has the story map section, but it differs/);
+  assert.match(init(root, "--no-ci").stdout, /^AGENTS\.md section +edited/m);
+  assert.match(await read(root, "AGENTS.md"), /Our own rule\./);
 
   // A stamped guide passes the same checks, heading links included.
   const stamped = await host(t);

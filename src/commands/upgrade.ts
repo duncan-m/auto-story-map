@@ -225,7 +225,7 @@ export default defineCommand({
 export type UpgradeAsk = (prompt: string) => Promise<string>;
 
 /** Runs `use` with a question at the terminal, writing the prompts to standard error so standard output stays the report. */
-async function withTerminal<T>(use: (ask: UpgradeAsk) => Promise<T>): Promise<T> {
+export async function withTerminal<T>(use: (ask: UpgradeAsk) => Promise<T>): Promise<T> {
   const lines = createInterface({ input: process.stdin, output: process.stderr });
   try {
     return await use(prompt => lines.question(prompt));
@@ -296,7 +296,7 @@ async function runWalkThrough(options: UpgradeOptions) {
 }
 
 /** True when a person is at a terminal to answer questions, and the output is for them. */
-const atTerminal = (options: UpgradeOptions) => options.format === "text" && !!process.stdin.isTTY && !!process.stdout.isTTY;
+export const atTerminal = (options: { format: string }) => options.format === "text" && !!process.stdin.isTTY && !!process.stdout.isTTY;
 
 /** True when a person is at the terminal and no --format asks for output for a program, so the review can ask them. */
 const interactive = (options: UpgradeOptions) => !options.formatGiven && atTerminal(options);

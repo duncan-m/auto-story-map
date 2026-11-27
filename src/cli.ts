@@ -22,7 +22,7 @@ import validate from "./commands/validate.js";
 import { defaultExportMaxStories } from "./export.js";
 
 const usage = `Usage:
-  story-map init [--no-ci] [--skill] [--dir <path>]
+  story-map init [--no-ci] [--skill] [--dir <path>] [--mode simple|advanced] [--apply <parts>] [--plans <folder>|off] [--story-ids next|lowest-free]
   story-map upgrade [--format text|markdown|json] [--diff] [--root <path>] [--map <path>] [--mode simple|advanced] [--apply <parts>] [--plans <folder>|off] [--story-ids next|lowest-free] [--write]
   story-map validate [--format text|github|json] [--strict] [--check-sources] [--plans <path>] [--tests <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
@@ -52,14 +52,29 @@ const usage = `Usage:
   story-map help [<command>]
 
 init
-  Sets up a host repository: a starter product/story-map.yaml, the story map
-  guide in docs/story-map.md, a story map section in AGENTS.md and a GitHub
-  Actions workflow that validates the map. Existing files are never overwritten.
-  --skill writes the rules to .claude/skills/story-map/SKILL.md instead, with a
-  short pointer to it in AGENTS.md.
+  Sets up a host repository. It prints how Auto Story Map works and the list
+  of parts, then writes a starter product/story-map.yaml and the parts: the
+  story map guide in docs/story-map.md, a story map section in AGENTS.md and a
+  GitHub Actions workflow that validates the map. Existing files are never
+  overwritten. --skill writes the rules to .claude/skills/story-map/SKILL.md
+  instead, with a short pointer to it in AGENTS.md.
 
-  --no-ci          Skip the GitHub Actions workflow.
-  --dir <path>     Repository root. Defaults to the current directory.
+  Simple mode, the default, adds the recommended set: every part. Advanced
+  mode adds only the parts you choose with --apply, or asks at a terminal.
+  The product choices, delivery plans and the story ID policy, are asked at
+  a terminal, or listed for the person to answer with --plans and
+  --story-ids. A repository that is already set up is handed over to
+  story-map upgrade, which reports what this version changes and writes
+  nothing until you run it with --write.
+
+  --no-ci            Skip the GitHub Actions workflow.
+  --dir <path>       Repository root. Defaults to the current directory.
+  --mode <mode>      simple or advanced. Defaults to the map's
+                     settings.upgrade, or simple.
+  --apply <parts>    Add only these parts: agents, guide, workflow or skill,
+                     separated by commas. Implies advanced.
+  --plans <folder>|off   Record the person's answer on delivery plans.
+  --story-ids next|lowest-free   Record the person's story ID policy.
 
 upgrade
   Reports the state of each part of the set-up, compared with this version of
