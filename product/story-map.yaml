@@ -2366,6 +2366,8 @@ stories:
     activity: review
     release: v0-7-7
     status: merged
+    tokens: 3013457
+    estimatedCostUsd: 1.6
     jobs:
       - update-the-map
     personas:
