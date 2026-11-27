@@ -2068,7 +2068,9 @@ stories:
     title: Give each validation issue a rule and a link to the guide
     activity: review
     release: v0-7-7
-    status: planned
+    status: merged
+    tokens: 26329848
+    estimatedCostUsd: 11.88
     jobs:
       - update-the-map
     personas:

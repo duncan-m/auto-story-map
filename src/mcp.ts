@@ -207,7 +207,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("validate_map", {
     title: "Validate the map",
-    description: "Validates the map, as story-map validate --format json does, with every issue's severity, line, column, YAML path and message. Run it after an edit and before opening a pull request.",
+    description: "Validates the map, as story-map validate --format json does, with every issue's severity, line, column, YAML path, message, rule ID and help link to the guide section that explains the rule. Run it after an edit and before opening a pull request.",
     inputSchema: {
       map: mapField,
       checkSources: z.boolean().optional().describe("Also check that repository-relative sources exist and that Markdown #heading fragments match a heading."),

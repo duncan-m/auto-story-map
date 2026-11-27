@@ -1,3 +1,4 @@
+import { storyMapRuleHelp, type StoryMapRuleId } from "./rules.js";
 import { storyMapWarnings, storyMapWarningKinds, type LoadedStoryMap, type StoryMapDocument, type StoryMapWarning, type StoryMapWarningKind } from "./schema.js";
 import type { StoryMapTests } from "./tests-index.js";
 
@@ -144,6 +145,10 @@ export interface StoryMapAction {
 /** The actions of one kind, with what the tab says about them. */
 export interface StoryMapActionGroup extends StoryMapActionKindInfo {
   kind: StoryMapWarningKind;
+  /** The validate rule behind these actions, the same as `kind`. */
+  rule: StoryMapRuleId;
+  /** The guide section that explains the rule. See `StoryMapActionOptions.help`. */
+  help: string;
   actions: StoryMapAction[];
 }
 
@@ -152,6 +157,12 @@ export interface StoryMapActionOptions {
   tests?: StoryMapTests | null;
   /** Finds the line of a path, such as `LoadedStoryMap.locate`, so each action can say where it is. */
   locate?: LoadedStoryMap["locate"];
+  /**
+   * Links a rule to the guide section that explains it. Defaults to the guide on GitHub at the
+   * installed version's tag, which works on a board anywhere. `story-map actions` passes
+   * `storyMapRuleLinker`, so links go to the repository's own copy when it has the heading.
+   */
+  help?: (rule: StoryMapRuleId) => string;
 }
 
 /**
@@ -165,6 +176,7 @@ export function untestedStoryWarnings(map: StoryMapDocument, tagged: ReadonlySet
     return [{
       severity: "warning",
       kind: "story-without-tests",
+      rule: "story-without-tests",
       path: ["stories", index, "status"],
       itemId: story.id,
       message: `No tests are tagged ${story.id}. Put the story ID in the name of each test that covers it.`,
@@ -266,7 +278,7 @@ export function getStoryMapActions(map: StoryMapDocument, options: StoryMapActio
   });
   return storyMapActionKindOrder.flatMap(kind => {
     const list = actions.filter(({ action }) => action.kind === kind).map(({ action }) => action);
-    return list.length ? [{ kind, ...storyMapActionKinds[kind], actions: list }] : [];
+    return list.length ? [{ kind, ...storyMapActionKinds[kind], rule: kind, help: (options.help ?? storyMapRuleHelp)(kind), actions: list }] : [];
   });
 }
 

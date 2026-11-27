@@ -750,6 +750,7 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-action-table .esm-action-item a:hover { color: var(--esm-accent-ink); text-decoration-color: currentColor; }
 .esm-action-table .esm-action-release { display: block; margin-top: 3px; color: var(--esm-muted); font-size: .75rem; font-weight: 500; }
 .esm-action-message { color: var(--esm-muted); line-height: 1.5; overflow-wrap: anywhere; }
+.esm-action-rule { display: block; width: fit-content; margin-top: 2px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .75rem; }
 .esm-action-table .esm-action-line { width: 1%; color: var(--esm-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .esm-action-line a { color: var(--esm-muted); }
 .esm-action-select { display: none; width: 1%; }
