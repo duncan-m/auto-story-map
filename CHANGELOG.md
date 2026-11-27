@@ -5,6 +5,7 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 ## Unreleased
 
 - **Tag a describe block for all its tests:** A story ID at the start of a `describe` or `suite` name now links every test inside it, including tests in nested blocks, so renaming a test no longer unlinks it from its story. A test that names its own story inside a tagged block counts for both. This applies to `story-map tests`, `validate --tests`, `story-map evidence` and `story-map actions`. The story panel lists those tests under the story, marked “Covered by its group”, and the tests index marks the IDs each test has from its block in a new optional `inheritedIds` field, which older boards ignore. An unknown ID in a block's name is reported once, at the block. Internal viewers only. See [Link tests to stories](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-tests-to-stories).
+- **Fill gaps in story IDs:** With `settings.storyIds: lowest-free` in the map, `story-map add` takes the lowest unused number in the map's main prefix, counting cut stories, instead of one after the highest. Maps without the setting number stories as before. `story-map diff` lists a change to it under **Settings**, and `nextStoryId` takes the scheme as a new optional third argument. See [Change the map from the command line](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#change-the-map-from-the-command-line).
 
 ### Delivery plans for host products
 
