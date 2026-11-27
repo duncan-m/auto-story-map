@@ -5,7 +5,7 @@ import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import { storyReadinessLabels, storyReadinessText } from "./readiness.js";
 import { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
-import { filterStoryMapActions, countStoryMapActions, storyMapActionKinds, type StoryMapAction, type StoryMapActionFilter, type StoryMapActionGroup } from "./actions.js";
+import { filterStoryMapActions, countStoryMapActions, storyMapActionItemTypes, storyMapActionKinds, type StoryMapAction, type StoryMapActionFilter, type StoryMapActionGroup } from "./actions.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryDependency, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
@@ -1882,6 +1882,7 @@ function actionsHref(filter: NonNullable<StoryMapView["filter"]>, preservedParam
   const params = boardParams(filter, preservedParams);
   params.set("view", "actions");
   if (actions.kind) params.set("action-kind", actions.kind);
+  if (actions.itemType) params.set("action-item-type", actions.itemType);
   if (actions.release) params.set("action-release", actions.release);
   if (actions.item) params.set("action-item", actions.item);
   if (actions.needsPerson) params.set("needs-person", "1");
@@ -1943,6 +1944,10 @@ function ActionKindBadge({ group }: { group: StoryMapActionGroup }) {
   return <span className="esm-kind" data-category={group.category} title={group.why}>{group.title}</span>;
 }
 
+/** What the Category column calls each kind of item. */
+const itemTypeLabels: Record<StoryMapAction["item"]["type"], string> = { persona: "Persona", story: "Story", release: "Release", map: "Map" };
+const itemTypePlurals: Record<StoryMapAction["item"]["type"], string> = { persona: "Personas", story: "Stories", release: "Releases", map: "Whole map" };
+
 /** One row of the Actions table: an action and the kind it belongs to. */
 interface ActionRow {
   group: StoryMapActionGroup;
@@ -1983,9 +1988,10 @@ function ActionTable({ rows, links, releaseTitles, tableId }: {
                   <input type="checkbox" data-esm-select-all="" aria-label="Choose every row with a command" />
                 </th>
               )}
-              <th scope="col" className="esm-action-kind">Action</th>
+              <th scope="col" className="esm-action-type">Category</th>
               <th scope="col">Item</th>
               <th scope="col" className="esm-action-message">Problem</th>
+              <th scope="col" className="esm-action-kind">Action</th>
               {showLine && <th scope="col" className="esm-action-line">Line</th>}
               {commands > 0 && <th scope="col" className="esm-action-copy-cell"><span className="esm-visually-hidden">Copy command</span></th>}
             </tr>
@@ -2001,17 +2007,18 @@ function ActionTable({ rows, links, releaseTitles, tableId }: {
                       {action.command && <input type="checkbox" data-esm-select={action.command} aria-label={`Choose ${group.title}: ${item?.label ?? ""}`} />}
                     </td>
                   )}
+                  <td className="esm-action-type"><span className="esm-item-type" data-item-type={action.item.type}>{itemTypeLabels[action.item.type]}</span></td>
+                  <th scope="row" className="esm-action-item">
+                    {item && (item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>)}
+                    {release && <span className="esm-action-release">{release}</span>}
+                  </th>
+                  <td className="esm-action-message">{action.message}</td>
                   <td className="esm-action-kind">
                     <div className="esm-action-kind-stack">
                       <ActionKindBadge group={group} />
                       <WhoActs needsPerson={action.needsPerson} />
                     </div>
                   </td>
-                  <th scope="row" className="esm-action-item">
-                    {item && (item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>)}
-                    {release && <span className="esm-action-release">{release}</span>}
-                  </th>
-                  <td className="esm-action-message">{action.message}</td>
                   {showLine && <td className="esm-action-line"><ActionLine action={action} links={links} /></td>}
                   {commands > 0 && <td className="esm-action-copy-cell">{action.command && <CopyCommandButton command={action.command} label={`${group.title}, ${item?.label ?? ""}`} />}</td>}
                 </tr>
@@ -2072,6 +2079,7 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
     return filterStoryMapActions(groups, rest);
   };
   const kindGroups = otherThan("kind");
+  const typeGroups = otherThan("itemType");
   const releaseIds = new Set(otherThan("release").flatMap(group => group.actions.flatMap(action => action.release ? [action.release] : [])));
   const releaseTitles = new Map(releases.map(release => [release.id, release.title]));
   const releaseTitle = (id: string) => releaseTitles.get(id) ?? id;
@@ -2096,10 +2104,24 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
       </div>
       {total > 0 && (
         <nav className="esm-actions-filters" aria-label="Filter actions">
-          <ul className="esm-kind-chips" aria-label="Action type">
+          <div className="esm-actions-filter-group">
+            <span className="esm-actions-filter-label" id={`${baseId}-category-label`}>Category</span>
+            <ul className="esm-segments" aria-labelledby={`${baseId}-category-label`}>
+              <li><a className="esm-segment" href={without("itemType")} aria-current={!chosen.itemType ? "true" : undefined}>All <span className="esm-kind-chip-count">{countStoryMapActions(typeGroups)}</span></a></li>
+              {storyMapActionItemTypes.flatMap(type => {
+                const count = typeGroups.reduce((sum, group) => sum + group.actions.filter(action => action.item.type === type).length, 0);
+                return count || chosen.itemType === type
+                  ? [<li key={type}><a className="esm-segment" data-item-type={type} href={href({ itemType: type })} aria-current={chosen.itemType === type ? "true" : undefined}>{itemTypePlurals[type]} <span className="esm-kind-chip-count">{count}</span></a></li>]
+                  : [];
+              })}
+            </ul>
+          </div>
+          <div className="esm-actions-filter-group">
+          <span className="esm-actions-filter-label" id={`${baseId}-action-label`}>Action</span>
+          <ul className="esm-kind-chips" aria-labelledby={`${baseId}-action-label`}>
             <li>
               <a className="esm-kind-chip" href={without("kind")} aria-current={!chosen.kind ? "true" : undefined}>
-                All types <span className="esm-kind-chip-count">{countStoryMapActions(kindGroups)}</span>
+                All actions <span className="esm-kind-chip-count">{countStoryMapActions(kindGroups)}</span>
               </a>
             </li>
             {kindGroups.map(group => (
@@ -2110,6 +2132,7 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
               </li>
             ))}
           </ul>
+          </div>
           <div className="esm-actions-filter-row">
             {releaseIds.size > 0 && (
               <ActionFilterMenu

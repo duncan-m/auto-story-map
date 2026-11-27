@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { countStoryMapActions, filterStoryMapActions, getStoryMapActions, isStoryMapActionKind, storyMapActionKindOrder, type StoryMapAction, type StoryMapActionFilter } from "../actions.js";
+import { countStoryMapActions, filterStoryMapActions, getStoryMapActions, isStoryMapActionItemType, isStoryMapActionKind, storyMapActionItemTypes, storyMapActionKindOrder, type StoryMapAction, type StoryMapActionFilter } from "../actions.js";
 import { buildStoryMapTests, findStoryTests } from "../tests.js";
 import type { StoryMapTests } from "../tests-index.js";
 import { ArgumentError, count, defineCommand, escapeText, loadInputsOrReport, loadMapOrReport, optionValue, printJson, readFormat, report } from "./shared.js";
@@ -39,6 +39,10 @@ export default defineCommand({
         const kind = value();
         if (!isStoryMapActionKind(kind)) throw new ArgumentError(`--kind must be one of ${storyMapActionKindOrder.join(", ")}`);
         options.filter.kind = kind;
+      } else if (name === "--item-type") {
+        const type = value();
+        if (!isStoryMapActionItemType(type)) throw new ArgumentError(`--item-type must be one of ${storyMapActionItemTypes.join(", ")}`);
+        options.filter.itemType = type;
       } else if (arg === "--needs-person") options.filter.needsPerson = true;
       else return null;
     }

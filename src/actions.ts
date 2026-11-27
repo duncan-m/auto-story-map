@@ -261,6 +261,8 @@ export const countStoryMapActions = (groups: readonly StoryMapActionGroup[]) => 
 /** What the tab, a panel or `story-map actions` narrows the list to. Each is optional. */
 export interface StoryMapActionFilter {
   kind?: StoryMapWarningKind;
+  /** Only actions on this kind of item: stories, releases, personas or the map as a whole. */
+  itemType?: StoryMapActionItem["type"];
   /** Only actions in this release. */
   release?: string;
   /** Only actions on this story, release or persona. */
@@ -275,7 +277,8 @@ export function filterStoryMapActions(groups: readonly StoryMapActionGroup[], fi
     if (filter.kind && group.kind !== filter.kind) return [];
     if (filter.needsPerson && !group.needsPerson) return [];
     const actions = group.actions.filter(action =>
-      (!filter.release || action.release === filter.release)
+      (!filter.itemType || action.item.type === filter.itemType)
+      && (!filter.release || action.release === filter.release)
       && (!filter.item || ("id" in action.item && action.item.id === filter.item)));
     return actions.length ? [{ ...group, actions }] : [];
   });
@@ -284,3 +287,10 @@ export function filterStoryMapActions(groups: readonly StoryMapActionGroup[], fi
 /** True when `value` names a kind of action. */
 export const isStoryMapActionKind = (value: unknown): value is StoryMapWarningKind =>
   typeof value === "string" && (storyMapWarningKinds as readonly string[]).includes(value);
+
+/** The kinds of item an action can be on, in the order the Actions tab offers them. */
+export const storyMapActionItemTypes = ["persona", "story", "release", "map"] as const satisfies readonly StoryMapActionItem["type"][];
+
+/** True when `value` names a kind of item. */
+export const isStoryMapActionItemType = (value: unknown): value is StoryMapActionItem["type"] =>
+  typeof value === "string" && (storyMapActionItemTypes as readonly string[]).includes(value);

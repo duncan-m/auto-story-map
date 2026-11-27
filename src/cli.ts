@@ -28,7 +28,7 @@ const usage = `Usage:
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--readiness <state>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
-  story-map actions [--format text|json] [--map <path>] [--kind <kind>] [--release <ID>] [--needs-person] [--tests <path> | --tests-index <file>] [--root <path>]
+  story-map actions [--format text|json] [--map <path>] [--kind <kind>] [--item-type <type>] [--release <ID>] [--needs-person] [--tests <path> | --tests-index <file>] [--root <path>]
   story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [<ID> ...]
   story-map survey [--format text|json] [--root <path>] [--tags <pattern>] [--changelog <file>] [--docs <path>] [--plans <path>]
   story-map claim [--format text|json] [--map <path>] [--remote <name>] [--store <dir>] --agent <name> [--ttl <duration>] [--branch <name>] [--renew | --take-over] <ID>
@@ -182,6 +182,7 @@ actions
   --format json      Print the groups and actions as JSON.
   --map <path>       Map to read. Defaults to product/story-map.yaml.
   --kind <kind>      Only actions of this kind, such as missing-estimate.
+  --item-type <type> Only actions on a persona, story, release or the map.
   --release <ID>     Only actions on this release or its stories.
   --needs-person     Only actions a person must take.
   --tests <path>     Scan tests under <path>, as validate --tests does, so

@@ -245,14 +245,36 @@ test("ESM-128: the tab's filters are links that keep the board's filters and nar
   assert.match(html, /<a class="esm-action-toggle" href="\?q=archive&amp;view=actions&amp;action-release=r1" aria-current="true"><svg[\s\S]*?<\/svg>Needs a person<\/a>/);
   // The action type chips offer only types that match the other filters, with their counts.
   const chips = [...html.matchAll(/<a class="esm-kind-chip"[^>]*>([\s\S]*?)<\/a>/g)].map(match => match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").replace(/&#x27;/g, "'").trim());
-  assert.deepEqual(chips, ["All types 2", "Confirm a release's drafted impact 1", "Agree an estimate 1"]);
+  assert.deepEqual(chips, ["All actions 2", "Confirm a release's drafted impact 1", "Agree an estimate 1"]);
   assert.match(html, /<a class="esm-kind-chip" data-category="estimate" href="\?q=archive&amp;view=actions&amp;action-kind=missing-estimate&amp;action-release=r1&amp;needs-person=1"/);
   assert.match(html, /<a class="esm-kind-chip" href="\?q=archive&amp;view=actions&amp;action-release=r1&amp;needs-person=1" aria-current="true">/);
   assert.match(html, /<a class="esm-clear" href="\?q=archive&amp;view=actions">Clear filters<\/a>/);
   assert.match(html, /<span class="esm-results">2 of \d+ actions<\/span>/);
+  // The Category filter offers only kinds of item that match the other filters, with counts.
+  const segments = [...html.matchAll(/<a class="esm-segment"[^>]*>([\s\S]*?)<\/a>/g)].map(match => match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+  assert.deepEqual(segments, ["All 2", "Stories 1", "Releases 1"]);
+  assert.match(html, /<a class="esm-segment" data-item-type="story" href="\?q=archive&amp;view=actions&amp;action-item-type=story&amp;action-release=r1&amp;needs-person=1">/);
   const chosen = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions&action-kind=missing-estimate"), now }));
   assert.deepEqual(rowKinds(chosen), ["missing-estimate"]);
   assert.match(chosen, /<a class="esm-kind-chip" data-category="estimate" href="[^"]+" aria-current="true"/);
+});
+
+test("ESM-128: the table puts Category before Item and Action after Problem, and filters by category", () => {
+  const html = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions"), tests, now }));
+  const headings = [...html.match(/<thead>[\s\S]*?<\/thead>/)[0].matchAll(/<th scope="col"[^>]*>([\s\S]*?)<\/th>/g)].map(match => match[1].replace(/<[^>]+>/g, "").trim());
+  assert.deepEqual(headings.filter(Boolean), ["Category", "Item", "Problem", "Action", "Copy command"]);
+  assert.match(html, /<td class="esm-action-type"><span class="esm-item-type" data-item-type="persona">Persona<\/span><\/td><th scope="row" class="esm-action-item">/);
+  assert.match(html, /<span class="esm-item-type" data-item-type="map">Map<\/span>/);
+  assert.match(html, /<\/th><td class="esm-action-message">[^<]*<\/td><td class="esm-action-kind">/);
+
+  assert.deepEqual(readStoryMapFilters(new URLSearchParams("action-item-type=release")).actions, { itemType: "release" });
+  assert.equal(readStoryMapFilters(new URLSearchParams("action-item-type=nonsense")).actions, undefined);
+  const releases = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions&action-item-type=release"), now }));
+  assert.deepEqual([...releases.matchAll(/data-item-type="(\w+)">\w+<\/span><\/td>/g)].map(match => match[1]), ["release", "release"]);
+  assert.match(releases, /<a class="esm-segment" data-item-type="release" href="[^"]+" aria-current="true">/);
+  const personaActions = filterStoryMapActions(getStoryMapActions(map), { itemType: "persona" }).flatMap(group => group.actions);
+  assert.equal(personaActions.length, storyMapWarnings(map).filter(warning => warning.path[0] === "personas" && warning.path.length > 1).length);
+  assert.ok(personaActions.every(action => action.item.type === "persona"));
 });
 
 test("ESM-128: links each action's line under sourceBaseUrl, and shows the line without it", () => {
@@ -346,6 +368,9 @@ test("ESM-128: story-map actions prints the tab's list, filtered, as text or JSO
     assert.equal(tagged.groups.some(group => group.kind === "story-without-tests"), false);
     assert.equal(tagged.checkedTests, true);
 
+    const personas = JSON.parse(run("--format", "json", "--item-type", "persona").stdout);
+    assert.ok(personas.groups.length > 0 && personas.groups.every(group => group.actions.every(action => action.item.type === "persona")));
+    assert.equal(run("--item-type", "nonsense").status, 2);
     assert.equal(run("--kind", "nonsense").status, 2);
     assert.equal(run("--release", "nope").status, 1);
   } finally {

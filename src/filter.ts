@@ -1,4 +1,4 @@
-import { isStoryMapActionKind, type StoryMapActionFilter } from "./actions.js";
+import { isStoryMapActionItemType, isStoryMapActionKind, type StoryMapActionFilter } from "./actions.js";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatuses, type StoryStatusFilter } from "./status.js";
 import { jobStatement } from "./personas.js";
 import type { InternalStoryCard, StoryMapLabel, StoryMapView } from "./view.js";
@@ -78,7 +78,7 @@ function readStatuses(value: unknown): StoryStatusFilter[] {
  * `persona`, `job`, `activity` and `view` parameters, and a permalink's `story` or `release`. `status` can repeat, once for each chosen
  * status or `stalled`, and `status=all` chooses every status. `persona`, `job`
  * and `activity` repeat, once for each ID. `view=personas` opens the Personas
- * tab and `view=actions` the Actions tab, which reads `action-kind`, `action-release`,
+ * tab and `view=actions` the Actions tab, which reads `action-kind`, `action-item-type`, `action-release`,
  * `action-item` and `needs-person=1`. Unknown values are ignored.
  */
 export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
@@ -93,10 +93,12 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const viewParam = params.get("view");
   const view = viewParam === "personas" || viewParam === "actions" ? viewParam : undefined;
   const actionKind = params.get("action-kind") ?? undefined;
+  const actionItemType = params.get("action-item-type") ?? undefined;
   const [actionRelease] = readIds(params.getAll("action-release"));
   const [actionItem] = readIds(params.getAll("action-item"));
   const actions: StoryMapActionFilter = {
     ...(isStoryMapActionKind(actionKind) ? { kind: actionKind } : {}),
+    ...(isStoryMapActionItemType(actionItemType) ? { itemType: actionItemType } : {}),
     ...(actionRelease ? { release: actionRelease } : {}),
     ...(actionItem ? { item: actionItem } : {}),
     ...(params.get("needs-person") === "1" ? { needsPerson: true } : {}),
@@ -166,9 +168,10 @@ export function filterStoryMapView<View extends StoryMapView>(
   // Action filters only count for values the view has, so customers and unknown IDs change nothing.
   const actionFilter: StoryMapActionFilter = {};
   if (internal && filters.actions) {
-    const { kind, release, item, needsPerson } = filters.actions;
+    const { kind, itemType, release, item, needsPerson } = filters.actions;
     const itemIds = new Set(view.actions.flatMap(group => group.actions.flatMap(action => "id" in action.item ? [action.item.id] : [])));
     if (isStoryMapActionKind(kind)) actionFilter.kind = kind;
+    if (isStoryMapActionItemType(itemType)) actionFilter.itemType = itemType;
     if (release !== undefined && view.releases.some(entry => entry.id === release)) actionFilter.release = release;
     if (item !== undefined && itemIds.has(item)) actionFilter.item = item;
     if (needsPerson === true) actionFilter.needsPerson = true;

@@ -8,7 +8,7 @@ export {
   storyMapWarnings,
   storyStatuses,
 } from "./schema.js";
-export { countStoryMapActions, filterStoryMapActions, getStoryMapActions, isStoryMapActionKind, storyMapActionKindOrder, storyMapActionKinds, untestedStoryWarnings } from "./actions.js";
+export { countStoryMapActions, filterStoryMapActions, getStoryMapActions, isStoryMapActionItemType, isStoryMapActionKind, storyMapActionItemTypes, storyMapActionKindOrder, storyMapActionKinds, untestedStoryWarnings } from "./actions.js";
 export type { StoryMapAction, StoryMapActionCategory, StoryMapActionFilter, StoryMapActionGroup, StoryMapActionItem, StoryMapActionKindInfo, StoryMapActionOptions } from "./actions.js";
 export { defaultStalledAfterWeeks, estimatePoints, jobStatementMaxLength, jobStepsMaxItems, jobStepTitleMaxLength, personaConstraintsMaxItems, personaContextMaxLength, personaJobsMaxItems, personaSuccessMaxLength, personasMaxItems, personaUsesTodayMaxItems, personaUsesTodayMaxLength, releaseImpactMaxItems, releaseNotesMaxLength, storyDependsOnMaxItems, storyPersonasMaxItems } from "./schema.js";
 export type { EstimatePoints, ReleaseImpact, StoryMapDocument, StoryMapJob, StoryMapJobStep, StoryMapPersona, StoryMapPersonaContext, StoryMapIssue, StoryMapIssueSeverity, StoryMapWarning, StoryMapWarningKind, StoryStatus } from "./schema.js";
