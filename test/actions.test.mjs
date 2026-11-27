@@ -223,7 +223,7 @@ test("ESM-128: the Actions tab lists every action in one table, with counts that
   // Each row has its type, coloured by category, and who can act.
   assert.match(html, /<tr data-category="draft" data-kind="confirm-draft-job">[\s\S]*?<span class="esm-kind" data-category="draft" title="[^"]+">Confirm a drafted job<\/span><span class="esm-action-who" data-person="">[\s\S]*?Needs a person<\/span>/);
   // The filter chip and the row badge use the kind's short label; the full title is in the badge's tooltip.
-  assert.match(html, /<a class="esm-kind-chip" data-category="gap" href="[^"]+" title="[^"]+"><span class="esm-kind-dot" aria-hidden="true"><\/span>Review JTBD <span class="esm-kind-chip-count">1<\/span><\/a>/);
+  assert.match(html, /<a href="[^"]+" data-category="gap" title="[^"]+"><span class="esm-kind-dot" aria-hidden="true"><\/span><span class="esm-action-filter-label">Review JTBD<\/span><span class="esm-kind-chip-count">1<\/span><\/a>/);
   assert.match(html, /<span class="esm-kind" data-category="gap" title="Review JTBD with no stories\. [^"]+">Review JTBD<\/span>/);
   // Each row links to its item: a story's permalink, a release's, or a persona's page.
   assert.match(html, /<th scope="row" class="esm-action-item"><a href="\?story=S-2#esm-story-S-2">S-2 Save a draft quote<\/a><span class="esm-action-release">First<\/span><\/th>/);
@@ -249,10 +249,13 @@ test("ESM-128: the tab's filters are links that keep the board's filters and nar
   assert.deepEqual(rowKinds(html), ["confirm-draft-impact", "missing-estimate"]);
   assert.match(html, /<a class="esm-action-toggle" href="\?q=archive&amp;view=actions&amp;action-release=r1" aria-current="true"><svg[\s\S]*?<\/svg>Needs a person<\/a>/);
   // The action type chips offer only types that match the other filters, with their counts.
-  const chips = [...html.matchAll(/<a class="esm-kind-chip"[^>]*>([\s\S]*?)<\/a>/g)].map(match => match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").replace(/&#x27;/g, "'").trim());
+  // The Action filter is a dropdown of links, offering only actions that match the other filters, with counts.
+  const actionMenu = html.match(/<details class="esm-menu esm-action-filter"><summary[^>]*><span class="esm-visually-hidden">Action: <\/span>[\s\S]*?<\/details>/)[0];
+  const chips = [...actionMenu.matchAll(/<li><a [^>]*>([\s\S]*?)<\/a><\/li>/g)].map(match => match[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").replace(/&#x27;/g, "'").trim());
   assert.deepEqual(chips, ["All actions 2", "Confirm a release's drafted impact 1", "Agree an estimate 1"]);
-  assert.match(html, /<a class="esm-kind-chip" data-category="estimate" href="\?q=archive&amp;view=actions&amp;action-kind=missing-estimate&amp;action-release=r1&amp;needs-person=1"/);
-  assert.match(html, /<a class="esm-kind-chip" href="\?q=archive&amp;view=actions&amp;action-release=r1&amp;needs-person=1" aria-current="true">/);
+  assert.match(actionMenu, /<a href="\?q=archive&amp;view=actions&amp;action-kind=missing-estimate&amp;action-release=r1&amp;needs-person=1" data-category="estimate"/);
+  assert.match(actionMenu, /<a href="\?q=archive&amp;view=actions&amp;action-release=r1&amp;needs-person=1" aria-current="true">/);
+  assert.match(actionMenu, /<span class="esm-visually-hidden">Action: <\/span>All actions/);
   assert.match(html, /<a class="esm-clear" href="\?q=archive&amp;view=actions">Clear filters<\/a>/);
   assert.match(html, /<span class="esm-results">2 of \d+ actions<\/span>/);
   // The Category filter offers only kinds of item that match the other filters, with counts.
@@ -261,7 +264,9 @@ test("ESM-128: the tab's filters are links that keep the board's filters and nar
   assert.match(html, /<a class="esm-segment" data-item-type="story" href="\?q=archive&amp;view=actions&amp;action-item-type=story&amp;action-release=r1&amp;needs-person=1">/);
   const chosen = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions&action-kind=missing-estimate"), now }));
   assert.deepEqual(rowKinds(chosen), ["missing-estimate"]);
-  assert.match(chosen, /<a class="esm-kind-chip" data-category="estimate" href="[^"]+" aria-current="true"/);
+  assert.match(chosen, /<a href="[^"]+" aria-current="true" data-category="estimate"/);
+  // The dropdown's button names the chosen action, with its dot.
+  assert.match(chosen, /<summary class="esm-select esm-menu-button" data-category="estimate"><span class="esm-visually-hidden">Action: <\/span><span class="esm-kind-dot" aria-hidden="true"><\/span>Agree an estimate<\/summary>/);
 });
 
 test("ESM-128: the table puts Category before Item and Action after Problem, and filters by category", () => {

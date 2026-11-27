@@ -2032,13 +2032,36 @@ function ActionTable({ rows, links, releaseTitles, tableId }: {
 }
 
 /** A filter link in the Actions tab: a plain link, marked current when chosen. */
-function ActionFilterMenu({ label, chosen, options }: { label: string; chosen?: string; options: { label: string; href: string; current: boolean }[] }) {
+interface ActionFilterOption {
+  label: string;
+  href: string;
+  current: boolean;
+  /** How many actions the choice keeps. */
+  count?: number;
+  /** An action category, for the option's coloured dot. */
+  category?: string;
+  /** Shown as the option's tooltip. */
+  hint?: string;
+}
+
+/** A filter on the Actions tab as a dropdown menu of links, so it works without JavaScript. */
+function ActionFilterMenu({ label, chosen, options }: { label: string; chosen?: ActionFilterOption; options: ActionFilterOption[] }) {
   return (
     <details className="esm-menu esm-action-filter">
-      <summary className="esm-select esm-menu-button"><span className="esm-visually-hidden">{label}: </span>{chosen ?? `All ${label.toLowerCase()}s`}</summary>
+      <summary className="esm-select esm-menu-button" data-category={chosen?.category}>
+        <span className="esm-visually-hidden">{label}: </span>
+        {chosen?.category && <span className="esm-kind-dot" aria-hidden="true" />}
+        {chosen?.label ?? `All ${label.toLowerCase()}s`}
+      </summary>
       <ul className="esm-menu-panel">
         {options.map(option => (
-          <li key={option.href}><a href={option.href} aria-current={option.current ? "true" : undefined}>{option.label}</a></li>
+          <li key={option.href}>
+            <a href={option.href} aria-current={option.current ? "true" : undefined} data-category={option.category} title={option.hint}>
+              {option.category ? <span className="esm-kind-dot" aria-hidden="true" /> : <span className="esm-kind-dot esm-kind-dot-none" aria-hidden="true" />}
+              <span className="esm-action-filter-label">{option.label}</span>
+              {option.count !== undefined && <span className="esm-kind-chip-count">{option.count}</span>}
+            </a>
+          </li>
         ))}
       </ul>
     </details>
@@ -2079,6 +2102,10 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
     return filterStoryMapActions(groups, rest);
   };
   const kindGroups = otherThan("kind");
+  const actionOptions: ActionFilterOption[] = [
+    { label: "All actions", href: without("kind"), current: !chosen.kind, count: countStoryMapActions(kindGroups) },
+    ...kindGroups.map(group => ({ label: group.label, href: href({ kind: group.kind }), current: chosen.kind === group.kind, count: group.actions.length, category: group.category, hint: group.why })),
+  ];
   const typeGroups = otherThan("itemType");
   const releaseIds = new Set(otherThan("release").flatMap(group => group.actions.flatMap(action => action.release ? [action.release] : [])));
   const releaseTitles = new Map(releases.map(release => [release.id, release.title]));
@@ -2104,8 +2131,8 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
       </div>
       {total > 0 && (
         <nav className="esm-actions-filters" aria-label="Filter actions">
-          <div className="esm-actions-filter-group">
-            <span className="esm-actions-filter-label" id={`${baseId}-category-label`}>Category</span>
+          <div className="esm-actions-filter-row">
+            <span className="esm-visually-hidden" id={`${baseId}-category-label`}>Category</span>
             <ul className="esm-segments" aria-labelledby={`${baseId}-category-label`}>
               <li><a className="esm-segment" href={without("itemType")} aria-current={!chosen.itemType ? "true" : undefined}>All <span className="esm-kind-chip-count">{countStoryMapActions(typeGroups)}</span></a></li>
               {storyMapActionItemTypes.flatMap(type => {
@@ -2115,29 +2142,15 @@ function ActionsPage({ groups, filter, preservedParams, releases, links, checked
                   : [];
               })}
             </ul>
-          </div>
-          <div className="esm-actions-filter-group">
-          <span className="esm-actions-filter-label" id={`${baseId}-action-label`}>Action</span>
-          <ul className="esm-kind-chips" aria-labelledby={`${baseId}-action-label`}>
-            <li>
-              <a className="esm-kind-chip" href={without("kind")} aria-current={!chosen.kind ? "true" : undefined}>
-                All actions <span className="esm-kind-chip-count">{countStoryMapActions(kindGroups)}</span>
-              </a>
-            </li>
-            {kindGroups.map(group => (
-              <li key={group.kind}>
-                <a className="esm-kind-chip" data-category={group.category} href={href({ kind: group.kind })} aria-current={chosen.kind === group.kind ? "true" : undefined} title={group.why}>
-                  <span className="esm-kind-dot" aria-hidden="true" />{group.label} <span className="esm-kind-chip-count">{group.actions.length}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-          </div>
-          <div className="esm-actions-filter-row">
+            <ActionFilterMenu
+              label="Action"
+              chosen={actionOptions.find(option => option.current && option.category)}
+              options={actionOptions}
+            />
             {releaseIds.size > 0 && (
               <ActionFilterMenu
                 label="Release"
-                chosen={chosen.release && releaseTitle(chosen.release)}
+                chosen={chosen.release ? { label: releaseTitle(chosen.release), href: "", current: true } : undefined}
                 options={[
                   { label: "All releases", href: without("release"), current: !chosen.release },
                   ...releases.filter(release => releaseIds.has(release.id)).map(release => ({ label: release.title, href: href({ release: release.id }), current: chosen.release === release.id })),
