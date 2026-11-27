@@ -1365,7 +1365,7 @@ test("ESM-122: story and release panels offer a permalink, and the board names t
   assert.equal(render(engineer, "q=estimate&story=BUILDER-103").match(/id="esm-story-BUILDER-103"/g).length, 1);
   // The link keeps the host's parameters and drops the viewer's filters.
   const panel = panelFor(html, "Submit the estimate to finance");
-  assert.match(panel, /<div class="esm-detail-actions"><a class="esm-copy-link" href="\?as=engineer&amp;story=BUILDER-103#esm-story-BUILDER-103" data-esm-copy-link="" title="Link to this story"><svg[^>]*>[\s\S]*?<\/svg><span data-esm-copy-label="">Copy link<\/span><span class="esm-visually-hidden"> to this story<\/span><\/a><button type="button" class="esm-close"/);
+  assert.match(panel, /<div class="esm-detail-actions">(?:<details class="esm-menu esm-panel-menu esm-change-menu"[\s\S]*?<\/details>)?<a class="esm-copy-link" href="\?as=engineer&amp;story=BUILDER-103#esm-story-BUILDER-103" data-esm-copy-link="" title="Link to this story"><svg[^>]*>[\s\S]*?<\/svg><span data-esm-copy-label="">Copy link<\/span><span class="esm-visually-hidden"> to this story<\/span><\/a><button type="button" class="esm-close"/);
   const panelId = /<div class="esm-detail" id="([^"]+)"[^>]*>(?:(?!<div class="esm-detail").)*Submit the estimate to finance/s.exec(html)[1];
   assert.match(html, new RegExp(`<section class="esm-board" data-theme="light" data-esm-open="${panelId}"`));
   assert.match(html, /<p class="esm-visually-hidden" role="status" data-esm-copy-status=""><\/p>/);
@@ -1380,7 +1380,7 @@ test("ESM-122: story and release panels offer a permalink, and the board names t
   assert.match(render(engineer, "", { permalinkBase: "https://example.test/app/story-map?tab=1" }), /href="https:\/\/example\.test\/app\/story-map\?tab=1&amp;as=engineer&amp;story=BUILDER-101#esm-story-BUILDER-101"/);
   assert.match(render(engineer, "", { permalinkBase: "/app/story-map" }), /href="\/app\/story-map\?as=engineer&amp;story=BUILDER-101#esm-story-BUILDER-101"/);
   const unsafe = render(engineer, "", { permalinkBase: "javascript:alert(1)" });
-  assert.doesNotMatch(unsafe, /esm-copy-link|javascript:/);
+  assert.doesNotMatch(unsafe, /<a class="esm-copy-link|data-esm-copy-link|javascript:/);
   assert.doesNotMatch(render(engineer, ""), /data-esm-open/);
 
   // Customers link to their own stories by public ID, and have no release panels to open.

@@ -70,7 +70,7 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
 /** The operations that change a persona or one of their jobs. */
 export const personaEditOperations = ["set-persona", "set-persona-context", "set-job", "create-job", "delete-job", "create-persona"] as const;
 
-/** The operations the story panel's **Change** section saves: a story's status, with its reason, and its release. */
+/** The operations the story panel's **Actions** menu saves: a story's status, with its reason, and its release. */
 export const storyChangeOperations = ["status", "release"] as const;
 
 /** What a board on this machine can save through `createStoryMapEditServer`: persona edits and story changes. */

@@ -30,27 +30,31 @@ function shellWords(command) {
   return result.stdout.split("\0").slice(0, -1);
 }
 
-test("ESM-111: internal story panels have a hidden Change section with status, reason and release pickers", () => {
+test("ESM-181: internal story panels have a hidden Actions menu beside Share, with status, reason and release pickers", () => {
   const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("status=all") }) }));
   const planned = panelFor(html, "Submit the estimate to finance");
-  const section = /<section class="esm-detail-section esm-change-section" aria-labelledby="([^"]+)" hidden="">[\s\S]*?<\/section>/.exec(planned);
-  assert.ok(section, "the section stays hidden until board.js shows it");
-  assert.match(section[0], new RegExp(`<h4 id="${section[1]}">Change</h4>`));
-  assert.match(section[0], /<form class="esm-change-form" data-esm-change="BUILDER-103" data-esm-status="planned" data-esm-release="builder-mvp" data-esm-reason="">/);
+  const head = /<div class="esm-detail-actions">([\s\S]*?)<\/details>/.exec(planned)?.[0] ?? "";
+  const menu = /<details class="esm-menu esm-panel-menu esm-change-menu" hidden="">[\s\S]*?<\/details>/.exec(planned);
+  assert.ok(menu, "the menu stays hidden until board.js shows it");
+  assert.ok(head.includes(menu[0]), "the menu is first in the panel's actions, before Share");
+  assert.match(menu[0], /<summary class="esm-copy-link esm-menu-button">.*<span data-esm-copy-label="">Actions<\/span><span class="esm-visually-hidden"> for this story<\/span>/);
+  assert.match(menu[0], /<form class="esm-change-form" aria-label="Change BUILDER-103" data-esm-change="BUILDER-103" data-esm-status="planned" data-esm-release="builder-mvp" data-esm-reason="">/);
+  assert.doesNotMatch(planned, /esm-change-section|<h4 id="[^"]+">Change<\/h4>/, "the old Change section is gone");
 
   // The pickers start at the story's status and release, and list every status and release.
-  const statuses = /<select class="esm-select" name="status">([\s\S]*?)<\/select>/.exec(section[0])[1];
+  const statuses = /<select class="esm-select" name="status">([\s\S]*?)<\/select>/.exec(menu[0])[1];
   assert.deepEqual([...statuses.matchAll(/<option value="([^"]+)"/g)].map(match => match[1]), ["planned", "in-progress", "merged", "shipped", "blocked", "cut"]);
   assert.match(statuses, /<option value="planned" selected="">Planned<\/option>/);
-  const releases = /<select class="esm-select" name="release">([\s\S]*?)<\/select>/.exec(section[0])[1];
+  const releases = /<select class="esm-select" name="release">([\s\S]*?)<\/select>/.exec(menu[0])[1];
   assert.deepEqual([...releases.matchAll(/<option value="([^"]+)"/g)].map(match => match[1]), map.releases.map(release => release.id));
   assert.match(releases, /<option value="builder-mvp" selected="">Builder workflow<\/option>/);
 
-  // The reason field is for blocked and cut, so it is hidden here. Copy waits for a command and for board.js.
-  assert.match(section[0], /<label class="esm-change-field esm-change-reason" data-esm-change-reason="" hidden="">/);
-  assert.match(section[0], /<code id="[^"]+-command" data-esm-change-command="" data-empty="">Choose a new status or release to see its command\.<\/code>/);
-  assert.match(section[0], /<button type="button" class="esm-change-copy" data-esm-change-copy="" aria-describedby="[^"]+-command" disabled="" hidden="">/);
-  assert.match(section[0], /This board does not save\./);
+  // The reason field is for blocked and cut, so it is hidden here. Copy waits for a change and for
+  // board.js, and the command itself is never shown.
+  assert.match(menu[0], /<label class="esm-change-field esm-change-reason" data-esm-change-reason="" hidden="">/);
+  assert.match(menu[0], /<button type="button" class="esm-change-copy" data-esm-change-copy="" disabled="" hidden="">.*<span>Copy command<\/span><\/button>/);
+  assert.doesNotMatch(menu[0], /data-esm-change-command|story-map edit/);
+  assert.match(menu[0], /This board does not save\./);
 
   // A cut story shows its reason, ready to change.
   const cut = panelFor(html, "Explore duplicate approval handling");
@@ -58,7 +62,7 @@ test("ESM-111: internal story panels have a hidden Change section with status, r
   assert.match(cut, /<label class="esm-change-field esm-change-reason" data-esm-change-reason=""><span>Reason<\/span><input class="esm-change-input" placeholder="Why it is blocked or cut" autoComplete="off" name="reason" value="Finance will handle/);
 });
 
-test("ESM-111: customer boards have no Change section", () => {
+test("ESM-111: customer boards have no Actions menu to change a story", () => {
   const customer = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, { roles: [] }) }));
   assert.match(customer, /esm-detail/);
   assert.doesNotMatch(customer, /esm-change|data-esm-change|story-map edit/);
@@ -123,7 +127,7 @@ test("ESM-111: a copied command with quotes and spaces makes the change when pas
   assert.deepEqual({ status: story.status, statusReason: story.statusReason, release: story.release }, { status: "blocked", statusReason: reason, release: "finance-follow-up" });
 });
 
-test("ESM-111: board.js shows the Change section, builds the command as the pickers change and copies it", async t => {
+test("ESM-181: board.js shows the Actions menu, turns Copy on once the pickers change and copies the command without showing it", async t => {
   const written = [];
   const status = { textContent: "" };
   const fields = {
@@ -131,24 +135,24 @@ test("ESM-111: board.js shows the Change section, builds the command as the pick
     "[name=release]": { value: "builder-mvp" },
     "[name=reason]": { value: "" },
     "[data-esm-change-reason]": { hidden: true },
-    "[data-esm-change-command]": { textContent: "", dataset: { empty: "" } },
   };
-  const label = { textContent: "Copy", dataset: {} };
+  const label = { textContent: "Actions", dataset: {} };
+  const summary = { dataset: {}, querySelector: () => label };
+  const menu = { hidden: true, open: true, querySelector: selector => selector === "summary" ? summary : null };
   const listeners = {};
   const copy = {
     hidden: true,
     disabled: true,
     dataset: {},
-    closest: () => null,
-    querySelector: () => label,
+    closest: selector => selector === "details.esm-panel-menu" ? menu : null,
+    querySelector: () => null,
     addEventListener: (type, handler) => { listeners[`copy-${type}`] = handler; },
   };
   fields["button[data-esm-change-copy]"] = copy;
-  const section = { hidden: true };
   const board = { querySelector: selector => selector === "[data-esm-copy-status]" ? status : null };
   const form = {
     dataset: { esmChange: "BUILDER-103", esmStatus: "planned", esmRelease: "builder-mvp", esmReason: "" },
-    closest: selector => selector === "section.esm-change-section" ? section : selector === ".esm-board" ? board : null,
+    closest: selector => selector === "details.esm-change-menu" ? menu : selector === ".esm-board" ? board : null,
     querySelector: selector => fields[selector] ?? null,
     addEventListener: (type, handler) => { listeners[type] = handler; },
   };
@@ -159,33 +163,46 @@ test("ESM-111: board.js shows the Change section, builds the command as the pick
   const { enhanceStoryMapChanges } = await import("auto-story-map/board.js");
   enhanceStoryMapChanges({ querySelectorAll: () => [form] });
   enhanceStoryMapChanges({ querySelectorAll: () => [form] });
-  const output = fields["[data-esm-change-command]"];
-  assert.equal(section.hidden, false, "shows the section");
+  assert.equal(menu.hidden, false, "shows the menu");
   assert.equal(copy.hidden, false, "shows Copy with clipboard access");
   assert.equal(copy.disabled, true, "nothing to copy yet");
-  assert.equal(output.textContent, "Choose a new status or release to see its command.");
 
-  // Choosing blocked shows the reason field and asks for a reason before giving a command.
+  // Choosing blocked shows the reason field, and Copy waits for a reason.
   fields["[name=status]"].value = "blocked";
   listeners.change();
   assert.equal(fields["[data-esm-change-reason]"].hidden, false);
-  assert.equal(output.textContent, "Say why it is blocked to see its command.");
+  assert.equal(copy.disabled, true);
   fields["[name=reason]"].value = "Waiting on finance's sign-off";
   fields["[name=release]"].value = "finance-follow-up";
   listeners.input();
-  assert.equal(output.textContent, `npx story-map edit BUILDER-103 --status blocked --reason 'Waiting on finance'\\''s sign-off' --release finance-follow-up --write`);
-  assert.equal("empty" in output.dataset, false);
   assert.equal(copy.disabled, false);
 
   listeners["copy-click"]();
   await new Promise(resolve => setTimeout(resolve, 80));
-  assert.deepEqual(written, [output.textContent], "copies once, though enhanced twice");
-  assert.equal(label.textContent, "Copied");
+  assert.deepEqual(written, [`npx story-map edit BUILDER-103 --status blocked --reason 'Waiting on finance'\\''s sign-off' --release finance-follow-up --write`], "copies once, though enhanced twice");
+  assert.equal(menu.open, false, "closes the menu");
+  assert.equal(label.textContent, "Copied", "the menu's button says it copied");
   assert.equal(status.textContent, "Copied command: BUILDER-103");
 
   // Going back to planned hides the reason again.
   fields["[name=status]"].value = "planned";
   listeners.change();
   assert.equal(fields["[data-esm-change-reason]"].hidden, true);
-  assert.equal(output.textContent, "npx story-map edit BUILDER-103 --release finance-follow-up --write");
+});
+
+test("ESM-181: without clipboard access or a save route, the Actions menu stays hidden", async t => {
+  const saved = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { value: {}, configurable: true, writable: true });
+  t.after(() => saved ? Object.defineProperty(globalThis, "navigator", saved) : delete globalThis.navigator);
+  const menu = { hidden: true };
+  const fields = { "[name=status]": { value: "planned" }, "[name=release]": { value: "builder-mvp" }, "button[data-esm-change-copy]": { hidden: true, addEventListener() {} } };
+  const form = {
+    dataset: { esmChange: "BUILDER-104", esmStatus: "planned", esmRelease: "builder-mvp", esmReason: "" },
+    closest: selector => selector === "details.esm-change-menu" ? menu : null,
+    querySelector: selector => fields[selector] ?? null,
+    addEventListener() {},
+  };
+  const { enhanceStoryMapChanges } = await import("auto-story-map/board.js");
+  enhanceStoryMapChanges({ querySelectorAll: () => [form] });
+  assert.equal(menu.hidden, true);
 });

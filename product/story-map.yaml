@@ -2075,6 +2075,22 @@ stories:
     summary: validate --plans warns when a plan's status line is behind the stories it names, uses words other than the map's statuses, or names a release title the map no longer has.
     sources:
       - docs/plans/rules-as-checks.md#3-check-plan-status-lines-against-the-map
+  - id: ESM-181
+    title: Change a story from an Actions menu in its panel
+    activity: explore
+    release: v0-7-7
+    status: in-progress
+    dependsOn:
+      - ESM-111
+      - ESM-112
+    jobs:
+      - triage-backlog
+      - get-oriented
+    personas:
+      - founder
+    summary: The story panel's status, reason and release pickers move into an Actions menu beside Share, which saves on the local preview or copies the edit command without showing it.
+    sources:
+      - docs/story-map.md#change-a-story-from-the-board
   - id: ESM-126
     title: Write agent briefs from the command line
     activity: plan

@@ -20,10 +20,10 @@ const engineer = { roles: ["engineer"] };
 const editing = { endpoint: "/api/story-map/edit", token: "page-token", revision: "abc123" };
 const numRuns = Number(process.env.FC_NUM_RUNS) || 60;
 
-/** The Change section of the panel for BUILDER-103. */
+/** The Actions menu's form in the panel for BUILDER-103. */
 function changeSection(props) {
   const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("status=all") }), ...props }));
-  return /<form class="esm-change-form" data-esm-change="BUILDER-103"[\s\S]*?<\/form>/.exec(html)?.[0];
+  return /<form class="esm-change-form" aria-label="Change BUILDER-103" data-esm-change="BUILDER-103"[\s\S]*?<\/form>/.exec(html)?.[0];
 }
 
 /** The words a POSIX shell makes of a command's arguments, after `npx story-map edit`. */
@@ -34,22 +34,21 @@ function shellWords(command) {
   return result.stdout.split("\0").slice(0, -1);
 }
 
-test("ESM-112: with storyEditing, the Change section carries the save props and a Save button", () => {
+test("ESM-181: with storyEditing, the Actions menu carries the save props, Save and Copy command", () => {
   const section = changeSection({ storyEditing: editing });
   assert.match(section, /data-esm-edit-endpoint="\/api\/story-map\/edit" data-esm-edit-token="page-token" data-esm-edit-revision="abc123"/);
-  assert.match(section, /<button type="submit" class="esm-save esm-change-save" data-esm-change-save="" aria-describedby="([^"]+)" disabled="">Save<\/button>/);
   const errorId = /aria-describedby="([^"]+-change-error)"/.exec(section)[1];
   assert.match(section, new RegExp(`<p class="esm-form-error esm-change-error" id="${errorId}" role="alert" hidden=""></p>`));
-  assert.match(section, /Saves to the map file, with the same checks as <code>story-map edit --write<\/code>/);
-  assert.doesNotMatch(section, /This board does not save/);
-  // The command stays, to copy.
-  assert.match(section, /data-esm-change-copy=""/);
+  // Save comes first, then Copy command, with no note and no command to read.
+  assert.match(section, /<div class="esm-change-actions"><button type="submit" class="esm-save esm-change-save" data-esm-change-save="" aria-describedby="[^"]+" disabled="">Save<\/button><button type="button" class="esm-change-copy" data-esm-change-copy=""/);
+  assert.doesNotMatch(section, /esm-change-note|This board does not save|story-map edit/);
 });
 
-test("ESM-112: without storyEditing, or with false, the Change section only shows the command", () => {
+test("ESM-181: without storyEditing, or with false, the Actions menu only copies the command", () => {
   for (const props of [{}, { storyEditing: false }, { personaEditing: editing }]) {
     const section = changeSection(props);
-    assert.doesNotMatch(section, /data-esm-change-save|data-esm-edit-token/);
+    assert.doesNotMatch(section, /data-esm-change-save|data-esm-edit-token|esm-change-error/);
+    assert.match(section, /data-esm-change-copy=""/);
     assert.match(section, /This board does not save\./);
   }
 });
@@ -100,7 +99,7 @@ async function startPreview(t, ...args) {
     child.on("exit", code => reject(new Error(`preview exited with ${code}: ${output}`)));
   });
   const page = await (await fetch(`${base}/story-map?view=internal&status=all`)).text();
-  const form = /<form class="esm-change-form" data-esm-change="BUILDER-103"[^>]*>/.exec(page)?.[0] ?? "";
+  const form = /<form class="esm-change-form" aria-label="Change BUILDER-103" data-esm-change="BUILDER-103"[^>]*>/.exec(page)?.[0] ?? "";
   const token = /data-esm-edit-token="([^"]+)"/.exec(form)?.[1];
   const revision = /data-esm-edit-revision="([^"]+)"/.exec(form)?.[1];
   return { base, file, page, output, token, revision };
@@ -120,7 +119,7 @@ const blockAndMove = storyMapChangeOperations({ id: "BUILDER-103", status: "bloc
 
 test("ESM-112: the preview saves a status, reason and release change from the story panel to the map file", async t => {
   const { base, file, page, output, token, revision } = await startPreview(t);
-  assert.ok(token && revision, "each story panel's Change section carries the token and revision");
+  assert.ok(token && revision, "each story panel's Actions menu carries the token and revision");
   assert.match(page, /data-esm-change-save=""/);
   assert.match(page, /Edits on the Personas tab and in story panels save to this file\./);
   assert.match(output, /Edits on the Personas tab and in story panels save to the map file\./);
@@ -176,7 +175,7 @@ test("ESM-112: the preview refuses a story change from a stale page, another ori
   assert.equal(await readFile(file, "utf8"), `${sample}# edited elsewhere\n`);
 });
 
-test("ESM-112: preview --read-only shows only the command and refuses story changes", async t => {
+test("ESM-112: preview --read-only only copies the command and refuses story changes", async t => {
   const { base, file, page, token } = await startPreview(t, "--read-only");
   assert.equal(token, undefined);
   assert.doesNotMatch(page, /data-esm-change-save/);
@@ -195,7 +194,6 @@ function fakeChangeForm({ endpoint = "/api/story-map/edit" } = {}) {
     "[name=release]": { value: "builder-mvp" },
     "[name=reason]": { value: "" },
     "[data-esm-change-reason]": { hidden: true },
-    "[data-esm-change-command]": { textContent: "", dataset: { empty: "" } },
     "button[data-esm-change-save]": { disabled: true },
     ".esm-change-error": { hidden: true, textContent: "" },
   };

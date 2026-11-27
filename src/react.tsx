@@ -111,10 +111,10 @@ export interface StoryMapBoardProps {
    */
   personaEditing?: StoryMapPersonaEditing | false;
   /**
-   * Lets internal viewers save the story panel's **Change** section, a new status, reason or
+   * Lets internal viewers save the story panel's **Actions** menu, a new status, reason or
    * release, to the map file, through the same `endpoint`, `token` and `revision` as
    * `personaEditing`. `story-map preview` sets it unless it runs with `--read-only`. Without
-   * it the section shows the matching `story-map edit` command to copy, and saves nothing.
+   * it the menu only copies the matching `story-map edit` command, and saves nothing.
    */
   storyEditing?: StoryMapPersonaEditing | false;
 }
@@ -824,7 +824,7 @@ interface PanelActionsInfo {
 
 function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles, webAgents, repository, editing, actions }: {
   story: InternalStoryCard;
-  /** Where the **Change** section saves, when the board can save. */
+  /** Where the **Actions** menu saves, when the board can save. */
   editing?: StoryMapPersonaEditing;
   actions?: PanelActionsInfo;
   webAgents?: readonly StoryMapWebAgent[];
@@ -866,6 +866,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
           <h3 id={titleId}>{story.title}</h3>
         </div>
         <div className="esm-detail-actions">
+          {internal && <ChangeMenu story={story} panelId={panelId} releaseTitles={releaseTitles} editing={editing} />}
           <PanelActions
             href={permalink}
             label="this story"
@@ -940,7 +941,6 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         {internal && story.estimatedCostUsd !== undefined && <><dt>Estimated cost</dt><dd>{`$${story.estimatedCostUsd.toFixed(2)}`}</dd></>}
       </dl>
       {internal && actions && <ItemActions groups={actions.groups} type="story" id={story.id} panelId={panelId} links={actions.links} tabHref={actions.tabHref} />}
-      {internal && <ChangeSection story={story} panelId={panelId} releaseTitles={releaseTitles} editing={editing} />}
       {internal && hasDependencies(story) && (
         <DependenciesSection story={story} panelId={panelId} storyPanelIds={storyPanelIds} releaseTitles={releaseTitles} />
       )}
@@ -1204,61 +1204,70 @@ function ChatIcon() {
  * **Share** menu copies it, or opens it in a web agent.
  */
 /**
- * The internal panel's **Change** section: status, reason and release pickers that build the
- * matching `story-map edit` command, with a **Copy** button, to paste into a terminal or an
- * agent's chat. Copying changes nothing. With `editing`, as on the local preview, **Save**
- * also writes the change to the map file. The pickers need board.js to build the command
- * and to save, so the section stays hidden until board.js shows it, and **Copy** stays
- * hidden without clipboard access. The reason field is for blocked and cut only.
+ * The internal story panel's **Actions** menu, beside **Share**: status, reason and release
+ * pickers to change the story. **Copy command** copies the matching `story-map edit`
+ * command, to paste into a terminal or an agent's chat, without showing it. Copying changes
+ * nothing. With `editing`, as on the local preview, **Save** writes the change to the map
+ * file instead. The pickers need board.js to build the command and to save, so the menu
+ * stays hidden until board.js shows it, and **Copy command** stays hidden without clipboard
+ * access. The reason field is for blocked and cut only.
  */
-function ChangeSection({ story, panelId, releaseTitles, editing }: { story: InternalStoryCard; panelId: string; releaseTitles: ReadonlyMap<string, string>; editing?: StoryMapPersonaEditing }) {
-  const headingId = `${panelId}-change`;
+function ChangeMenu({ story, panelId, releaseTitles, editing }: { story: InternalStoryCard; panelId: string; releaseTitles: ReadonlyMap<string, string>; editing?: StoryMapPersonaEditing }) {
   const errorId = `${panelId}-change-error`;
   const needsReason = story.status === "blocked" || story.status === "cut";
   return (
-    <section className="esm-detail-section esm-change-section" aria-labelledby={headingId} hidden>
-      <h4 id={headingId}>Change</h4>
-      <form
-        className="esm-change-form"
-        data-esm-change={story.id}
-        data-esm-status={story.status}
-        data-esm-release={story.release}
-        data-esm-reason={story.statusReason ?? ""}
-        {...(editing ? { "data-esm-edit-endpoint": editing.endpoint, "data-esm-edit-token": editing.token, "data-esm-edit-revision": editing.revision } : {})}
-      >
-        <label className="esm-change-field">
-          <span>Status</span>
-          <select className="esm-select" name="status" defaultValue={story.status}>
-            {storyStatuses.map(status => <option value={status} key={status}>{storyStatusLabels[status]}</option>)}
-          </select>
-        </label>
-        <label className="esm-change-field esm-change-reason" data-esm-change-reason="" hidden={!needsReason || undefined}>
-          <span>Reason</span>
-          <input className="esm-change-input" name="reason" defaultValue={story.statusReason ?? ""} placeholder="Why it is blocked or cut" autoComplete="off" />
-        </label>
-        <label className="esm-change-field">
-          <span>Release</span>
-          <select className="esm-select" name="release" defaultValue={story.release}>
-            {[...releaseTitles].map(([id, title]) => <option value={id} key={id}>{title}</option>)}
-          </select>
-        </label>
-        <div className="esm-change-command">
-          <code id={`${panelId}-command`} data-esm-change-command="" data-empty="">Choose a new status or release to see its command.</code>
-          <button type="button" className="esm-change-copy" data-esm-change-copy="" aria-describedby={`${panelId}-command`} disabled hidden>
-            <BriefIcon /><span data-esm-copy-label="">Copy</span>
-          </button>
-        </div>
-        {editing
-          ? <>
-            <p className="esm-form-error esm-change-error" id={errorId} role="alert" hidden></p>
-            <div className="esm-change-actions">
-              <button type="submit" className="esm-save esm-change-save" data-esm-change-save="" aria-describedby={errorId} disabled>Save</button>
-              <p className="esm-change-note">Saves to the map file, with the same checks as <code>story-map edit --write</code>. Commit it with your other changes.</p>
-            </div>
-          </>
-          : <p className="esm-change-note">This board does not save. Paste the command into a terminal or an agent's chat to make the change.</p>}
-      </form>
-    </section>
+    <details className="esm-menu esm-panel-menu esm-change-menu" hidden>
+      <summary className="esm-copy-link esm-menu-button">
+        <EditIcon /><span data-esm-copy-label="">Actions</span><span className="esm-visually-hidden"> for this story</span>
+        <svg className="esm-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m3 5 4 4 4-4" />
+        </svg>
+      </summary>
+      <div className="esm-menu-panel esm-change-panel">
+        <form
+          className="esm-change-form"
+          aria-label={`Change ${story.id}`}
+          data-esm-change={story.id}
+          data-esm-status={story.status}
+          data-esm-release={story.release}
+          data-esm-reason={story.statusReason ?? ""}
+          {...(editing ? { "data-esm-edit-endpoint": editing.endpoint, "data-esm-edit-token": editing.token, "data-esm-edit-revision": editing.revision } : {})}
+        >
+          <label className="esm-change-field">
+            <span>Status</span>
+            <select className="esm-select" name="status" defaultValue={story.status}>
+              {storyStatuses.map(status => <option value={status} key={status}>{storyStatusLabels[status]}</option>)}
+            </select>
+          </label>
+          <label className="esm-change-field esm-change-reason" data-esm-change-reason="" hidden={!needsReason || undefined}>
+            <span>Reason</span>
+            <input className="esm-change-input" name="reason" defaultValue={story.statusReason ?? ""} placeholder="Why it is blocked or cut" autoComplete="off" />
+          </label>
+          <label className="esm-change-field">
+            <span>Release</span>
+            <select className="esm-select" name="release" defaultValue={story.release}>
+              {[...releaseTitles].map(([id, title]) => <option value={id} key={id}>{title}</option>)}
+            </select>
+          </label>
+          {editing && <p className="esm-form-error esm-change-error" id={errorId} role="alert" hidden></p>}
+          <div className="esm-change-actions">
+            {editing && <button type="submit" className="esm-save esm-change-save" data-esm-change-save="" aria-describedby={errorId} disabled>Save</button>}
+            <button type="button" className="esm-change-copy" data-esm-change-copy="" disabled hidden>
+              <BriefIcon /><span>Copy command</span>
+            </button>
+          </div>
+          {!editing && <p className="esm-change-note">This board does not save. Paste the command into a terminal or an agent's chat.</p>}
+        </form>
+      </div>
+    </details>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg className="esm-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.5 2.5a1.4 1.4 0 0 1 2 2L5 12l-2.5.5L3 10z" />
+    </svg>
   );
 }
 
