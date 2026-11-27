@@ -19,6 +19,7 @@ export interface InitStep {
 const packageRoot = new URL("../", import.meta.url);
 const template = (name: string) => readFile(new URL(`templates/${name}`, packageRoot), "utf8");
 const agentsMarker = "<!-- auto-story-map:start -->";
+const agentsEndMarker = "<!-- auto-story-map:end -->";
 export const skillPath = ".claude/skills/story-map/SKILL.md";
 
 /**
@@ -148,6 +149,15 @@ async function appendGuidance(realRoot: string, path: string, agents: string) {
   }
 }
 
+/** The text between the story map markers, inclusive, with line endings evened out, or undefined without them. */
+export function agentsSection(text: string): string | undefined {
+  const normal = text.replace(/\r\n?/g, "\n");
+  const start = normal.indexOf(agentsMarker);
+  const end = normal.indexOf(agentsEndMarker, start);
+  if (start === -1 || end === -1) return undefined;
+  return normal.slice(start, end + agentsEndMarker.length);
+}
+
 async function productName(root: string) {
   try {
     const { name } = JSON.parse(await readFile(join(root, "package.json"), "utf8")) as { name?: unknown };
@@ -222,8 +232,16 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     steps.push({ path: agentsPath, action: "created" });
   } else if (await appendGuidance(realRoot, agentsPath, agents)) {
     steps.push({ path: agentsPath, action: "updated", reason: "added the story map section" });
-  } else {
+  } else if ([await template("AGENTS.md"), await template("AGENTS-skill.md")].map(agentsSection).includes(agentsSection(await readFile(await at(agentsPath), "utf8")))) {
+    // Either form of the section is current: the full rules, or the pointer to the skill.
     steps.push({ path: agentsPath, action: "skipped", reason: "already has the story map section" });
+  } else {
+    // Hosts edit this section, so it is reported rather than replaced.
+    steps.push({
+      path: agentsPath,
+      action: "skipped",
+      reason: `has the story map section, but it differs from this version's; compare it with node_modules/auto-story-map/templates/${options.skill ? "AGENTS-skill.md" : "AGENTS.md"}`,
+    });
   }
 
   if (options.ci !== false) {

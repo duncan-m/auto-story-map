@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Builder estimate mockup</title>
+<!-- Mockup for docs/example-builder-estimate-plan.md (BUILDER-102 and BUILDER-103 in the sample map).
+     It uses the board's colour tokens from styles.css, since the sample map has no product of its own.
+     Its point is to show what a plan's UI mockup section holds, not to design an estimating screen. -->
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; background: #f7f8fc; }
+  .esm-board { padding: 28px 32px; background: var(--esm-canvas); color: var(--esm-ink); font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mock { max-width: 760px; border: 1px solid var(--esm-card-line); border-radius: 10px; background: var(--esm-paper); padding: 20px 22px; }
+  h1 { margin: 0 0 4px; font-size: 1.15rem; }
+  .meta { margin: 0 0 16px; color: var(--esm-muted); font-size: .85rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--esm-line); text-align: left; }
+  th { color: var(--esm-faint); font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .lookup { color: var(--esm-accent-ink); font-weight: 600; }
+  .tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--esm-activity-bg); color: var(--esm-activity-ink); font-size: .7rem; font-weight: 700; }
+  .total td { border-bottom: 0; font-weight: 700; }
+  .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; color: var(--esm-muted); font-size: .85rem; }
+  button { border: 0; border-radius: 8px; padding: 8px 14px; background: var(--esm-accent); color: #fff; font: 600 .9rem/1 inherit; }
+</style>
+</head>
+<body>
+<div class="esm-board" data-theme="light">
+<div class="mock">
+  <h1>Estimate for 14 Harbour Road</h1>
+  <p class="meta">Draft by Alex Morgan · prices from the material catalogue</p>
+  <table>
+    <thead><tr><th>Material</th><th class="num">Quantity</th><th>Unit</th><th class="num">Catalogue price</th><th class="num">Line total</th></tr></thead>
+    <tbody>
+      <tr><td>Treated pine 90×45</td><td class="num">120</td><td>m</td><td class="num">$6.40</td><td class="num">$768.00</td></tr>
+      <tr><td>Plasterboard 10 mm</td><td class="num">34</td><td>sheet</td><td class="num">$18.90</td><td class="num">$642.60</td></tr>
+      <tr><td>Decking screws <span class="tag">BUILDER-102</span></td><td class="num">6</td><td>box</td><td class="num lookup">Look up price</td><td class="num">–</td></tr>
+      <tr class="total"><td colspan="4">Total so far</td><td class="num">$1,410.60</td></tr>
+    </tbody>
+  </table>
+  <div class="actions">
+    <span>Prices are locked when you submit, so finance reviews the prices you saw.</span>
+    <button type="button">Submit to finance <span class="tag">BUILDER-103</span></button>
+  </div>
+</div>
+</div>
+</body>
+</html>

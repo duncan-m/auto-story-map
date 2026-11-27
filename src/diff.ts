@@ -166,6 +166,8 @@ export interface StoryMapDiff {
   releaseDetails: ReleaseDetailChange[];
   /** The stalled threshold in weeks, including the default of 4 when the map does not set it. 0 is off. */
   stalledAfterWeeks?: Change<number>;
+  /** Whether the product keeps delivery plans: a folder, false for no plans, or undefined when nobody has chosen. */
+  plans?: Change<string | false | undefined>;
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -403,6 +405,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
       return change ? [change] : [];
     }),
     stalledAfterWeeks: before && stalledBefore !== stalledAfter ? { from: stalledBefore, to: stalledAfter } : undefined,
+    plans: before && before.settings?.plans !== after.settings?.plans ? { from: before.settings?.plans, to: after.settings?.plans } : undefined,
   };
 }
 
@@ -413,7 +416,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
     || groups(diff.activities) || groups(diff.releases) || groups(diff.personas) || Object.values(diff.jobs).some(list => list.length)
     || Object.values(diff.personaContexts).some(list => list.length)
-    || diff.releaseDetails.length || diff.stalledAfterWeeks);
+    || diff.releaseDetails.length || diff.stalledAfterWeeks || diff.plans);
 }
 
 /**
@@ -564,13 +567,19 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
   ];
   if (personas.length) lines.push("### Personas and jobs", "", ...personas, "");
 
+  const settings: string[] = [];
   if (diff.stalledAfterWeeks) {
     const { from, to } = diff.stalledAfterWeeks;
     const weeks = (count: number) => `${count} ${count === 1 ? "week" : "weeks"}`;
-    lines.push("### Settings", "", to === 0
+    settings.push(to === 0
       ? `- Turned off the stalled flag (was ${weeks(from)}).`
-      : `- Stories are flagged as stalled after ${weeks(to)} in progress (was ${from === 0 ? "off" : weeks(from)}).`, "");
+      : `- Stories are flagged as stalled after ${weeks(to)} in progress (was ${from === 0 ? "off" : weeks(from)}).`);
   }
+  if (diff.plans) {
+    const plans = (value: string | false | undefined) => value === undefined ? "not chosen" : value === false ? "not used" : `kept in ${code(value)}`;
+    settings.push(`- Delivery plans: ${plans(diff.plans.to)} (was ${plans(diff.plans.from)}).`);
+  }
+  if (settings.length) lines.push("### Settings", "", ...settings, "");
 
   return lines.join("\n");
 }

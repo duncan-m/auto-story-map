@@ -62,16 +62,16 @@ export type ReportFormat = "text" | "github";
 export function report(mapPath: string, issue: ReferenceIssue, format: ReportFormat = "text") {
   const path = issue.file ?? mapPath;
   const message = issue.path.length ? `${describeIssueTarget(issue)}: ${issue.message}` : issue.message;
-  const warning = issue.severity === "warning";
+  const level = issue.severity === "error" ? "" : `${issue.severity}: `;
   if (format === "github") {
     const properties = [`file=${escapeProperty(path)}`];
     if (issue.line) properties.push(`line=${issue.line}`);
     if (issue.column) properties.push(`col=${issue.column}`);
     properties.push("title=Story map");
-    console.log(`::${warning ? "warning" : "error"} ${properties.join(",")}::${escapeData(message)}`);
+    console.log(`::${issue.severity} ${properties.join(",")}::${escapeData(message)}`);
   } else {
     const position = issue.line ? `:${issue.line}${issue.column ? `:${issue.column}` : ""}` : "";
-    console.error(`${escapeText(path)}${position}: ${warning ? "warning: " : ""}${escapeText(message)}`);
+    console.error(`${escapeText(path)}${position}: ${level}${escapeText(message)}`);
   }
 }
 

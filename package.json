@@ -57,6 +57,9 @@
     "story-map.schema.json",
     "templates",
     "docs/story-map.md",
+    "docs/example-builder-estimate-plan.md",
+    "docs/example-builder-estimate-mockup.html",
+    "docs/example-builder-estimate-mockup.png",
     "CHANGELOG.md"
   ],
   "scripts": {

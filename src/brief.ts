@@ -81,7 +81,7 @@ function code(text: string): string {
 }
 
 /** The first Markdown link with a #heading, the same rule as the board's Engineering overview link. */
-function planSource(sources: readonly string[] | undefined): string | undefined {
+export function planSource(sources: readonly string[] | undefined): string | undefined {
   return sources?.find(source => {
     if (/\s/.test(source) || !/#./.test(source)) return false;
     return /\.md$/i.test(source.split("#")[0]!.split("?")[0]!);
@@ -167,22 +167,34 @@ function releaseIndexes(view: InternalView) {
   return new Map(view.releases.map((release, index) => [release.id, index]));
 }
 
-function storyParts(view: InternalView, id: string, options: ResolvedOptions): BriefParts {
-  const story = view.stories.find(candidate => candidate.id === id);
-  if (!story) throw new RangeError(`Story ${id} is not in the map.`);
+/**
+ * The stories around one story, as a brief chooses them: up to five merged or shipped
+ * stories in its activity, most recently changed first, to reuse, and the planned
+ * stories in its activity in the same or a later release, to leave alone. `story-map plan`
+ * uses the same choice for a plan's What it builds on.
+ */
+export function storyNeighbours(view: InternalView, story: InternalStoryCard): { built: InternalStoryCard[]; notYet: InternalStoryCard[] } {
   const releaseOrder = releaseIndexes(view);
   const order = releaseOrder.get(story.release) ?? 0;
-  const releaseTitle = (releaseId: string) => releaseId === story.release ? "same release" : `release ${releaseId}`;
   const neighbours = view.stories.map((candidate, index) => ({ candidate, index }))
     .filter(({ candidate }) => candidate !== story && candidate.activity === story.activity);
-
   const built = neighbours.filter(({ candidate }) => isBuilt(candidate))
     .sort((a, b) => changedAt(b.candidate) - changedAt(a.candidate) || b.index - a.index)
     .slice(0, briefBuiltNearbyMaxItems)
-    .map(({ candidate }) => ({ story: candidate, where: "" }));
+    .map(({ candidate }) => candidate);
   const notYet = neighbours.filter(({ candidate }) => candidate.status === "planned" && (releaseOrder.get(candidate.release) ?? 0) >= order)
     .sort((a, b) => (releaseOrder.get(a.candidate.release) ?? 0) - (releaseOrder.get(b.candidate.release) ?? 0) || a.index - b.index)
-    .map(({ candidate }) => ({ story: candidate, where: releaseTitle(candidate.release) }));
+    .map(({ candidate }) => candidate);
+  return { built, notYet };
+}
+
+function storyParts(view: InternalView, id: string, options: ResolvedOptions): BriefParts {
+  const story = view.stories.find(candidate => candidate.id === id);
+  if (!story) throw new RangeError(`Story ${id} is not in the map.`);
+  const releaseTitle = (releaseId: string) => releaseId === story.release ? "same release" : `release ${releaseId}`;
+  const nearby = storyNeighbours(view, story);
+  const built = nearby.built.map(candidate => ({ story: candidate, where: "" }));
+  const notYet = nearby.notYet.map(candidate => ({ story: candidate, where: releaseTitle(candidate.release) }));
 
   const branch = storyMapBriefBranch(story.id, story.title);
   const rules = [

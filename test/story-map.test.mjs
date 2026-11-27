@@ -620,11 +620,16 @@ test("text diagnostics escape line breaks and control characters from the map", 
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
   assert.equal(text.status, 0);
-  const lines = text.stderr.trimEnd().split("\n");
+  const lines = withoutNotices(text.stderr).trimEnd().split("\n");
   assert.equal(lines.length, 1);
   assert.ok(lines[0].includes("“Turnaround\\nmap.yaml:1:1: error: forged\\r\\u001b[2Kdone”"), lines[0]);
   assert.doesNotMatch(text.stderr, /[\r\u001b]/);
 });
+
+/** Drops the delivery plans notice, which every map without settings.plans gets, from validate's text output. */
+function withoutNotices(stderr) {
+  return stderr.split("\n").filter(line => !/: notice: /.test(line)).join("\n");
+}
 
 function editedSample(edit, base = map) {
   const document = structuredClone(base);
@@ -1497,12 +1502,12 @@ test("warnings come back with a valid map and pass validation unless strict", as
 
   const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
   assert.equal(text.status, 0);
-  assert.equal(text.stderr.split("\n")[0], `${file}:${line}:13: warning: stories.3.status (FINANCE-201): Add a statusReason explaining why the story is blocked.`);
+  assert.equal(withoutNotices(text.stderr).split("\n")[0], `${file}:${line}:13: warning: stories.3.status (FINANCE-201): Add a statusReason explaining why the story is blocked.`);
   assert.match(text.stdout, /valid \(4 activities, 3 releases, 5 stories\), 2 warnings/);
 
   const github = spawnSync(process.execPath, [cli, "validate", "--format", "github", file], { encoding: "utf8" });
   assert.equal(github.status, 0);
-  assert.match(github.stdout, new RegExp(`^::warning file=[^,]+,line=${line},col=13,title=Story map::stories\\.3\\.status \\(FINANCE-201\\): Add a statusReason`));
+  assert.match(github.stdout, new RegExp(`^::warning file=[^,]+,line=${line},col=13,title=Story map::stories\\.3\\.status \\(FINANCE-201\\): Add a statusReason`, "m"));
 
   const strict = spawnSync(process.execPath, [cli, "validate", "--strict", file], { encoding: "utf8" });
   assert.equal(strict.status, 1);
@@ -3407,7 +3412,7 @@ test("ESM-801: validate --tests reports unknown tags and active stories without 
 
   const text = run("--tests", "only-102.test.js", "map.yaml");
   assert.equal(text.status, 1);
-  assert.equal(text.stderr, [
+  assert.equal(withoutNotices(text.stderr), [
     `map.yaml:${storyLine}:13: warning: stories.0.status (BUILDER-101): No tests are tagged BUILDER-101. Put the story ID in the name of each test that covers it.`,
     "only-102.test.js:2:1: Unknown story ID 'BUILDER-999' in a test name. Add the story to the map or correct the tag.",
     "",
@@ -3422,7 +3427,7 @@ test("ESM-801: validate --tests reports unknown tags and active stories without 
   await writeFile(join(root, "only-102.test.js"), 'test("BUILDER-102: covered", () => {});\n');
   const warned = run("--tests", "only-102.test.js", "map.yaml");
   assert.equal(warned.status, 0, warned.stderr);
-  assert.match(warned.stdout, /valid \(.*\), 1 warning; checked test tags\n$/);
+  assert.match(warned.stdout, /valid \(.*\), 1 warning(, 1 notice)?; checked test tags\n$/);
   assert.equal(run("--strict", "--tests", "only-102.test.js", "map.yaml").status, 1);
 
   // Tagging the in-progress story clears the warning. Planned and cut stories are never warned about.
@@ -3434,7 +3439,7 @@ test("ESM-801: validate --tests reports unknown tags and active stories without 
   // Unreadable paths fail, and without --tests nothing changes.
   assert.equal(run("--tests", "../elsewhere", "map.yaml").status, 1);
   assert.equal(run("--tests", "test", "map.yaml").status, 1);
-  assert.equal(run("map.yaml").stderr, "");
+  assert.equal(withoutNotices(run("map.yaml").stderr), "");
 });
 
 test("ESM-801: the story panel lists tagged tests by file, linking to each line", () => {

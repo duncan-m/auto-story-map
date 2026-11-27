@@ -129,13 +129,14 @@ test("ESM-128: gives every warning a kind", () => {
 test("ESM-128: validate --format json includes each warning's kind, and text output does not change", async () => {
   const result = await checkStoryMap(source);
   assert.ok(result.issues.length > 0);
-  for (const issue of result.issues) assert.ok(issue.kind, issue.message);
+  // The delivery plans notice is a question, not a warning, so it has no kind.
+  for (const issue of result.issues.filter(issue => issue.severity !== "notice")) assert.ok(issue.kind, issue.message);
   const dir = await mkdtemp(join(tmpdir(), "esm-actions-"));
   try {
     await writeFile(join(dir, "map.yaml"), source);
     const json = spawnSync(process.execPath, [cli, "validate", "--format", "json", "map.yaml"], { cwd: dir, encoding: "utf8" });
     const issues = JSON.parse(json.stdout).maps[0].issues;
-    assert.ok(issues.every(issue => storyMapWarningKinds.includes(issue.kind)));
+    assert.ok(issues.every(issue => issue.severity === "notice" || storyMapWarningKinds.includes(issue.kind)));
     const text = spawnSync(process.execPath, [cli, "validate", "map.yaml"], { cwd: dir, encoding: "utf8" });
     assert.doesNotMatch(text.stderr, /missing-estimate|confirm-draft/);
   } finally {

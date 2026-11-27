@@ -53,7 +53,7 @@ export default defineCommand({
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        result = { valid: false, errors: 1, warnings: 0, checked: [], issues: [{ severity: "error", path: [], message }] };
+        result = { valid: false, errors: 1, warnings: 0, notices: 0, checked: [], issues: [{ severity: "error", path: [], message }] };
       }
       if (!result.valid) process.exitCode = 1;
       results.push({ file: path, ...result });
@@ -69,5 +69,6 @@ function printResult(path: string, result: StoryMapCheckResult, format: ReportFo
   const { activities, releases, stories } = result.counts;
   const listed = listWords(result.checked.map(check => checkedLabels[check]));
   const warned = result.warnings ? `, ${count(result.warnings, "warning", "warnings")}` : "";
-  console.log(`${path}: valid (${count(activities, "activity", "activities")}, ${count(releases, "release", "releases")}, ${count(stories, "story", "stories")})${warned}${listed ? `; checked ${listed}` : ""}`);
+  const noticed = result.notices ? `, ${count(result.notices, "notice", "notices")}` : "";
+  console.log(`${path}: valid (${count(activities, "activity", "activities")}, ${count(releases, "release", "releases")}, ${count(stories, "story", "stories")})${warned}${noticed}${listed ? `; checked ${listed}` : ""}`);
 }
