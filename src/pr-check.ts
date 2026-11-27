@@ -77,8 +77,11 @@ export function commitAgent(commit: PrCheckCommit, botNames: readonly string[] =
   const bots = new Set(botNames.map(name => name.trim().toLowerCase()).filter(Boolean));
   const author = commit.author.trim();
   if (author.toLowerCase().endsWith("[bot]") || bots.has(author.toLowerCase())) return author;
-  for (const match of commit.message.matchAll(/^co-authored-by:[ \t]*(.+)$/gim)) {
-    const agent = agentPattern.exec(match[1]);
+  // Read the trailers line by line rather than with a regex, so a long line cannot make matching slow.
+  const trailer = "co-authored-by:";
+  for (const line of commit.message.split(/\r?\n/)) {
+    if (line.slice(0, trailer.length).toLowerCase() !== trailer) continue;
+    const agent = agentPattern.exec(line.slice(trailer.length));
     if (agent) return knownAgentNames.find(name => name.toLowerCase() === agent[1].toLowerCase()) ?? agent[1];
   }
   return undefined;

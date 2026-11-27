@@ -68,6 +68,10 @@ test("ESM-163: tells agent commits from a person's by bot authors and Co-Authore
   assert.equal(commitAgent({ ...person, message: "Pair\n\nCo-Authored-By: Alex Kim <alex@example.test>" }), undefined);
   // A trailer only counts at the start of a line.
   assert.equal(commitAgent({ ...person, message: "Mention that Co-Authored-By: Claude is how agents sign commits" }), undefined);
+  // A trailer with a long run of spaces and tabs is read quickly.
+  const started = performance.now();
+  assert.equal(commitAgent({ ...person, message: `Co-Authored-By:${" \t".repeat(100_000)}x` }), undefined);
+  assert.ok(performance.now() - started < 1000, "a long trailer is read in linear time");
 });
 
 test("ESM-163: a change that needs a person fails only when an agent commit changed the map and nobody approved it", () => {
