@@ -532,7 +532,9 @@ releases:
     summary: Git-native burn-up, burn-down, throughput, velocity and release progress without maintaining sprints.
     notes: |
       Planning proposal only. Calculated from the map and the history file from story-map history, with no new generated file; metrics remain internal.
+      Starts with a spike, ESM-174: an Analytics tab of stories, points, tokens and spend per day, week or month. The full metrics, ESM-130 to ESM-134, follow on from it.
       Plan: docs/plans/delivery-metrics.md
+      Mockup: docs/plans/delivery-metrics-mockup.html
     impact:
       - metric: Time to understand progress and scope change for a release
         expected: One analytics view without manual reporting
@@ -1945,6 +1947,20 @@ stories:
       - docs/plans/agent-briefs.md#5-start-a-local-agent-from-the-preview
 
   # Proposed Git-native delivery metrics (planning only)
+  - id: ESM-174
+    title: Spike delivery totals in an Analytics tab
+    activity: track
+    release: v0-8-2
+    status: planned
+    jobs:
+      - get-oriented
+      - agree-first-release-plan
+    summary: A new internal Analytics tab shows stories, points, tokens and spend completed per day, week or month, from the map and the history file, with coverage for missing estimates and tokens.
+    notes: "Spike before the full 0.8.2 metrics: values are today's, not at the time, and it shows no scope change or remaining work. ESM-132, ESM-133 and ESM-134 follow on from it. Estimate not agreed yet."
+    sources:
+      - docs/plans/delivery-metrics.md#spike-show-delivery-totals-in-an-analytics-tab
+      - docs/plans/delivery-metrics-mockup.html
+      - docs/plans/delivery-metrics-mockup.png
   - id: ESM-130
     title: Reconstruct delivery events from Git
     activity: track
@@ -1979,6 +1995,7 @@ stories:
     estimate: 8
     dependsOn:
       - ESM-131
+      - ESM-174
     jobs:
       - get-oriented
       - agree-first-release-plan
@@ -1993,10 +2010,11 @@ stories:
     estimate: 3
     dependsOn:
       - ESM-131
+      - ESM-174
     jobs:
       - get-oriented
       - agree-first-release-plan
-    summary: Show weekly completed story counts and estimated points without sprint administration or misleading missing-estimate totals.
+    summary: Extend the Analytics spike's weekly table with story-point velocity at the time and a 12-week window, without sprint administration or misleading missing-estimate totals.
     sources:
       - docs/plans/delivery-metrics.md#4-report-throughput-and-velocity
   - id: ESM-134
@@ -2005,6 +2023,8 @@ stories:
     release: v0-8-2
     status: planned
     estimate: 3
+    dependsOn:
+      - ESM-174
     jobs:
       - get-oriented
       - triage-backlog
