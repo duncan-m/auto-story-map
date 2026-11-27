@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { agentsSection, workflowWithTests } from "./init.js";
 import { compareVersions, loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, setupParts, type KnownSetupVersions, type SetupFileVersion, type SetupPart } from "./setup-versions.js";
+import { workflowCommands } from "./upgrade.js";
 import { storyMapVersion } from "./version.js";
 
 /** Where each part lives in a host repository. */
@@ -64,9 +65,21 @@ export interface FindSetupBehindOptions {
 }
 
 /**
+ * True when a host's workflow runs every command this version's template
+ * runs. An edited workflow like that is not behind, since `story-map upgrade`
+ * compares workflows by their commands and would offer nothing.
+ */
+async function runsEveryStep(text: string) {
+  const template = workflowWithTests(await packaged("templates/story-map-ci.yml"), /--tests (\S+)/.exec(text)?.[1]);
+  const have = workflowCommands(text);
+  return [...workflowCommands(template).keys()].every(key => have.has(key));
+}
+
+/**
  * The parts of the set-up in `root` that are behind the installed package. A
  * missing or unreadable file, or an `AGENTS.md` without the story map section,
- * is left out.
+ * is left out, and so is an edited workflow that already runs every step,
+ * matching `isUpgradePartBehind` in the upgrade report.
  */
 export async function findSetupBehind(root: string, options: FindSetupBehindOptions = {}): Promise<SetupPartBehind[]> {
   const known = options.known ?? await loadKnownSetupVersions();
@@ -76,7 +89,9 @@ export async function findSetupBehind(root: string, options: FindSetupBehindOpti
     const path = setupPartPaths[part];
     const text = await readFile(join(root, path), "utf8").catch(() => undefined);
     const version = text === undefined ? undefined : readSetupFileVersion(part, text, known);
-    if (version?.from && isSetupPartBehind(version, current[part], options.packageVersion)) behind.push({ part, path, from: version.from });
+    if (!version?.from || !isSetupPartBehind(version, current[part], options.packageVersion)) continue;
+    if (part === "workflow" && !version.unedited && await runsEveryStep(text!)) continue;
+    behind.push({ part, path, from: version.from });
   }
   return behind;
 }

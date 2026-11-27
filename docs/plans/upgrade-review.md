@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166, ESM-167 and ESM-172 are merged, and ESM-168 to ESM-171 and ESM-173 are planned. Decisions A to E are made. None has an agreed estimate yet.
+Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-168 and ESM-172 are merged, and ESM-169 to ESM-171 and ESM-173 are planned. Decisions A to E are made. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 
@@ -142,6 +142,8 @@ Only lines for the parts being applied are shown, so the overview never mentions
 A test fails when a template changes without a matching line in `changes.yaml` for the next version, and when a part has no "what it does" line.
 
 The text and Markdown output print the overview as a block, and the JSON has it as `overview`. The guide tells agents to show it to the person as written, rather than summarising it.
+
+As built, `templates/changes.yaml` holds both kinds of line: `install` has one for each file part, the skill included, and `releases` has the lines for each part, by the version that changed it, from 0.7.0 on. The skill records no version, so it has no release lines. The test compares the file with `templates/known-versions.json` and this checkout's templates: a release that changed a template needs a line for it, one that did not must have none, and a template changed since the newest tag needs a line under a later version. On upgrade, the lines are newest first, from every release after the version each applied part came from. Applied means added, replaced, or, for an edited workflow, gaining steps. The overview lists at most 8 lines, and is `overview` on `UpgradeReport`, built by `upgradeOverview()` in `src/upgrade-overview.ts`. At release, the lines under unreleased versions move to the version being released. See [The overview](../story-map.md#the-overview).
 
 ## 4. Apply the recommended changes in simple mode
 
