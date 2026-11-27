@@ -226,6 +226,15 @@ test("ESM-116: validate_map reports issues as validate --format json does", asyn
   assert.ok(read.body.issues.length);
 });
 
+test("ESM-159: validate_map returns each issue's rule and help link", async t => {
+  const { root } = await repository(t);
+  await writeFile(join(root, "product/story-map.yaml"), map.replace("release: later", "release: never"));
+  const { call } = await connect(t, { root });
+  const issue = (await call("validate_map")).body.maps[0].issues.find(found => found.severity === "error");
+  assert.equal(issue.rule, "unknown-reference");
+  assert.match(issue.help, /docs\/story-map\.md#validate-a-change$/);
+});
+
 test("ESM-116: claim_story claims a story once, and tells a second agent who holds it", async t => {
   const { root } = await repository(t);
   const { call } = await connect(t, { root });

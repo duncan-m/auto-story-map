@@ -1,6 +1,9 @@
-import { readFile, realpath } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { checkPlanReferences, checkSources, resolveRootedPath, type ReferenceIssue } from "./references.js";
+import { checkPlanMockups } from "./plan-mockups.js";
+import { checkPlanStatusLines } from "./plan-status.js";
+import { checkPlanReferences, checkSources, markdownAnchors, maxMarkdownBytes, resolveRootedPath, type ReferenceIssue } from "./references.js";
+import { storyMapGuidePath, storyMapRuleHelp, storyMapRules, type StoryMapRuleId } from "./rules.js";
 import { describeIssueTarget, loadStoryMap, StoryMapValidationError, type StoryMapIssueSeverity, type StoryMapWarningKind } from "./schema.js";
 import { checkStoryTests, findStoryTests } from "./tests.js";
 import { storyMapRepositoryUrl, storyMapVersion } from "./version.js";
@@ -33,6 +36,13 @@ export interface StoryMapCheckIssue {
   /** ID of the activity, release or story that contains the issue. */
   itemId?: string;
   message: string;
+  /** The rule the issue breaks, such as `unknown-reference`. Stable across releases. See `storyMapRules`. */
+  rule: StoryMapRuleId;
+  /**
+   * The guide section that explains the rule: `docs/story-map.md#…` when the repository's copy of the
+   * guide has that heading, otherwise the guide on GitHub at the installed version's tag.
+   */
+  help: string;
   /** What a warning asks for, such as `missing-estimate`. Absent on errors, notices and warnings about other files. */
   kind?: StoryMapWarningKind;
 }
@@ -53,7 +63,26 @@ export interface StoryMapCheckResult {
   issues: StoryMapCheckIssue[];
 }
 
-function toCheckIssue(issue: ReferenceIssue): StoryMapCheckIssue {
+/** Turns a rule into its guide link. See `storyMapRuleLinker`. */
+export type StoryMapRuleLinker = (rule: StoryMapRuleId) => string;
+
+/**
+ * Links each rule to the guide: the repository's own `docs/story-map.md` when it has the rule's
+ * heading, otherwise the guide on GitHub at the installed version's tag, so an older or missing
+ * copy never gives a broken link.
+ */
+export async function storyMapRuleLinker(root: string): Promise<StoryMapRuleLinker> {
+  let anchors: Set<string> | undefined;
+  try {
+    const path = join(root, storyMapGuidePath);
+    if ((await stat(path)).size <= maxMarkdownBytes) anchors = markdownAnchors(await readFile(path, "utf8"));
+  } catch {
+    // No copy of the guide, so link to the package's.
+  }
+  return rule => anchors?.has(storyMapRules[rule].section) ? storyMapRuleHelp(rule, storyMapGuidePath) : storyMapRuleHelp(rule);
+}
+
+function toCheckIssue(issue: ReferenceIssue, link: StoryMapRuleLinker): StoryMapCheckIssue {
   return {
     severity: issue.severity,
     ...(issue.file ? { file: issue.file } : {}),
@@ -63,6 +92,8 @@ function toCheckIssue(issue: ReferenceIssue): StoryMapCheckIssue {
     ...(issue.path.length ? { target: describeIssueTarget(issue) } : {}),
     ...(issue.itemId ? { itemId: issue.itemId } : {}),
     message: issue.message,
+    rule: issue.rule,
+    help: link(issue.rule),
     ...(issue.kind ? { kind: issue.kind } : {}),
   };
 }
@@ -78,15 +109,16 @@ export async function checkStoryMap(source: string, options: StoryMapCheckOption
     options.plans?.length && "plans",
     options.tests?.length && "tests",
   ].filter(Boolean) as StoryMapCheckResult["checked"];
+  const root = options.root ?? process.cwd();
+  const link = await storyMapRuleLinker(root);
   let loaded;
   try {
     loaded = loadStoryMap(source);
   } catch (error) {
     if (!(error instanceof StoryMapValidationError)) throw error;
-    const issues = error.issues.map(toCheckIssue);
+    const issues = error.issues.map(issue => toCheckIssue(issue, link));
     return { valid: false, ...tally(issues), checked, issues };
   }
-  const root = options.root ?? process.cwd();
   const found: ReferenceIssue[] = [];
   if (options.checkSources) found.push(...await checkSources(loaded, root));
   const planPaths = [...options.plans ?? []];
@@ -97,6 +129,8 @@ export async function checkStoryMap(source: string, options: StoryMapCheckOption
     if (!checked.includes("plans")) checked.push("plans");
   }
   if (planPaths.length) found.push(...await checkPlanReferences(loaded, root, planPaths));
+  if (planPaths.length) found.push(...await checkPlanStatusLines(loaded, root, planPaths));
+  if (planPaths.length) found.push(...await checkPlanMockups(loaded, root, planPaths));
   if (chosen === undefined) found.push(await plansNotice(root));
   if (options.tests?.length) {
     const tests = await findStoryTests(loaded, root, { paths: options.tests });
@@ -104,7 +138,7 @@ export async function checkStoryMap(source: string, options: StoryMapCheckOption
   }
   const issues = ([...found, ...loaded.warnings] as ReferenceIssue[])
     .sort((a, b) => (a.file ? 1 : 0) - (b.file ? 1 : 0) || (a.line ?? 0) - (b.line ?? 0))
-    .map(toCheckIssue);
+    .map(issue => toCheckIssue(issue, link));
   const counted = tally(issues);
   const { map } = loaded;
   return {
@@ -160,6 +194,7 @@ export async function deliveryPlanGuideLink(root: string): Promise<string> {
 async function plansNotice(root: string): Promise<ReferenceIssue> {
   return {
     severity: "notice",
+    rule: "choose-delivery-plans",
     path: [],
     message: `Delivery plans: not chosen yet. Ask the person whether to use them, see ${await deliveryPlanGuideLink(root)}, and record the answer with \`story-map settings --plans <folder>\` or \`--plans off\`.`,
   };

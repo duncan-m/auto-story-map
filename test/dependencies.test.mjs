@@ -71,9 +71,9 @@ test("ESM-129: validation rejects unknown, repeated and self dependencies", asyn
     "BUILDER-102": ["BUILDER-101", "BUILDER-999", "BUILDER-101"],
   }));
   assert.deepEqual(describe(errors), [
-    ["stories.0.dependsOn.0", "BUILDER-101", "A story cannot depend on itself."],
-    ["stories.1.dependsOn.1", "BUILDER-102", "Unknown story 'BUILDER-999'."],
-    ["stories.1.dependsOn.2", "BUILDER-102", "Story 'BUILDER-101' is listed twice."],
+    ["stories.0.dependsOn.0", "BUILDER-101", "A story cannot depend on itself. Remove the dependency."],
+    ["stories.1.dependsOn.1", "BUILDER-102", "Unknown story 'BUILDER-999'. Use a story ID from the map."],
+    ["stories.1.dependsOn.2", "BUILDER-102", "Story 'BUILDER-101' is listed twice. Remove one."],
   ]);
   assert.ok(errors.every(error => error.line > 0));
 

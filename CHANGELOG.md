@@ -5,6 +5,7 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 ## Unreleased
 
 - **Tag a describe block for all its tests:** A story ID at the start of a `describe` or `suite` name now links every test inside it, including tests in nested blocks, so renaming a test no longer unlinks it from its story. A test that names its own story inside a tagged block counts for both. This applies to `story-map tests`, `validate --tests`, `story-map evidence` and `story-map actions`. The story panel lists those tests under the story, marked “Covered by its group”, and the tests index marks the IDs each test has from its block in a new optional `inheritedIds` field, which older boards ignore. An unknown ID in a block's name is reported once, at the block. Internal viewers only. See [Link tests to stories](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-tests-to-stories).
+- **Fill gaps in story IDs:** With `settings.storyIds: lowest-free` in the map, `story-map add` takes the lowest unused number in the map's main prefix, counting cut stories, instead of one after the highest. Maps without the setting number stories as before. `story-map diff` lists a change to it under **Settings**, and `nextStoryId` takes the scheme as a new optional third argument. See [Change the map from the command line](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#change-the-map-from-the-command-line).
 
 ### Delivery plans for host products
 
@@ -21,6 +22,18 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 - `edit --from` and the MCP server's `propose_edit` take a `plans` op, and `story-map diff` lists a change to `settings.plans` under **Settings**.
 - `init` says when the story map section of `AGENTS.md` differs from the package's, and never replaces it. The `AGENTS.md` template gains a **Plan the work** section, and the skill from `init --skill` carries the planning rules in full. `storyMapPlan` and `deliveryPlanGuideLink` are exported.
 - See [Upgrade to 0.7.7](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-077).
+
+### Rules as checks
+
+- **Each validation problem names its rule and links to the guide:** Every problem `validate` reports now has a stable rule ID, such as `missing-status-reason`, and a link to the section of the guide that explains how to fix it, so an agent can fix a problem without reading the whole guide. Text output gives the rule in brackets with the link on the next line, GitHub annotations are titled with the rule, and JSON issues gain `rule` and `help`. The MCP server's `validate_map`, `story-map actions` and the board's Actions tab show them too. Most messages now also say what to change. See [Validation rules](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#validation-rules).
+- **Warn when a plan's status line is out of date:** `validate --plans`, and `validate --check-sources` once `settings.plans` names a folder, read the first `Status:` line of each plan and warn when it is behind every story it names, starts with words other than the map's statuses, such as `built` or `done`, or names in bold a release title the map no longer has. The rules are `plan-status-behind`, `plan-status-words` and `plan-status-release`. They are warnings, so they fail only with `--strict`. Files without a status line are skipped, and `story-map plan` now starts the line with the status its stories have reached, so its output passes. The plans in this repository are reworded to match. See [Check plan status lines](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#check-plan-status-lines).
+- **Check plan mockups:** `validate --plans` now checks each plan's `## UI mockup` section: it must link an HTML mockup and embed a PNG of it, both files must exist, and at least one story must list the section in its `sources`. A section with no links or images, such as one saying there is no mockup, is not checked. Each problem has its own rule: `mockup-without-html`, `mockup-without-image`, `missing-mockup-file` and `unlinked-mockup`. Like the other plan checks, it also runs under `--check-sources` once `settings.plans` names a folder, so a host whose plans break these rules sees new errors. See [Link mockups and designs](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-mockups-and-designs).
+
+**For developers**
+
+- `StoryMapIssue` has a required `rule`, and `StoryMapCheckIssue` adds `help`. A warning's `rule` is its `kind`. The `--format json` `version` stays 1, since the fields are additions.
+- Links go to the repository's own `docs/story-map.md` when it has the heading, otherwise to the guide on GitHub at the installed version's tag. `storyMapRules`, `storyMapRuleIds`, `storyMapRuleHelp`, `storyMapRuleLinker` and `isStoryMapRuleId` are exported, and `getStoryMapActions` takes a `help` option. Action groups gain `rule` and `help`.
+- Text output and annotation titles change, so scripts that compare them exactly should match on `rule` instead.
 
 ## 0.7.6
 

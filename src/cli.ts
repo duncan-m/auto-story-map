@@ -72,7 +72,10 @@ validate
                      Markdown #heading fragments match a heading, and the
                      story IDs in the settings.plans folder when it is set.
   --plans <path>     Check that story IDs mentioned in Markdown files under
-                     <path> exist in the map. Repeat for several paths.
+                     <path> exist in the map, and warn when a plan's Status:
+                     line is behind the map, uses other words or names a
+                     release title the map no longer has. Repeat for several
+                     paths.
   --tests <path>     Check story IDs in the names of tests under <path>: an
                      error for an ID that is not in the map, and a warning for
                      an in-progress or merged story with no tagged tests.
@@ -375,7 +378,9 @@ edit
 add
   Adds a story, as planned unless --status says otherwise, after the last
   story in its release. It takes the next ID in sequence, one after the highest
-  in the whole map, counting cut stories so an ID is never reused, or --id. Takes
+  in the whole map, counting cut stories so an ID is never reused, or --id. With
+  settings.storyIds: lowest-free in the map, it takes the lowest free number
+  instead, still counting cut stories. Takes
   --source for each source, --job for each job it serves, --persona for each
   persona it helps, --dependency for each story that must land first, and the
   common edit options in story-map help edit.

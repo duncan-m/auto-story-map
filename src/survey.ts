@@ -343,8 +343,11 @@ function followsCommentMarker(before: string) {
   return commentOpeners.some(opener => before.endsWith(opener));
 }
 
+/** A problem a survey notes. Only the checks it shares with validate have a rule. */
+type SurveyIssue = Omit<ReferenceIssue, "rule"> & Partial<Pick<ReferenceIssue, "rule">>;
+
 /** Lists the files a set of paths names, through `repositoryFiles`, reporting paths that leave the root. */
-async function listFiles(root: string, realRoot: string, paths: readonly string[], filter: FileFilter, issues: ReferenceIssue[], empty: string) {
+async function listFiles(root: string, realRoot: string, paths: readonly string[], filter: FileFilter, issues: SurveyIssue[], empty: string) {
   const shown = (file: string) => relative(realRoot, file).split(sep).join("/");
   const files = new Set<string>();
   for (const path of paths) {
@@ -377,7 +380,7 @@ export async function surveyRepository(options: RepositorySurveyOptions = {}): P
   if (!(await stat(root).catch(() => undefined))?.isDirectory()) throw new RepositorySurveyError(`--root ${options.root ?? "."} is not a folder.`);
   const realRoot = await realpath(root);
   const notes: string[] = [];
-  const issues: ReferenceIssue[] = [];
+  const issues: SurveyIssue[] = [];
   const checked: RepositorySurvey["checked"] = [];
 
   let tags: SurveyTag[] = [];

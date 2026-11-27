@@ -36,6 +36,7 @@ import {
   storyMapToJson,
   storyMapToVsdx,
   vsdxContentType,
+  storyMapPackagedGuideUrl,
 } from "auto-story-map";
 import { StoryMapBoard } from "auto-story-map/react";
 import { makeStoryMapResponse } from "../example/host.mjs";
@@ -322,14 +323,14 @@ test("validation errors name the item and source line", () => {
   }
   assert.ok(error instanceof StoryMapValidationError);
   const byPath = Object.fromEntries(error.issues.map(issue => [issue.path.join("."), issue]));
-  assert.deepEqual(byPath["activities.3.title"], { severity: "error", path: ["activities", 3, "title"], message: "Missing required field.", itemId: "finance-ops", line: lineOf("- id: finance-ops"), column: 5 });
+  assert.deepEqual(byPath["activities.3.title"], { severity: "error", path: ["activities", 3, "title"], message: "Missing required field.", rule: "missing-field", itemId: "finance-ops", line: lineOf("- id: finance-ops"), column: 5 });
   assert.equal(byPath["stories.0.status"].itemId, "BUILDER-101");
   assert.equal(byPath["stories.0.status"].line, lineOf("status: started"));
   assert.match(byPath["stories.0.status"].message, /Use one of 'planned', 'in-progress', 'merged', 'shipped', 'blocked', 'cut'\./);
-  assert.equal(byPath["stories.1.owner"].message, "Unknown field.");
+  assert.equal(byPath["stories.1.owner"].message, "Unknown field. Remove it, or correct its spelling.");
   assert.equal(byPath["stories.1.owner"].line, lineOf("owner: Sam"));
   // Reference checks still run when another field is invalid.
-  assert.equal(byPath["stories.3.release"].message, "Unknown release 'finance-later'.");
+  assert.equal(byPath["stories.3.release"].message, "Unknown release 'finance-later'. Use a release ID from the map.");
   assert.equal(byPath["stories.3.release"].itemId, "FINANCE-201");
   assert.match(error.message, new RegExp(`line ${lineOf("finance-later")}: stories\\.3\\.release \\(FINANCE-201\\): Unknown release 'finance-later'\\.`));
 
@@ -350,7 +351,7 @@ test("many unknown fields are located in linear time", () => {
     error = caught;
   }
   assert.ok(error instanceof StoryMapValidationError);
-  const unknown = error.issues.filter(issue => issue.message === "Unknown field.");
+  const unknown = error.issues.filter(issue => issue.message === "Unknown field. Remove it, or correct its spelling.");
   assert.equal(unknown.length, count);
   assert.equal(unknown.at(-1).line, count + 1);
   assert.ok(performance.now() - started < 3000);
@@ -369,7 +370,7 @@ test("unknown fields below many unknown top-level fields are located in linear t
     error = caught;
   }
   assert.ok(error instanceof StoryMapValidationError);
-  const nested = error.issues.filter(issue => issue.message === "Unknown field." && issue.path[0] === "stories");
+  const nested = error.issues.filter(issue => issue.message === "Unknown field. Remove it, or correct its spelling." && issue.path[0] === "stories");
   assert.equal(nested.length, count);
   assert.deepEqual(nested.at(-1).path, ["stories", 0, `field${count - 1}`]);
   assert.equal(nested.at(-1).line, 2 * count + 3);
@@ -386,11 +387,11 @@ test("the CLI prints file positions and GitHub annotations", async t => {
 
   const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
   assert.equal(text.status, 1);
-  assert.equal(text.stderr.trim(), `${file}:${line}:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'.`);
+  assert.equal(text.stderr.trim(), `${file}:${line}:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'. Use a release ID from the map. [unknown-reference]\n  help: docs/story-map.md#validate-a-change`);
 
   const github = spawnSync(process.execPath, [cli, "validate", "--format", "github", file], { encoding: "utf8" });
   assert.equal(github.status, 1);
-  assert.equal(github.stdout.trim(), `::error file=${file.replace(/:/g, "%3A")},line=${line},col=14,title=Story map::stories.3.release (FINANCE-201): Unknown release 'finance-later'.`);
+  assert.equal(github.stdout.trim(), `::error file=${file.replace(/:/g, "%3A")},line=${line},col=14,title=unknown-reference::stories.3.release (FINANCE-201): Unknown release 'finance-later'. Use a release ID from the map. docs/story-map.md#validate-a-change`);
 
   assert.equal(spawnSync(process.execPath, [cli, "validate", "--format", "xml", file]).status, 2);
 });
@@ -621,14 +622,16 @@ test("text diagnostics escape line breaks and control characters from the map", 
   const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
   assert.equal(text.status, 0);
   const lines = withoutNotices(text.stderr).trimEnd().split("\n");
-  assert.equal(lines.length, 1);
+  assert.equal(lines.length, 2);
+  assert.match(lines[1], /^  help: \S+#confirm-a-draft$/);
   assert.ok(lines[0].includes("“Turnaround\\nmap.yaml:1:1: error: forged\\r\\u001b[2Kdone”"), lines[0]);
   assert.doesNotMatch(text.stderr, /[\r\u001b]/);
 });
 
-/** Drops the delivery plans notice, which every map without settings.plans gets, from validate's text output. */
+/** Drops the delivery plans notice, which every map without settings.plans gets, and its help line, from validate's text output. */
 function withoutNotices(stderr) {
-  return stderr.split("\n").filter(line => !/: notice: /.test(line)).join("\n");
+  const lines = stderr.split("\n");
+  return lines.filter((line, index) => !/: notice: /.test(line) && !(line.startsWith("  help: ") && /: notice: /.test(lines[index - 1] ?? ""))).join("\n");
 }
 
 function editedSample(edit, base = map) {
@@ -740,7 +743,7 @@ test("source checks skip heading anchors in oversized Markdown files", async t =
   await writeFile(join(root, "big.md"), `# Big\n${"x".repeat(maxMarkdownBytes)}`);
   const loaded = loadStoryMap(sample.replace("docs/example-builder-estimate-plan.md#builder-workflow", "big.md#big"));
   const issues = await checkSources(loaded, root);
-  assert.ok(issues.some(issue => issue.message === "'big.md' is larger than 5 MB, so '#big' was not checked."));
+  assert.ok(issues.some(issue => issue.message === "'big.md' is larger than 5 MB, so '#big' was not checked. Link to a smaller file."));
 });
 
 test("source and plan checks report missing files, headings and story IDs", async t => {
@@ -768,15 +771,15 @@ test("source and plan checks report missing files, headings and story IDs", asyn
 
   const sourceIssues = await checkSources(loaded, root);
   assert.deepEqual(sourceIssues.map(issue => [issue.path.join("."), issue.itemId, issue.line, issue.message]), [
-    ["stories.1.sources.2", "BUILDER-102", lineOf("#missing-heading"), "'docs/plans/estimates.md' has no heading for '#missing-heading'."],
-    ["stories.1.sources.3", "BUILDER-102", lineOf("docs/nothing.md"), "Source file 'docs/nothing.md' does not exist."],
-    ["stories.1.sources.4", "BUILDER-102", lineOf("../outside.md"), "Source '../outside.md' points outside the repository."],
+    ["stories.1.sources.2", "BUILDER-102", lineOf("#missing-heading"), "'docs/plans/estimates.md' has no heading for '#missing-heading'. Link to a heading the file has, or add one."],
+    ["stories.1.sources.3", "BUILDER-102", lineOf("docs/nothing.md"), "Source file 'docs/nothing.md' does not exist. Correct the path, or remove the source."],
+    ["stories.1.sources.4", "BUILDER-102", lineOf("../outside.md"), "Source '../outside.md' points outside the repository. Use a path inside it, or a full URL."],
   ]);
 
   const planIssues = await checkPlanReferences(loaded, root, ["docs", "missing-folder"]);
   assert.deepEqual(planIssues.map(issue => [issue.file, issue.line, issue.column, issue.message]), [
     ["docs/plans/estimates.md", 5, 17, "Unknown story ID 'BUILDER-999'. Add it to the map or correct the reference."],
-    ["missing-folder", undefined, undefined, "No Markdown files found."],
+    ["missing-folder", undefined, undefined, "No Markdown files found. Pass a folder or file that holds the plans."],
   ]);
 });
 
@@ -874,21 +877,21 @@ test("source and plan checks do not follow symbolic links out of the repository"
   const source = sample.replace("      - docs/example-builder-estimate-plan.md#builder-workflow\n", sources.map(path => `      - ${path}\n`).join(""));
   const issues = await checkSources(loadStoryMap(source), root);
   assert.deepEqual(issues.map(issue => issue.message), [
-    "Source 'docs/secret.md#secret-heading' points outside the repository through a symbolic link.",
+    "Source 'docs/secret.md#secret-heading' points outside the repository through a symbolic link. Use a path inside it, or a full URL.",
     // A link out of the repository says the same whether or not its target exists.
-    "Source 'docs/dangling.md' points outside the repository through a symbolic link.",
-    "Source 'notes/plan.md' points outside the repository through a symbolic link.",
-    "'docs/inside.md' has no heading for '#no-such-heading'.",
-    "Source file 'docs/loop-a.md' does not exist.",
+    "Source 'docs/dangling.md' points outside the repository through a symbolic link. Use a path inside it, or a full URL.",
+    "Source 'notes/plan.md' points outside the repository through a symbolic link. Use a path inside it, or a full URL.",
+    "'docs/inside.md' has no heading for '#no-such-heading'. Link to a heading the file has, or add one.",
+    "Source file 'docs/loop-a.md' does not exist. Correct the path, or remove the source.",
   ]);
 
   const loaded = loadStoryMap(sample);
   const plans = await checkPlanReferences(loaded, root, ["docs", "notes", "../outside"]);
   assert.deepEqual(plans.map(issue => [issue.file, issue.message]), [
-    ["docs/dangling.md", "Points outside the repository through a symbolic link, so it was not read."],
-    ["docs/secret.md", "Points outside the repository through a symbolic link, so it was not read."],
-    ["notes", "Points outside the repository through a symbolic link."],
-    ["../outside", "Points outside the repository."],
+    ["docs/dangling.md", "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository."],
+    ["docs/secret.md", "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository."],
+    ["notes", "Points outside the repository through a symbolic link. Pass a path inside it."],
+    ["../outside", "Points outside the repository. Pass a path inside it."],
   ]);
   // Links inside the repository are still read: an unknown ID in a linked plan is found once.
   await writeFile(join(root, "docs/guides/real.md"), "# Real heading\n\nBUILDER-997\n");
@@ -1502,12 +1505,12 @@ test("warnings come back with a valid map and pass validation unless strict", as
 
   const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
   assert.equal(text.status, 0);
-  assert.equal(withoutNotices(text.stderr).split("\n")[0], `${file}:${line}:13: warning: stories.3.status (FINANCE-201): Add a statusReason explaining why the story is blocked.`);
+  assert.equal(withoutNotices(text.stderr).split("\n")[0], `${file}:${line}:13: warning: stories.3.status (FINANCE-201): Add a statusReason explaining why the story is blocked. [missing-status-reason]`);
   assert.match(text.stdout, /valid \(4 activities, 3 releases, 5 stories\), 2 warnings/);
 
   const github = spawnSync(process.execPath, [cli, "validate", "--format", "github", file], { encoding: "utf8" });
   assert.equal(github.status, 0);
-  assert.match(github.stdout, new RegExp(`^::warning file=[^,]+,line=${line},col=13,title=Story map::stories\\.3\\.status \\(FINANCE-201\\): Add a statusReason`, "m"));
+  assert.match(github.stdout, new RegExp(`^::warning file=[^,]+,line=${line},col=13,title=missing-status-reason::stories\\.3\\.status \\(FINANCE-201\\): Add a statusReason`, "m"));
 
   const strict = spawnSync(process.execPath, [cli, "validate", "--strict", file], { encoding: "utf8" });
   assert.equal(strict.status, 1);
@@ -3288,25 +3291,25 @@ test("ESM-801: finds tests tagged with story IDs without running them", async t 
   ]);
   // Not read: built output, dot folders, dependencies, non-test files, and links out of the repository.
   assert.deepEqual(issues.map(issue => [issue.severity, issue.file, issue.message]), [
-    ["error", "outside", "Points outside the repository through a symbolic link, so it was not read."],
-    ["error", "test/linked.test.js", "Points outside the repository through a symbolic link, so it was not read."],
+    ["error", "outside", "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository."],
+    ["error", "test/linked.test.js", "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository."],
   ]);
 
   // Named paths: a file is read whatever its name, and paths outside the root are refused.
   const named = await findStoryTests(loaded, root, { paths: ["src/estimate.ts", "../outside", "outside", "missing", "test/linked.test.js"] });
   assert.deepEqual(named.tests.map(found => found.name), ["BUILDER-103: not a test file"]);
   assert.deepEqual(named.issues.map(issue => [issue.file, issue.message]), [
-    ["../outside", "Points outside the repository."],
-    ["outside", "Points outside the repository through a symbolic link."],
-    ["missing", "No test files found."],
-    ["test/linked.test.js", "Points outside the repository through a symbolic link."],
+    ["../outside", "Points outside the repository. Pass a path inside it."],
+    ["outside", "Points outside the repository through a symbolic link. Pass a path inside it."],
+    ["missing", "No test files found. Pass a folder or file that holds the tests."],
+    ["test/linked.test.js", "Points outside the repository through a symbolic link. Pass a path inside it."],
   ]);
 
   // Oversized files are reported and skipped.
   await writeFile(join(root, "test/big.test.js"), 'test("BUILDER-101: big", () => {});\n' + " ".repeat(5 * 1024 * 1024));
   const big = await findStoryTests(loaded, root, { paths: ["test/big.test.js"] });
   assert.deepEqual(big.tests, []);
-  assert.deepEqual(big.issues.map(issue => [issue.severity, issue.file, issue.message]), [["warning", "test/big.test.js", "Larger than 5 MB, so its tests were not read."]]);
+  assert.deepEqual(big.issues.map(issue => [issue.severity, issue.file, issue.message]), [["warning", "test/big.test.js", "Larger than 5 MB, so its tests were not read. Split the file to have its tests counted."]]);
 
   // Without prefixed story IDs in the map, nothing is tagged.
   const unprefixed = loadStoryMap(sample.replaceAll("BUILDER-", "builder_"));
@@ -3413,15 +3416,17 @@ test("ESM-801: validate --tests reports unknown tags and active stories without 
   const text = run("--tests", "only-102.test.js", "map.yaml");
   assert.equal(text.status, 1);
   assert.equal(withoutNotices(text.stderr), [
-    `map.yaml:${storyLine}:13: warning: stories.0.status (BUILDER-101): No tests are tagged BUILDER-101. Put the story ID in the name of each test that covers it.`,
-    "only-102.test.js:2:1: Unknown story ID 'BUILDER-999' in a test name. Add the story to the map or correct the tag.",
+    `map.yaml:${storyLine}:13: warning: stories.0.status (BUILDER-101): No tests are tagged BUILDER-101. Put the story ID in the name of each test that covers it. [story-without-tests]`,
+    `  help: ${storyMapPackagedGuideUrl}#link-tests-to-stories`,
+    "only-102.test.js:2:1: Unknown story ID 'BUILDER-999' in a test name. Add the story to the map or correct the tag. [unknown-test-story]",
+    `  help: ${storyMapPackagedGuideUrl}#link-tests-to-stories`,
     "",
   ].join("\n"));
 
   const github = run("--format", "github", "--tests", "only-102.test.js", "map.yaml");
   assert.equal(github.status, 1);
-  assert.match(github.stdout, /^::warning file=map\.yaml,line=\d+,col=13,title=Story map::stories\.0\.status \(BUILDER-101\): No tests are tagged BUILDER-101\./m);
-  assert.match(github.stdout, /^::error file=only-102\.test\.js,line=2,col=1,title=Story map::Unknown story ID 'BUILDER-999'/m);
+  assert.match(github.stdout, /^::warning file=map\.yaml,line=\d+,col=13,title=story-without-tests::stories\.0\.status \(BUILDER-101\): No tests are tagged BUILDER-101\./m);
+  assert.match(github.stdout, /^::error file=only-102\.test\.js,line=2,col=1,title=unknown-test-story::Unknown story ID 'BUILDER-999'/m);
 
   // The warning alone passes, unless --strict.
   await writeFile(join(root, "only-102.test.js"), 'test("BUILDER-102: covered", () => {});\n');

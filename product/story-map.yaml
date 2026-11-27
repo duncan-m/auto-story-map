@@ -9,6 +9,7 @@ customer:
   summary: What you can do with Auto Story Map today, and what is coming next.
 settings:
   plans: docs/plans
+  storyIds: lowest-free
 # Drafted with ESM-901 from the README, the guide and the stories below. Every job is a draft until a person confirms it.
 personas:
   - id: founder
@@ -1952,6 +1953,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: must
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-160
     jobs:
@@ -1968,6 +1971,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: could
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-148
     jobs:
@@ -1983,6 +1988,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: should
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-148
       - ESM-153
@@ -1998,6 +2005,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: should
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-148
     jobs:
@@ -2014,6 +2023,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: should
+    tokens: 3641823
+    estimatedCostUsd: 1.24
     dependsOn:
       - ESM-117
       - ESM-148
@@ -2028,6 +2039,8 @@ stories:
     release: v0-7-7
     status: merged
     priority: must
+    tokens: 3641822
+    estimatedCostUsd: 1.23
     dependsOn:
       - ESM-148
     jobs:
@@ -2041,7 +2054,9 @@ stories:
     title: Choose the lowest free story ID in add
     activity: plan
     release: v0-7-7
-    status: planned
+    status: merged
+    tokens: 3166733
+    estimatedCostUsd: 1.45
     jobs:
       - update-the-map
     personas:
@@ -2053,7 +2068,9 @@ stories:
     title: Give each validation issue a rule and a link to the guide
     activity: review
     release: v0-7-7
-    status: planned
+    status: merged
+    tokens: 26329848
+    estimatedCostUsd: 11.88
     jobs:
       - update-the-map
     personas:
@@ -2065,7 +2082,9 @@ stories:
     title: Warn when a plan's status line disagrees with the map
     activity: review
     release: v0-7-7
-    status: planned
+    status: merged
+    tokens: 5035570
+    estimatedCostUsd: 2.45
     jobs:
       - update-the-map
       - get-oriented
@@ -2075,6 +2094,7 @@ stories:
     summary: validate --plans warns when a plan's status line is behind the stories it names, uses words other than the map's statuses, or names a release title the map no longer has.
     sources:
       - docs/plans/rules-as-checks.md#3-check-plan-status-lines-against-the-map
+      - docs/story-map.md#check-plan-status-lines
   - id: ESM-181
     title: Change a story from an Actions menu in its panel
     activity: explore
@@ -2140,8 +2160,7 @@ stories:
     notes: "Spike before the full 0.8.3 metrics: values are today's, not at the time, and it shows no scope change or remaining work. ESM-132, ESM-133 and ESM-134 follow on from it. Estimate not agreed yet."
     sources:
       - docs/plans/delivery-metrics.md#spike-show-delivery-totals-in-an-analytics-tab
-      - docs/plans/delivery-metrics-mockup.html
-      - docs/plans/delivery-metrics-mockup.png
+      - docs/plans/delivery-metrics.md#ui-mockup
   - id: ESM-130
     title: Reconstruct delivery events from Git
     activity: track
@@ -2365,7 +2384,9 @@ stories:
     title: Check plan mockups and their links
     activity: review
     release: v0-7-7
-    status: planned
+    status: merged
+    tokens: 3013457
+    estimatedCostUsd: 1.6
     jobs:
       - update-the-map
     personas:

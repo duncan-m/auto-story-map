@@ -2039,7 +2039,10 @@ function ActionTable({ rows, links, releaseTitles, tableId }: {
                     {item && (item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>)}
                     {release && <span className="esm-action-release">{release}</span>}
                   </th>
-                  <td className="esm-action-message">{action.message}</td>
+                  <td className="esm-action-message">
+                    {action.message}
+                    <a className="esm-action-rule" href={group.help} title="How to fix this, in the story map guide">{group.rule}</a>
+                  </td>
                   <td className="esm-action-kind">
                     <div className="esm-action-kind-stack">
                       <ActionKindBadge group={group} />

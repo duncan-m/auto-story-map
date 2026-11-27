@@ -17,7 +17,7 @@ Read `settings` in `product/story-map.yaml` before you plan work, and follow the
 
 A plan has these parts, in this order, as [The parts of a plan](../../../docs/story-map.md#the-parts-of-a-plan) explains:
 
-1. A title and a status line naming every story, the release and whether the estimates are agreed. Keep it up to date as the work moves on.
+1. A title and a status line naming every story, the release and whether the estimates are agreed. Start it with one of the map's statuses, such as `proposed`, `in progress` or `shipped`, and write the release title in bold as the map has it, so `validate` can check the line. Keep it up to date as the work moves on.
 2. Why: the problem, and who has it.
 3. Numbered items in build order, each a `## N. Title` heading with its story ID, so each story's `sources` link to its own item.
 4. What it builds on: the merged or shipped stories it reuses and the planned stories it overlaps, each with a link to its plan.
@@ -45,3 +45,5 @@ npx --no-install story-map diff origin/<base branch>
 ```
 
 `edit` and `add` print a dry run. Check it, then run the command again with `--write`. Add `--format json` to the read commands for output you can parse.
+
+Each problem `validate` reports names its rule in brackets, such as `[missing-status-reason]`, with a `help:` link to the guide section that explains it. Read that section to fix the problem, rather than the whole guide.
