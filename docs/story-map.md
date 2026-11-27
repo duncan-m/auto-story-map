@@ -63,6 +63,17 @@ npx --no-install story-map upgrade
 ```
 
 ```text
+What changes for you since 0.7.5
+
+- Agents ask once whether your team uses delivery plans before they plan bigger work, and record only the answer a person gives.
+- Agents survey the repository before they draft its first map.
+
+Kept as you have them: 1 part you edited, Guide. Run story-map upgrade --diff to compare it with this version.
+To decide: whether to use delivery plans.
+More: docs/story-map.md#review-the-set-up-after-an-upgrade
+
+Set-up compared with auto-story-map 0.7.8
+
 Part               State                            Change
 AGENTS.md section  outdated, from 0.7.5             replace with 0.7.8
 Guide              edited, from 0.7.5               none; your edits are kept
@@ -87,10 +98,22 @@ A choice is **not chosen** until a person answers, and **chosen** after. Ask the
 - **The workflow** is compared by the commands its steps run, such as `story-map validate` and `story-map diff`, not line by line, since hosts change job names, Node versions and triggers. A step this version runs that yours does not is listed as an addition.
 - **The skill** records no version, so a skill that differs from this version's is reported as edited and outdated. It is only needed when your `AGENTS.md` section points to it.
 - **Diffs** are two-way, from your copy to this version's. `--diff` prints them after the table. The `AGENTS.md` section is compared [rule by rule](#review-the-agentsmd-section-rule-by-rule) instead, so `--diff` prints each rule's diff rather than the whole section's.
-- **`--format markdown`** gives the table for a pull request, with each diff folded. **`--format json`** gives `format: "auto-story-map.upgrade"`, `packageVersion`, `map` and `parts`, each with its `part`, `kind`, `title`, `path`, `state`, `from`, `change`, `recommendation` (`add`, `optional`, `replace`, `review`, `keep` or `ask`), and, where they apply, `additions`, `diff`, the chosen `value` and `version`, the marker reading below.
+- **`--format markdown`** gives the overview and the table for a pull request, with each diff folded. **`--format json`** gives `format: "auto-story-map.upgrade"`, `packageVersion`, `map`, the `overview` and `parts`, each with its `part`, `kind`, `title`, `path`, `state`, `from`, `change`, `recommendation` (`add`, `optional`, `replace`, `review`, `keep` or `ask`), and, where they apply, `additions`, `diff`, the chosen `value` and `version`, the marker reading below.
 - `--root <path>` reads another repository, and `--map <path>` another map's settings.
 
-In code, `upgradeReport({ root, map, known })` returns the same report, and `isUpgradePartBehind(part)` is true for an outdated part or an edited one this version also changes.
+#### The overview
+
+The review opens with a short overview in plain words, for the people who use the set-up rather than for library developers. Agents show it to the person as written, without summarising it.
+
+- **On install**, when none of the files is there yet, it says how the set-up works, with a line for each part being added.
+- **On upgrade**, it says what changes for the team since the version each part came from, newest first. It covers only the parts the review would apply: a part being added, an unedited outdated part, and the new steps of an edited workflow. Parts you edited that this version also changes are kept, and named after the lines instead. A part that is current, or edited with nothing new, is not mentioned.
+- **The choices** not made yet are listed under **To decide**.
+
+It lists at most 8 lines, and ends with a link to this guide. In JSON, `overview` has `kind` (`install`, `upgrade` or `current`), `heading`, `lines`, and `kept`, `decide` and `more` where they apply.
+
+The lines come from `templates/changes.yaml` in the package: an `install` line for what each part does, and, under `releases`, the lines for each part that release changed. A test in the package fails when a template changes without a line for the next release, so the overview stays in step with what the review applies.
+
+In code, `upgradeReport({ root, map, known })` returns the same report, with the overview as `overview`, and `isUpgradePartBehind(part)` is true for an outdated part or an edited one this version also changes. `upgradeOverview(parts, changes, version)` builds an overview from parts and the lines `loadSetupChanges()` reads.
 
 ### Review the AGENTS.md section rule by rule
 

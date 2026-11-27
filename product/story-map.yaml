@@ -2446,7 +2446,9 @@ stories:
     title: Explain set-up changes in plain words
     activity: set-up
     release: v0-7-8
-    status: planned
+    status: merged
+    tokens: 4075650
+    estimatedCostUsd: 2.35
     dependsOn:
       - ESM-167
     jobs:
@@ -2456,6 +2458,8 @@ stories:
     summary: "The review opens with a short overview generated from lines shipped with each part and each release: how the set-up works on install, and what changes for the team on upgrade, for only the parts being applied."
     sources:
       - docs/plans/upgrade-review.md#3-explain-the-changes-in-plain-words
+      - docs/story-map.md#the-overview
+      - templates/changes.yaml
   - id: ESM-169
     title: Apply the recommended set-up changes in simple mode
     activity: set-up

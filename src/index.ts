@@ -78,6 +78,8 @@ export type { FindSetupBehindOptions, SetupPartBehind } from "./setup-behind.js"
 export type { KnownSetupVersions, ReleasedSetupTemplate, SetupFileVersion, SetupPart } from "./setup-versions.js";
 export { describeUpgradeState, isUpgradePartBehind, upgradePartIds, upgradeReport, workflowCommands } from "./upgrade.js";
 export type { UpgradePart, UpgradePartId, UpgradePartState, UpgradeRecommendation, UpgradeReport, UpgradeReportOptions } from "./upgrade.js";
+export { loadSetupChanges, maxOverviewLines, parseSetupChanges, setupChangeParts, upgradeOverview, upgradeOverviewLines } from "./upgrade-overview.js";
+export type { SetupChangePart, SetupChanges, UpgradeOverview } from "./upgrade-overview.js";
 export { agentsRuleHash, agentsRuleIds, agentsRules, agentsSectionBlocks, isAgentsRuleId, templateRules } from "./agents-rules.js";
 export type { AgentsRuleForm, AgentsRuleId, AgentsRuleInfo, AgentsSectionBlock, KnownAgentsRules } from "./agents-rules.js";
 export { reviewAgentsRules, summariseAgentsRules } from "./upgrade.js";

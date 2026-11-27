@@ -1,0 +1,67 @@
+# What each part of the set-up does for a team, and what each release changed in it.
+#
+# `story-map upgrade` builds the overview at the top of its review from these
+# lines, so write them for the people who use the set-up in their own product,
+# not for people building with the library: say what the team or its agents
+# will see or do differently, in one plain sentence each. The changelog is for
+# library developers and stays separate.
+#
+# - `install`: one line for each part, shown when the review adds that part.
+# - `releases`: for each version, the lines for each part it changed, shown on
+#   upgrade to a host whose copy of that part came from an earlier version.
+#
+# The parts are `agents` (the story map section of AGENTS.md), `guide`
+# (docs/story-map.md), `workflow` (.github/workflows/story-map.yml) and
+# `skill` (.claude/skills/story-map/SKILL.md). The skill records no version,
+# so it has an install line only.
+#
+# A test fails when a template changes without a line here for the next
+# release, and when a release has a line for a part whose template it did not
+# change. Releases from 0.7.0 on are covered.
+
+install:
+  agents: Agents follow the rules in AGENTS.md and keep product/story-map.yaml, the plan of who the product is for and what is being built, up to date in the same pull request as the code.
+  guide: docs/story-map.md is the guide your team and its agents look things up in, from writing a story to recording a release.
+  workflow: CI checks the map on every pull request and adds a summary of what changed in it, so problems show up before review.
+  skill: The story map skill gives Claude Code the full rules when it works on the map, so the AGENTS.md section can stay short.
+
+releases:
+  "0.7.8":
+    agents:
+      - Each rule in the AGENTS.md section carries a hidden marker, so later upgrades update the rules you left alone and keep the ones you reworded or added.
+    guide:
+      - The guide explains how to review your set-up after an upgrade, rule by rule for AGENTS.md, and what the version markers in these files mean.
+  "0.7.7":
+    agents:
+      - Agents ask once whether your team uses delivery plans before they plan bigger work, and record only the answer a person gives.
+      - When you use plans, agents write one for work bigger than a small fix, naming the stories it builds on, with a mockup when it changes the UI.
+    guide:
+      - The guide explains how to write a delivery plan, and each problem validation reports links to the part of the guide that explains the fix.
+  "0.7.6":
+    agents:
+      - Agents survey the repository before they draft its first map.
+      - Agents check the map's outstanding actions, and leave the ones that need a person, such as drafts and estimates, to a person.
+    guide:
+      - The guide covers the Actions tab, confirming drafts, priorities, which stories are ready to start, and giving agents the map over MCP or as a skill.
+  "0.7.5":
+    agents:
+      - Agents can claim a story before they start it, so several agents never work on the same one.
+      - The pull request that finishes a story records the tokens used to deliver it.
+    guide:
+      - The guide covers agent briefs, the evidence for a story, claims, dependencies between stories and recording tokens.
+  "0.7.4":
+    agents:
+      - Agents change the map with story-map commands instead of editing the YAML, and tag each story with the jobs to be done it serves.
+      - Agents leave estimates to the team, link mockups to the stories they show, and name each branch and pull request after its story.
+    guide:
+      - The guide covers working with the map from the command line, personas and jobs to be done, estimates and links to code.
+  "0.7.1":
+    guide:
+      - The guide explains the JSON export agents can read the map from.
+  "0.7.0":
+    agents:
+      - Agents start each test's name with the story it covers, so the board can show a story's tests.
+    guide:
+      - The guide explains how to export the map and link tests to stories.
+    workflow:
+      - The workflow says how to check the story IDs in test names too.
