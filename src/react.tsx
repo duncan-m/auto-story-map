@@ -933,6 +933,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         <dd>{activityTitle}</dd>
         <dt>Release</dt>
         <dd>{releaseTitle}</dd>
+        {internal && story.priority !== undefined && <><dt>Priority</dt><dd><Priority priority={story.priority} /> {priorityLabels[story.priority]}</dd></>}
         {internal && story.estimate !== undefined && <><dt>Estimate</dt><dd>{points(story.estimate)}</dd></>}
         {internal && story.tokens !== undefined && <><dt>Tokens used</dt><dd>{story.tokens.toLocaleString("en-US")}</dd></>}
         {internal && story.estimatedCostUsd !== undefined && <><dt>Estimated cost</dt><dd>{`$${story.estimatedCostUsd.toFixed(2)}`}</dd></>}
@@ -1017,15 +1018,31 @@ function Estimate({ estimate }: { estimate: number }) {
   );
 }
 
-/** The card's ID, with its persona avatars and estimate to the right when it has them. */
+const priorityLabels = { must: "Must have", should: "Should have", could: "Could have" } as const;
+const priorityTags = { must: "MH", should: "SH", could: "CH" } as const;
+
+/** A MoSCoW tag, such as “MH”, with its full name for screen readers. */
+function Priority({ priority }: { priority: keyof typeof priorityLabels }) {
+  return (
+    <span className={`esm-priority esm-priority-${priority}`} title={`Priority: ${priorityLabels[priority]}`}>
+      <span aria-hidden="true">{priorityTags[priority]}</span>
+      <span className="esm-visually-hidden">{`Priority: ${priorityLabels[priority]}`}</span>
+    </span>
+  );
+}
+
+/** The card's ID, with its persona avatars, priority and estimate to the right when it has them. */
 function CardHead({ story, personas }: { story: InternalStoryCard; personas: readonly PersonaLabel[] }) {
   const id = <span className="esm-card-id">{story.id}</span>;
-  if (!personas.length && story.estimate === undefined) return id;
+  if (!personas.length && story.estimate === undefined && story.priority === undefined) return id;
+  const priority = story.priority !== undefined && <Priority priority={story.priority} />;
   const estimate = story.estimate !== undefined && <Estimate estimate={story.estimate} />;
   return (
     <span className="esm-card-head">
       {id}
-      {personas.length ? <span className="esm-card-tags"><PersonaAvatars personas={personas} />{estimate}</span> : estimate}
+      {personas.length || (priority && estimate)
+        ? <span className="esm-card-tags">{personas.length > 0 && <PersonaAvatars personas={personas} />}{priority}{estimate}</span>
+        : priority || estimate}
     </span>
   );
 }

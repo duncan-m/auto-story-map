@@ -19,6 +19,10 @@ export const releaseImpactMaxItems = 10;
 export const estimatePoints = [1, 2, 3, 5, 8, 13] as const;
 export type EstimatePoints = typeof estimatePoints[number];
 
+/** MoSCoW priorities a story can carry, most important first. */
+export const storyPriorities = ["must", "should", "could"] as const;
+export type StoryPriority = typeof storyPriorities[number];
+
 /** Most personas on one map. */
 export const personasMaxItems = 12;
 /** Most jobs to be done on one persona. */
@@ -152,6 +156,8 @@ function formatSchemas(strict: boolean) {
       .describe(`Optional. Up to ${storyDependsOnMaxItems} IDs of stories that must land before this one, most important first. Internal only. The stories waiting for a story are worked out from these lists, so list each dependency once, on the story that waits.`),
     estimate: z.literal(estimatePoints, { error: `Use one of ${estimatePoints.join(", ")} story points.` }).optional()
       .describe(`Optional effort estimate in story points: ${estimatePoints.join(", ")}. Internal only. A story above 13 should be split.`),
+    priority: z.enum(storyPriorities, { error: `Use one of ${storyPriorities.join(", ")}.` }).optional()
+      .describe("Optional MoSCoW priority: must, should or could have. Internal only. The board shows it as an MH, SH or CH tag."),
     tokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional()
       .describe("Optional. Model tokens used to deliver the story, counting input, output and cache tokens, recorded in the pull request that finishes it, such as from `story-map tokens`. Internal only."),
     estimatedCostUsd: z.number().min(0).max(1_000_000_000).optional()
