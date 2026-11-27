@@ -2099,7 +2099,9 @@ stories:
     title: Change a story from an Actions menu in its panel
     activity: explore
     release: v0-7-7
-    status: in-progress
+    status: merged
+    tokens: 23163837
+    estimatedCostUsd: 8.23
     dependsOn:
       - ESM-111
       - ESM-112
