@@ -2,23 +2,20 @@
 
 Status: proposed. Planning and backlog only; no implementation in this PR.
 
-Release proposal: readiness (ESM-139) in **0.7.6: Triage, readiness and agent access**, then **0.8.4: Dependency planning** for order and briefs, after the proposed delivery analytics releases, then **0.8.5: Dependency graph** for the graph. It builds on the `dependsOn` links from ESM-129, described in [Record dependencies](../story-map.md#record-dependencies) and planned in [the story dependencies plan](story-dependencies.md), rather than adding a second dependency system. Readiness and a suggested order come first, where agents and the existing panels can use them. The graph follows in the next release.
+Release proposal: readiness (ESM-139) in **0.7.6: Triage, readiness and agent access**, then **0.7.9: Dependency planning and graph** for order, briefs and the graph, before the proposed delivery analytics releases. It builds on the `dependsOn` links from ESM-129, described in [Record dependencies](../story-map.md#record-dependencies) and planned in [the story dependencies plan](story-dependencies.md), rather than adding a second dependency system. Readiness and a suggested order come first, where agents and the existing panels can use them. The graph follows in the same release.
 
 0.7.6: Triage, readiness and agent access
 
 1. [Work out readiness and dependency risks](#1-work-out-readiness-and-dependency-risks) (ESM-139)
 
-0.8.4: Dependency planning
+0.7.9: Dependency planning and graph
 
 2. [Suggest a delivery order for a release](#2-suggest-a-delivery-order-for-a-release) (ESM-142)
 3. [List prerequisites in agent briefs](#3-list-prerequisites-in-agent-briefs) (ESM-143)
-
-0.8.5: Dependency graph
-
 4. [Explore dependencies as a graph](#4-explore-dependencies-as-a-graph) (ESM-140)
 5. [Focus on a release or story](#5-focus-on-a-release-or-story) (ESM-141)
 
-Estimates: ESM-139 5 points in 0.7.6, and ESM-142 5 and ESM-143 3 in 0.8.4. ESM-140 and ESM-141 in 0.8.5 have none yet. No customer-facing copy is approved.
+Estimates: ESM-139 5 points in 0.7.6, and ESM-142 5 and ESM-143 3 in 0.7.9. ESM-140 and ESM-141, also in 0.7.9, have none yet. No customer-facing copy is approved.
 
 ## Why and customer outcome
 
@@ -140,9 +137,7 @@ Let the viewer choose a release or focus on a story, with direct neighbours by d
 
 **0.7.6:** ESM-139. The story panel and CLI show readiness, with no new tab.
 
-**0.8.4:** ESM-142 and ESM-143 in parallel. Agents and the existing panels get an order and briefs that name prerequisites.
-
-**0.8.5:** ESM-140, then ESM-141. The tab reuses the readiness and order from 0.8.4.
+**0.7.9:** ESM-142 and ESM-143 in parallel, so agents and the existing panels get an order and briefs that name prerequisites. Then ESM-140, then ESM-141. The tab reuses the readiness and order.
 
 Implementation should use focused PRs per story, include the story IDs in test names and commit messages, and run `npm run validate`, the relevant tests and `story-map diff origin/main`.
 
@@ -152,13 +147,10 @@ Implementation should use focused PRs per story, include the story IDs in test n
 
 - **Time to identify the unfinished prerequisites for a chosen story:** shown on its panel and from the CLI, instead of opening each related story in turn; solves opaque build order.
 
-0.8.4:
+0.7.9:
 
 - **Time to find a feasible sequence for a release:** a ready set and order in the release panel and CLI, without tracing links by hand; solves repeated sequencing work.
 - **Release-order dependency conflicts surfaced before implementation:** warnings for prerequisites that are cut, blocked or in later releases; solves hidden planning conflicts.
-
-0.8.5:
-
 - **Time to see why a release cannot start:** one view of the release and its prerequisites from other releases, instead of following links story by story; solves long prerequisite chains that span several releases.
 
 All four are hypotheses awaiting human review (`draft: true` in the map). No baseline or actual improvement is claimed.
@@ -167,6 +159,6 @@ All four are hypotheses awaiting human review (`draft: true` in the map). No bas
 
 Agreed in review:
 
-- Order and briefs stay in 0.8.4, after the analytics releases. The graph and focus views move to 0.8.5. Readiness (ESM-139) later moved to 0.7.6, so the board says what can start before the analytics releases.
+- Order and briefs were first placed in 0.8.4, after the analytics releases, with the graph and focus views in 0.8.5. Readiness (ESM-139) later moved to 0.7.6, so the board says what can start before the analytics releases. Then 0.8.4 became 0.7.9 and took the graph and focus views from 0.8.5, so all of the dependency work comes before the analytics releases.
 - A `merged` prerequisite counts as done, and a `blocked` prerequisite makes a story at risk.
 - ESM-143 stays a separate story.
