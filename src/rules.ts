@@ -61,6 +61,13 @@ export const storyMapRules = {
   "missing-impact": { section: "release-notes-and-impact", summary: "A release with active stories has no impact." },
   "missing-status-reason": { section: "blocked-and-cut-stories", summary: "A blocked or cut story has no `statusReason`." },
   "depends-on-cut": { section: "record-dependencies", summary: "A story depends on a cut story." },
+  // Changes that only a person should make, which `story-map diff` lists under Needs a person.
+  "draft-confirmed": { section: "confirm-a-draft", summary: "A drafted job, persona context or impact item was confirmed." },
+  "estimate-changed": { section: "estimate-effort", summary: "A story's estimate was set, changed or removed." },
+  "story-removed": { section: "blocked-and-cut-stories", summary: "A story was removed from the map rather than cut." },
+  "possible-renumber": { section: "changes-that-need-a-person", summary: "A story was removed and one with the same title added, so it may have been renumbered." },
+  "customer-copy-changed": { section: "audience-settings", summary: "Customer-facing copy was added or changed, or the map was switched to all-users." },
+  "settings-changed": { section: "changes-that-need-a-person", summary: "A map setting was changed." },
 } as const satisfies Record<string, StoryMapRuleInfo>;
 
 /** The stable ID of a validation rule, such as `missing-status-reason`. */

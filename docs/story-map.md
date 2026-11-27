@@ -913,8 +913,14 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `missing-impact` | warning | A release with active stories has no impact. | [Release notes and impact](#release-notes-and-impact) |
 | `missing-status-reason` | warning | A blocked or cut story has no `statusReason`. | [Blocked and cut stories](#blocked-and-cut-stories) |
 | `depends-on-cut` | warning | A story depends on a cut story. | [Record dependencies](#record-dependencies) |
+| `draft-confirmed` | needs a person | A drafted job, persona context or impact item was confirmed. | [Confirm a draft](#confirm-a-draft) |
+| `estimate-changed` | needs a person | A story's estimate was set, changed or removed. | [Estimate effort](#estimate-effort) |
+| `story-removed` | needs a person | A story was removed from the map rather than cut. | [Blocked and cut stories](#blocked-and-cut-stories) |
+| `possible-renumber` | needs a person | A story was removed and one with the same title added, so it may have been renumbered. | [Changes that need a person](#changes-that-need-a-person) |
+| `customer-copy-changed` | needs a person | Customer-facing copy was added or changed, or the map was switched to all-users. | [Audience settings](#audience-settings) |
+| `settings-changed` | needs a person | A map setting was changed. | [Changes that need a person](#changes-that-need-a-person) |
 
-A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule.
+A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule. Validate never reports the **needs a person** rules: they compare two versions of the map, so [`story-map diff`](#changes-that-need-a-person) lists them.
 
 ### Check the map as you edit
 
@@ -961,7 +967,7 @@ Each group gives its rule in brackets and a `help:` link, which goes to your rep
 npx --no-install story-map diff origin/main
 ```
 
-The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Next, **Blocked and cut** lists stories that became blocked or cut, with their reasons, and stories that are no longer blocked or cut. Then it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
+The summary starts with **Customer-facing changes**: stories that signed-in customers will start or stop seeing, and visible stories whose wording, status, activity or release changes. A switch between `internal` and `all-users` visibility is highlighted. Next, **Needs a person** lists the changes that only a person should make, described [below](#changes-that-need-a-person). Then **Blocked and cut** lists stories that became blocked or cut, with their reasons, and stories that are no longer blocked or cut. After that it lists added, moved, renamed, re-statused and removed stories, followed by changes to activities and releases. Use `--map` for a map at another path and `--format json` for the raw comparison.
 
 The base version may use an older format of the map, such as when this change upgrades the package. It is read leniently: fields the format no longer has, and stories that no longer validate, are left out of the comparison, and the summary starts with a note saying what was left out. The JSON has the same counts as `baseDropped`. Your current map is still validated strictly.
 
@@ -975,6 +981,21 @@ The workflow from `npx story-map init` adds the summary to each PR’s job summa
 ```
 
 In code, `diffStoryMaps(before, after)` returns the same comparison and `formatStoryMapDiff` renders it.
+
+### Changes that need a person
+
+`AGENTS.md` leaves some map changes to people. The summary lists them under **Needs a person**, after **Customer-facing changes**, so a reviewer does not have to read the YAML diff to find them:
+
+- **Draft confirmed** (`draft-confirmed`): `draft: true` was removed from a job, a persona's context or a release's impact item. See [Confirm a draft](#confirm-a-draft).
+- **Estimate** (`estimate-changed`): a story's estimate was set, changed or removed, including on a new story. See [Estimate effort](#estimate-effort).
+- **Story removed** (`story-removed`): a story was deleted rather than set to `cut`. See [Blocked and cut stories](#blocked-and-cut-stories).
+- **Possible renumber** (`possible-renumber`): a story was removed and a story with the same title, ignoring case and spacing, was added. Story IDs never change, so give the new story its old ID back unless the change was meant.
+- **Customer copy** (`customer-copy-changed`): customer-facing copy was added to or changed on the map, an activity, a release, a persona or a story, or the map was switched to `all-users`. Whether the copy is approved is for a person to judge. See [Audience settings](#audience-settings).
+- **Setting** (`settings-changed`): a value under `settings` was added, changed or removed.
+
+Each line names the item, what changed and its rule. The section says what changed, not who changed it, and is left out when there is nothing to list, as in most PRs. The same changes also appear in the sections below it.
+
+In JSON, `needsPerson` lists them, each with `rule`, `itemType` (`story`, `activity`, `release`, `persona`, `job` or `map`), `itemId`, `title` and `change`. A possible renumber also has `addedId`, the new story's ID. The list is empty when there is nothing to list. In code, `needsPersonChanges(before, after, diff)` returns the list, and `needsPersonRules` lists its rules, which are also in `storyMapRules`.
 
 ## Read the map from the command line
 
