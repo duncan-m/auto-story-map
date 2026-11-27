@@ -375,7 +375,9 @@ edit
 add
   Adds a story, as planned unless --status says otherwise, after the last
   story in its release. It takes the next ID in sequence, one after the highest
-  in the whole map, counting cut stories so an ID is never reused, or --id. Takes
+  in the whole map, counting cut stories so an ID is never reused, or --id. With
+  settings.storyIds: lowest-free in the map, it takes the lowest free number
+  instead, still counting cut stories. Takes
   --source for each source, --job for each job it serves, --persona for each
   persona it helps, --dependency for each story that must land first, and the
   common edit options in story-map help edit.

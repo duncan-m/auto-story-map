@@ -168,6 +168,8 @@ export interface StoryMapDiff {
   stalledAfterWeeks?: Change<number>;
   /** Whether the product keeps delivery plans: a folder, false for no plans, or undefined when nobody has chosen. */
   plans?: Change<string | false | undefined>;
+  /** How `add` numbers new stories, including the default of next when the map does not set it. */
+  storyIds?: Change<"next" | "lowest-free">;
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -406,6 +408,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     }),
     stalledAfterWeeks: before && stalledBefore !== stalledAfter ? { from: stalledBefore, to: stalledAfter } : undefined,
     plans: before && before.settings?.plans !== after.settings?.plans ? { from: before.settings?.plans, to: after.settings?.plans } : undefined,
+    storyIds: before && (before.settings?.storyIds ?? "next") !== (after.settings?.storyIds ?? "next") ? { from: before.settings?.storyIds ?? "next", to: after.settings?.storyIds ?? "next" } : undefined,
   };
 }
 
@@ -416,7 +419,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
     || groups(diff.activities) || groups(diff.releases) || groups(diff.personas) || Object.values(diff.jobs).some(list => list.length)
     || Object.values(diff.personaContexts).some(list => list.length)
-    || diff.releaseDetails.length || diff.stalledAfterWeeks || diff.plans);
+    || diff.releaseDetails.length || diff.stalledAfterWeeks || diff.plans || diff.storyIds);
 }
 
 /**
@@ -578,6 +581,10 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
   if (diff.plans) {
     const plans = (value: string | false | undefined) => value === undefined ? "not chosen" : value === false ? "not used" : `kept in ${code(value)}`;
     settings.push(`- Delivery plans: ${plans(diff.plans.to)} (was ${plans(diff.plans.from)}).`);
+  }
+  if (diff.storyIds) {
+    const scheme = (value: "next" | "lowest-free") => value === "lowest-free" ? "the lowest free number" : "one after the highest number";
+    settings.push(`- \`add\` gives new stories ${scheme(diff.storyIds.to)} (was ${scheme(diff.storyIds.from)}).`);
   }
   if (settings.length) lines.push("### Settings", "", ...settings, "");
 
