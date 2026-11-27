@@ -2,6 +2,7 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { checkPlanMockups } from "./plan-mockups.js";
 import { checkPlanStatusLines } from "./plan-status.js";
+import { findSetupBehind, setupBehindMessage } from "./setup-behind.js";
 import { checkPlanReferences, checkSources, markdownAnchors, maxMarkdownBytes, resolveRootedPath, type ReferenceIssue } from "./references.js";
 import { storyMapGuidePath, storyMapRuleHelp, storyMapRules, type StoryMapRuleId } from "./rules.js";
 import { describeIssueTarget, loadStoryMap, StoryMapValidationError, type StoryMapIssueSeverity, type StoryMapWarningKind } from "./schema.js";
@@ -55,7 +56,7 @@ export interface StoryMapCheckResult {
   counts?: { activities: number; releases: number; stories: number };
   errors: number;
   warnings: number;
-  /** Questions for a person, such as whether to use delivery plans. They never make the map invalid, even with `strict`. */
+  /** Questions and reminders for a person, such as whether to use delivery plans, or that the set-up is behind the package. They never make the map invalid, even with `strict`. */
   notices: number;
   /** Which of the optional file checks ran. */
   checked: ("sources" | "plans" | "tests")[];
@@ -132,6 +133,8 @@ export async function checkStoryMap(source: string, options: StoryMapCheckOption
   if (planPaths.length) found.push(...await checkPlanStatusLines(loaded, root, planPaths));
   if (planPaths.length) found.push(...await checkPlanMockups(loaded, root, planPaths));
   if (chosen === undefined) found.push(await plansNotice(root));
+  const behind = await findSetupBehind(root);
+  if (behind.length) found.push({ severity: "notice", rule: "setup-behind", path: [], message: setupBehindMessage(behind) });
   if (options.tests?.length) {
     const tests = await findStoryTests(loaded, root, { paths: options.tests });
     found.push(...tests.issues, ...checkStoryTests(loaded, tests.tests));

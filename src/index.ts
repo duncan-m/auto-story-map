@@ -73,6 +73,8 @@ export type { EvidenceBranch, EvidenceClaim, EvidenceCommit, EvidenceMention, Ev
 export { changelogVersions, RepositorySurveyError, suggestedReleaseId, surveyCodeFileMaxBytes, surveyEntriesMaxItems, surveyHeadingsMaxItems, surveyItemsMaxItems, surveyRepository, surveyTextMaxLength, surveyTodosMaxItems, tagVersion } from "./survey.js";
 export type { RepositorySurvey, RepositorySurveyOptions, SurveyChangelogVersion, SurveyDoc, SurveyHeading, SurveyPlan, SurveyRelease, SurveyTag, SurveyTodo } from "./survey.js";
 export { hasAgentsSection, knownSetupVersionsFrom, loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, setupParts, stampSetupFile } from "./setup-versions.js";
+export { currentSetupTemplateHashes, findSetupBehind, isSetupPartBehind, setupBehindMessage, setupPartPaths } from "./setup-behind.js";
+export type { FindSetupBehindOptions, SetupPartBehind } from "./setup-behind.js";
 export type { KnownSetupVersions, ReleasedSetupTemplate, SetupFileVersion, SetupPart } from "./setup-versions.js";
 export { claimAgentMaxLength, claimBranchMaxLength, claimRefPrefix, claimStory, claimTime, claimTtlMaxMs, defaultClaimTtlMs, describeClaim, listStoryClaims, parseClaimTtl, releaseStoryClaim, StoryClaimError, StoryClaimHeldError } from "./claims.js";
 export type { ClaimStoryOptions, ClaimStoryResult, StoryClaim, StoryClaimOptions, StoryClaimSource } from "./claims.js";
