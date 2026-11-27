@@ -267,3 +267,24 @@ test("ESM-106: evidence shows claims and reports a claim on a merged story as st
   const missing = await gatherStoryEvidence(map, { root: first, ids: ["ESM-2"], claims: { remote: "nowhere" } });
   assert.match(missing.notes.join(" "), /Claims were not read: There is no Git remote called nowhere/);
 });
+
+test("ESM-165: agents in worktrees of one clone can claim at once, and one wins rather than failing to read claims", async t => {
+  const { base, first, git } = await remote(t);
+  // Worktrees share their clone's refs, so their reads update the same mirrored claim refs.
+  const worktrees = [first];
+  for (const name of ["one", "two", "three"]) {
+    const path = join(base, name);
+    git(first, "worktree", "add", "-q", "-b", `feat/esm-1-${name}`, path);
+    worktrees.push(path);
+  }
+  const start = Date.parse("2026-11-23T10:00:00Z");
+  for (let round = 0; round < 8; round++) {
+    // Each round takes over the claim the last one left, so every read has a claim ref to update.
+    const now = new Date(start + round * 2 * hour);
+    const results = await Promise.allSettled(worktrees.map((root, index) =>
+      claimStory(map, "ESM-1", { root, agent: `agent-${index}`, now, ttlMs: hour, mode: "take-over" })));
+    const failures = results.filter(result => result.status === "rejected").map(result => result.reason);
+    assert.deepEqual(failures.filter(error => !(error instanceof StoryClaimHeldError)).map(error => error.message), [], `round ${round}: every loser is told the claim is held`);
+    assert.equal(results.filter(result => result.status === "fulfilled").length, 1, `round ${round}: exactly one claim succeeds`);
+  }
+});
