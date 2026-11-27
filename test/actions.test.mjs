@@ -204,6 +204,12 @@ test("ESM-128: reads the Actions tab's parameters, keeping only values the view 
   assert.equal(customerView.filter.actions, undefined);
 });
 
+/**
+ * The visible text of rendered markup: its text nodes, joined by spaces, with quotes decoded.
+ * It reads the text between tags rather than stripping tags, so nothing is "sanitized".
+ */
+const textOf = markup => [...`>${markup}<`.matchAll(/>([^<]*)</g)].map(match => match[1]).join(" ").replace(/&#x27;/g, "'").replace(/\s+/g, " ").trim();
+
 /** The kinds of the Actions table's rows, in order. */
 const rowKinds = html => [...html.matchAll(/<tr data-category="[^"]+" data-kind="([^"]+)">/g)].map(match => match[1]);
 
@@ -251,7 +257,7 @@ test("ESM-128: the tab's filters are links that keep the board's filters and nar
   // The action type chips offer only types that match the other filters, with their counts.
   // The Action filter is a dropdown of links, offering only actions that match the other filters, with counts.
   const actionMenu = html.match(/<details class="esm-menu esm-action-filter"><summary[^>]*><span class="esm-visually-hidden">Action: <\/span>[\s\S]*?<\/details>/)[0];
-  const chips = [...actionMenu.matchAll(/<li><a [^>]*>([\s\S]*?)<\/a><\/li>/g)].map(match => match[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").replace(/&#x27;/g, "'").trim());
+  const chips = [...actionMenu.matchAll(/<li><a [^>]*>([\s\S]*?)<\/a><\/li>/g)].map(match => textOf(match[1]));
   assert.deepEqual(chips, ["All actions 2", "Confirm a release's drafted impact 1", "Agree an estimate 1"]);
   assert.match(actionMenu, /<a href="\?q=archive&amp;view=actions&amp;action-kind=missing-estimate&amp;action-release=r1&amp;needs-person=1" data-category="estimate"/);
   assert.match(actionMenu, /<a href="\?q=archive&amp;view=actions&amp;action-release=r1&amp;needs-person=1" aria-current="true">/);
@@ -259,7 +265,7 @@ test("ESM-128: the tab's filters are links that keep the board's filters and nar
   assert.match(html, /<a class="esm-clear" href="\?q=archive&amp;view=actions">Clear filters<\/a>/);
   assert.match(html, /<span class="esm-results">2 of \d+ actions<\/span>/);
   // The Category filter offers only kinds of item that match the other filters, with counts.
-  const segments = [...html.matchAll(/<a class="esm-segment"[^>]*>([\s\S]*?)<\/a>/g)].map(match => match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+  const segments = [...html.matchAll(/<a class="esm-segment"[^>]*>([\s\S]*?)<\/a>/g)].map(match => textOf(match[1]));
   assert.deepEqual(segments, ["All 2", "Stories 1", "Releases 1"]);
   assert.match(html, /<a class="esm-segment" data-item-type="story" href="\?q=archive&amp;view=actions&amp;action-item-type=story&amp;action-release=r1&amp;needs-person=1">/);
   const chosen = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions&action-kind=missing-estimate"), now }));
@@ -271,7 +277,7 @@ test("ESM-128: the tab's filters are links that keep the board's filters and nar
 
 test("ESM-128: the table puts Category before Item and Action after Problem, and filters by category", () => {
   const html = render(getStoryMapPage(map, engineer, { searchParams: new URLSearchParams("view=actions"), tests, now }));
-  const headings = [...html.match(/<thead>[\s\S]*?<\/thead>/)[0].matchAll(/<th scope="col"[^>]*>([\s\S]*?)<\/th>/g)].map(match => match[1].replace(/<[^>]+>/g, "").trim());
+  const headings = [...html.match(/<thead>[\s\S]*?<\/thead>/)[0].matchAll(/<th scope="col"[^>]*>([\s\S]*?)<\/th>/g)].map(match => textOf(match[1]));
   assert.deepEqual(headings.filter(Boolean), ["Category", "Item", "Problem", "Action", "Copy command"]);
   assert.match(html, /<td class="esm-action-type"><span class="esm-item-type" data-item-type="persona">Persona<\/span><\/td><th scope="row" class="esm-action-item">/);
   assert.match(html, /<span class="esm-item-type" data-item-type="map">Map<\/span>/);
