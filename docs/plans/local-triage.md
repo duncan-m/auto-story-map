@@ -73,4 +73,4 @@ The mockup is [save-change-mockup.html](save-change-mockup.html), generated from
 | ESM-112: Save status and release changes from the local preview | 5 |
 | **Total** | **11** |
 
-0.7.6 first also held activity steps (ESM-108), the scheduled audit (ESM-109) and map versions (ESM-113 to ESM-115). When it was split, those moved to 0.7.7, and these stories stayed in 0.7.6 with the Actions tab (ESM-128) that points to them.
+0.7.6 first also held activity steps (ESM-108), the scheduled audit (ESM-109) and map versions (ESM-113 to ESM-115). When it was split, those moved to 0.8.0, and these stories stayed in 0.7.6 with the Actions tab (ESM-128) that points to them.
