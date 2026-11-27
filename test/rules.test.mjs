@@ -104,6 +104,8 @@ test("ESM-159: every validate issue has a rule and a help link to a heading that
   await writeFile(join(root, "docs", "plan.md"), "# Plan\n");
   await writeFile(join(root, "docs", "big.md"), `# Big\n${"x".repeat(5 * 1024 * 1024)}\n`);
   await writeFile(join(root, "plans", "plan.md"), "Builds on S-999.\n");
+  await writeFile(join(root, "plans", "words.md"), "Status: built. The work is S-1.\n");
+  await writeFile(join(root, "plans", "behind.md"), "Status: proposed. The work is S-1 in the **Old** release.\n");
   await writeFile(join(root, "plans", "screen.md"), "## UI mockup\n\nThe mockup is [screen.html](screen.html).\n");
   await writeFile(join(root, "plans", "image.md"), "## UI mockup\n\n![The screen](image.png)\n");
   await writeFile(join(root, "test", "quote.test.js"), 'test("S-998: prices", () => {});\n');
@@ -129,9 +131,9 @@ test("ESM-159: every validate issue has a rule and a help link to a heading that
     const result = await check(source());
     assert.ok(result.issues.some(issue => issue.rule === rule), `the ${rule} case reports ${rule}: ${result.issues.map(issue => issue.rule).join(", ")}`);
   }
-  const sources = edited(map => { map.stories[0].sources = Object.values(fileCases); });
+  const sources = edited(map => { map.stories[0].sources = Object.values(fileCases); map.stories[0].status = "shipped"; });
   await check(sources, { checkSources: true, plans: ["plans", "nothing"], tests: ["test", "missing"] });
-  for (const rule of [...Object.keys(fileCases), "plans-not-found", "unknown-plan-story", "mockup-without-html", "mockup-without-image", "missing-mockup-file", "unlinked-mockup", "tests-not-found", "unknown-test-story", "test-file-too-large"]) {
+  for (const rule of [...Object.keys(fileCases), "plans-not-found", "unknown-plan-story", "plan-status-words", "plan-status-behind", "plan-status-release", "mockup-without-html", "mockup-without-image", "missing-mockup-file", "unlinked-mockup", "tests-not-found", "unknown-test-story", "test-file-too-large"]) {
     assert.ok(seen.has(rule), `the file checks report ${rule}`);
   }
   // A missing map is reported by the command, not by checkStoryMap.

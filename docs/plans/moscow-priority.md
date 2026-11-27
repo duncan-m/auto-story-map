@@ -1,6 +1,6 @@
 # Plan: MoSCoW priority on stories
 
-Status: built. The work is ESM-158 in the **0.7.6: Triage, readiness and agent access** release of the map. It builds on ESM-503, which added estimates, and follows the same pattern: an optional internal field, shown on the card and in the story panel.
+Status: shipped. The work is ESM-158 in the **0.7.6: Triage, readiness and agent access** release of the map. It builds on ESM-503, which added estimates, and follows the same pattern: an optional internal field, shown on the card and in the story panel.
 
 Each story can carry a MoSCoW priority, so the team can see at a glance which planned work is a must, should or could have.
 

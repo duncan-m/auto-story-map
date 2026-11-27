@@ -1,6 +1,6 @@
 # Plan: show story dependencies
 
-Status: built. The work is ESM-129 in the **0.7.5: Evidence and claims for agents** release of the map.
+Status: shipped. The work is ESM-129 in the **0.7.5: Evidence and claims for agents** release of the map.
 
 Stories already say what they need in their notes and plans, such as “Needs ESM-113 and ESM-114”, but the board never shows it. A builder has to read every story to find a workable build order, and nothing on the story that is needed says what is waiting for it.
 
