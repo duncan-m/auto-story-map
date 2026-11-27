@@ -1,6 +1,6 @@
 # Plan: export the map to external tools
 
-Status: built. Every item is done, and the Visio file imports well into Lucidchart and Miro. The CSV imports are still unchecked. Released in 0.7.0. The stories are in the **0.7.0** release of the map, which was planned as **Export to external tools**.
+Status: shipped, in 0.7.0. Every item is done, and the Visio file imports well into Lucidchart and Miro. The CSV imports are still unchecked. The work is ESM-701 to ESM-705 in the **0.7.0: Export, test links and status choices** release of the map, which was planned as Export to external tools.
 
 Internal viewers can download the board as a Visio file (`.vsdx`) or a CSV file and import it into Miro or Lucidchart. The export is a one-way snapshot: the YAML file stays the source of truth, and nothing edited in Miro or Lucidchart comes back.
 

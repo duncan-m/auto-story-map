@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { planSource, storyNeighbours } from "./brief.js";
+import { caughtUpStatus } from "./plan-status.js";
 import { slugify } from "./references.js";
 import type { InternalStoryCard, StoryMapView } from "./view.js";
 
@@ -86,7 +87,7 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
   const markdown = [
     `# Plan: ${line(title)}`,
     "",
-    `Status: proposed. The work is ${listWords(ids)} in the ${listWords(releases)} release${releases.length === 1 ? "" : "s"} of the map. ${estimates}`,
+    `Status: ${caughtUpStatus("proposed", targets.map(story => story.status)) ?? "proposed"}. The work is ${listWords(ids)} in the ${listWords(releases)} release${releases.length === 1 ? "" : "s"} of the map. ${estimates}`,
     "",
     "<!-- Why: the problem, and who has it, in a short paragraph. -->",
     "",

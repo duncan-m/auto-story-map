@@ -1,6 +1,6 @@
 # Plan: add a persona on the local Personas tab
 
-Status: merged. The work is ESM-155 in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 3 points.
+Status: shipped. The work is ESM-155 in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 3 points.
 
 ESM-154 lets a person add and delete a persona's jobs on the local Personas tab, but a new persona still has to be typed into the YAML first. This adds a button for it, so a builder can sketch who the product serves without leaving the board, and an empty Personas tab can be filled in from the tab itself.
 

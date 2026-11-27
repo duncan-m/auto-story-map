@@ -1,11 +1,11 @@
 # Plan: turn agent rules into checks
 
-Status: proposed. The work is split across three releases of the map: ESM-180, ESM-159, ESM-160 and ESM-161 in **0.7.7: Delivery plans and test tags**, and ESM-162 to ESM-165 in **0.7.9: Rules in CI and claim checks**, straight after the [upgrade review](upgrade-review.md) in **0.7.8**. None has an agreed estimate yet.
+Status: proposed. The work is split across three releases of the map: ESM-180, ESM-159, ESM-160 and ESM-161 in **0.7.7: Delivery plans and test tags**, and ESM-162 to ESM-165 in **0.7.9: Rules in CI and claim checks**, straight after the [upgrade review](upgrade-review.md) in **0.7.8: Upgrade review**. None has an agreed estimate yet.
 
 Most of what keeps agent work on this map correct is written in `AGENTS.md`: about 20 rules, read in every session. Some are already enforced by code, such as the branch name check and the story IDs in test names. The rest depend on an agent reading the rule and following it, and on a reviewer noticing when it did not. Two kinds of drift show what that costs:
 
 - **A workaround written as a rule.** `AGENTS.md` tells agents not to let `story-map add` choose an ID, because its next number follows ESM-912. The tool does the wrong thing, and the rule patches over it in every session.
-- **Prose that goes stale.** Plan status lines are written by hand. Today [edit-personas.md](edit-personas.md) says "in progress" while ESM-147 has shipped, and [effort-estimates.md](effort-estimates.md) names a release title, "0.7.6: PM improvements", that no longer exists, and says it waits for ESM-741, which shipped in 0.7.2.
+- **Prose that goes stale.** Plan status lines are written by hand. Before ESM-160, [edit-personas.md](edit-personas.md) said "in progress" while ESM-147 had shipped, and [effort-estimates.md](effort-estimates.md) named a release title, "0.7.6: PM improvements", that no longer existed, and said it waited for ESM-741, which shipped in 0.7.2.
 
 The approach comes from Lauren Tan's talk *All Code Is Slop (Except Mine)*, on keeping quality up while agents write most of the code. Her rule is that every correction to an agent becomes a deterministic check, or a change to the API that makes the mistake impossible, rather than another line of prose. Prose is kept for what needs judgement. Each item below removes or shortens a rule in `AGENTS.md`, and the host template where it has the same rule, once its check lands.
 

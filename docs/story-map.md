@@ -147,7 +147,7 @@ settings:
 
 Follow this structure, so every plan reads the same and the map can link to its parts. [`story-map plan`](#scaffold-a-plan) prints it filled in from the map. A full example for the sample map ships in the package, at `node_modules/auto-story-map/docs/example-builder-estimate-plan.md`, and [on GitHub](https://github.com/duncan-m/auto-story-map/blob/main/docs/example-builder-estimate-plan.md).
 
-1. **A title and a status line**, such as “Status: proposed. The work is BUILDER-102 and BUILDER-103 in the **Builder workflow** release of the map. None has an agreed estimate yet.” It names every story and the release, says whether the estimates are agreed, and is kept up to date as the work moves on, so a reader knows at once whether the plan is current.
+1. **A title and a status line**, such as “Status: proposed. The work is BUILDER-102 and BUILDER-103 in the **Builder workflow** release of the map. None has an agreed estimate yet.” It names every story and the release, says whether the estimates are agreed, and is kept up to date as the work moves on, so a reader knows at once whether the plan is current. Start it with one of the map's statuses, as [Check plan status lines](#check-plan-status-lines) describes.
 2. **Why**, in a short paragraph: the problem, and who has it.
 3. **Numbered items in build order**, each a `## 1. Title` heading with its story ID beside it in the list at the top. Each story's `sources` link to its own item, and the heading gives that link a stable `#heading` target that `--check-sources` checks.
 4. **What it builds on**: the merged or shipped stories the work reuses, and the planned stories it overlaps, each with a link to its plan. Find them with `story-map stories --query <text> --status all` and `story-map story <ID>`. Reviewers then see what is new, and agents see what not to rebuild.
@@ -168,6 +168,20 @@ npx --no-install story-map plan --release builder-mvp
 ```
 
 `--release <ID>` takes every planned and in-progress story in that release, in place of IDs, and `--map` reads another map. It prints the plan to standard output and writes nothing, so an existing plan is never overwritten, and it ends with a suggested path in the `settings.plans` folder on standard error. An ID that is not in the map exits 1. It never sets an estimate. While `settings.plans` is unset it prints the same notice as `validate` first, and with `false` it notes that this product does not keep plans. In code, `storyMapPlan(view, { stories: [...] })` returns the same skeleton.
+
+### Check plan status lines
+
+`validate --plans <folder>`, and `validate --check-sources` once `settings.plans` names a folder, read the first `Status:` line of each Markdown file there and compare it with the map. Write the line in this form:
+
+```markdown
+Status: in progress. The work is BUILDER-102 and BUILDER-103 in the **Builder workflow** release of the map. Its estimates are agreed.
+```
+
+- **The first word** is one of the map's statuses, `planned`, `in progress`, `merged`, `shipped`, `blocked` or `cut`, or `proposed` for a plan not yet agreed, followed by a full stop or comma. Anything after it is free text, for notes such as “Its estimate is agreed: 8 points.” Other words, such as `built` or `done`, are reported once per plan as `plan-status-words`.
+- **The stories** are the story IDs on the line, with ranges such as `BUILDER-102 to BUILDER-105` included. When the line is behind every story it names, such as `in progress` when all of them are merged or shipped, or `proposed` when any has shipped, `plan-status-behind` names the status to use. A line ahead of the map is fine, since a plan can be agreed before the map changes.
+- **The release** is the title in bold, as the map writes it. Bold text that looks like a release, a version such as `1.2` or text next to the word “release”, and is not a release title in the map is reported as `plan-status-release`, with the title of the release that holds the stories. A line that names none of the map's stories is checked only for its first word.
+
+Files without a `Status:` line, such as notes and retros, are skipped, and fenced code is ignored. These are warnings, so a stale plan never blocks an unrelated change unless you pass `--strict`. The plan `story-map plan` prints passes the check.
 
 ## Example
 
@@ -688,7 +702,7 @@ Some problems are warnings rather than errors, such as a blocked or cut story wi
 Three optional checks look beyond the map file. Run them from the repository root, or pass `--root`:
 
 - `--check-sources` checks that each repository-relative source exists and that each Markdown `#heading` fragment matches a heading in that file, using GitHub’s anchor rules. Absolute URLs and free text such as “Agreed in planning” are not checked. Once the map's `settings.plans` names a folder, it also checks the story IDs in that folder, as `--plans` does.
-- `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. Repeat the option for several folders.
+- `--plans <folder>` checks that story IDs mentioned in Markdown files under the folder exist in the map. Only IDs with a prefix the map already uses are checked: with `BUILDER-` stories in the map, a mistyped builder story number is reported, but `UTF-8` is not. It also compares each plan's status line with the map, as [Check plan status lines](#check-plan-status-lines) describes. Repeat the option for several folders.
 - `--tests <path>` checks the story IDs in test names, as described in [Link tests to stories](#link-tests-to-stories): an error for an ID that is not in the map, and a warning for an `in-progress` or `merged` story with no tagged tests. Repeat the option for several paths.
 - All three checks stay inside the repository. A source, plan or test file that points outside it, directly or through a symbolic link, is reported and never read. Symbolic links that stay inside the repository are followed as usual.
 - Heading links are checked in Markdown files of up to 5 MB. A `#heading` source in a larger file is reported, so link to a smaller file.
@@ -747,6 +761,9 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `outside-repository` | error | A source, plan or test path leaves the repository. | [Validate a change](#validate-a-change) |
 | `plans-not-found` | error | A `--plans` path has no Markdown files. | [Validate a change](#validate-a-change) |
 | `unknown-plan-story` | error | A plan mentions a story ID that is not in the map. | [Validate a change](#validate-a-change) |
+| `plan-status-words` | warning | A plan's status line starts with words other than the map's statuses. | [Check plan status lines](#check-plan-status-lines) |
+| `plan-status-behind` | warning | A plan's status line is behind every story it names. | [Check plan status lines](#check-plan-status-lines) |
+| `plan-status-release` | warning | A plan's status line names a release title the map no longer has. | [Check plan status lines](#check-plan-status-lines) |
 | `tests-not-found` | error | A `--tests` path has no test files. | [Link tests to stories](#link-tests-to-stories) |
 | `unknown-test-story` | error | A test name has a story ID that is not in the map. | [Link tests to stories](#link-tests-to-stories) |
 | `test-file-too-large` | warning | A test file is too large to read. | [Link tests to stories](#link-tests-to-stories) |

@@ -72,7 +72,10 @@ validate
                      Markdown #heading fragments match a heading, and the
                      story IDs in the settings.plans folder when it is set.
   --plans <path>     Check that story IDs mentioned in Markdown files under
-                     <path> exist in the map. Repeat for several paths.
+                     <path> exist in the map, and warn when a plan's Status:
+                     line is behind the map, uses other words or names a
+                     release title the map no longer has. Repeat for several
+                     paths.
   --tests <path>     Check story IDs in the names of tests under <path>: an
                      error for an ID that is not in the map, and a warning for
                      an in-progress or merged story with no tagged tests.
