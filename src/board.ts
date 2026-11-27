@@ -569,6 +569,81 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
   if (saved && board) announce(board, `Saved ${saved} to the map file.`);
 }
 
+const enhancedActions = new WeakSet<Element>();
+
+/** “Copy 3 commands”, or “Copy commands” when nothing is chosen. */
+function selectedLabel(count: number) {
+  return count === 0 ? "Copy commands" : count === 1 ? "Copy 1 command" : `Copy ${count} commands`;
+}
+
+/**
+ * Turns on the Actions tables, on the Actions tab and in panels, once the clipboard can be used:
+ * shows each row's **Copy** button, which copies its command from `data-esm-copy-command`, and,
+ * in tables with more than one command, the row checkboxes, a select-all box and **Copy commands**,
+ * which copies the chosen rows' commands, one per line. Says what it copied in the board's live
+ * region. Without clipboard access, nothing changes and the tables only read. Safe to call more than once.
+ */
+export function enhanceStoryMapActions(root: ParentNode = document) {
+  if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) return;
+  for (const board of root.querySelectorAll<HTMLElement>(".esm-board")) {
+    if (enhancedActions.has(board)) continue;
+    enhancedActions.add(board);
+    // CSS shows the checkbox column once this is set.
+    board.dataset.esmActions = "";
+    for (const button of board.querySelectorAll<HTMLButtonElement>("button[data-esm-copy-command]")) button.hidden = false;
+    for (const bulk of board.querySelectorAll<HTMLElement>(".esm-action-bulk")) bulk.hidden = false;
+
+    const copy = (text: string, control: HTMLElement, said: string) => {
+      navigator.clipboard.writeText(text).then(() => {
+        showCopied(control, "Copied");
+        announce(board, said);
+      }, () => announce(board, "Could not copy. Run story-map actions in a terminal to see the commands."));
+    };
+    const tableFor = (element: Element) => element.closest<HTMLElement>("[data-esm-action-table]");
+    const update = (wrap: HTMLElement) => {
+      const boxes = [...wrap.querySelectorAll<HTMLInputElement>("input[data-esm-select]")];
+      const chosen = boxes.filter(box => box.checked).length;
+      const all = wrap.querySelector<HTMLInputElement>("input[data-esm-select-all]");
+      if (all) {
+        all.checked = chosen > 0 && chosen === boxes.length;
+        all.indeterminate = chosen > 0 && chosen < boxes.length;
+      }
+      const button = wrap.querySelector<HTMLButtonElement>("button[data-esm-copy-selected]");
+      if (button) {
+        button.disabled = chosen === 0;
+        const label = button.querySelector<HTMLElement>("[data-esm-copy-label]");
+        if (label) {
+          label.textContent = selectedLabel(chosen);
+          label.dataset.esmLabel = selectedLabel(chosen);
+        }
+      }
+    };
+
+    board.addEventListener("change", event => {
+      const input = event.target instanceof Element ? event.target.closest<HTMLInputElement>("input[data-esm-select-all], input[data-esm-select]") : null;
+      const wrap = input && tableFor(input);
+      if (!input || !wrap) return;
+      if (input.matches("[data-esm-select-all]")) {
+        for (const box of wrap.querySelectorAll<HTMLInputElement>("input[data-esm-select]")) box.checked = input.checked;
+      }
+      update(wrap);
+    });
+    board.addEventListener("click", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const one = target?.closest<HTMLButtonElement>("button[data-esm-copy-command]");
+      if (one) {
+        copy(one.dataset.esmCopyCommand ?? "", one, "Copied command");
+        return;
+      }
+      const many = target?.closest<HTMLButtonElement>("button[data-esm-copy-selected]");
+      const wrap = many && tableFor(many);
+      if (!many || !wrap || many.disabled) return;
+      const commands = [...wrap.querySelectorAll<HTMLInputElement>("input[data-esm-select]")].filter(box => box.checked).map(box => box.dataset.esmSelect ?? "");
+      if (commands.length) copy(commands.join("\n"), many, commands.length === 1 ? "Copied 1 command" : `Copied ${commands.length} commands`);
+    });
+  }
+}
+
 const editFocusKey = "esm-edit-focus";
 const editNextKey = "esm-edit-next";
 const enhancedEditing = new WeakSet<Element>();
@@ -1079,6 +1154,7 @@ function enhance() {
   enhanceStoryMapPermalinks();
   enhanceStoryMapBriefs();
   enhanceStoryMapChanges();
+  enhanceStoryMapActions();
   enhanceStoryMapPersonaEditing();
   enhanceStoryMapEditSetup();
 }

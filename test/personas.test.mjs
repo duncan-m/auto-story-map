@@ -1201,8 +1201,8 @@ test("ESM-911: each job is a lane, core job first, with its steps in order and g
   assert.match(core, /<ol class="esm-job-steps" aria-label="Steps"><li class="esm-step-card"><span class="esm-step-title"><span class="esm-step-num" aria-hidden="true">1<\/span>Gather<\/span><span class="esm-step-text">Collect the materials and quantities<\/span><span class="esm-step-cov"><a href="\?q=estimate&amp;job=price-materials&amp;activity=prepare">2 stories<\/a><\/span><\/li>/);
   assert.match(core, /<li class="esm-step-card" data-gap=""><span class="esm-step-title"><span[^>]*>2<\/span>Check with finance<\/span><span class="esm-step-cov"><span class="esm-job-gap">No stories yet<\/span><\/span><\/li>/);
   assert.match(core, /<li class="esm-step-card"><span class="esm-step-title"><span[^>]*>3<\/span>Note assumptions<\/span><\/li><\/ol>/);
-  // The map does not show its activities on the tab.
-  assert.doesNotMatch(html, /Prepare estimate|Submit for finance review/);
+  // The map does not show its activities on the tab. The persona's actions may name one, so look for the grid's headings.
+  assert.doesNotMatch(html, /<span class="esm-activity-title">/);
 
   // A job with no steps has no step list, and drafts are labelled.
   const send = laneFor(html, "my estimate is ready");

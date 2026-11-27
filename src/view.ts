@@ -1,9 +1,10 @@
+import { getStoryMapActions, type StoryMapActionFilter, type StoryMapActionGroup } from "./actions.js";
 import { storyMapBrief, type StoryMapBriefOptions } from "./brief.js";
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
 import type { StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { storyMapReadiness, type StoryReadiness } from "./readiness.js";
-import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
+import { defaultStalledAfterWeeks, loadStoryMap, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 
@@ -42,6 +43,12 @@ export interface StoryMapAccessOptions<Viewer extends StoryMapViewer = StoryMapV
    * brief's options, such as `mapPath` and `readFirst`. Off by default. Internal views only.
    */
   brief?: true | StoryMapBriefOptions;
+  /**
+   * The map's YAML text and its path in the repository, such as `product/story-map.yaml`. With
+   * them, each action on the Actions tab says its line, and links to it with the board's
+   * `sourceBaseUrl`. Internal views only. Without them, actions still list, with no lines.
+   */
+  mapFile?: { path: string; source: string };
 }
 
 export const defaultInternalRoles: readonly string[] = ["engineer", "super-admin"];
@@ -211,7 +218,9 @@ export interface StoryMapFilterState {
    * `personas` when the board shows the Personas tab, with the first of `persona` as its page, or the
    * first persona when none is chosen. Internal views of maps with personas only.
    */
-  view?: "personas";
+  view?: "personas" | "actions";
+  /** What the Actions tab narrows its list to, keeping only values the view has. Internal views only. */
+  actions?: StoryMapActionFilter;
   /** The story a permalink opened, when it is in the view. It is kept whatever the other filters say. */
   story?: string;
   /** The release a permalink opened, when it is in the view. */
@@ -263,6 +272,15 @@ export type StoryMapView =
     testsGeneratedAt?: string;
     /** True when the history lists changes, so a story without `changes` has none that name it. */
     changesIndexed?: true;
+    /**
+     * What validate warns about, grouped by kind, for the Actions tab and the panels' Actions rows.
+     * Built before any filter, so counts do not change with the filters. Internal views only.
+     */
+    actions: StoryMapActionGroup[];
+    /** When the actions were worked out, so an empty tab can say when the map was checked. */
+    actionsCheckedAt: string;
+    /** The map's path in the repository, from `mapFile`, for linking each action's line. */
+    mapPath?: string;
   })
   | (StoryMapBaseView & {
     audience: "all-users";
@@ -470,6 +488,15 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       })),
       activeStories: personaCounts.get(persona.id) ?? 0,
     }));
+    let locate;
+    if (options.mapFile) {
+      try {
+        locate = loadStoryMap(options.mapFile.source).locate;
+      } catch {
+        // A source that no longer parses gives no lines; the actions still list from the map.
+      }
+    }
+    const actions = getStoryMapActions(map, { tests: options.tests, locate });
     const internalView: StoryMapView = {
       audience: "internal",
       title: map.title,
@@ -519,6 +546,9 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       ...(recentUpdates ? { recentUpdates } : {}),
       ...(options.tests ? { testsIndexed: true as const, testsGeneratedAt: options.tests.generatedAt } : {}),
       ...(history?.changes ? { changesIndexed: true as const } : {}),
+      actions,
+      actionsCheckedAt: (options.now ?? new Date()).toISOString(),
+      ...(options.mapFile && locate ? { mapPath: options.mapFile.path } : {}),
     };
     if (options.brief) attachBriefs(internalView, options.brief === true ? {} : options.brief);
     return internalView;

@@ -133,6 +133,8 @@ const server = createServer(async (request, response) => {
       canViewInternal,
       history,
       tests,
+      // Gives each action on the Actions tab its line in the map, linked on GitHub.
+      mapFile: { path: "product/story-map.yaml", source: await readFile(mapFile, "utf8") },
       now,
       preservedParams: { as: selected },
       personaEditing: editing,

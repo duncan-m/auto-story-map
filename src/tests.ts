@@ -9,6 +9,7 @@ import {
   type FileFilter,
   type ReferenceIssue,
 } from "./references.js";
+import { untestedStoryWarnings } from "./actions.js";
 import type { LoadedStoryMap } from "./schema.js";
 import {
   testNameMaxLength,
@@ -450,16 +451,6 @@ export function checkStoryTests(loaded: LoadedStoryMap, found: FoundStoryTest[])
       });
     }
   }
-  loaded.map.stories.forEach((story, index) => {
-    if ((story.status !== "in-progress" && story.status !== "merged") || tagged.has(story.id)) return;
-    const path = ["stories", index, "status"];
-    issues.push({
-      severity: "warning",
-      path,
-      itemId: story.id,
-      message: `No tests are tagged ${story.id}. Put the story ID in the name of each test that covers it.`,
-      ...loaded.locate(path),
-    });
-  });
+  for (const warning of untestedStoryWarnings(loaded.map, tagged)) issues.push({ ...warning, ...loaded.locate(warning.path) });
   return issues;
 }
