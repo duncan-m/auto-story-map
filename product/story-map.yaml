@@ -2447,6 +2447,8 @@ stories:
     activity: set-up
     release: v0-7-8
     status: merged
+    tokens: 4075650
+    estimatedCostUsd: 2.35
     dependsOn:
       - ESM-167
     jobs:
