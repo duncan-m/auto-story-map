@@ -1,5 +1,6 @@
 import { readFile, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { checkPlanMockups } from "./plan-mockups.js";
 import { checkPlanStatusLines } from "./plan-status.js";
 import { checkPlanReferences, checkSources, markdownAnchors, maxMarkdownBytes, resolveRootedPath, type ReferenceIssue } from "./references.js";
 import { storyMapGuidePath, storyMapRuleHelp, storyMapRules, type StoryMapRuleId } from "./rules.js";
@@ -129,6 +130,7 @@ export async function checkStoryMap(source: string, options: StoryMapCheckOption
   }
   if (planPaths.length) found.push(...await checkPlanReferences(loaded, root, planPaths));
   if (planPaths.length) found.push(...await checkPlanStatusLines(loaded, root, planPaths));
+  if (planPaths.length) found.push(...await checkPlanMockups(loaded, root, planPaths));
   if (chosen === undefined) found.push(await plansNotice(root));
   if (options.tests?.length) {
     const tests = await findStoryTests(loaded, root, { paths: options.tests });
