@@ -2405,12 +2405,14 @@ stories:
     title: Model-test concurrent story claims
     activity: review
     release: v0-7-9
-    status: planned
+    status: merged
+    tokens: 4903562
+    estimatedCostUsd: 2.48
     jobs:
       - pick-up-work
     personas:
       - agent
-    summary: A model-based fast-check test runs random, interleaved claims, renewals, take-overs and releases by several agents and checks that each story has at most one live claim.
+    summary: A model-based fast-check test runs random, interleaved claims, renewals, take-overs, releases and expiries by several agents against a Git remote and a --store folder, and checks each step against a simple model, so each story has at most one live claim.
     sources:
       - docs/plans/rules-as-checks.md#8-model-test-concurrent-claims
   - id: ESM-166

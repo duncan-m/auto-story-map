@@ -25,6 +25,9 @@ const safeId = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const safeRemote = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const emailLike = /[^\s@]+@[^\s@]+\.[^\s@]+/;
 const lockWaitMs = 2000;
+// How often a read of the claims is tried when another read in the same clone holds a ref lock.
+const fetchAttempts = 6;
+const refLockClash = /cannot lock ref|unable to update local ref|Unable to create '[^']*\.lock'/i;
 
 /** Options shared by every claim function. */
 export interface StoryClaimOptions {
@@ -182,10 +185,19 @@ async function gitBackend(root: string, remote: string, now: Date): Promise<Clai
   const mirror = mirrorPrefix(remote);
 
   const list = async () => {
-    try {
-      await git(root, ["fetch", "--quiet", "--no-tags", "--no-write-fetch-head", "--prune", remote, `+${claimRefPrefix}*:${mirror}*`]);
-    } catch (error) {
-      throw new StoryClaimError(`Could not read claims from ${remote}: ${gitMessage(error)}`);
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await git(root, ["fetch", "--quiet", "--no-tags", "--no-write-fetch-head", "--prune", remote, `+${claimRefPrefix}*:${mirror}*`]);
+        break;
+      } catch (error) {
+        // Worktrees of one clone share its refs, so two agents reading claims at
+        // once can collide on a mirrored ref's lock. The remote is untouched, so read again.
+        if (attempt < fetchAttempts && refLockClash.test(gitMessage(error))) {
+          await new Promise(done => setTimeout(done, 20 + Math.random() * 40 * attempt));
+          continue;
+        }
+        throw new StoryClaimError(`Could not read claims from ${remote}: ${gitMessage(error)}`);
+      }
     }
     const refs = (await git(root, ["for-each-ref", "--format=%(refname)%1f%(objectname)", mirror]))
       .split("\n").filter(Boolean).map(line => line.split("\u001f"))

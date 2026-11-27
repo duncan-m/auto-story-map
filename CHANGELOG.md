@@ -28,6 +28,14 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 - `findSetupBehind` no longer counts an edited workflow that already runs every step this version's does, so the `validate` reminder and `story-map upgrade` agree on it.
 - `applyUpgrade({ root, map, mode, parts, answers, write })` applies the review and returns an `UpgradeApplyResult`, and `mergeAgentsSection`, `addWorkflowSteps`, `parseUpgradeParts`, `replaceAgentsSection`, `upgradeTemplates`, `runCommands` and `UpgradeApplyError` are exported, with the `UpgradeAnswers`, `UpgradeApplyMode`, `UpgradeApplyOptions`, `UpgradeChange`, `UpgradeChangeAction`, `UpgradeQuestion` and `UpgradeTemplates` types. `stampSetupFile` takes an optional template hash. The edit operations gain `story-ids`, which records `settings.storyIds`.
 
+### Rules in CI and claim checks
+
+- **Claim from parallel worktrees:** agents in worktrees of one clone can now claim stories at the same time. Worktrees share their clone's refs, so two reads of the claims at once could collide on a ref lock, and `story-map claim` failed with `Could not read claims` and exit 1 instead of winning or exiting 3. The read now tries again when that is the only problem. See [Coordinate several agents](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#coordinate-several-agents).
+
+**For developers**
+
+- A model-based fast-check test, `test/claims.model.test.js`, runs random claims, renewals, take-overs, releases and expiries by three agents against a temporary Git remote and a `--store` folder, including two or three agents calling at once, and checks the claims against a simple model after every step: at most one claim per story, refusals that name the holder, expiry that frees the story and take-overs that record the new holder. It found the worktree bug above. `FC_NUM_RUNS` runs more cases.
+
 ### Delivery plans for host products
 
 - **Write a delivery plan:** The guide has a new [Write a delivery plan](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#write-a-delivery-plan) section: the question an agent asks before a product adopts plans, and the parts of a plan, from the status line to the effort table. Plans are opt in, and nothing changes until a person says yes.
