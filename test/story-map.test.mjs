@@ -537,7 +537,8 @@ test("ESM-117: the skill carries every rule in the AGENTS.md section", async () 
   const skill = await skillFile();
   assert.match(skill, /^---\nname: story-map\ndescription: \S[^\n]+\n---\n\n# Story map\n\n/);
   assert.doesNotMatch(skill, /__RULES__|auto-story-map:(start|end)/);
-  const rules = agents.replace(/<!-- auto-story-map:(start|end) -->/g, "").split("\n\n").map(part => part.trim()).filter(part => part && part !== "## Story map");
+  assert.doesNotMatch(skill, /<!-- rule:/, "rule markers stay in AGENTS.md");
+  const rules = agents.replace(/<!-- auto-story-map:(start|end) -->/g, "").replace(/^<!-- rule: [a-z0-9-]+ -->\n/gm, "").split("\n\n").map(part => part.trim()).filter(part => part && part !== "## Story map");
   assert.ok(rules.length > 10);
   const relink = text => text.replace(/^### /, "## ").replace(/\]\((product|docs)\//g, "](../../../$1/");
   for (const rule of rules) assert.ok(skill.includes(relink(rule)), `missing from the skill: ${rule.slice(0, 60)}`);

@@ -27,8 +27,10 @@ install:
 
 releases:
   "0.7.8":
+    agents:
+      - Each rule in the AGENTS.md section carries a hidden marker, so later upgrades update the rules you left alone and keep the ones you reworded or added.
     guide:
-      - The guide explains how to review your set-up after an upgrade, and what the version markers in these files mean.
+      - The guide explains how to review your set-up after an upgrade, rule by rule for AGENTS.md, and what the version markers in these files mean.
   "0.7.7":
     agents:
       - Agents ask once whether your team uses delivery plans before they plan bigger work, and record only the answer a person gives.

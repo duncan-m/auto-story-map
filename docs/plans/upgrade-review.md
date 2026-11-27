@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-168 and ESM-172 are merged, and ESM-169 to ESM-171 and ESM-173 are planned. Decisions A to E are made. None has an agreed estimate yet.
+Status: in progress. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-168, ESM-172 and ESM-173 are merged, and ESM-169 to ESM-171 are planned. Decisions A to E are made. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 
@@ -197,6 +197,8 @@ For a host that edited its `AGENTS.md` section, a whole-section diff is hard to 
 - a rule the host added is kept and never touched
 
 Advanced mode then offers each rule separately. Simple mode still keeps every edited rule, but can update the rules around it. Until this item lands, an edited section is offered as one diff.
+
+As built, each rule is one paragraph with `<!-- rule: <id> -->` on the line before it, and `agentsRules` in `src/agents-rules.ts` lists every ID. The IDs are a separate list from the validation rules but follow their scheme, and `choose-delivery-plans` shares its ID with the validation rule that checks it. For an outdated or edited section, the `agents` part of the report gets `rules`, each with a state (`current`, `outdated`, `edited`, `edited-outdated`, `removed`, `new`, `dropped` or `added`) and a recommendation (`keep`, `replace`, `add`, `remove` or `review`). `--diff` and the Markdown show each rule's diff in place of the whole section's, and the JSON keeps both. Sections from before 0.7.8 have no markers, so the package also ships the hash of each earlier rule, under `rules` in `templates/known-versions.json`. The generator names those rules by their opening words, and the review matches a host's unmarked paragraphs by text, then by opening words. Applying the per-rule decisions is ESM-169's. See [Review the AGENTS.md section rule by rule](../story-map.md#review-the-agentsmd-section-rule-by-rule).
 
 ## Decisions made
 

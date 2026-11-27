@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { agentsRuleForm, agentsRuleHash, templateRules, type AgentsRuleForm, type KnownAgentsRules } from "./agents-rules.js";
 
 /**
  * The parts of a host's set-up that `story-map init` writes from a template
@@ -19,7 +20,15 @@ export const setupParts: readonly SetupPart[] = ["agents", "guide", "workflow"];
  * `templates/known-versions.json`, generated from the release tags by
  * `scripts/known-versions.mjs`.
  */
-export type KnownSetupVersions = Record<SetupPart, Record<string, string[]>>;
+export type KnownSetupVersions = Record<SetupPart, Record<string, string[]>> & {
+  /**
+   * The hash of each rule in the earlier `AGENTS.md` templates, by rule ID,
+   * mapped to the versions that shipped it. The upgrade review compares a
+   * host's section rule by rule with it. Left out, every rule the host has
+   * that differs from this version's counts as edited.
+   */
+  rules?: KnownAgentsRules;
+};
 
 /** What a host's copy of a part says about where it came from. */
 export interface SetupFileVersion {
@@ -151,7 +160,7 @@ export function stampSetupFile(part: SetupPart, text: string, version: string): 
 /** Reads `templates/known-versions.json` from the installed package. */
 export async function loadKnownSetupVersions(): Promise<KnownSetupVersions> {
   const raw = JSON.parse(await readFile(new URL("../templates/known-versions.json", import.meta.url), "utf8")) as Partial<KnownSetupVersions>;
-  return { agents: raw.agents ?? {}, guide: raw.guide ?? {}, workflow: raw.workflow ?? {} };
+  return { agents: raw.agents ?? {}, guide: raw.guide ?? {}, workflow: raw.workflow ?? {}, rules: raw.rules ?? {} };
 }
 
 /** One template a release shipped, for building the known versions. */
@@ -159,6 +168,8 @@ export interface ReleasedSetupTemplate {
   part: SetupPart;
   version: string;
   text: string;
+  /** For `agents`: which template it is. Left out, a body that links to the skill is the short pointer. */
+  form?: AgentsRuleForm;
 }
 
 /** Orders release versions such as `0.7.10` after `0.7.9`: negative when `a` is older, positive when newer. */
@@ -178,18 +189,25 @@ export function compareVersions(a: string, b: string) {
  * hash: their versions are listed together, oldest first.
  */
 export function knownSetupVersionsFrom(templates: Iterable<ReleasedSetupTemplate>): KnownSetupVersions {
-  const known: KnownSetupVersions = { agents: {}, guide: {}, workflow: {} };
-  for (const { part, version, text } of templates) {
+  const known: KnownSetupVersions & { rules: KnownAgentsRules } = { agents: {}, guide: {}, workflow: {}, rules: {} };
+  const add = (hashes: Record<string, string[]>, hash: string, version: string) => {
+    const versions = (hashes[hash] ??= []);
+    if (!versions.includes(version)) versions.push(version);
+  };
+  for (const { part, version, text, form } of templates) {
     const body = setupBody(part, text);
     if (body === undefined) continue;
-    const versions = (known[part][setupBodyHash(body)] ??= []);
-    if (!versions.includes(version)) versions.push(version);
+    add(known[part], setupBodyHash(body), version);
+    if (part !== "agents") continue;
+    for (const [id, rule] of templateRules(body, form ?? agentsRuleForm(body)).rules) add((known.rules[id] ??= {}), agentsRuleHash(rule), version);
   }
-  for (const part of setupParts) {
-    const sorted = Object.entries(known[part])
-      .map(([hash, versions]) => [hash, versions.sort(compareVersions)] as const)
-      .sort(([hashA, a], [hashB, b]) => compareVersions(a[0]!, b[0]!) || compareVersions(a.at(-1)!, b.at(-1)!) || (hashA < hashB ? -1 : 1));
-    known[part] = Object.fromEntries(sorted);
-  }
+  const sorted = (hashes: Record<string, string[]>) =>
+    Object.fromEntries(
+      Object.entries(hashes)
+        .map(([hash, versions]) => [hash, versions.sort(compareVersions)] as const)
+        .sort(([hashA, a], [hashB, b]) => compareVersions(a[0]!, b[0]!) || compareVersions(a.at(-1)!, b.at(-1)!) || (hashA < hashB ? -1 : 1)),
+    );
+  for (const part of setupParts) known[part] = sorted(known[part]);
+  known.rules = Object.fromEntries(Object.keys(known.rules).sort().map(id => [id, sorted(known.rules[id])]));
   return known;
 }
