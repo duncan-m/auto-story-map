@@ -1936,9 +1936,11 @@ stories:
     title: Tag a describe block for all its tests
     activity: explore
     release: v0-7-7
-    status: planned
+    status: merged
     estimate: 3
     priority: should
+    tokens: 3058360
+    estimatedCostUsd: 1.62
     jobs:
       - plan-and-build
     summary: A story ID in a describe or suite name covers every test inside it, so renaming a test does not unlink it from its story.

@@ -4,6 +4,8 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 
 ## Unreleased
 
+- **Tag a describe block for all its tests:** A story ID at the start of a `describe` or `suite` name now links every test inside it, including tests in nested blocks, so renaming a test no longer unlinks it from its story. A test that names its own story inside a tagged block counts for both. This applies to `story-map tests`, `validate --tests`, `story-map evidence` and `story-map actions`. The story panel lists those tests under the story, marked “Covered by its group”, and the tests index marks the IDs each test has from its block in a new optional `inheritedIds` field, which older boards ignore. An unknown ID in a block's name is reported once, at the block. Internal viewers only. See [Link tests to stories](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-tests-to-stories).
+
 ### Delivery plans for host products
 
 - **Write a delivery plan:** The guide has a new [Write a delivery plan](https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#write-a-delivery-plan) section: the question an agent asks before a product adopts plans, and the parts of a plan, from the status line to the effort table. Plans are opt in, and nothing changes until a person says yes.

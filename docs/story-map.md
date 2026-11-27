@@ -1037,7 +1037,21 @@ test("BUILDER-101: totals the materials on an estimate", () => { … });
 describe("BUILDER-102: approval workflow", () => { … });
 ```
 
-The ID can appear anywhere in the name as a whole word, and one test can name several stories, but starting with the ID keeps names easy to scan. The panel drops a leading `BUILDER-101: `, because it already shows the ID. These calls count: `test`, `it`, `describe` and `suite`, with `.only`, `.skip`, `.todo`, `.concurrent` or `.each(…)`. A tagged `describe` or `suite` is listed once, as a group: the tests inside it are not listed unless they are tagged too. Only IDs that use a prefix your map already has, such as `BUILDER-`, are read.
+The ID can appear anywhere in the name as a whole word, and one test can name several stories, but starting with the ID keeps names easy to scan. The panel drops a leading `BUILDER-101: `, because it already shows the ID. These calls count: `test`, `it`, `describe` and `suite`, with `.only`, `.skip`, `.todo`, `.concurrent` or `.each(…)`, as in Node's test runner, Jest, Vitest and Mocha. Only IDs that use a prefix your map already has, such as `BUILDER-`, are read.
+
+A tagged `describe` or `suite` covers every test inside it, including tests in blocks nested within it, so a test renamed during a refactor stays linked to its story:
+
+```js
+describe("BUILDER-102: approval workflow", () => {
+  test("emails the approver", () => { … });                    // BUILDER-102
+  describe("reminders", () => {
+    test("sends one after two days", () => { … });            // BUILDER-102
+  });
+  test("BUILDER-105: records who approved", () => { … });     // BUILDER-105 and BUILDER-102
+});
+```
+
+A test that names its own story inside a tagged block counts for both: its own ID and the block's. The panel lists the block as a group, and each test inside it under the story, marked “Covered by its group”. Only tests written inside the block's brackets are covered, so a block that passes a function defined elsewhere, such as `describe("BUILDER-102: approvals", sharedTests)`, covers none. An unknown ID in a block's name is reported once, at the block.
 
 The name must be written as a quoted string or a template literal, starting on the same line as the call or the next one. A name built at run time, such as `` test(`${story} works`, …) ``, is matched on its literal text only. IDs in comments are not tags.
 
