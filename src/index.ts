@@ -53,6 +53,8 @@ export {
 export type { OmittedStoryTests, StoryMapTests, StoryTestEntry } from "./tests-index.js";
 export { storyMapCommit, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges } from "./diff.js";
+export { needsPersonChanges, needsPersonRules } from "./needs-person.js";
+export type { NeedsPersonChange, NeedsPersonItemType, NeedsPersonRule } from "./needs-person.js";
 export type { CoreJobChange, CustomerStoryChange, GroupChanges, InactiveStoryChange, JobChanges, JobDiffRef, JobStepsChange, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";
 export { csvContentType, storyMapToCsv } from "./export-csv.js";

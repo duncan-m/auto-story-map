@@ -1048,7 +1048,9 @@ stories:
     title: Show the map changes only a person should make
     activity: review
     release: v0-7-9
-    status: planned
+    status: merged
+    tokens: 4193614
+    estimatedCostUsd: 2.18
     jobs:
       - ground-work-in-customer-needs
       - update-the-map
@@ -1058,6 +1060,7 @@ stories:
     summary: story-map diff lists confirmed drafts, estimate changes, removed or renumbered stories, customer copy and settings changes under Needs a person, in Markdown and JSON.
     sources:
       - docs/plans/rules-as-checks.md#5-show-the-changes-only-a-person-should-make
+      - docs/story-map.md#changes-that-need-a-person
   - id: ESM-163
     title: Check pull requests for map rules in CI
     activity: review
