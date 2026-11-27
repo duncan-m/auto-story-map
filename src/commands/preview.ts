@@ -64,7 +64,7 @@ export default defineCommand({
         const port = typeof address === "object" && address ? address.port : options.port;
         console.log(`Previewing ${options.map} at http://${preview.previewHost}:${port}/story-map`);
         console.log("It reads the map on every request, so reload after an edit. Press Ctrl+C to stop.");
-        console.log(options.writable ? "Edits on the Personas tab save to the map file. Start with --read-only to turn them off." : "Read-only: the Personas tab has no edit controls.");
+        console.log(options.writable ? "Edits on the Personas tab and in story panels save to the map file. Start with --read-only to turn them off." : "Read-only: the Personas tab and story panels have no edit controls.");
       });
     });
   },

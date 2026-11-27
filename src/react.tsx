@@ -109,9 +109,16 @@ export interface StoryMapBoardProps {
    * that editing is not set up; pass `false` when it is off on purpose, to skip the note.
    */
   personaEditing?: StoryMapPersonaEditing | false;
+  /**
+   * Lets internal viewers save the story panel's **Change** section, a new status, reason or
+   * release, to the map file, through the same `endpoint`, `token` and `revision` as
+   * `personaEditing`. `story-map preview` sets it unless it runs with `--read-only`. Without
+   * it the section shows the matching `story-map edit` command to copy, and saves nothing.
+   */
+  storyEditing?: StoryMapPersonaEditing | false;
 }
 
-/** Where the Personas tab saves edits, for `personaEditing`. */
+/** Where the Personas tab and the story panels save edits, for `personaEditing` and `storyEditing`. */
 export interface StoryMapPersonaEditing {
   /** The route that takes `{ revision, operations }` as JSON, such as `/api/story-map/edit`. */
   endpoint: string;
@@ -805,8 +812,10 @@ type PersonaLookup = ReturnType<typeof personaLookup>;
 const labelsFor = (ids: readonly string[] | undefined, lookup: PersonaLookup) =>
   (ids ?? []).flatMap(id => lookup.personas.get(id) ?? []);
 
-function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles, webAgents, repository }: {
+function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, internal, sourceBaseUrl, links, settings, stalledAfterWeeks, testsIndexed, changesIndexed, lookup, personaPanelIds, storyPanelIds, releaseTitles, webAgents, repository, editing }: {
   story: InternalStoryCard;
+  /** Where the **Change** section saves, when the board can save. */
+  editing?: StoryMapPersonaEditing;
   webAgents?: readonly StoryMapWebAgent[];
   repository?: string;
   /** Each placed story's panel, by story ID, so the Dependencies section can open it. */
@@ -918,7 +927,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
         {internal && story.tokens !== undefined && <><dt>Tokens used</dt><dd>{story.tokens.toLocaleString("en-US")}</dd></>}
         {internal && story.estimatedCostUsd !== undefined && <><dt>Estimated cost</dt><dd>{`$${story.estimatedCostUsd.toFixed(2)}`}</dd></>}
       </dl>
-      {internal && <ChangeSection story={story} panelId={panelId} releaseTitles={releaseTitles} />}
+      {internal && <ChangeSection story={story} panelId={panelId} releaseTitles={releaseTitles} editing={editing} />}
       {internal && hasDependencies(story) && (
         <DependenciesSection story={story} panelId={panelId} storyPanelIds={storyPanelIds} releaseTitles={releaseTitles} />
       )}
@@ -1168,12 +1177,14 @@ function ChatIcon() {
 /**
  * The internal panel's **Change** section: status, reason and release pickers that build the
  * matching `story-map edit` command, with a **Copy** button, to paste into a terminal or an
- * agent's chat. The board does not save, so copying changes nothing. The pickers need board.js
- * to build the command, so the section stays hidden until board.js shows it, and **Copy** stays
+ * agent's chat. Copying changes nothing. With `editing`, as on the local preview, **Save**
+ * also writes the change to the map file. The pickers need board.js to build the command
+ * and to save, so the section stays hidden until board.js shows it, and **Copy** stays
  * hidden without clipboard access. The reason field is for blocked and cut only.
  */
-function ChangeSection({ story, panelId, releaseTitles }: { story: InternalStoryCard; panelId: string; releaseTitles: ReadonlyMap<string, string> }) {
+function ChangeSection({ story, panelId, releaseTitles, editing }: { story: InternalStoryCard; panelId: string; releaseTitles: ReadonlyMap<string, string>; editing?: StoryMapPersonaEditing }) {
   const headingId = `${panelId}-change`;
+  const errorId = `${panelId}-change-error`;
   const needsReason = story.status === "blocked" || story.status === "cut";
   return (
     <section className="esm-detail-section esm-change-section" aria-labelledby={headingId} hidden>
@@ -1184,6 +1195,7 @@ function ChangeSection({ story, panelId, releaseTitles }: { story: InternalStory
         data-esm-status={story.status}
         data-esm-release={story.release}
         data-esm-reason={story.statusReason ?? ""}
+        {...(editing ? { "data-esm-edit-endpoint": editing.endpoint, "data-esm-edit-token": editing.token, "data-esm-edit-revision": editing.revision } : {})}
       >
         <label className="esm-change-field">
           <span>Status</span>
@@ -1207,7 +1219,15 @@ function ChangeSection({ story, panelId, releaseTitles }: { story: InternalStory
             <BriefIcon /><span data-esm-copy-label="">Copy</span>
           </button>
         </div>
-        <p className="esm-change-note">This board does not save. Paste the command into a terminal or an agent's chat to make the change.</p>
+        {editing
+          ? <>
+            <p className="esm-form-error esm-change-error" id={errorId} role="alert" hidden></p>
+            <div className="esm-change-actions">
+              <button type="submit" className="esm-save esm-change-save" data-esm-change-save="" aria-describedby={errorId} disabled>Save</button>
+              <p className="esm-change-note">Saves to the map file, with the same checks as <code>story-map edit --write</code>. Commit it with your other changes.</p>
+            </div>
+          </>
+          : <p className="esm-change-note">This board does not save. Paste the command into a terminal or an agent's chat to make the change.</p>}
       </form>
     </section>
   );
@@ -2283,6 +2303,7 @@ export function StoryMapBoard({
   exportHref,
   webAgents,
   personaEditing,
+  storyEditing,
 }: StoryMapBoardProps) {
   const baseId = useId();
   const headingId = `${baseId}-heading`;
@@ -2498,6 +2519,7 @@ export function StoryMapBoard({
           releaseTitles={releaseTitles}
           webAgents={webAgents}
           repository={repository}
+          editing={internal ? storyEditing || undefined : undefined}
         />
       ))}
       {!personasTab && personaList.map(persona => (

@@ -52,6 +52,12 @@ The mockup is [change-command-mockup.html](change-command-mockup.html), generate
 
 ESM-404 stays cut: the hosted board stays read-only, because saving there would need the map on a hosted service. This item writes only to a file on the person's own machine. Estimate: 5 points.
 
+### UI mockup for saving
+
+![Mockup of the ESM-112 story panel on the local preview: on the left after choosing Blocked, a reason and 0.7.7, with the command and an enabled Save; on the right after Save was refused because the map file changed on disk, with the message to reload](save-change-mockup.png)
+
+The mockup is [save-change-mockup.html](save-change-mockup.html), generated from the built board and the real `styles.css` with this product's map, rendered with `storyEditing` as `story-map preview` renders it, and the **Change** section in the state `board.js` leaves it. To refresh it, render the panel again and take a screenshot at 1360 px wide. ESM-112 links to this section from its `sources`.
+
 ## Not planned
 
 **A `lean` validation mode.** The suggestion was to quiet warnings that small teams find noisy: chore stories that serve no job, and missing customer copy. Neither warning exists today. Validate warns about untagged stories only when more than half of the active stories say nothing about who they are for, and it never asks for customer copy, which stays optional and internal by default. Warnings already leave CI green unless `--strict` is set (ESM-401). A mode that switches nothing off would add a setting to explain and no benefit. If a real warning turns out to be noisy for small maps, fix that warning.

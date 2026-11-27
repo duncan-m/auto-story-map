@@ -323,7 +323,7 @@ test("ESM-147: preview refuses edits from other origins, without JSON or the tok
   assert.equal((await post(base, { revision, operations: rename }, { token, origin: "http://evil.test" })).status, 403);
   assert.equal((await post(base, { revision, operations: rename }, { token, type: "text/plain" })).status, 415);
   assert.equal((await post(base, { revision, operations: rename }, { token: "wrong-token" })).status, 403);
-  assert.equal((await post(base, { revision, operations: [{ op: "status", id: "S-1", status: "shipped" }] }, { token })).status, 400, "only persona edits");
+  assert.equal((await post(base, { revision, operations: [{ op: "title", id: "S-1", title: "Renamed" }] }, { token })).status, 400, "only persona and story change edits");
   assert.equal((await fetch(`${base}/api/story-map/edit`)).status, 405);
   assert.equal(await readFile(file, "utf8"), map);
 });
