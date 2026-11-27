@@ -997,8 +997,10 @@ stories:
     title: Show outstanding actions on an Actions tab
     activity: explore
     release: v0-7-6
-    status: in-progress
+    status: merged
     estimate: 8
+    tokens: 68512478
+    estimatedCostUsd: 20.01
     jobs:
       - get-oriented
       - update-the-map
