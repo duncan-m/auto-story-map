@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { assertFasterThan, measuringCoverage } from "./fixtures/timing.mjs";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const config = JSON.parse(await readFile(new URL("../.c8rc.json", import.meta.url), "utf8"));
@@ -34,5 +34,8 @@ test("ESM-177: time limits hold without coverage, and only the limit is skipped 
   assert.throws(() => assertFasterThan(started, 10, "slow step", { coverage: false }), /slow step: took \d+\.\dms, over 10ms/);
   assert.doesNotThrow(() => assertFasterThan(started, 10, "slow step", { coverage: true }));
   assert.doesNotThrow(() => assertFasterThan(performance.now(), 10_000, "quick step", { coverage: false }));
-  assert.equal(measuringCoverage, Boolean(process.env.NODE_V8_COVERAGE));
+  // With no option, the helper follows this run: it skips the limit under coverage and enforces it otherwise.
+  const byDefault = () => assertFasterThan(started, 10, "slow step");
+  if (process.env.NODE_V8_COVERAGE) assert.doesNotThrow(byDefault);
+  else assert.throws(byDefault, /slow step/);
 });

@@ -1,4 +1,5 @@
 // Time limits for the tests that check code runs in linear time, such as ESM-175's (ESM-177).
+// `node --test` runs every file under test/, so this one appears in its output as a file with no tests.
 import assert from "node:assert/strict";
 
 /** True while V8 collects coverage, as under `npm run coverage`, where instrumented code runs measurably slower. */
