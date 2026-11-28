@@ -39,6 +39,7 @@ import {
   storyMapPackagedGuideUrl,
 } from "auto-story-map";
 import { StoryMapBoard } from "auto-story-map/react";
+import { escapeRegExp } from "../dist/references.js";
 import { makeStoryMapResponse } from "../example/host.mjs";
 
 // The builder estimates sample map: test data with stable IDs, separate from this product’s own map.
@@ -153,7 +154,7 @@ test("each card opens its own detail panel through the popover API", async () =>
   const targets = cardsIn(html).map(card => card.match(/popoverTarget="([^"]+)"/i)[1]);
   assert.equal(new Set(targets).size, targets.length);
   for (const target of targets) {
-    const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escaped = escapeRegExp(target);
     assert.match(html, new RegExp(`<div class="esm-detail" id="${escaped}" popover="auto" role="dialog"`));
     assert.match(html, new RegExp(`aria-label="Close" autofocus="" popoverTarget="${escaped}" popoverTargetAction="hide"`, "i"));
   }
@@ -2674,8 +2675,6 @@ function assertWellFormedXml(xml, name) {
   assert.deepEqual(stack, [], `${name}: unclosed elements`);
 }
 
-/** Escapes every character with a meaning in a regular expression. */
-const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const exportNow = new Date("2026-11-20T09:00:00Z");
 const exportView = (source = map, options = {}) => getStoryMapForViewer(source, engineer, options);
 const page = files => files.get("visio/pages/page1.xml");

@@ -3,6 +3,7 @@ import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import { escapeRegExp } from "./references.js";
 
 /** Options for `countStoryTokens`. */
 export interface StoryTokenOptions {
@@ -112,7 +113,6 @@ export function defaultClaudeLogs(env: NodeJS.ProcessEnv = process.env): string 
   return join(env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects");
 }
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** True when the branch name contains the story ID as a whole word, such as `feat/esm-145-tokens` for ESM-145, but not ESM-1450. */
 export function branchNamesStory(branch: string, id: string): boolean {
