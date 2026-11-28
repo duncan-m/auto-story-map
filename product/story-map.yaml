@@ -2179,7 +2179,9 @@ stories:
     title: Spike delivery totals in an Analytics tab
     activity: track
     release: v0-7-7
-    status: in-progress
+    status: merged
+    tokens: 31991583
+    estimatedCostUsd: 11.22
     jobs:
       - get-oriented
       - agree-first-release-plan
