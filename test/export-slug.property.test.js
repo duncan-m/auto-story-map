@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fc from "fast-check";
 import { fileSlug } from "../dist/export-response.js";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const numRuns = Number(process.env.FC_NUM_RUNS) || 1000;
 
@@ -39,7 +40,6 @@ test("ESM-175: the export slug stays fast on a long run of hyphens", () => {
   const value = `.-.-${"-".repeat(50_000)}Map.${"-".repeat(50_000)}x${"-".repeat(100_000)}`;
   const started = performance.now();
   const slug = fileSlug(value);
-  const elapsed = performance.now() - started;
+  assertFasterThan(started, 100);
   assert.equal(slug, `map.${"-".repeat(76)}`);
-  assert.ok(elapsed < 100, `took ${elapsed.toFixed(1)}ms`);
 });

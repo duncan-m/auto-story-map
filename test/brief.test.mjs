@@ -18,6 +18,7 @@ import {
   storyMapBriefDetails,
   storyMapToJson,
 } from "auto-story-map";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const engineer = { roles: ["engineer"] };
 const commit = "a".repeat(40);
@@ -266,7 +267,7 @@ test("ESM-123: names branches from the ID and the first words of the title", () 
   // Long runs of hyphens stay fast, because names are split rather than trimmed with a backtracking regex.
   const started = performance.now();
   assert.equal(storyMapBriefBranch(`${"-".repeat(100_000)}x`, `${"-".repeat(1_000_000)}zebra`), "feat/x-zebra");
-  assert.ok(performance.now() - started < 1000);
+  assertFasterThan(started, 1000);
 });
 
 test("ESM-124: the view writes a brief for each open story and release only when asked", () => {

@@ -19,6 +19,7 @@ import {
 } from "auto-story-map";
 // Not a package export: the Review section reader stays internal until ESM-186 offers the check to hosts.
 import { reviewSection } from "../dist/pr-check.js";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const template = path => fileURLToPath(new URL(`../templates/${path}`, import.meta.url));
@@ -73,7 +74,7 @@ test("ESM-163: tells agent commits from a person's by bot authors and Co-Authore
   // A trailer with a long run of spaces and tabs is read quickly.
   const started = performance.now();
   assert.equal(commitAgent({ ...person, message: `Co-Authored-By:${" \t".repeat(100_000)}x` }), undefined);
-  assert.ok(performance.now() - started < 1000, "a long trailer is read in linear time");
+  assertFasterThan(started, 1000, "a long trailer is read in linear time");
 });
 
 test("ESM-163: a change that needs a person fails only when an agent commit changed the map and nobody approved it", () => {
