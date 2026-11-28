@@ -166,6 +166,22 @@ What it shows:
 4. Reuse existing styling, keyboard/accessibility conventions, release panel and progressive enhancement. Do not introduce a heavy chart dependency without an evaluated bundle-size justification.
 5. Add fixtures and unit tests prefixed with the corresponding ESM ID. Validate docs and map references as part of the normal repository checks.
 
+## Architecture decisions
+
+Following [Record architecture decisions](../ENGINEERING-OVERVIEW.md#record-architecture-decisions):
+
+- **Where it runs.** Inside the existing package: pure functions of the map and the history file, shared by the board's Analytics tab and any CLI output. `story-map history` stays the only Git reader. No server, database or second generated file, as the [measurement contract](#measurement-contract-applies-to-every-story) says, and no chart library.
+- **Data and contracts.** Upstream, it reads the map and the history file that hosts already pass to the board with `--history`. Downstream, ESM-130 adds a new optional list of estimate, release and cut changes to the history file, kept out of `events` so a board from an earlier release still reads it. ESM-136 adds an optional `baselineDate` to releases in the map format and its JSON Schema. The board gains an Analytics tab and its query parameters, and ESM-134 adds a summary to each release lane.
+- **Boundaries.** [Project, then filter, then render](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve) and the customer allow-list: the tab, its data, points, tokens, spend and its query parameters never reach a customer view. **History contains names**: the new history list stays in the internal history file. **Bounded input**: the history file keeps the schema's limits.
+- **Reversibility.** The tab and the calculations are additive and save nothing, so they can be removed in a release. The new history list and `baselineDate` are the harder parts: once hosts build history files or write maps with them, the parsers must keep accepting them.
+
+Consequential decision, a **proposal** for a person to agree before ESM-130 and ESM-136 go `in-progress`: extend two saved formats, the history file with a new optional list (ESM-130), and the map with `baselineDate` on releases (ESM-136).
+
+- **Consumers:** hosts that build the history file or write maps, the board, and any host code that parses either file.
+- **Alternatives considered:** for the history file, adding the changes to `events`, not chosen because `parseStoryMapHistory` accepts only `added` and `status` events, so an older board would reject the file; and a separate precomputed metrics file, deferred until a real limit needs one.
+- **Agreed by:** not yet. The team agreed the estimates, but the plan does not record agreement of the format changes.
+- **Revisit if** an older board rejects history files with the new list, if teams rarely set `baselineDate`, or if calculating in the board proves too slow for a large history, which is when the plan says to add a precomputed file.
+
 ## Decisions to settle before implementation
 
 - Whether a 'completed' story that subsequently reopens should reduce cumulative burn-up or whether separate net-completed versus ever-completed series should be offered. Proposed default: net-completed, with status history explaining reversals.

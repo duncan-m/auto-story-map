@@ -66,6 +66,13 @@ flowchart LR
 
 The tests and the demo import the package by its own name (`import … from "auto-story-map"`). Node resolves this through the package's `exports`, so they exercise the built `dist/` output exactly as a host would. Run `npm run build` before running them; `npm test` and `npm run demo` do this for you.
 
+### Agreed architecture decisions
+
+Once a person agrees a consequential decision in a plan or a PR, as [Record architecture decisions](#record-architecture-decisions) describes, it moves here, so this section stays the one place to look. Each entry says what was decided, where it was agreed, and what would justify revisiting it.
+
+- **The board is read-only.** Every edit goes through a PR on the YAML file. Agreed in the [0.4.0 plan](plans/0.4.0-enhancements.md#decisions-already-made), when editing release notes on the board was dropped. Revisit only if the map moves to a hosted service that stores it, which is out of scope.
+- **One map file.** A product keeps a single `product/story-map.yaml`. Agreed in the [0.4.0 plan](plans/0.4.0-enhancements.md#decisions-already-made). Revisit if a map grows too large to review in one file.
+
 ## Code map
 
 | Path | Responsibility |
@@ -570,15 +577,44 @@ Review a change against its story before the repository's own checks. Whether yo
 1. **What behaviour did the story promise?** Read its summary, its plan section and the other `sources`, with `story-map story <ID>`. A diff that is correct but does something else has not delivered the story.
 2. **What evidence shows it works?** Tests named with the story ID, as in [Link tests to stories](story-map.md#link-tests-to-stories), a run of the command, or a screenshot of the board. A claim in the PR description is not evidence.
 3. **Which existing caller or saved input could break?** Maps that hosts already have, including old formats that `migrateStoryMap` reads, host `AGENTS.md` files that people have edited, consumers of the CLI's JSON output, the [MCP server](story-map.md#serve-the-map-over-mcp)'s tools, the CI annotations from `--format github`, and every caller of a changed function. Check what happens to input the change did not expect, such as text with regular-expression or HTML metacharacters.
-4. **Then the repository's own checks.** The [security boundaries to preserve](#security-boundaries-to-preserve), the steps in [Making common changes](#making-common-changes), and:
+4. **Did it make an architecture decision that wasn't recorded?** Compare the diff with the four questions in [Record architecture decisions](#record-architecture-decisions). A new service, worker, package, data store, saved-format field or package export, a breaking contract change, or a change to a security boundary, is a consequential decision. When the work has a plan, update the plan's `## Architecture decisions` section. When it has none, record the decision in the PR's **Architecture** line. A consequential decision needs a person's agreement before its stories go `in-progress`, so one found in review goes to a person before the PR is ready.
+5. **Then the repository's own checks.** The [security boundaries to preserve](#security-boundaries-to-preserve), the steps in [Making common changes](#making-common-changes), and:
    - a regenerated `story-map.schema.json` when the schema changes,
    - a changelog entry, and upgrade notes in the guide for a breaking change,
    - both `AGENTS.md` files, the root one and `templates/AGENTS.md`, when the guidance changes, unless it is for this repository only, as the review step is until ESM-186,
    - one change per PR that can be reverted on its own.
 
-A question about architecture decisions the change made without recording them comes later, with ESM-183, as the [code review plan](plans/code-review.md#4-review-against-the-story-first-then-the-repo-checklist) says. Until then the review asks these four.
+Record the review in the pull request's **Review** section, as the root `AGENTS.md` says. The `Map rules` workflow, `.github/workflows/pr-check.yml`, runs [`pr-check`](story-map.md#check-a-pull-request-in-ci) with `--draft` set from the pull request, and again when it is marked ready or converted to a draft. A ready pull request whose Review section is missing, empty or only the template's labels and comments gets a `missing-review` warning on the PR (ESM-182). It is a warning, not an error, while the [pilot](plans/code-review.md#pilot) shows how often a section is empty for a good reason. A draft is never warned.
 
 Turn what reviews find into checks. A serious defect, such as a security boundary crossed or saved input lost, gets a regression test the first time it is found. A lower-impact problem that comes back gets a lint rule, a test or an API change the second time, so the next review does not have to find it again. The shared `escapeRegExp` helper (ESM-187) is the first example.
+
+## Record architecture decisions
+
+Every open plan in `docs/plans/`, one that is proposed, planned or in progress, has a `## Architecture decisions` section. It answers four questions:
+
+1. **Where it runs.** Inside the existing package, CLI, board or CI workflow, or as its own service, worker or package.
+2. **Data and contracts.** Who consumes it upstream and downstream, and what changes for each: the map format and its JSON Schema, the history file, the CLI's text, JSON and GitHub output, the board's props and markup, the MCP server's tools, and the files hosts receive from `init` and the upgrade review.
+3. **Boundaries.** Which of the [security boundaries to preserve](#security-boundaries-to-preserve) it touches, and which it stays out of.
+4. **Reversibility.** How hard it is to undo, including for hosts that have already upgraded. Text copied into a host's `AGENTS.md`, a field written into saved maps and a public export are the hard ones.
+
+**Routine work** answers in one line, with a real reason: "None: keeps the existing design because it adds a flag to an existing command, with no new consumer." "None: no change" is not a reason.
+
+**A consequential decision** is one that adds its own service, worker or package, adds a data store, a generated file or a field in a saved format such as the map or the history file, adds an export to the package's entry points, makes a breaking change to an existing contract, or changes a security boundary. A new command, flag or optional field in existing output is routine, though the plan still names its consumers. For each consequential decision, record:
+
+- each affected consumer and the consequence for it,
+- the alternative considered, and why it was not chosen,
+- who agreed it, or "not yet",
+- what would justify revisiting it.
+
+A person agrees a consequential decision before its stories go `in-progress`. Until then, an agent writes it as a proposal, marked as one, and does not start the stories. [The code review plan](plans/code-review.md#architecture-decisions) has a worked example.
+
+**Where decisions go:**
+
+- **Work with a plan** answers in the plan's section, and updates it when the work changes the answer.
+- **Work with no plan** puts an **Architecture** line in the PR description, from the [pull request template](../.github/pull_request_template.md), with the same one-line answer or the consequential decision.
+- **Agreed decisions** move into [Agreed architecture decisions](#agreed-architecture-decisions), under Runtime and architecture, once the work merges. There are no separate decision records, so the overview stays the one place to look.
+
+Question 4 in [Review a code change](#review-a-code-change) checks for a decision that was made but not recorded.
 
 ## Making common changes
 
