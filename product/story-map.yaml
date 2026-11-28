@@ -2593,7 +2593,9 @@ stories:
     title: Lint the code with Biome in CI
     activity: review
     release: v0-7-11
-    status: in-progress
+    status: merged
+    tokens: 3771288
+    estimatedCostUsd: 1.75
     jobs:
       - plan-and-build
     personas:
