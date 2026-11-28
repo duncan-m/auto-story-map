@@ -449,11 +449,11 @@ Review the architecture at four points, so a design decision is looked at when i
 - **Regressions:** defects one story introduced in behaviour another story had delivered.
 - **One file changed across unrelated stories:** many stories with nothing in common editing the same file, so each change risks the others.
 - **Review findings that keep coming back:** the same kind of problem found in the same place by reviewers, a linter or a security scanner.
-- **Rules that work around the tool:** instructions, ignore comments or lint exceptions that exist only because the code is hard to change safely.
+- **Rules that work around the code:** instructions, ignore comments or lint exceptions that exist only because the code is hard to change safely.
 
 The story names the recurring cost and says how the team will tell it improved, such as fewer conflicts or no repeat of a finding over the next few releases. Its summary can read:
 
-> Split the board's persona editor out of `board.tsx`. Three of the last five releases had a merge conflict in it between unrelated stories, and review found the same escaping problem there twice. Done when the next two releases that change personas merge without a conflict in the board file.
+> Split the persona editor out of `src/ui/Board.tsx`. Three of the last five releases had a merge conflict in it between unrelated stories, and review found the same escaping problem there twice. Done when the next two releases that change personas merge without a conflict in the board file.
 
 Without that evidence, record what you looked at and leave the code as it is. Look again at the next release planning.
 
