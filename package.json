@@ -102,5 +102,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "~7.0.2"
+  },
+  "overrides": {
+    "test-exclude": {
+      "glob": "^14.0.2",
+      "minimatch": "^11.0.1"
+    }
   }
 }

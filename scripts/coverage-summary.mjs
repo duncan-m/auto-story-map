@@ -1,5 +1,5 @@
 // Prints the coverage totals from c8's json-summary report as a Markdown table, against the floors in .c8rc.json.
-// CI appends the output to the job summary (ESM-177). Run `npm run coverage` first.
+// CI appends the output to the job summary (ESM-177). It reads the last report c8 wrote, so run `npm run coverage` first.
 import { readFile } from "node:fs/promises";
 
 const root = new URL("..", import.meta.url);
@@ -22,6 +22,7 @@ console.log(`### Test coverage\n\n${files} production modules in \`src/\`.\n`);
 console.log("| Measure | Covered | Total | Coverage | Floor |");
 console.log("| --- | ---: | ---: | ---: | ---: |");
 for (const [name, { covered, total, pct }, floor] of rows) {
-  const mark = pct < floor ? " ❌" : "";
-  console.log(`| ${name} | ${covered} | ${total} | ${pct.toFixed(2)}%${mark} | ${floor}% |`);
+  // c8 reports "Unknown" when nothing was measured.
+  const coverage = typeof pct === "number" ? `${pct.toFixed(2)}%${pct < floor ? " ❌" : ""}` : `${pct} ❌`;
+  console.log(`| ${name} | ${covered} | ${total} | ${coverage} | ${floor}% |`);
 }
