@@ -68,6 +68,7 @@
     "prepare": "npm run build",
     "validate": "node dist/cli.js validate --check-sources --plans docs --tests test product/story-map.yaml",
     "test": "npm run build && node --test",
+    "lint": "biome ci",
     "coverage": "npm run build && c8 node --test",
     "demo": "npm run build && node example/demo.mjs",
     "known-versions": "npm run build && node scripts/known-versions.mjs"
@@ -93,6 +94,7 @@
     }
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.7",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

@@ -669,7 +669,10 @@ function TestsSection({ story, panelId, sourceBaseUrl }: { story: InternalStoryC
   const files = new Map<string, { tests: StoryTestLink[]; more: number }>();
   const fileEntry = (file: string) => {
     let entry = files.get(file);
-    if (!entry) files.set(file, entry = { tests: [], more: 0 });
+    if (!entry) {
+      entry = { tests: [], more: 0 };
+      files.set(file, entry);
+    }
     return entry;
   };
   for (const test of story.tests ?? []) fileEntry(test.file).tests.push(test);
@@ -1279,6 +1282,7 @@ function AgentBrief({ brief, panelId }: { brief: string; panelId: string }) {
       <p className="esm-brief-intro">A prompt to start a coding agent on this work, with the plan, scope and the repository's rules. Copy it from <b>Share</b> at the top of this panel.</p>
       <details className="esm-brief-details">
         <summary>Show the brief</summary>
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: the brief scrolls, so keyboard users need to focus it to scroll it. */}
         <pre className="esm-brief-text" id={briefId} tabIndex={0}>{brief}</pre>
       </details>
     </section>
@@ -1292,6 +1296,7 @@ function releaseShortName(title: string) {
 
 function CloseButton({ panelId }: { panelId: string }) {
   return (
+    // biome-ignore lint/a11y/noAutofocus: opening a panel moves focus into it, as a dialog does, so Escape and Tab work from there.
     <button type="button" className="esm-close" aria-label="Close" autoFocus {...popoverTarget(panelId, "hide")}>
       <svg className="esm-icon" width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
         <path d="m4 4 8 8M12 4l-8 8" />
@@ -1322,12 +1327,13 @@ function releaseProgress(counts: Record<StoryStatus, number>) {
   if (total === 0) return "No stories yet.";
   const kept = total - counts.cut;
   if (kept === 0) return `${storyCount(total)}, all cut.`;
-  return [
+  const parts = [
     `${counts.shipped} of ${storyCount(kept)} shipped`,
     counts.merged && `${counts.merged} merged`,
     counts.blocked && `${counts.blocked} blocked`,
     counts.cut && `${counts.cut} cut`,
-  ].filter(Boolean).join(", ") + ".";
+  ];
+  return `${parts.filter(Boolean).join(", ")}.`;
 }
 
 function paragraphs(text: string) {
@@ -1963,7 +1969,7 @@ function ActionLine({ action, links }: { action: StoryMapAction; links: ActionLi
   const href = links.line(action);
   return href
     ? <a href={href} {...newTab}>{action.line}<NewTabHint /></a>
-    : <>{action.line}</>;
+    : action.line;
 }
 
 /** An action's type, coloured by its category, so the table can be scanned by kind. */
@@ -2828,6 +2834,7 @@ export function StoryMapBoard({
           </p>
         )}
         {otherTab ? null : showGrid ? (
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: the grid scrolls sideways, so keyboard users need to focus it to scroll it.
           <div className="esm-scroll" role="region" tabIndex={0} aria-label="Story map by release and activity">
             <div
               className="esm-grid"

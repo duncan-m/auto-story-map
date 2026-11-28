@@ -32,7 +32,7 @@ async function scratch(t, source = ownMap) {
 /** The lines of a story's block, from its `- id:` line to the line before the next item or comment at that depth. */
 function storyBlock(source, id) {
   const lines = source.split("\n");
-  const start = lines.findIndex(line => line === `  - id: ${id}`);
+  const start = lines.indexOf(`  - id: ${id}`);
   let end = start + 1;
   while (end < lines.length && lines[end].startsWith("    ")) end++;
   return { before: lines.slice(0, start).join("\n"), after: lines.slice(end).join("\n") };

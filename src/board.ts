@@ -671,6 +671,7 @@ function targetOf(editor: HTMLElement): Record<string, unknown> {
  * Text typed into an editable element, with single spaces. A multi-line field keeps
  * its line breaks, with at most one blank line between paragraphs. Others are one line.
  */
+// biome-ignore lint/performance/useDomNodeTextContent: innerText keeps the line breaks the person typed, which textContent drops.
 function typed(field: HTMLElement, text = field.innerText ?? field.textContent ?? "") {
   if (!field.hasAttribute("data-esm-multiline")) return text.replace(/\s+/g, " ").trim();
   return text.replace(/\r\n?/g, "\n").split("\n").map(line => line.replace(/[^\S\n]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();

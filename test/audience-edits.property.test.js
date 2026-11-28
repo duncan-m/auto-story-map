@@ -464,9 +464,11 @@ test("ESM-164: edit and add change only the stories named, keep every ID, draft 
       }
 
       // No edit removes draft.
-      map.releases.forEach((release, i) => (release.impact ?? []).forEach((item, j) => {
-        if (item.draft) assert.equal(after.releases[i].impact[j].draft, true, `${release.id} impact ${j + 1} lost draft`);
-      }));
+      for (const [i, release] of map.releases.entries()) {
+        for (const [j, item] of (release.impact ?? []).entries()) {
+          if (item.draft) assert.equal(after.releases[i].impact[j].draft, true, `${release.id} impact ${j + 1} lost draft`);
+        }
+      }
       for (const item of after.releases.flatMap(release => release.impact ?? []).filter(item => item.metric.startsWith("zqx added metric"))) {
         assert.equal(item.draft, true, "an impact item that edit adds is a draft");
       }

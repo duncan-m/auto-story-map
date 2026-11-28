@@ -1249,7 +1249,7 @@ test("ESM-911: job lanes collapse without JavaScript, and board.js remembers the
       releases,
       jobs,
       querySelectorAll: selector => selector.includes("esm-job-collapse-input") ? jobs : selector.includes("esm-collapse-input") ? releases : [],
-      addEventListener: (type, handler) => { listener = handler; },
+      addEventListener: (_type, handler) => { listener = handler; },
       toggle(input) { input.checked = !input.checked; listener({ target: input }); },
     };
   };

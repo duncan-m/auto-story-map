@@ -38,7 +38,7 @@ export default defineCommand({
     try {
       const result = await buildStoryMapHistory({ map: options.map, ref: options.ref, allowShallow: options.allowShallow, botNames: options.botNames });
       warnSkipped(result);
-      if (!await writeOutput(JSON.stringify(result, null, 2) + "\n", options.out)) return;
+      if (!await writeOutput(`${JSON.stringify(result, null, 2)}\n`, options.out)) return;
       const stories = new Set(result.events.map(event => event.storyId)).size;
       const named = result.changes?.length ?? 0;
       console.error(`${options.out}: ${result.events.length} changes to ${stories} stories, ${named} pull ${named === 1 ? "request or commit names" : "requests or commits name"} a story${result.complete ? "" : " (partial: shallow clone)"}`);
