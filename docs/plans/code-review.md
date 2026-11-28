@@ -112,6 +112,21 @@ The guide names four points to review the architecture:
 
 Size and complexity prompt a look, not a refactor. A refactor story needs evidence of its cost from Git and review history, such as how many stories changed a file and how often reviews found problems there. It names that cost, and says how the team will tell that it improved. The first case to assess is `src/react.tsx`: 2,967 lines, changed by 34 stories in the last 300 commits.
 
+The guide's section is [When to review the architecture](../story-map.md#when-to-review-the-architecture), and the overview's is [When to review the architecture here](../ENGINEERING-OVERVIEW.md#when-to-review-the-architecture-here).
+
+### Assessment of `src/react.tsx`
+
+Checked against `main` at `213fe51`. The last 300 commits run from 23 to 28 November 2026.
+
+- **Size and complexity.** 2,967 lines, the largest file in `src/`. The next is `src/board.ts` at 1,167. On #197's Biome configuration it has 8 cognitive-complexity warnings, second to `src/board.ts` with 12.
+- **Stories that changed it.** 21 distinct story IDs in the messages of the 32 commits that touched it, and 21 of the 77 pull requests merged in the window. The 34 above counted differently and could not be reproduced. `src/index.ts` (35 stories) and `src/cli.ts` (34) changed for more stories, as export and command lists do. The stories are unrelated: briefs and the Share menu, personas, the Actions tab, tokens, dependencies, priorities, sticky headings, test links and validation rules.
+- **Conflicting edits.** Five merge commits in the window touch it. Re-running each with `git merge-tree` shows one conflict in it: `28756bd`, ESM-128's Actions tab against ESM-112's preview saving. The others conflicted only in the map or the changelog.
+- **Regressions.** None found. No revert names it. The nearest case is `9b6646c`, which changed it and `src/board.ts` and fixed two bugs in ESM-147's persona editor the day it was written. Those were defects in that story's own new feature, not a break in behaviour another story had delivered.
+- **Review and CodeQL findings.** No CodeQL alert has ever been raised in it. ESM-178 removed one unused import there. One ReDoS fix, ESM-902, trimmed job outcomes in linear time on 22 November, before the window. No pull request review comment names it.
+- **Rules that work around it.** None. No `AGENTS.md` rule or lint exception exists because of it.
+
+**Result: no refactor story.** The size and churn signals are there, but the evidence of cost is one conflict in five days and no repeated finding. Look again at the 0.8 release planning, or sooner if a second conflict or a repeated review finding lands in it within one release.
+
 ## 9. Offer the review step and architecture decisions to hosts
 
 Built after the pilot, and after item 6 has been used on a real change that affects hosts.

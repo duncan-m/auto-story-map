@@ -430,6 +430,33 @@ Status: in progress. The work is BUILDER-102 and BUILDER-103 in the **Builder wo
 
 Files without a `Status:` line, such as notes and retros, are skipped, and fenced code is ignored. These are warnings, so a stale plan never blocks an unrelated change unless you pass `--strict`. The plan `story-map plan` prints passes the check.
 
+## When to review the architecture
+
+Review the architecture at four points, so a design decision is looked at when it is made rather than found later in the code:
+
+1. **Planning.** When a plan records its architecture decisions, it says where the work runs, who consumes it upstream and downstream, which security boundaries it touches and how to undo it. Routine work answers in a line, with a real reason. A consequential decision, such as a new service, a data store, a field in a saved format, a public export, a breaking contract change or a changed boundary, needs a person's agreement before its stories go `in-progress`.
+2. **Review.** When you review a change, ask whether it made an architecture decision that wasn't recorded. A boundary or consumer the plan didn't name sends the work back to the plan, to record the decision there. Work with no plan records it in the pull request description. A consequential decision found in review goes to a person before the pull request is ready.
+3. **Release planning.** Before a minor release's plan is agreed, look at the signals below for the modules and contracts its stories share. This is the point to decide whether a refactor story belongs in the release, rather than in the middle of a feature.
+4. **On a schedule.** A scheduled audit of the map against the code is planned as [ESM-109](https://github.com/duncan-m/auto-story-map/blob/main/docs/plans/0.4.0-enhancements.md#7-scheduled-map-audit).
+
+### Signals and evidence
+
+**Size and complexity prompt a look, not a refactor.** A large file, a function your lint tool warns is too complex, or a drop in test coverage is a reason to read the code and ask whether it costs the team anything. A large file that rarely changes and rarely breaks may cost nothing.
+
+**A refactor story needs evidence of its cost**, from Git and review history:
+
+- **Conflicting edits:** merges where separate stories conflicted in the same file.
+- **Regressions:** defects one story introduced in behaviour another story had delivered.
+- **One file changed across unrelated stories:** many stories with nothing in common editing the same file, so each change risks the others.
+- **Review findings that keep coming back:** the same kind of problem found in the same place by reviewers, a linter or a security scanner.
+- **Rules that work around the tool:** instructions, ignore comments or lint exceptions that exist only because the code is hard to change safely.
+
+The story names the recurring cost and says how the team will tell it improved, such as fewer conflicts or no repeat of a finding over the next few releases. Its summary can read:
+
+> Split the board's persona editor out of `board.tsx`. Three of the last five releases had a merge conflict in it between unrelated stories, and review found the same escaping problem there twice. Done when the next two releases that change personas merge without a conflict in the board file.
+
+Without that evidence, record what you looked at and leave the code as it is. Look again at the next release planning.
+
 ## Example
 
 When price catalogue lookup is agreed for the builder workflow, put the story under the estimate activity and the builder release. Its YAML can look like this:
