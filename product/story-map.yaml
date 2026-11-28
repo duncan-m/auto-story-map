@@ -2966,7 +2966,8 @@ stories:
     title: Comment on a release slice in a proposal
     activity: review
     release: icebox
-    status: planned
+    status: blocked
+    statusReason: "Icebox: waits for a person to agree its architecture decision in docs/plans/visual-slice-editing.md before it is planned."
     dependsOn:
       - ESM-197
     jobs:
@@ -2979,7 +2980,8 @@ stories:
     title: Open the draft pull request directly through a GitHub App
     activity: review
     release: icebox
-    status: planned
+    status: blocked
+    statusReason: "Icebox: waits for a person to agree its architecture decision in docs/plans/visual-slice-editing.md before it is planned."
     dependsOn:
       - ESM-198
     jobs:
@@ -2992,7 +2994,8 @@ stories:
     title: Open a live proposal from its pull request
     activity: review
     release: icebox
-    status: planned
+    status: blocked
+    statusReason: "Icebox: waits for a person to agree its architecture decision in docs/plans/visual-slice-editing.md before it is planned."
     dependsOn:
       - ESM-196
       - ESM-203

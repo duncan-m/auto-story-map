@@ -56,7 +56,7 @@ The mockup is [visual-slice-editing-mockup.html](visual-slice-editing-mockup.htm
 
 What it shows:
 
-1. **0.9.0 dragged above 0.8.1** (ESM-192), with a drag handle and Move up and Move down on the release heading.
+1. **0.9.0 dragged above 0.8.1** (ESM-192), with a drag handle on the release heading. Move up and Move down are in the release panel, not shown.
 2. **The Pending changes tray** (ESM-190): each pending edit, the prerequisites they put later, and the line diff, with **Save to file** on the local preview, **Copy link**, **Open draft PR** and **Copy patch**.
 3. **A move warning** (ESM-189): ESM-189 depends on ESM-142, which the move leaves in 0.8.1, now after 0.9.0. **Bring forward** (ESM-194) moves ESM-142 into 0.9.0 as another pending edit.
 4. **Two selected cards**, ESM-113 and ESM-114, with a **Move to** bar (ESM-193).
@@ -80,7 +80,7 @@ Proposed in this plan:
 - **One tray for every board edit.** Edits from the release controls, the selection bar and the story panel's Actions menu all join the tray. Nothing saves until **Save to file**, so a reorder and its fixes land as one change with one diff.
 - **The edits file is the proposal.** The tray holds an `edit --from` edits file. The same JSON is saved locally, copied, put in the link and handed to the agent, so every route produces the same diff.
 - **The hosted board never saves.** On a deployed board, the tray's only ways out are **Copy link**, **Open draft PR** and **Copy patch**.
-- **Readable without JavaScript.** The release panel's Move up and Move down are links that a server can apply, as the board's filters are. Drag, multi-select and the tray need `board.js`.
+- **Edits need JavaScript.** The release controls, drag, multi-select and the tray need `board.js`. Without it the board stays as it is today, read-only. No link or GET request ever changes the map, and saving stays a POST to ESM-112's save route, with its Origin and token checks.
 
 ## 1. Add, rename and move releases from the command line
 
@@ -185,7 +185,7 @@ Many maps, including this one, start release titles with a version, such as "0.8
 
 **Acceptance:**
 - Offered only when every affected title starts with a version and a colon, and a move has put them out of order.
-- It shows each title's old and new prefix, and changes nothing else: never a release ID, a summary or a story.
+- The offer says how many titles it would change. Before it joins the tray, it lists each title's old and new prefix, and it changes nothing else: never a release ID, a summary or a story.
 - It is one item in the tray, with its own Undo.
 - Tests named `ESM-195:` cover a simple swap, a map with no version prefixes, and mixed prefixes.
 
@@ -207,7 +207,7 @@ A **Compare** view shows the current map and the proposed one side by side: the 
 
 **Story:** ESM-197 · depends on ESM-196 · activity `review` · jobs `share-roadmap`, `agree-first-release-plan`.
 
-**Copy link** puts the tray's edits file in the link's fragment, `#proposal=…`. The browser never sends the fragment to the server, so the proposal stays out of request logs. Opening the link on the internal board applies the edits to the current map and opens the Compare view.
+**Copy link** puts the tray's edits file in the link's fragment, `#proposal=…`. The browser never sends the fragment to the server, so the link itself stays out of request logs. If ESM-199 works out a hosted proposal's diff with a host route rather than in the browser, the edits go to that route in a POST body, which the route must not log. Opening the link on the internal board applies the edits to the current map and opens the Compare view.
 
 **Acceptance:**
 - The link carries a format version and the map version it was made from. When the map has changed since, the view says so, and says which edits no longer apply.
@@ -243,7 +243,7 @@ Turn on the 0.9.0 controls and the tray for signed-in internal viewers on a depl
 
 ## Icebox
 
-These ideas are kept so their trade-offs are not lost. None is agreed. Each needs a consequential architecture decision that a person agrees before it moves out of the Icebox.
+These ideas are kept so their trade-offs are not lost. None is agreed, so each story is `blocked` with that reason, which keeps it out of ready lists and agent briefs. Each needs a consequential architecture decision that a person agrees before it moves out of the Icebox.
 
 ## 13. Comment on a release slice in a proposal
 
