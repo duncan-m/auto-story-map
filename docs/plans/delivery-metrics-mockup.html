@@ -17,9 +17,10 @@
   .mock-legend .mock-callout { margin: 0; }
 
   /* Proposed for ESM-174 */
+  .esm-analytics-toolbar, .esm-analytics { box-sizing: border-box; max-width: 1200px; margin: 0 auto; }
   .esm-analytics { padding: 0 17px 20px; color: var(--esm-ink); }
-  .esm-analytics-coverage { margin: 0 0 16px; color: var(--esm-muted); font-size: .875rem; line-height: 1.5; }
-  .esm-analytics-totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 0 0 18px; }
+  .esm-analytics-coverage { margin: 0 0 28px; color: var(--esm-muted); font-size: .875rem; line-height: 1.5; }
+  .esm-analytics-totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 0 0 40px; }
   .esm-analytics-total { padding: 12px 14px; border: 1px solid var(--esm-line); border-radius: 10px; background: var(--esm-canvas); }
   .esm-analytics-total dt { color: var(--esm-muted); font-size: .8125rem; font-weight: 600; }
   .esm-analytics-total dd { margin: 4px 0 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; }
@@ -27,7 +28,7 @@
   .esm-analytics-chart { display: grid; grid-template-columns: repeat(8, 1fr); align-items: end; gap: 10px; height: 150px; margin: 0 0 6px; padding: 0 4px; border-bottom: 1px solid var(--esm-line); }
   .esm-analytics-bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; height: 100%; color: var(--esm-muted); font-size: .75rem; font-weight: 600; }
   .esm-analytics-bar span:last-child { width: 100%; max-width: 46px; border-radius: 6px 6px 0 0; background: var(--esm-accent); }
-  .esm-analytics-axis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin: 0 0 18px; padding: 0 4px; color: var(--esm-faint); font-size: .75rem; text-align: center; }
+  .esm-analytics-axis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin: 0 0 40px; padding: 0 4px; color: var(--esm-faint); font-size: .75rem; text-align: center; }
   .esm-analytics-table { width: 100%; border-collapse: collapse; font-size: .875rem; font-variant-numeric: tabular-nums; }
   .esm-analytics-table th, .esm-analytics-table td { padding: 8px 10px; border-bottom: 1px solid var(--esm-line); text-align: right; }
   .esm-analytics-table th:first-child, .esm-analytics-table td:first-child { text-align: left; }
@@ -45,7 +46,7 @@
 <section class="esm-board" data-theme="light">
   <div class="esm-frame">
     <nav class="esm-tabs" aria-label="Board views"><a class="esm-tab" href="#">Story map<span class="esm-tab-count"><span aria-hidden="true">109</span></span></a><a class="esm-tab" href="#">Personas<span class="esm-tab-count"><span aria-hidden="true">4</span></span></a><a class="esm-tab" href="#" aria-current="page">Analytics<span class="mock-callout">1</span></a><span class="esm-tabs-end">Internal only. Customers see the story map.</span></nav>
-    <div class="esm-toolbar">
+    <div class="esm-toolbar esm-analytics-toolbar">
       <p class="esm-toolbar-label">Delivered<span class="esm-toolbar-count">last 8 days</span></p>
       <form class="esm-filters" aria-label="Analytics options">
         <select class="esm-select" aria-label="Period"><option selected>Day</option><option>Week</option><option>Month</option></select>

@@ -168,7 +168,7 @@
 
 /* Frame and toolbar */
 .esm-frame { background: var(--esm-paper); border: 1px solid var(--esm-line); border-radius: var(--esm-radius); box-shadow: 0 6px 26px var(--esm-shadow); }
-.esm-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 15px; padding: 14px 17px; }
+.esm-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 15px; padding: 24px 18px 16px; }
 .esm-toolbar-label { margin: 0; font-size: .96rem; font-weight: 700; letter-spacing: -.015em; }
 .esm-toolbar-count { margin-left: .4rem; color: var(--esm-muted); font-size: .875rem; font-weight: 500; letter-spacing: 0; }
 .esm-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin: 0; }
@@ -341,13 +341,19 @@
 .esm-row > .esm-cell:last-child { padding-right: 8px; }
 .esm-cell-label { display: none; }
 
-/* Sticky headings. The grid scrolls in its own box, so headings can stick to its top and left edges.
-   The default height leaves room for the footer, so the headings stay in view at the end of the page.
-   A host with a fixed header or a taller footer sets --esm-board-height, and "none" lets the page scroll instead. Small windows
-   and print keep the page scroll. board.js measures the row and column, and shrinks the row to its titles. */
+/* Sticky headings. The grid has no scroll box of its own, so the page is the only thing that scrolls, both ways,
+   and the headings stick to the window. The frame grows to the grid's width, so a wide board scrolls the page sideways.
+   A host that sets --esm-board-height to a length gets the grid in a box of that height instead, once board.js
+   has read it and set data-esm-scroll-box. Small windows and print keep the plain page scroll.
+   board.js measures the row and column, and shrinks the row to its titles. */
 @media screen and (min-width: 651px) and (min-height: 480px) {
   /* Positioned, so it also holds the absolutely placed hidden labels, which would otherwise make the page taller. */
-  .esm-scroll { position: relative; max-height: var(--esm-board-height, calc(100dvh - 7.5rem)); overflow: auto; isolation: isolate; scroll-padding: calc(var(--esm-activities-height, 13rem) + 8px) 8px 8px calc(var(--esm-labels-width, 11.4rem) + 8px); }
+  .esm-scroll { position: relative; overflow: visible; isolation: isolate; }
+  /* Only around the map, so the Actions table keeps its own sideways scroll. Without :has(), a wide grid spills past the frame's edge. */
+  .esm-frame:has(> .esm-scroll:not([data-esm-scroll-box])) { min-width: min-content; }
+  /* Permalink targets and focused cards stop clear of the headings. */
+  .esm-scroll:not([data-esm-scroll-box]) :is(.esm-lane, .esm-card, .esm-card :is(a, button, summary, [tabindex])) { scroll-margin: calc(var(--esm-activities-height, 13rem) + 8px) 8px 8px calc(var(--esm-labels-width, 11.4rem) + 8px); }
+  .esm-scroll[data-esm-scroll-box] { max-height: var(--esm-board-height); overflow: auto; scroll-padding: calc(var(--esm-activities-height, 13rem) + 8px) 8px 8px calc(var(--esm-labels-width, 11.4rem) + 8px); }
   .esm-activities { position: sticky; top: 0; z-index: 2; margin: -12px -12px -10px; padding: 12px 12px 10px; background: var(--esm-canvas); }
   .esm-corner { position: sticky; left: 0; z-index: 1; display: flex; align-items: center; align-self: stretch; padding-left: 11px; background: var(--esm-canvas); }
   .esm-release { position: sticky; left: 0; z-index: 1; border-radius: 9px 0 0 9px; background: var(--esm-lane-bg); }
@@ -794,6 +800,35 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
 .esm-persona-setup pre { margin: 8px 0 0; padding: 12px 14px; overflow-x: auto; border: 1px solid var(--esm-line); border-radius: 8px; background: var(--esm-canvas); line-height: 1.45; }
 .esm-persona-setup pre code { overflow-wrap: normal; white-space: pre; }
 .esm-persona-setup a { color: var(--esm-accent-ink); font-weight: 650; }
+
+/* The Analytics tab: totals, a bar chart of one measure, and the table as its accessible data. */
+/* The toolbar and the content share one centred column, so the menus sit above the table's edge. */
+.esm-analytics-toolbar, .esm-analytics { box-sizing: border-box; max-width: 1200px; margin: 0 auto; }
+.esm-analytics { padding: 0 17px 20px; color: var(--esm-ink); }
+.esm-analytics-coverage { max-width: 110ch; margin: 0 0 28px; color: var(--esm-muted); font-size: .875rem; line-height: 1.5; }
+.esm-analytics-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 40px; }
+.esm-analytics-total { padding: 12px 14px; border: 1px solid var(--esm-line); border-radius: 10px; background: var(--esm-canvas); }
+.esm-analytics-total dt { color: var(--esm-muted); font-size: .8125rem; font-weight: 600; }
+.esm-analytics-total dd { margin: 4px 0 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.esm-analytics-total small { display: block; margin-top: 2px; color: var(--esm-faint); font-size: .75rem; font-weight: 500; letter-spacing: 0; }
+.esm-analytics-chart, .esm-analytics-axis { display: grid; grid-template-columns: repeat(var(--esm-analytics-columns, 8), minmax(0, 1fr)); gap: 10px; padding: 0 4px; }
+.esm-analytics-chart { align-items: end; height: 150px; margin: 0 0 6px; border-bottom: 1px solid var(--esm-line); }
+.esm-analytics-bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; height: 100%; min-width: 0; color: var(--esm-muted); font-size: .75rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* The bar's label takes its own line, so the bar fills what is left. */
+.esm-analytics-bar span:first-child { flex: none; white-space: nowrap; }
+.esm-analytics-bar span:last-child { width: 100%; max-width: 46px; max-height: calc(100% - 1.2rem); border-radius: 6px 6px 0 0; background: var(--esm-accent); }
+.esm-analytics-axis { margin: 0 0 40px; color: var(--esm-faint); font-size: .75rem; text-align: center; }
+.esm-analytics-axis span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.esm-analytics-scroll { overflow-x: auto; }
+.esm-analytics-scroll:focus-visible { outline: 2px solid var(--esm-accent); outline-offset: 2px; }
+.esm-analytics-table { width: 100%; border-collapse: collapse; font-size: .875rem; font-variant-numeric: tabular-nums; }
+.esm-analytics-table th, .esm-analytics-table td { padding: 8px 10px; border-bottom: 1px solid var(--esm-line); text-align: right; white-space: nowrap; }
+.esm-analytics-table th:first-child { text-align: left; }
+.esm-analytics-table thead th { color: var(--esm-muted); font-size: .8125rem; font-weight: 650; }
+.esm-analytics-table tbody th { font-weight: 600; }
+.esm-analytics-table tfoot th, .esm-analytics-table tfoot td { border-bottom: 0; font-weight: 700; }
+.esm-analytics-table .esm-empty th, .esm-analytics-table .esm-empty td { color: var(--esm-faint); }
+.esm-analytics-cov { display: block; color: var(--esm-faint); font-size: .75rem; font-weight: 500; }
 .esm-persona-picker { display: none; }
 .esm-persona-picker .esm-avatar { box-shadow: none; }
 .esm-persona-main { display: grid; align-content: start; gap: 32px; min-width: 0; padding: 22px 24px 24px; }
@@ -950,6 +985,12 @@ button.esm-persona-chip:hover { background: var(--esm-hover); }
   .esm-cell-label { display: block; margin-top: 6px; color: var(--esm-muted); font-size: .8125rem; font-weight: 700; }
   .esm-tabs { gap: 0 16px; padding: 0 12px; }
   .esm-tabs-end { display: none; }
+  .esm-analytics { padding: 0 12px 16px; }
+  .esm-analytics-coverage { margin-bottom: 20px; }
+  .esm-analytics-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 28px; }
+  .esm-analytics-chart, .esm-analytics-axis { gap: 4px; padding: 0; }
+  .esm-analytics-bar { font-size: .6875rem; }
+  .esm-analytics-axis { margin-bottom: 28px; font-size: .6875rem; }
   .esm-persona-page { display: block; }
   .esm-actions { padding: 14px 12px 20px; }
   .esm-actions-filters .esm-results { margin-left: 0; flex-basis: 100%; }

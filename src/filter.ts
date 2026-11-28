@@ -1,6 +1,7 @@
 import { isStoryMapActionItemType, isStoryMapActionKind, type StoryMapActionFilter } from "./actions.js";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatuses, type StoryStatusFilter } from "./status.js";
 import { jobStatement } from "./personas.js";
+import { analyticsMeasures, analyticsMilestones, analyticsPeriods, type AnalyticsMeasure, type AnalyticsMilestone, type AnalyticsPeriod } from "./analytics.js";
 import type { InternalStoryCard, StoryMapLabel, StoryMapView } from "./view.js";
 
 /** Windows offered by the board’s “Changed in” filter, in days. */
@@ -26,9 +27,16 @@ export interface StoryMapFilters {
   activity?: string | readonly string[];
   /**
    * `personas` shows the Personas tab instead of the story map, with the first chosen `persona`
-   * as its page, or how to add personas when the map has none. Internal views only; otherwise it is ignored.
+   * as its page, or how to add personas when the map has none. `analytics` shows the Analytics
+   * tab, which counts every story whatever the other filters say. Internal views only; otherwise it is ignored.
    */
   view?: StoryMapPage;
+  /** The Analytics tab's period: `day` (the default), `week` or `month`, in UTC. */
+  period?: AnalyticsPeriod;
+  /** When the Analytics tab counts a story as completed: `merged` (the default) or `shipped`. */
+  completed?: AnalyticsMilestone;
+  /** The measure the Analytics tab charts: `stories` (the default), `points`, `tokens` or `spend`. */
+  chart?: AnalyticsMeasure;
   /**
    * What the Actions tab narrows its list to: a kind, a release, one story, release or persona,
    * and whether only actions a person must take. Internal views only; unknown values are ignored.
@@ -44,8 +52,8 @@ export interface StoryMapFilters {
   release?: string;
 }
 
-/** The pages of an internal board: the story map, the Personas tab or the Actions tab. */
-export type StoryMapPage = "map" | "personas" | "actions";
+/** The pages of an internal board: the story map, the Personas tab, the Actions tab or the Analytics tab. */
+export type StoryMapPage = "map" | "personas" | "actions" | "analytics";
 
 export interface FilterOptions {
   /** Time to measure “changed in” windows from. Defaults to now. */
@@ -64,6 +72,9 @@ function readIds(values: readonly string[]) {
   return [...new Set(values.map(value => value.trim()).filter(value => idPattern.test(value)))].slice(0, maxIdParams);
 }
 
+/** The pages `view` can open. The map is the default, so it has no value. */
+const pages = ["personas", "actions", "analytics"] as const;
+
 const statusChoices: readonly StoryStatusFilter[] = [...storyStatuses, "stalled"];
 
 /** The chosen statuses, in board order, without duplicates or unknown values. `all` means every status. */
@@ -75,11 +86,12 @@ function readStatuses(value: unknown): StoryStatusFilter[] {
 
 /**
  * Reads the board’s `q`, `status`, `changed` (`1d`, `7d`, `14d` or `30d`),
- * `persona`, `job`, `activity` and `view` parameters, and a permalink's `story` or `release`. `status` can repeat, once for each chosen
+ * `persona`, `job`, `activity` and `view` parameters, the Analytics tab's `period`, `completed` and `chart`,
+ * and a permalink's `story` or `release`. `status` can repeat, once for each chosen
  * status or `stalled`, and `status=all` chooses every status. `persona`, `job`
  * and `activity` repeat, once for each ID. `view=personas` opens the Personas
- * tab and `view=actions` the Actions tab, which reads `action-kind`, `action-item-type`, `action-release`,
- * `action-item` and `needs-person=1`. Unknown values are ignored.
+ * tab, `view=actions` the Actions tab, which reads `action-kind`, `action-item-type`, `action-release`,
+ * `action-item` and `needs-person=1`, and `view=analytics` the Analytics tab. Unknown values are ignored.
  */
 export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const query = params.get("q")?.trim().slice(0, maxQueryLength) || undefined;
@@ -90,8 +102,10 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const persona = readIds(params.getAll("persona"));
   const job = readIds(params.getAll("job"));
   const activity = readIds(params.getAll("activity"));
-  const viewParam = params.get("view");
-  const view = viewParam === "personas" || viewParam === "actions" ? viewParam : undefined;
+  const view = pages.find(page => page === params.get("view"));
+  const period = analyticsPeriods.find(value => value === params.get("period"));
+  const completed = analyticsMilestones.find(value => value === params.get("completed"));
+  const chart = analyticsMeasures.find(value => value === params.get("chart"));
   const actionKind = params.get("action-kind") ?? undefined;
   const actionItemType = params.get("action-item-type") ?? undefined;
   const [actionRelease] = readIds(params.getAll("action-release"));
@@ -113,6 +127,9 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
     ...(job.length ? { job } : {}),
     ...(activity.length ? { activity } : {}),
     ...(view ? { view } : {}),
+    ...(period ? { period } : {}),
+    ...(completed ? { completed } : {}),
+    ...(chart ? { chart } : {}),
     ...(Object.keys(actions).length ? { actions } : {}),
     ...(story ? { story } : {}),
     ...(release ? { release } : {}),
@@ -165,6 +182,8 @@ export function filterStoryMapView<View extends StoryMapView>(
   const activitySet = new Set(activity);
   // Only internal viewers get the Personas tab, which shows how to add personas when the map has none. Customers never do, because jobs never reach them.
   const personasPage = filters.view === "personas" && internal;
+  // Nor do customers get the Analytics tab or its options: points, tokens and spend never reach them.
+  const analyticsPage = filters.view === "analytics" && internal;
   const actionsPage = filters.view === "actions" && internal;
   // Action filters only count for values the view has, so customers and unknown IDs change nothing.
   const actionFilter: StoryMapActionFilter = {};
@@ -186,7 +205,8 @@ export function filterStoryMapView<View extends StoryMapView>(
   const linkedRelease = filters.release !== undefined ? view.releases.find(item => item.id === filters.release)?.id : undefined;
 
   const hidden = { blocked: 0, cut: 0 };
-  const stories = (view.stories as InternalStoryCard[]).filter(story => {
+  // The Analytics tab counts every story, so it keeps them all. The filters stay in the state, for the tabs' links back to the map.
+  const stories = analyticsPage ? view.stories as InternalStoryCard[] : (view.stories as InternalStoryCard[]).filter(story => {
     if (story.id === linkedStory) return true;
     if (status && !chosen.has(story.status) && !(chosen.has("stalled") && story.stalled)) return false;
     if (since !== undefined && !(story.lastChangedAt && Date.parse(story.lastChangedAt) >= since)) return false;
@@ -222,8 +242,16 @@ export function filterStoryMapView<View extends StoryMapView>(
       ...(activity.length ? { activity } : {}),
       ...(personasPage ? { view: "personas" as const } : actionsPage ? { view: "actions" as const } : {}),
       ...(Object.keys(actionFilter).length ? { actions: actionFilter } : {}),
-      ...(linkedStory ? { story: linkedStory } : {}),
-      ...(linkedRelease ? { release: linkedRelease } : {}),
+      ...(analyticsPage ? {
+        view: "analytics" as const,
+        analytics: {
+          period: analyticsPeriods.find(value => value === filters.period) ?? "day",
+          completed: analyticsMilestones.find(value => value === filters.completed) ?? "merged",
+          chart: analyticsMeasures.find(value => value === filters.chart) ?? "stories",
+        },
+      } : {}),
+      ...(linkedStory && !analyticsPage ? { story: linkedStory } : {}),
+      ...(linkedRelease && !analyticsPage ? { release: linkedRelease } : {}),
       total: view.stories.length,
       ...(hidden.blocked || hidden.cut ? { hidden } : {}),
     },
