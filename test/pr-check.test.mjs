@@ -13,6 +13,7 @@ import {
   isStoryMapRuleId,
   parseStoryMap,
   prCheckRules,
+  reviewSection,
   storyMapRuleHelp,
   tokensUsedSection,
   workflowCommands,
@@ -137,6 +138,61 @@ test("ESM-163: the pr-check rules are rules with a guide section", () => {
   assert.match(storyMapRuleHelp("missing-tokens-used"), /#record-the-tokens-used-on-a-story$/);
 });
 
+/** The Review section of this repository's own pull request template, as a ready pull request would leave it unfilled. */
+const templateBody = () => readFile(fileURLToPath(new URL("../.github/pull_request_template.md", import.meta.url)), "utf8");
+const reviewBody = text => `## What changes\n\nDone.\n\n## Review\n\n${text}\n`;
+const filledReview = "- Target: `/code-review 194`\n- Commit reviewed: `4490930`\n- Level: medium\n- Findings fixed: None\n- Findings declined: None";
+
+test("ESM-182: a draft pull request with an empty Review section is not warned", () => {
+  const result = check(() => {}, { body: reviewBody(""), draft: true });
+  assert.equal(result.checkedReview, false);
+  assert.deepEqual(result.issues, []);
+});
+
+test("ESM-182: a ready pull request with an empty or missing Review section gets a warning, not an error", () => {
+  const empty = check(() => {}, { body: reviewBody(""), draft: false });
+  assert.equal(empty.checkedReview, true);
+  assert.deepEqual(empty.issues.map(issue => [issue.severity, issue.rule, issue.path]), [["warning", "missing-review", []]]);
+  assert.match(empty.issues[0].message, /ready for review, but the Review section in its description is empty/);
+  assert.equal(empty.passed, true);
+  assert.equal(check(() => {}, { body: reviewBody(""), draft: false, strict: true }).passed, false);
+  const missing = check(() => {}, { body: "## What changes\n\nDone.\n", draft: false });
+  assert.match(missing.issues[0].message, /its description has no Review section/);
+});
+
+test("ESM-182: a ready pull request with a filled Review section passes", () => {
+  const result = check(() => {}, { body: reviewBody(filledReview), draft: false, strict: true });
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.passed, true);
+  // A sentence saying why no review ran also records something.
+  assert.deepEqual(check(() => {}, { body: reviewBody("A person reviewed this diff at `4490930`."), draft: false }).issues, []);
+  // Bold labels with a value count, as in #190's description.
+  assert.equal(reviewSection(reviewBody("- **Level:** medium\n- **Fixed:**")), "- **Level:** medium");
+});
+
+test("ESM-182: the template's placeholder comments and empty labels count as an empty Review section", async () => {
+  const template = await templateBody();
+  assert.match(template, /^## Review$/m, "the pull request template has a Review section");
+  assert.equal(reviewSection(template), "");
+  assert.deepEqual(rules(check(() => {}, { body: template, draft: false })), [["missing-review", undefined]]);
+  // A heading named in the middle of a later heading does not count as the section.
+  assert.equal(reviewSection("## Code review notes\n\nfine\n"), undefined);
+});
+
+test("ESM-182: without --body-file or --draft, the Review section is not checked", () => {
+  const noBody = check(() => {}, { draft: false });
+  assert.equal(noBody.checkedReview, false);
+  assert.deepEqual(noBody.issues, []);
+  const unknown = check(() => {}, { body: reviewBody("") });
+  assert.equal(unknown.checkedReview, false);
+  assert.deepEqual(unknown.issues, []);
+});
+
+test("ESM-182: the missing-review rule links to the pr-check section of the guide", () => {
+  assert.ok(prCheckRules.includes("missing-review"));
+  assert.match(storyMapRuleHelp("missing-review"), /#check-a-pull-request-in-ci$/);
+});
+
 test("ESM-163: story-map pr-check reads the commits and body, and reports in text, github and json", async t => {
   const root = await mkdtemp(join(tmpdir(), "esm-pr-check-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -186,6 +242,7 @@ test("ESM-163: story-map pr-check reads the commits and body, and reports in tex
   assert.deepEqual(json.issues.map(issue => [issue.rule, issue.itemId, issue.file, typeof issue.line]), [["estimate-changed", "S-1", "product/story-map.yaml", "number"]]);
 
   assert.equal(run(["pr-check", "--bad", "main"]).status, 2);
+  assert.equal(run(["pr-check", "--draft", "maybe", "main"]).status, 2);
   assert.equal(run(["pr-check", "no-such-ref"]).status, 2);
 });
 
@@ -198,4 +255,40 @@ test("ESM-163: the init workflow runs pr-check with the PR body and the map-appr
   assert.match(step.env.PR_BODY, /github\.event\.pull_request\.body/);
   assert.match(step.env.APPROVED, /map-approved/);
   assert.deepEqual(parseYaml(workflow).on.pull_request.types, ["opened", "synchronize", "reopened", "edited", "labeled", "unlabeled"]);
+});
+
+test("ESM-182: story-map pr-check warns a ready pull request with no review, and fails it only with --strict", async t => {
+  const root = await mkdtemp(join(tmpdir(), "esm-pr-review-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const git = (...args) => {
+    const result = spawnSync("git", ["-c", "user.name=Sam Builder", "-c", "user.email=sam@example.test", ...args], { cwd: root, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  const run = (args, input) => spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8", input });
+  git("init", "-q", "-b", "main");
+  await mkdir(join(root, "product"));
+  await writeFile(join(root, "product/story-map.yaml"), stringify(base()));
+  git("add", "-A");
+  git("commit", "-q", "-m", "add map");
+  const empty = "## Review\n\n- Target: <!-- such as /code-review 190 -->\n- Level:\n";
+
+  const draft = run(["pr-check", "--format", "github", "--draft", "true", "--body-file", "-", "main"], empty);
+  assert.equal(draft.status, 0, draft.stdout);
+  assert.doesNotMatch(draft.stdout, /missing-review/);
+
+  const ready = run(["pr-check", "--format", "github", "--draft", "false", "--body-file", "-", "main"], empty);
+  assert.equal(ready.status, 0, ready.stdout);
+  assert.match(ready.stdout, /^::warning file=product\/story-map\.yaml,line=1,col=1,title=missing-review::This pull request is ready for review, but the Review section in its description is empty\. .*#check-a-pull-request-in-ci$/m);
+  assert.match(ready.stdout, /; checked the Review section\)$/m);
+
+  const strict = run(["pr-check", "--strict", "--draft=false", "--body-file", "-", "main"], empty);
+  assert.equal(strict.status, 1);
+  assert.match(strict.stderr, /^product\/story-map\.yaml:1:1: warning: This pull request is ready for review, .* \[missing-review\]$/m);
+
+  const filled = run(["pr-check", "--strict", "--draft", "false", "--body-file", "-", "main"], "## Review\n\n- Target: `/code-review 7`\n- Level: medium\n");
+  assert.equal(filled.status, 0, filled.stderr);
+
+  const json = JSON.parse(run(["pr-check", "--format", "json", "--draft", "false", "main"]).stdout);
+  assert.equal(json.checkedReview, false, "without --body-file the Review section is not checked");
+  assert.deepEqual(json.issues, []);
 });

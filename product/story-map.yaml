@@ -2648,7 +2648,7 @@ stories:
     title: Review each PR's diff before it is ready, and pilot the step
     activity: review
     release: v0-7-11
-    status: in-progress
+    status: merged
     jobs:
       - plan-and-build
       - pick-up-work
@@ -2659,6 +2659,7 @@ stories:
     sources:
       - docs/plans/code-review.md#5-review-each-prs-diff-before-it-is-ready-and-pilot-the-step
       - AGENTS.md#code-standards
+      - docs/story-map.md#check-a-pull-request-in-ci
   - id: ESM-183
     title: Record architecture decisions in plans and PRs
     activity: review

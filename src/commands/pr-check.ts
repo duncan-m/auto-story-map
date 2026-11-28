@@ -7,7 +7,7 @@ import { diffStoryMaps } from "../diff.js";
 import { checkPullRequest, type PrCheckCommit, type PrCheckResult } from "../pr-check.js";
 import { loadStoryMap, StoryMapValidationError, type LoadedStoryMap } from "../schema.js";
 import { readMapAt } from "./diff.js";
-import { count, defineCommand, optionValue, printJson, readFormat, report, UsageError, type ReportFormat } from "./shared.js";
+import { ArgumentError, count, defineCommand, optionValue, printJson, readFormat, report, UsageError, type ReportFormat } from "./shared.js";
 
 const formats = ["text", "github", "json"] as const;
 
@@ -41,6 +41,8 @@ export default defineCommand({
     let head = "HEAD";
     let body: string | undefined;
     let approved = false;
+    let strict = false;
+    let draft: boolean | undefined;
     const botNames: string[] = [];
     const refs: string[] = [];
     for (let index = 0; index < rest.length; index++) {
@@ -59,15 +61,22 @@ export default defineCommand({
         if (!value || (arg === name && value.startsWith("-") && value !== "-")) return null;
         if (arg === name) index++;
         body = value;
+      } else if (name === "--draft") {
+        const [value, next] = optionValue(rest, index, name);
+        index = next;
+        if (value !== "true" && value !== "false") throw new ArgumentError(`--draft must be true or false, not ${value}`);
+        draft = value === "true";
       } else if (arg === "--approved") {
         approved = true;
+      } else if (arg === "--strict") {
+        strict = true;
       } else if (arg.startsWith("-")) {
         return null;
       } else {
         refs.push(arg);
       }
     }
-    return refs.length === 1 ? { format, map, head, body, approved, botNames, base: refs[0] } : null;
+    return refs.length === 1 ? { format, map, head, body, approved, draft, strict, botNames, base: refs[0] } : null;
   },
 
   async run(options) {
@@ -95,6 +104,8 @@ export default defineCommand({
         botNames: options.botNames,
         approved: options.approved,
         body,
+        draft: options.draft,
+        strict: options.strict,
       });
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
@@ -118,5 +129,6 @@ function summary(result: PrCheckResult) {
     result.needsPerson.length ? `${count(result.needsPerson.length, "change needs", "changes need")} a person${result.approved ? ", approved" : ""}` : "nothing needs a person",
     result.checkedBody ? (result.merged.length ? `checked Tokens used for ${result.merged.join(", ")}` : "no stories marked merged") : "Tokens used not checked without --body-file",
   ];
+  if (result.checkedReview) parts.push("checked the Review section");
   return `pr-check: ${result.passed ? "passed" : "failed"} (${parts.join("; ")})`;
 }

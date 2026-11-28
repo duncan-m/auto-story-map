@@ -1,10 +1,11 @@
 name: Map rules
 
-# A workflow of its own, so editing the description or the map-approved label
-# re-runs this check without re-running the whole CI matrix.
+# A workflow of its own, so editing the description or the map-approved label,
+# or marking the pull request ready, re-runs this check without re-running the
+# whole CI matrix.
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
@@ -26,10 +27,12 @@ jobs:
       - run: npm run build
       # Fails when an agent's commits make a change only a person should make, unless a
       # person adds the map-approved label, or when a story is marked merged without a
-      # Tokens used section in the description.
+      # Tokens used section in the description. Warns when a pull request that is ready
+      # for review has no Review section that records a review; a draft is never warned.
       - name: Check the pull request against the map rules
         env:
           BASE_REF: ${{ github.base_ref }}
           PR_BODY: ${{ github.event.pull_request.body }}
           APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'map-approved') && 'yes' || '' }}
-        run: printf '%s' "$PR_BODY" | node dist/cli.js pr-check --format github ${APPROVED:+--approved} --body-file - "origin/$BASE_REF"
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: printf '%s' "$PR_BODY" | node dist/cli.js pr-check --format github ${APPROVED:+--approved} --draft "$DRAFT" --body-file - "origin/$BASE_REF"

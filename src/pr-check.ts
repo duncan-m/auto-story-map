@@ -5,7 +5,7 @@ import type { StoryMapRuleId } from "./rules.js";
 import type { StoryMapDocument, StoryMapIssue } from "./schema.js";
 
 /** The rules only `pr-check` reports, beside the ones `story-map diff` lists under Needs a person. */
-export const prCheckRules = ["missing-tokens-used"] as const satisfies readonly StoryMapRuleId[];
+export const prCheckRules = ["missing-tokens-used", "missing-review"] as const satisfies readonly StoryMapRuleId[];
 
 /**
  * Names in a commit's author or `Co-Authored-By` trailers that mark it as
@@ -35,8 +35,16 @@ export interface PrCheckOptions {
   botNames?: readonly string[];
   /** True when a person approved the changes that need a person, such as with the `map-approved` label. */
   approved?: boolean;
-  /** The pull request's description. When absent, the Tokens used section is not checked. */
+  /** The pull request's description. When absent, the Tokens used and Review sections are not checked. */
   body?: string;
+  /**
+   * Whether the pull request is a draft. A pull request known to be ready for
+   * review, with `draft: false` and a body, needs a Review section that records
+   * a review. When absent, the Review section is not checked.
+   */
+  draft?: boolean;
+  /** Fail on warnings too, as `validate --strict` does. */
+  strict?: boolean;
 }
 
 /** Why a commit counts as an agent's: its author is a bot, or a trailer names an agent. */
@@ -62,6 +70,8 @@ export interface PrCheckResult {
   merged: string[];
   /** Whether the body was checked for a Tokens used section. */
   checkedBody: boolean;
+  /** Whether the body was checked for a Review section, because the pull request is ready for review. */
+  checkedReview: boolean;
   issues: PrCheckIssue[];
 }
 
@@ -93,8 +103,25 @@ export function commitAgent(commit: PrCheckCommit, botNames: readonly string[] =
  * such heading.
  */
 export function tokensUsedSection(body: string): string | undefined {
+  return descriptionSection(body, /^ {0,3}#{1,6}[ \t]+tokens used[ \t#]*$/i);
+}
+
+/**
+ * The text of the body's “Review” section, without HTML comments or the
+ * template's empty labels, such as `- Target:` with nothing after it, up to
+ * the next heading of the same or a higher level. An empty string means the
+ * template was left as it was. Undefined when there is no such heading.
+ */
+export function reviewSection(body: string): string | undefined {
+  const section = descriptionSection(body, /^ {0,3}#{1,6}[ \t]+review[ \t#]*$/i);
+  if (section === undefined) return undefined;
+  // A list item or line that is only a label, such as `- **Level:**`, records nothing.
+  return section.split("\n").filter(line => !/^[ \t]*(?:[-*+][ \t]+)?(?:\*\*|__)?[^:*_\n]{1,40}:(?:\*\*|__)?[ \t]*$/.test(line)).join("\n").trim();
+}
+
+function descriptionSection(body: string, heading: RegExp): string | undefined {
   const lines = body.replace(/\r\n?/g, "\n").replace(/<!--[\s\S]*?(-->|$)/g, "").split("\n");
-  const start = lines.findIndex(line => /^ {0,3}#{1,6}[ \t]+tokens used[ \t#]*$/i.test(line));
+  const start = lines.findIndex(line => heading.test(line));
   if (start === -1) return undefined;
   const level = /^ *(#+)/.exec(lines[start])![1].length;
   const rest = lines.slice(start + 1);
@@ -186,13 +213,29 @@ export function checkPullRequest(options: PrCheckOptions): PrCheckResult {
     }
   }
 
+  // Only a pull request known to be ready is checked, so a draft, or a host whose CI does not pass draft, is never warned.
+  const checkedReview = checkedBody && options.draft === false;
+  if (checkedReview) {
+    const section = reviewSection(options.body!);
+    const why = section === undefined ? "its description has no Review section" : !section ? "the Review section in its description is empty" : undefined;
+    if (why) {
+      issues.push({
+        severity: "warning",
+        path: [],
+        rule: "missing-review",
+        message: `This pull request is ready for review, but ${why}. Record the review of its diff there: the target, the commit reviewed, the level, the findings fixed and the findings declined. A person's review of the same diff also counts. If no review could be run, say so and convert the pull request back to a draft.`,
+      });
+    }
+  }
+
   return {
-    passed: !issues.some(issue => issue.severity === "error"),
+    passed: !issues.some(issue => issue.severity === "error" || (options.strict && issue.severity === "warning")),
     agentCommits,
     needsPerson: diff.needsPerson,
     approved,
     merged,
     checkedBody,
+    checkedReview,
     issues,
   };
 }
