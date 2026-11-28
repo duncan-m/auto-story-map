@@ -2777,8 +2777,8 @@ stories:
     activity: review
     release: v0-7-11
     status: merged
-    tokens: 14984726
-    estimatedCostUsd: 5.72
+    tokens: 16578886
+    estimatedCostUsd: 6.16
     jobs:
       - plan-and-build
     summary: |-
