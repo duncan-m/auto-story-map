@@ -16,6 +16,10 @@
         // A refactor signal for ESM-185, not a gate.
         "noExcessiveCognitiveComplexity": "warn"
       },
+      "style": {
+        // An error, not the preset's warning: check for a missing value instead of asserting it is there (ESM-190).
+        "noNonNullAssertion": "error"
+      },
       "suspicious": {
         // Off: the code strips control characters from untrusted text on purpose, and the tests check that none reach the terminal.
         "noControlCharactersInRegex": "off",
