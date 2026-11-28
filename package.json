@@ -91,6 +91,7 @@
     }
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.7",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
