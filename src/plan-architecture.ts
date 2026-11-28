@@ -23,10 +23,10 @@ export const planArchitectureHints = [
 const openStatuses: ReadonlySet<PlanStatusWord> = new Set(["proposed", "planned", "in progress"]);
 
 /** `None:` as the routine answer starts, optionally in bold, and not the end of another word. */
-const noneAnswer = /(?<![\p{L}\p{N}])None[*_]*\s*:/iu;
+export const noneAnswer = /(?<![\p{L}\p{N}])None[*_]*\s*:/iu;
 
 /** A reason after `because`: at least one word. */
-const becauseReason = /\bbecause\s+[*_]*[\p{L}\p{N}]/iu;
+export const becauseReason = /\bbecause\s+[*_]*[\p{L}\p{N}]/iu;
 
 /** What is wrong with a plan's architecture section, or undefined when it is fine. */
 export type PlanArchitectureProblem =

@@ -151,6 +151,8 @@ Following [Record architecture decisions](../ENGINEERING-OVERVIEW.md#record-arch
 
 None: keeps the existing design because it adds computed views over links the map already has, with no new store, service, saved-format field or package export. The new JSON fields and CLI output are additive. If ESM-140's benchmark calls for a layout library such as Dagre or ELK, that adds a dependency every host installs, and becomes a consequential decision for a person to agree before the story continues.
 
+Proposal, for a person to agree before ESM-143 goes `in-progress`: the [brief fixes](#3-list-prerequisites-in-agent-briefs) change two contracts that are not additive. An empty brief gives `branch: null` in `story-map brief --format json` and the MCP server's `get_brief`, where `branch` is a string today, and it exits with a code of its own, which the plan doesn't name yet. Consumers: agents and scripts that read the brief's JSON or its exit code. Alternative considered: keep `branch` a string, such as an empty one, and exit 0 with the one-line message. Agreed by: not yet. Revisit if no consumer relies on `branch` being set.
+
 ## Delivery sequence
 
 **0.7.6:** ESM-139. The story panel and CLI show readiness, with no new tab.

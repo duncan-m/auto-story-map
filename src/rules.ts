@@ -72,6 +72,7 @@ export const storyMapRules = {
   // Problems only `story-map pr-check` reports.
   "missing-tokens-used": { section: "record-the-tokens-used-on-a-story", summary: "A pull request marks a story merged, but its description has no Tokens used section that names it or says why there is no count." },
   "missing-review": { section: "check-a-pull-request-in-ci", summary: "A pull request is ready for review, but its description has no Review section that records a review." },
+  "missing-architecture": { section: "check-a-pull-request-in-ci", summary: "A pull request is ready for review in a map that requires architecture decisions, but its description has no Architecture line that answers them." },
 } as const satisfies Record<string, StoryMapRuleInfo>;
 
 /** The stable ID of a validation rule, such as `missing-status-reason`. */

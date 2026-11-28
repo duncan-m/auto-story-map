@@ -17,7 +17,7 @@
         "noExcessiveCognitiveComplexity": "warn"
       },
       "style": {
-        // Off for now: 191 uses in src/, each after a check tsc cannot follow. Replacing them is a follow-up, not a lint fix.
+        // Off for now: 191 uses in src/, each after a check tsc cannot follow. Replacing them with real checks is ESM-190, not a lint fix.
         "noNonNullAssertion": "off"
       },
       "suspicious": {
