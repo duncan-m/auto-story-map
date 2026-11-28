@@ -2,6 +2,7 @@ import { toJsonStory, type StoryMapJsonStory } from "./export-json.js";
 import { filterStoryMapView, type StoryMapFilters } from "./filter.js";
 import type { StoryReadinessState } from "./readiness.js";
 import type { StoryMapFilterState, StoryMapView } from "./view.js";
+import { present } from "./present.js";
 
 type InternalView = Extract<StoryMapView, { audience: "internal" }>;
 
@@ -56,7 +57,8 @@ export function findStories(view: StoryMapView, query: StoryQuery = {}, options:
       .filter(story => !readiness || (!!story.readiness && readiness.has(story.readiness.state)))
       .map(story => toJsonStory(story, testsIndexed)),
     filter: {
-      ...filtered.filter!,
+      // filterStoryMapView always says which filter it applied.
+      ...present(filtered.filter, "the applied filter"),
       ...(releases ? { releases: [...releases] } : {}),
       ...(activities ? { activities: [...activities] } : {}),
       ...(readiness ? { readiness: [...readiness] } : {}),

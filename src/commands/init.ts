@@ -5,6 +5,7 @@ import { applyUpgrade, parseUpgradeParts, type UpgradeAnswers, type UpgradeApply
 import { upgradeOverviewLines } from "../upgrade-overview.js";
 import { ArgumentError, defineCommand, escapeText, optionValue } from "./shared.js";
 import upgrade, { askUpgradeChoices, atTerminal, withTerminal } from "./upgrade.js";
+import { present } from "../present.js";
 
 interface InitCommandOptions {
   ci: boolean;
@@ -230,7 +231,8 @@ async function handOver(options: InitCommandOptions, report: UpgradeReport) {
     ...(options.answers.storyIds === undefined ? [] : ["--story-ids", options.answers.storyIds]),
   ];
   console.log("This repository is already set up, so init hands over to story-map upgrade.\n");
-  await upgrade.run(upgrade.parse(["--root", options.dir, ...args])!);
+  // init builds these arguments itself, so upgrade always accepts them.
+  await upgrade.run(present(upgrade.parse(["--root", options.dir, ...args]), "the upgrade options init builds"));
   if (process.exitCode || (report.overview.kind === "current" && !args.length)) return;
   const apply = args.length ? args.join(" ") : `--mode ${report.mode ?? "simple"}`;
   console.log(`\nTo apply the changes, run story-map upgrade ${apply} --write${options.parts ? "" : ", or --apply <parts> --write for only the parts you accept"}.`);

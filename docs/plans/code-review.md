@@ -1,6 +1,6 @@
 # Plan: code review, architecture decisions and review points
 
-Status: in progress. The work is ESM-176 to ESM-179 and ESM-182 to ESM-187 in the **0.7.11: Code review and architecture checks** release of the map, all merged, with three follow-ups from a review of the repository against this plan: ESM-188 and ESM-189, merged, and ESM-190, planned. None has an agreed estimate yet.
+Status: merged. The work is ESM-176 to ESM-179 and ESM-182 to ESM-187 in the **0.7.11: Code review and architecture checks** release of the map, all merged, with three follow-ups from a review of the repository against this plan: ESM-188, ESM-189 and ESM-190, all merged. None has an agreed estimate yet.
 
 Agents write almost every change in this repository, and nobody else reads most of them before they merge. Of the last 30 merged PRs, none had an independent review. CodeQL is the only reviewer, and it runs after the push: it found escaping or sanitising problems in #162, #169, #178 and #179, and ReDoS in #169 and #186. One of those alerts, in `fileSlug` in `src/export-response.ts`, shipped to hosts in 0.7.6 and is being fixed as ESM-175. Nothing asks whether a change kept the promise of its story, which saved input it could break, or whether it made an architecture decision that nobody recorded. The plans in `docs/plans/` say what to build, but none of the 5 open ones says where it runs, who consumes it, or how to undo it.
 

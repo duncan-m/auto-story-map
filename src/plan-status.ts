@@ -3,6 +3,7 @@ import { relative, sep } from "node:path";
 import { maxMarkdownBytes, repositoryFiles, resolveRootedPath, storyIdPattern, type ReferenceIssue } from "./references.js";
 import type { LoadedStoryMap } from "./schema.js";
 import type { StoryStatus } from "./status.js";
+import { present } from "./present.js";
 
 /**
  * The words a plan's status line may start with: the map's statuses, as the board writes
@@ -27,11 +28,15 @@ const wordOf: Record<StoryStatus, PlanStatusWord> = {
  */
 export function caughtUpStatus(word: PlanStatusWord, statuses: readonly StoryStatus[]): PlanStatusWord | undefined {
   const line = progress[word];
-  const counted = statuses.filter(status => progress[wordOf[status]] !== undefined);
+  const counted = statuses.flatMap(status => {
+    const at = progress[wordOf[status]];
+    return at === undefined ? [] : [{ status, at }];
+  });
   if (line === undefined || !counted.length) return undefined;
-  const reached = Math.min(...counted.map(status => progress[wordOf[status]]!));
-  if (reached > line) return wordOf[counted.find(status => progress[wordOf[status]] === reached)!];
-  return word === "proposed" && counted.includes("shipped") ? "in progress" : undefined;
+  const reached = Math.min(...counted.map(item => item.at));
+  const behind = counted.find(item => item.at === reached);
+  if (reached > line && behind) return wordOf[behind.status];
+  return word === "proposed" && counted.some(item => item.status === "shipped") ? "in progress" : undefined;
 }
 
 /** A status line: `Status:` at the start of a line, optionally in bold, as `story-map survey` reads it. */
@@ -70,9 +75,9 @@ export function readPlanStatusLine(loaded: LoadedStoryMap, markdown: string): Pl
     if (fence) continue;
     const match = statusLine.exec(line);
     if (!match) continue;
-    const text = match[1]!.trim();
+    const text = match[1].trim();
     const word = leadingWord.exec(text)?.[1]?.toLowerCase().replace("-", " ") as PlanStatusWord | undefined;
-    return { line: index + 1, text, ...(word ? { word } : {}), stories: namedStories(loaded, text), bold: [...text.matchAll(/\*\*([^*]+)\*\*/g)].map(bold => bold[1]!.trim()) };
+    return { line: index + 1, text, ...(word ? { word } : {}), stories: namedStories(loaded, text), bold: [...text.matchAll(/\*\*([^*]+)\*\*/g)].map(bold => bold[1].trim()) };
   }
   return undefined;
 }
@@ -137,7 +142,8 @@ export async function checkPlanStatusLines(loaded: LoadedStoryMap, root: string,
 export function statusLineIssues(loaded: LoadedStoryMap, file: string, status: PlanStatusLine): ReferenceIssue[] {
   const at = { severity: "warning" as const, path: [], file, line: status.line };
   const issues: ReferenceIssue[] = [];
-  const stories = status.stories.map(id => loaded.map.stories.find(story => story.id === id)!);
+  // The status line only names stories that are in the map.
+  const stories = status.stories.map(id => present(loaded.map.stories.find(story => story.id === id), `story ${id}`));
 
   if (!status.word) {
     issues.push({

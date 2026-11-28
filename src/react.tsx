@@ -9,6 +9,7 @@ import { filterStoryMapActions, countStoryMapActions, storyMapActionItemTypes, t
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { analyticsWindow, storyMapAnalytics, type AnalyticsMeasure, type AnalyticsMilestone, type AnalyticsPeriod, type AnalyticsTotals } from "./analytics.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
+import { present } from "./present.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryDependency, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
@@ -636,9 +637,9 @@ function ChangesSection({ story, panelId, settings, links }: { story: InternalSt
 }
 
 function ChangeItem({ change, settings, links }: { change: StoryChangeEntry; settings: DateSettings; links: RepositoryLinker }) {
-  const pullRequest = change.pullRequest !== undefined;
-  const href = (pullRequest ? links.pullRequest(change.pullRequest!) : undefined) ?? links.commit(change.commit);
-  const label = pullRequest ? `#${change.pullRequest}` : shortHash(change.commit);
+  const pullRequest = change.pullRequest;
+  const href = (pullRequest !== undefined ? links.pullRequest(pullRequest) : undefined) ?? links.commit(change.commit);
+  const label = pullRequest !== undefined ? `#${change.pullRequest}` : shortHash(change.commit);
   const title = <>
     {pullRequest ? <span className="esm-change-number">{label}</span> : <code className="esm-commit-hash">{label}</code>}
     {" "}
@@ -1431,7 +1432,7 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
             <ul className="esm-release-stories">
               {group.stories.map(story => (
                 <li key={story.id}>
-                  <button type="button" className="esm-release-story" aria-haspopup="dialog" {...popoverTarget(storyPanelIds.get(story)!)}>
+                  <button type="button" className="esm-release-story" aria-haspopup="dialog" {...popoverTarget(present(storyPanelIds.get(story), `the panel of story ${story.id}`))}>
                     <span className="esm-card-id">{story.id}</span>
                     <span>{story.title}</span>
                   </button>
@@ -1484,6 +1485,7 @@ function PersonaJob({ job, statementId, base }: { job: PersonaJobLabel; statemen
   const left = hiddenSummary(job.storyCounts);
   // Only the core job's gaps show here; the Personas tab shows every step.
   const gaps = job.core && coverage ? jobStepGaps(job) : 0;
+  const stepCount = job.steps?.length ?? 0;
   return (
     <li className={job.core ? "esm-job esm-job-core" : "esm-job"}>
       {job.core && <CoreJobLabel />}
@@ -1500,7 +1502,7 @@ function PersonaJob({ job, statementId, base }: { job: PersonaJobLabel; statemen
           </>
           : <span className="esm-job-gap">No stories yet</span>}
         {left && <span className="esm-job-left">{`${left} not counted`}</span>}
-        {gaps > 0 && <span className="esm-job-gap">{`${gaps} of ${job.steps!.length} ${job.steps!.length === 1 ? "step" : "steps"} ${gaps === 1 ? "has" : "have"} no stories`}</span>}
+        {gaps > 0 && <span className="esm-job-gap">{`${gaps} of ${stepCount} ${stepCount === 1 ? "step" : "steps"} ${gaps === 1 ? "has" : "have"} no stories`}</span>}
       </p>
     </li>
   );
@@ -1744,21 +1746,20 @@ function JobLane({ job, laneId, base, editing }: { job: PersonaJobLabel; laneId:
       {steps.length > 0 && (
         <ol className="esm-job-steps" aria-label="Steps">
           {steps.map((step, index) => {
-            const gap = step.activity !== undefined && !step.activeStories;
-            const stepParams = base && step.activity !== undefined ? new URLSearchParams(base) : undefined;
-            stepParams?.append("job", job.id);
-            stepParams?.append("activity", step.activity!);
+            const { activity, activeStories } = step;
+            const gap = activity !== undefined && !activeStories;
+            const stepParams = base && activity !== undefined ? new URLSearchParams([...base, ["job", job.id], ["activity", activity]]) : undefined;
             return (
               <li className="esm-step-card" data-gap={gap ? "" : undefined} key={index}>
                 <span className="esm-step-title"><span className="esm-step-num" aria-hidden="true">{index + 1}</span>{step.title}</span>
                 {step.summary && <span className="esm-step-text">{step.summary}</span>}
-                {step.activity !== undefined && (
+                {activity !== undefined && (
                   <span className="esm-step-cov">
-                    {gap
+                    {!activeStories
                       ? <span className="esm-job-gap">No stories yet</span>
                       : stepParams
-                        ? <a href={`?${stepParams}`}>{storyCount(step.activeStories!)}</a>
-                        : <span>{storyCount(step.activeStories!)}</span>}
+                        ? <a href={`?${stepParams}`}>{storyCount(activeStories)}</a>
+                        : <span>{storyCount(activeStories)}</span>}
                   </span>
                 )}
               </li>
@@ -1837,7 +1838,7 @@ function PersonaContext({ persona, baseId, editing }: { persona: PersonaLabel; b
       title: "Success means",
       body: editing
         ? <InlineText as="p" editor={successEditor} field="success" label="Success means" max={successMax} multiline placeholder="Not set yet.">{context?.success ?? ""}</InlineText>
-        : <p>{context!.success}</p>,
+        : <p>{present(context, `the context of persona ${persona.id}`).success}</p>,
     },
     (context?.usesToday?.length || editing) && {
       key: "uses",
@@ -2725,7 +2726,8 @@ function VersionFooter({ internal }: { internal: boolean }) {
 
 /** True when a filter narrows the board. Choosing every status shows every story, so it does not count. */
 function isFiltering(filter: StoryMapView["filter"]) {
-  const narrowsStatus = !!filter?.status && !storyStatuses.every(choice => filter.status!.includes(choice));
+  const statuses = filter?.status;
+  const narrowsStatus = !!statuses && !storyStatuses.every(choice => statuses.includes(choice));
   return !!(filter && (filter.query || narrowsStatus || filter.changedWithinDays || filter.persona?.length || filter.job?.length || filter.activity?.length));
 }
 
@@ -2950,8 +2952,17 @@ export function StoryMapBoard({
     activityTitles.has(story.activity) && releaseTitles.has(story.release)
   );
   const panelIds = new Map(placed.map((story, index) => [story, `${baseId}-story-${index}`]));
-  const panelIdsByStory = new Map(placed.map(story => [story.id, panelIds.get(story)!]));
+  const panelIdsByStory = new Map(placed.map((story, index) => [story.id, `${baseId}-story-${index}`]));
+  const panelIdOf = (story: InternalStoryCard) => present(panelIds.get(story), `the panel of story ${story.id}`);
   const internalReleases = map.audience === "internal" ? new Map(map.releases.map(release => [release.id, release])) : undefined;
+  const impactLine = (id: string) => {
+    const impact = internalReleases?.get(id)?.impact;
+    return impact?.length ? <ImpactLine impact={impact} /> : null;
+  };
+  const estimateLine = (id: string) => {
+    const estimates = internalReleases?.get(id)?.estimates;
+    return estimates ? <ReleaseEstimate estimates={estimates} /> : null;
+  };
   const lookup = personaLookup(map);
   const personaPanelIds = new Map([...lookup.personas.keys()].map((id, index) => [id, `${baseId}-persona-${index}`]));
   // Who each step of the journey serves, from the personas of its active stories, in map order.
@@ -2990,9 +3001,9 @@ export function StoryMapBoard({
   // A map without personas still gets it, showing how to add them.
   const personaList = [...lookup.personas.values()];
   const tabs = internal && map.filter ? map.filter : undefined;
-  const personasTab = !!tabs && tabs.view === "personas";
-  const analyticsTab = !!tabs && tabs.view === "analytics";
-  const actionsTab = !!tabs && tabs.view === "actions";
+  const personasTab = tabs !== undefined && tabs.view === "personas";
+  const analyticsTab = tabs !== undefined && tabs.view === "analytics";
+  const actionsTab = tabs !== undefined && tabs.view === "actions";
   // Hand-built views from before the Actions tab may have no actions.
   const actionGroups = map.audience === "internal" ? map.actions ?? [] : [];
   const mapPath = map.audience === "internal" ? map.mapPath : undefined;
@@ -3010,8 +3021,10 @@ export function StoryMapBoard({
   // The story map's own parts are hidden on the other tabs.
   const otherTab = personasTab || actionsTab || analyticsTab;
   // The panel a permalink opens, which board.js shows on load. Customers have no release panels, so their release links only scroll.
-  const linkedStory = !otherTab && map.filter?.story ? placed.find(story => story.id === map.filter!.story) : undefined;
-  const linkedReleaseIndex = !otherTab && internalReleases && showGrid && map.filter?.release ? releases.findIndex(release => release.id === map.filter!.release) : -1;
+  const linkedStoryId = map.filter?.story;
+  const linkedReleaseId = map.filter?.release;
+  const linkedStory = !otherTab && linkedStoryId ? placed.find(story => story.id === linkedStoryId) : undefined;
+  const linkedReleaseIndex = !otherTab && internalReleases && showGrid && linkedReleaseId ? releases.findIndex(release => release.id === linkedReleaseId) : -1;
   const openPanel = linkedStory ? panelIds.get(linkedStory) : linkedReleaseIndex >= 0 ? `${baseId}-release-${linkedReleaseIndex}` : undefined;
 
   return (
@@ -3037,12 +3050,12 @@ export function StoryMapBoard({
             actions={countStoryMapActions(actionGroups)}
           />
         )}
-        {personasTab && <PersonasPage personas={personaList} filter={tabs!} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} />}
-        {analyticsTab && map.audience === "internal" && <AnalyticsPage map={map} filter={tabs!} preservedParams={preservedParams} settings={settings} baseId={baseId} />}
+        {personasTab && <PersonasPage personas={personaList} filter={tabs} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} />}
+        {analyticsTab && map.audience === "internal" && <AnalyticsPage map={map} filter={tabs} preservedParams={preservedParams} settings={settings} baseId={baseId} />}
         {actionsTab && map.audience === "internal" && (
           <ActionsPage
             groups={actionGroups}
-            filter={tabs!}
+            filter={tabs}
             preservedParams={preservedParams}
             releases={map.releases}
             links={actionLinks}
@@ -3108,12 +3121,12 @@ export function StoryMapBoard({
                       </span>
                     </div>
                     {release.summary && <span className="esm-release-summary">{release.summary}</span>}
-                    {!!internalReleases?.get(release.id)?.impact?.length && <ImpactLine impact={internalReleases.get(release.id)!.impact!} />}
+                    {impactLine(release.id)}
                     {hideInactive && (activeCounts.get(release.id) ?? 0) !== (releaseCounts.get(release.id) ?? 0) ? <>
                       <span className="esm-release-count esm-count-active">{storyCount(activeCounts.get(release.id) ?? 0)}</span>
                       <span className="esm-release-count esm-count-all">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>
                     </> : <span className="esm-release-count">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>}
-                    {internalReleases?.get(release.id)?.estimates && <ReleaseEstimate estimates={internalReleases.get(release.id)!.estimates!} />}
+                    {estimateLine(release.id)}
                   </div>
                   {map.activities.map(activity => {
                     const stories = cells.get(`${release.id}:${activity.id}`) ?? [];
@@ -3134,7 +3147,7 @@ export function StoryMapBoard({
                             aria-haspopup="dialog"
                             data-inactive={isActiveStatus(story.status) ? undefined : ""}
                             key={story.id}
-                            {...popoverTarget(panelIds.get(story)!)}
+                            {...popoverTarget(panelIdOf(story))}
                           >
                             {internal && <CardHead story={story} personas={labelsFor(story.personas, lookup)} />}
                             <span className="esm-card-title">{story.title}</span>
@@ -3162,10 +3175,10 @@ export function StoryMapBoard({
         <StoryDetail
           key={story.id}
           story={story}
-          panelId={panelIds.get(story)!}
+          panelId={panelIdOf(story)}
           permalink={permalink({ story: story.id })}
-          activityTitle={activityTitles.get(story.activity)!}
-          releaseTitle={releaseTitles.get(story.release)!}
+          activityTitle={present(activityTitles.get(story.activity), `the activity of story ${story.id}`)}
+          releaseTitle={present(releaseTitles.get(story.release), `the release of story ${story.id}`)}
           internal={internal}
           sourceBaseUrl={sourceBaseUrl}
           links={links}
@@ -3187,7 +3200,7 @@ export function StoryMapBoard({
         <PersonaDetail
           key={persona.id}
           persona={persona}
-          panelId={personaPanelIds.get(persona.id)!}
+          panelId={present(personaPanelIds.get(persona.id), `the panel of persona ${persona.id}`)}
           filter={map.filter}
           preservedParams={preservedParams}
           openHref={tabs && personaPageHref(tabs, persona.id, preservedParams)}
@@ -3196,7 +3209,7 @@ export function StoryMapBoard({
       {!otherTab && internalReleases && showGrid && releases.map((release, index) => (
         <ReleaseDetail
           key={release.id}
-          release={internalReleases.get(release.id)!}
+          release={present(internalReleases.get(release.id), `release ${release.id}`)}
           panelId={`${baseId}-release-${index}`}
           permalink={permalink({ release: release.id })}
           stories={placed.filter(story => story.release === release.id)}

@@ -44,7 +44,7 @@ export function planArchitectureProblems(markdown: string): PlanArchitectureProb
   const headings = markdownHeadings(markdown);
   const index = headings.findIndex(heading => heading.level === 2 && heading.text.trim().toLowerCase() === planArchitectureHeading.toLowerCase());
   if (index < 0) return [{ kind: "missing" }];
-  const heading = headings[index]!;
+  const heading = headings[index];
   const next = headings.slice(index + 1).find(other => other.level <= heading.level);
   const lines = markdown.split(/\r?\n/);
   const end = next ? next.line - 1 : lines.length;

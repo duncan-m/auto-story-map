@@ -17,8 +17,8 @@
         "noExcessiveCognitiveComplexity": "warn"
       },
       "style": {
-        // Off for now: 191 uses in src/, each after a check tsc cannot follow. Replacing them with real checks is ESM-190, not a lint fix.
-        "noNonNullAssertion": "off"
+        // An error, not the preset's warning: check for a missing value instead of asserting it is there (ESM-190).
+        "noNonNullAssertion": "error"
       },
       "suspicious": {
         // Off: the code strips control characters from untrusted text on purpose, and the tests check that none reach the terminal.
