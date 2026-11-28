@@ -33,6 +33,8 @@ export type {
   StoryMapViewer,
 } from "./view.js";
 export { changedWithinOptions, filterStoryMapView, readStoryMapFilters } from "./filter.js";
+export { analyticsCompleteStatuses, analyticsMeasures, analyticsMilestones, analyticsPeriods, analyticsWindow, storyCompletedAt, storyMapAnalytics } from "./analytics.js";
+export type { AnalyticsBucket, AnalyticsMeasure, AnalyticsMilestone, AnalyticsPeriod, AnalyticsTotals, StoryMapAnalytics, StoryMapAnalyticsOptions } from "./analytics.js";
 export type { ChangedWithinDays, FilterOptions, StoryMapFilters, StoryMapPage } from "./filter.js";
 export { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
 export { briefBranchMaxLength, briefBuiltNearbyMaxItems, releaseBriefMaxBytes, storyBriefMaxBytes, storyMapBrief, storyMapBriefBranch } from "./brief.js";

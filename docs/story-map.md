@@ -461,7 +461,7 @@ In the view, internal maps with personas gain `personas`, each with its `initial
 
 ### Personas tab
 
-When the host uses [search and filters](#integrate-with-a-product), internal boards show **Story map** and **Personas** tabs at the top of the frame. They are links, `?view=personas` for the Personas tab, so they work without JavaScript, and each keeps the search and other filters, so going back to the map keeps them.
+When the host uses [search and filters](#integrate-with-a-product), internal boards show **Story map**, **Personas** and [**Analytics**](#see-delivery-totals) tabs at the top of the frame. They are links, `?view=personas` for the Personas tab, so they work without JavaScript, and each keeps the search and other filters, so going back to the map keeps them.
 
 When the map has no personas, the tab shows how to add them: an example `personas` list, how to tag stories with their jobs, and a link to this guide.
 
@@ -876,6 +876,36 @@ The build needs the full Git history. Many CI and hosting systems clone only the
 
 The command stops with an explanation when the clone is shallow. Pass `--allow-shallow` to accept a partial history instead; changes before the clone’s oldest commit are then missing.
 
+## See delivery totals
+
+The internal board's **Analytics** tab shows how many stories, points, tokens and how much spend were completed each day, week or month, from the map and the [status history](#show-status-history) file. It is a link, `?view=analytics`, like the [other tabs](#personas-tab), and needs the host to use [search and filters](#integrate-with-a-product). Without a history file, the tab explains how to add one and shows nothing else.
+
+Three menus choose what it shows. They are a GET form, so they work without JavaScript, and `board.js` applies a choice as soon as it changes:
+
+- **Period**, `period=day`, `week` or `month`: the last 8 UTC days, the last 8 weeks starting on Monday, or the last 6 months, ending with the one that holds today. Each starts at midnight UTC, inclusive, and ends at the next one, exclusive. Periods with nothing completed stay in the table.
+- **Completed when**, `completed=merged` or `shipped`: `merged` counts stories that are merged or shipped, since shipping comes after merging, and `shipped` counts shipped stories only.
+- **Chart**, `chart=stories`, `points`, `tokens` or `spend`: the measure the bar chart shows. The table below it holds every measure, and is what screen readers read.
+
+A story counts in the period when its history last moved it into the milestone, or added it already there. A story that was reopened and completed again counts once, in the period of its latest completion, and a story that is no longer complete is not counted. Stories that were already complete in the history's first version of the map, or that became complete after the file was made, have no known completion time: the tab counts them separately and says so.
+
+The spike has limits, which the tab states:
+
+- Points, tokens and spend are each story's values in the map today, from its `estimate`, [`tokens` and `estimatedCostUsd`](#record-the-tokens-used-on-a-story), not their values when it was completed.
+- A story with no estimate or no tokens adds nothing to that total, and is never counted as zero. Each period shows how many of its stories have one, such as “1 of 3 estimated”, and a dash when none do.
+- It says when the history starts, and when the file was made from a shallow clone.
+- It shows no scope change, remaining work, burn charts or release filters. The [delivery metrics plan](plans/delivery-metrics.md) adds those.
+
+The tab counts every story, whatever the search and other filters say, and keeps them for the links back to the map. Customers never get it: `view=analytics` and its options change nothing for them, and their view never includes points, tokens or spend.
+
+The calculation is a pure function of the internal view, also exported for a host's own reports:
+
+```ts
+const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
+if (view?.audience === "internal" && view.history) {
+  const { buckets, totals, undated } = storyMapAnalytics(view, { period: "week", milestone: "merged" });
+}
+```
+
 ## Flag stalled stories
 
 A story is stalled when it has been `in-progress` for longer than a number of weeks, 4 by default. Internal viewers see a warning on its card, such as “In progress for 6 weeks”, in place of the time since its last change. The story panel says when it became in progress and that it is stalled, and the status filter has a **Stalled** checkbox. Ticking it adds stalled stories to the other choices, so tick it on its own to see only stalled stories. Customers never see the flag.
@@ -1062,7 +1092,7 @@ Pass `webAgents` to the board, and each **Share** menu gets an **Open in Claude*
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.
 2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapPage(document, viewer, { searchParams: url.searchParams })` with roles from the verified session. Pass `null` for a guest. A null result means no access: answer 401 for a guest and 403 for anyone else. By default, viewers whose roles include `engineer` or `super-admin` see the internal map. To use your own rule, pass `canViewInternal`, for example `getStoryMapPage(document, viewer, { canViewInternal: viewer => viewer.roles.includes("product"), searchParams: url.searchParams })`. The rule receives the viewer object you passed, so it can check permissions as well as roles. Only a return value of `true` grants the internal view.
-3. `getStoryMapPage` projects the map for the viewer and then applies the search and filters from `searchParams`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer ticks them in the status filter or passes `status=all`. The toolbar submits a GET form with `q`, `status`, `changed`, `persona`, `job` and `activity` parameters, where `status`, `persona`, `job` and `activity` repeat once per choice, such as `?status=planned&status=stalled`, to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs. On internal boards of maps with personas, `view=personas` opens the [Personas tab](#personas-tab) in place of the map, so the host must render the board for it as for any other filter. If you need the steps separately, `getStoryMapPage` is the same as `filterStoryMapView(getStoryMapForViewer(document, viewer, options), readStoryMapFilters(url.searchParams), { now })`. Always filter after projecting, never before.
+3. `getStoryMapPage` projects the map for the viewer and then applies the search and filters from `searchParams`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer ticks them in the status filter or passes `status=all`. The toolbar submits a GET form with `q`, `status`, `changed`, `persona`, `job` and `activity` parameters, where `status`, `persona`, `job` and `activity` repeat once per choice, such as `?status=planned&status=stalled`, to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs. On internal boards, `view=personas` opens the [Personas tab](#personas-tab) and `view=analytics` the [Analytics tab](#see-delivery-totals), with its `period`, `completed` and `chart` options, in place of the map, so the host must render the board for them as for any other filter. If you need the steps separately, `getStoryMapPage` is the same as `filterStoryMapView(getStoryMapForViewer(document, viewer, options), readStoryMapFilters(url.searchParams), { now })`. Always filter after projecting, never before.
 4. Render `StoryMapBoard` using the returned view and import `auto-story-map/styles.css` through the host’s CSS pipeline. Pass `sourceBaseUrl` if the map uses [repository-relative Markdown links](#link-an-engineering-overview). The board is light by default. Pass `theme="dark"` for a dark host, or `theme="auto"` to follow the viewer’s system setting. Colours are CSS custom properties on `.esm-board`, such as `--esm-accent`, so a host can override them. A footer under the board shows the running version of Auto Story Map and the short hash of the commit it was built from, its author and its licence. Internal viewers also get links to the commit, changelog, source code, licence and author. Pass `showVersion={false}` to remove it. Viewers can collapse a release lane to its title and story count with the chevron in its header, which needs no JavaScript but does need a browser that supports CSS `:has()`; other browsers show every lane open with no toggle. The grid scrolls in its own box, no taller than the window, so the activity titles and the release column stay in view. It leaves 7.5rem for the content below it. If the host has a fixed header or a taller footer, set the box’s height on `.esm-board`, such as `--esm-board-height: calc(100dvh - 12rem)`, or set it to `none` to scroll with the page as before. With `board.js`, below, each release’s name also stays beside its lane and the activity row shrinks to its titles. To apply filters as soon as a viewer changes them, also load the optional browser script: serve `node_modules/auto-story-map/dist/board.js` (exported as `auto-story-map/board.js`) with the host’s other static files and add `<script type="module" src="…/board.js"></script>` to the page. It hides **Apply**, applies a select as soon as it changes and a search when the viewer presses Enter, returns focus to the filter they used, and remembers which release lanes the viewer collapsed, adding them to the [export links](#download-from-the-board). Without it, the form works as before, and collapsed lanes open again when the page reloads. Use the same server-side projection and filters if adding a JSON endpoint.
 5. Send `storyMapResponseHeaders` with the page and endpoint, including error responses. They set `Cache-Control: private, no-store`, because the page differs per viewer, and `X-Content-Type-Options: nosniff`. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
 

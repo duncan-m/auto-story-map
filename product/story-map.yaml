@@ -1950,7 +1950,7 @@ stories:
     title: Spike delivery totals in an Analytics tab
     activity: track
     release: v0-8-2
-    status: planned
+    status: merged
     jobs:
       - get-oriented
       - agree-first-release-plan
@@ -1960,6 +1960,7 @@ stories:
       - docs/plans/delivery-metrics.md#spike-show-delivery-totals-in-an-analytics-tab
       - docs/plans/delivery-metrics-mockup.html
       - docs/plans/delivery-metrics-mockup.png
+      - docs/story-map.md#see-delivery-totals
   - id: ESM-130
     title: Reconstruct delivery events from Git
     activity: track

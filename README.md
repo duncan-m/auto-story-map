@@ -37,6 +37,7 @@ Export the map as JSON and an agent can review your stories and tests and sugges
 - Each story links to the pull requests and commits that name it, and to the tests tagged with its ID.
 - Releases record their notes and expected impact, and stories their estimate in story points.
 - Personas and their jobs to be done, with a Personas tab showing each job's steps, the stories that serve it and the gaps.
+- An Analytics tab of the stories, points, tokens and spend delivered each day, week or month, from the map and its Git history.
 
 **For agents**
 

@@ -1,6 +1,7 @@
 import { storyMapBrief, type StoryMapBriefOptions } from "./brief.js";
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
+import type { AnalyticsMeasure, AnalyticsMilestone, AnalyticsPeriod } from "./analytics.js";
 import type { StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { storyMapReadiness, type StoryReadiness } from "./readiness.js";
 import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
@@ -209,9 +210,11 @@ export interface StoryMapFilterState {
   activity?: string[];
   /**
    * `personas` when the board shows the Personas tab, with the first of `persona` as its page, or the
-   * first persona when none is chosen. Internal views of maps with personas only.
+   * first persona when none is chosen. `analytics` when it shows the Analytics tab. Internal views only.
    */
-  view?: "personas";
+  view?: "personas" | "analytics";
+  /** The Analytics tab's choices, with defaults filled in. Present with `view: "analytics"`. */
+  analytics?: { period: AnalyticsPeriod; completed: AnalyticsMilestone; chart: AnalyticsMeasure };
   /** The story a permalink opened, when it is in the view. It is kept whatever the other filters say. */
   story?: string;
   /** The release a permalink opened, when it is in the view. */
@@ -587,7 +590,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
 export interface StoryMapPageOptions<Viewer extends StoryMapViewer = StoryMapViewer> extends StoryMapAccessOptions<Viewer> {
   /**
    * The request's query parameters, such as `url.searchParams`. The `q`,
-   * `status`, `changed`, `persona`, `job` and `activity` filters, the `view`, and a permalink's `story` or `release` are read from them, and anything else is ignored.
+   * `status`, `changed`, `persona`, `job` and `activity` filters, the `view`, the Analytics tab's `period`, `completed` and `chart`, and a permalink's `story` or `release` are read from them, and anything else is ignored.
    */
   searchParams?: URLSearchParams;
 }
