@@ -107,16 +107,19 @@ export function tokensUsedSection(body: string): string | undefined {
 }
 
 /**
- * The text of the body's “Review” section, without HTML comments or the
- * template's empty labels, such as `- Target:` with nothing after it, up to
+ * The text of the body's “Review” section, without HTML comments, the
+ * template's empty labels, such as `- Target:` with nothing after it, and
+ * labels with only a placeholder, such as `- Target: pending`, up to
  * the next heading of the same or a higher level. An empty string means the
  * template was left as it was. Undefined when there is no such heading.
  */
 export function reviewSection(body: string): string | undefined {
   const section = descriptionSection(body, /^ {0,3}#{1,6}[ \t]+review[ \t#]*$/i);
   if (section === undefined) return undefined;
-  // A list item or line that is only a label, such as `- **Level:**`, records nothing.
-  return section.split("\n").filter(line => !/^[ \t]*(?:[-*+][ \t]+)?(?:\*\*|__)?[^:*_\n]{1,40}:(?:\*\*|__)?[ \t]*$/.test(line)).join("\n").trim();
+  // A list item or line that is only a label, such as `- **Level:**`, or a label with a
+  // placeholder such as `- Target: pending`, records nothing.
+  const placeholder = /^[ \t]*(?:[-*+][ \t]+)?(?:\*\*|__)?[^:*_\n]{1,40}:(?:\*\*|__)?[ \t]*(?:pending|tbd|todo|to do|none yet)?[ \t.]*$/i;
+  return section.split("\n").filter(line => !placeholder.test(line)).join("\n").trim();
 }
 
 function descriptionSection(body: string, heading: RegExp): string | undefined {

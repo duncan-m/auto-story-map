@@ -112,7 +112,8 @@ export default defineCommand({
       process.exitCode = error instanceof UsageError ? 2 : 1;
       return;
     }
-    const issues = result.issues.map(issue => ({ ...issue, ...loaded.locate(issue.path), help: link(issue.rule) }));
+    // A problem with the description, not the map, has no path or item, so it is reported for the file as a whole rather than on line 1.
+    const issues = result.issues.map(issue => ({ ...issue, ...(issue.path.length || issue.itemId ? loaded.locate(issue.path) : {}), help: link(issue.rule) }));
     if (!result.passed) process.exitCode = 1;
     if (options.format === "json") {
       printJson("pr-check", { ...result, issues: issues.map(issue => ({ ...issue, file: options.map })) });

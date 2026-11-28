@@ -170,6 +170,22 @@ test("ESM-182: a ready pull request with a filled Review section passes", () => 
   assert.equal(reviewSection(reviewBody("- **Level:** medium\n- **Fixed:**")), "- **Level:** medium");
 });
 
+test("ESM-182: a label with only a placeholder, such as pending, counts as empty", () => {
+  assert.equal(reviewSection(reviewBody("- Target: pending\n- Commit reviewed: TBD\n- **Level:** TODO.\n- Findings fixed:")), "");
+  assert.deepEqual(rules(check(() => {}, { body: reviewBody("- Target: pending"), draft: false })), [["missing-review", undefined]]);
+  // A value that merely starts with a placeholder word is a real value.
+  assert.equal(reviewSection(reviewBody("- Target: pending review by Sam")), "- Target: pending review by Sam");
+});
+
+test("ESM-182: this repository's Map rules workflow passes --draft and runs when a pull request is marked ready", async () => {
+  const workflow = await readFile(fileURLToPath(new URL("../.github/workflows/pr-check.yml", import.meta.url)), "utf8");
+  const parsed = parseYaml(workflow);
+  for (const type of ["edited", "ready_for_review", "converted_to_draft"]) assert.ok(parsed.on.pull_request.types.includes(type), `runs on ${type}`);
+  const step = parsed.jobs["pr-check"].steps.find(item => item.run?.includes("pr-check"));
+  assert.match(step.env.DRAFT, /github\.event\.pull_request\.draft/);
+  assert.match(step.run, /--draft "\$DRAFT" --body-file - /);
+});
+
 test("ESM-182: the template's placeholder comments and empty labels count as an empty Review section", async () => {
   const template = await templateBody();
   assert.match(template, /^## Review$/m, "the pull request template has a Review section");
@@ -278,12 +294,12 @@ test("ESM-182: story-map pr-check warns a ready pull request with no review, and
 
   const ready = run(["pr-check", "--format", "github", "--draft", "false", "--body-file", "-", "main"], empty);
   assert.equal(ready.status, 0, ready.stdout);
-  assert.match(ready.stdout, /^::warning file=product\/story-map\.yaml,line=1,col=1,title=missing-review::This pull request is ready for review, but the Review section in its description is empty\. .*#check-a-pull-request-in-ci$/m);
+  assert.match(ready.stdout, /^::warning file=product\/story-map\.yaml,title=missing-review::This pull request is ready for review, but the Review section in its description is empty\. .*#check-a-pull-request-in-ci$/m);
   assert.match(ready.stdout, /; checked the Review section\)$/m);
 
   const strict = run(["pr-check", "--strict", "--draft=false", "--body-file", "-", "main"], empty);
   assert.equal(strict.status, 1);
-  assert.match(strict.stderr, /^product\/story-map\.yaml:1:1: warning: This pull request is ready for review, .* \[missing-review\]$/m);
+  assert.match(strict.stderr, /^product\/story-map\.yaml: warning: This pull request is ready for review, .* \[missing-review\]$/m);
 
   const filled = run(["pr-check", "--strict", "--draft", "false", "--body-file", "-", "main"], "## Review\n\n- Target: `/code-review 7`\n- Level: medium\n");
   assert.equal(filled.status, 0, filled.stderr);
