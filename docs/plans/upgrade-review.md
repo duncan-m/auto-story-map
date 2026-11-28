@@ -1,6 +1,6 @@
 # Plan: review the set-up on install and upgrade
 
-Status: merged. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-173 are merged. Decisions A to E are made. None has an agreed estimate yet.
+Status: shipped. The work is ESM-166 to ESM-173 in the **0.7.8: Upgrade review** release of the map. ESM-166 to ESM-173 are shipped. Decisions A to E are made. None has an agreed estimate yet.
 
 `story-map init` sets up a host once and never changes anything after that. That keeps it safe to run again, but it means a host that upgrades the package keeps the set-up it first installed:
 

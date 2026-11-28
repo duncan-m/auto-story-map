@@ -131,14 +131,18 @@ The map lives in the product repo. The deployed product renders the file include
 
 In your host repo:
 
-1. Run `npm install auto-story-map@0.7.4`.
+1. Run `npm install auto-story-map@0.7.11`.
 2. Keep your existing `product/story-map.yaml`.
-3. Rebuild the app with the updated stylesheet.
+3. Run `npx --no-install story-map upgrade` to review your set-up against this version's, keeping your own edits.
+4. Rebuild the app with the updated stylesheet.
 
 What each version needs from you:
 
 | Version | What it adds | Upgrade steps |
 | --- | --- | --- |
+| 0.7.11 | Delivery plans, the upgrade review, map rules in CI, briefs from the command line, review and architecture checks, an Analytics tab and a Released lane | Host code that switches over validate's severities or compares its text needs updating, and the board scrolls with the page. Follow the [0.7.11 upgrade steps][upgrade-0711]. |
+| 0.7.6 | An Actions tab, triage and persona editing without the YAML, priorities, readiness, and an MCP server and skill for agents | None |
+| 0.7.5 | Agent briefs, evidence and claims for agents, story dependencies and tokens used | None |
 | 0.7.4 | CLI commands, personas, links to code and estimates | None |
 | 0.7.1 | JSON export for agents | None |
 | 0.7.0 | Visio and CSV export, tests linked to stories, and a status filter with several choices | Host code that reads `filter.status` must treat it as an array. Follow the [0.7.0 upgrade steps][upgrade]. |
@@ -266,6 +270,7 @@ The [GNU Affero General Public License, version 3][license], in particular its s
 [guide]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md
 [first-run]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#populate-the-first-map
 [upgrade]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-070
+[upgrade-0711]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#upgrade-to-0711
 [engineering-overview]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#link-an-engineering-overview
 [delivery-plan]: https://github.com/duncan-m/auto-story-map/blob/main/docs/example-builder-estimate-plan.md
 [host]: https://github.com/duncan-m/auto-story-map/blob/main/example/host.mjs

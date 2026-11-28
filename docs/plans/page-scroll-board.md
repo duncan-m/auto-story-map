@@ -1,6 +1,6 @@
 # Plan: scroll the board with the page, not in a box of its own
 
-Status: merged. The work is ESM-192 in the **0.7.11: Code review and architecture checks** release of the map. It has no agreed estimate yet.
+Status: shipped. The work is ESM-192 in the **0.7.11: Code review and architecture checks** release of the map. It has no agreed estimate yet.
 
 Since ESM-157, the grid scrolls in its own box, no taller than the window, so that its headings can stick. The box sits under the board's header, tabs and toolbar, so the page scrolls too. In a 768 px window the box starts 363 px down a page 1,081 px tall: the page scrolls by about 313 px and the grid by 14,300 px inside it. Readers get two vertical scroll bars, one inside the other, and the mouse wheel switches from one to the other part-way down.
 

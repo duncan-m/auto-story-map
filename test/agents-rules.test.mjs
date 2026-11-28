@@ -64,7 +64,7 @@ test("ESM-173: every rule in both AGENTS.md templates has a marker with a known 
   }
 });
 
-test("ESM-173: the package ships each earlier rule's hash, named by its opening words before 0.7.8", async () => {
+test("ESM-173: the package ships each earlier rule's hash, named by its opening words before 0.7.11", async () => {
   const known = await loadKnownSetupVersions();
   assert.ok(Object.keys(known.rules).length > 10);
   for (const [id, hashes] of Object.entries(known.rules)) {
@@ -154,7 +154,7 @@ test("ESM-173: a section from an earlier version updates unchanged rules and off
   assert.equal(part.change, "the story map section changed since 0.7.5: 1 rule to update, 1 new rule to add, 1 dropped rule to remove, 1 reworded rule to review, 1 rule of yours kept");
 });
 
-test("ESM-173: sections from before 0.7.8 are compared rule by rule through the known templates", async t => {
+test("ESM-173: sections from before 0.7.11 are compared rule by rule through the known templates", async t => {
   const template = await packaged("templates/AGENTS.md");
   const unmarked = text => text.replace(/^<!-- rule: [a-z0-9-]+ -->\n/gm, "");
   let older = replaceRule(template, "record-tokens", `${marker("record-tokens")}When you open the pull request that finishes a story, record the tokens, the old way.\n`);

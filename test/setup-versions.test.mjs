@@ -118,7 +118,7 @@ test("ESM-166: unmarked parts from earlier releases are recognised by their know
   assert.equal(old.unedited, true);
   assert.equal(old.from, "0.7.5");
 
-  // The plain marker from before 0.7.8 still opens the section.
+  // The plain marker from before 0.7.11 still opens the section.
   const host = readSetupFileVersion("agents", `# House rules\n\n${agents}`, known);
   assert.deepEqual([host.unedited, host.from, host.recordedVersion], [true, "0.7.5", undefined]);
 

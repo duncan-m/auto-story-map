@@ -1,6 +1,6 @@
 # Plan: Combine shipped stories into one Released lane
 
-Status: merged. The work is ESM-208 in the **0.7.7: Delivery plans and test tags** release of the map. It has no agreed estimate yet.
+Status: shipped. The work is ESM-208 in the **0.7.7: Delivery plans and test tags** release of the map. It has no agreed estimate yet.
 
 The board puts every story in the lane of the release it belongs to. Once a product has shipped a few releases, most of the board is old release lanes. Filtered to one persona, the stories that persona already has are spread across lane after lane, between the ones still to come. On this repository's map, the Product Manager Inheriting an Existing Project has 22 stories across 10 release lanes, and the 6 that have shipped are in 5 of them.
 

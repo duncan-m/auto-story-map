@@ -50,7 +50,7 @@ How Auto Story Map works in this repository
 To decide: whether to use delivery plans and the story ID policy.
 More: docs/story-map.md
 
-Parts of the set-up, from auto-story-map 0.7.8
+Parts of the set-up, from auto-story-map 0.7.11
 
 Part               State       Change
 AGENTS.md section  not added   add
@@ -78,19 +78,19 @@ In both modes, the product choices, [delivery plans](#choose-whether-to-use-deli
 
 | Part | Where the version is recorded |
 | --- | --- |
-| The story map section of `AGENTS.md` | The start marker: `<!-- auto-story-map:start 0.7.8 sha256:… -->` |
-| `docs/story-map.md` | A comment on the first line: `<!-- auto-story-map 0.7.8 sha256:… -->` |
-| `.github/workflows/story-map.yml` | A comment on the first line: `# auto-story-map 0.7.8 sha256:…` |
+| The story map section of `AGENTS.md` | The start marker: `<!-- auto-story-map:start 0.7.11 sha256:… -->` |
+| `docs/story-map.md` | A comment on the first line: `<!-- auto-story-map 0.7.11 sha256:… -->` |
+| `.github/workflows/story-map.yml` | A comment on the first line: `# auto-story-map 0.7.11 sha256:…` |
 
 The hash is `sha256:` and the SHA-256 of the part's body, with line endings evened out: for `AGENTS.md`, the text between the start marker's line and `<!-- auto-story-map:end -->`; for the guide and the workflow, everything after the first line. While the body still matches its hash, the part is as the package wrote it, so an upgrade can replace it safely. Once someone edits it, the hash no longer matches, and the edit is kept. Leave the markers in place, and edit the text around them as you like. Your own choices, such as `settings.plans`, stay in the map, not in these files.
 
-Parts set up before 0.7.8 have no version: the start marker is plain `<!-- auto-story-map:start -->`, and the guide and workflow have no first-line comment. They still work, and `init` and `validate` treat them as before. The package ships `templates/known-versions.json`, the hashes of every template from earlier releases, so a part whose body matches one counts as unedited, from that version. A part that matches none counts as edited, from an unknown version. The story map skill from `init --skill` and the starter map record no version.
+Parts set up before 0.7.11 have no version: the start marker is plain `<!-- auto-story-map:start -->`, and the guide and workflow have no first-line comment. They still work, and `init` and `validate` treat them as before. The package ships `templates/known-versions.json`, the hashes of every template from earlier releases, so a part whose body matches one counts as unedited, from that version. A part that matches none counts as edited, from an unknown version. The story map skill from `init --skill` and the starter map record no version.
 
 In code, `readSetupFileVersion(part, text, known)` from `auto-story-map` reads a part's file, where `part` is `agents`, `guide` or `workflow`, `text` is the whole file and `known` comes from `loadKnownSetupVersions()`. It returns the recorded version and hash, the hash of the body now, `knownVersions` for the earlier releases it matches, `unedited`, and `from`, the version it came from when that is known. It returns `undefined` for an `AGENTS.md` without a complete story map section.
 
 Once a part comes from an older version than the installed package, and the package has changed that part's template since, `story-map validate` prints one `setup-behind` notice, such as:
 
-> This repository's set-up is from 0.7.5, and the package is 0.7.8, which changes the story map section of AGENTS.md and docs/story-map.md. Run `story-map upgrade` to see what changes.
+> This repository's set-up is from 0.7.5, and the package is 0.7.11, which changes the story map section of AGENTS.md and docs/story-map.md. Run `story-map upgrade` to see what changes.
 
 It names every part that is behind, in one notice, and never fails validation, even with `--strict`. It stays quiet for a part that is current, missing, or unmarked and matching an earlier template that has not changed since. A part that matches no known template is from an unknown version, so it never triggers the notice either: run `story-map upgrade` to compare it. Your edits to a part do not matter here, only the version it came from. In code, `findSetupBehind(root)` returns the parts that are behind.
 
@@ -112,10 +112,10 @@ Kept as you have them: 1 part you edited, Guide. Run story-map upgrade --diff to
 To decide: whether to use delivery plans.
 More: docs/story-map.md#review-the-set-up-after-an-upgrade
 
-Set-up compared with auto-story-map 0.7.8
+Set-up compared with auto-story-map 0.7.11
 
 Part               State                            Change
-AGENTS.md section  outdated, from 0.7.5             replace with 0.7.8
+AGENTS.md section  outdated, from 0.7.5             replace with 0.7.11
 Guide              edited, from 0.7.5               none; your edits are kept
 CI workflow        edited and outdated, from 0.7.5  add the story-map diff step
 Story map skill    not added                        none; AGENTS.md has the full rules (see Install a story map skill)
@@ -192,7 +192,7 @@ pr-diff-summary       removed by you              none; you removed it
 
 The review recommends replacing only rules you never changed. A rule you reworded is kept, or marked `review` with this version's wording beside it, so each one can be offered on its own. Your own rules are always kept.
 
-Sections set up before 0.7.8 have no rule markers. Their rules are recognised by their text, from the hash of each rule in every earlier release, kept under `rules` in `templates/known-versions.json`. A rule you reworded is recognised by its opening words. One whose opening words changed too counts as your own rule, and the rule it replaced as removed, so neither is lost or doubled. When such a section is edited, so its version is unknown, the newest release that shipped all of its unedited rules stands in for it.
+Sections set up before 0.7.11 have no rule markers. Their rules are recognised by their text, from the hash of each rule in every earlier release, kept under `rules` in `templates/known-versions.json`. A rule you reworded is recognised by its opening words. One whose opening words changed too counts as your own rule, and the rule it replaced as removed, so neither is lost or doubled. When such a section is edited, so its version is unknown, the newest release that shipped all of its unedited rules stands in for it.
 
 In JSON, the `agents` part has `rules`, this version's rules first, in its order, then the rules only you have. Each has `id` (left out for a paragraph of your own), `title`, `state`, `recommendation`, `change`, and, where they apply, `matchedBy` (`marker`, `text` or `opening`), `text` (your wording), `template` (this version's) and `diff`. In code, `reviewAgentsRules()` does the comparison and `agentsRules` lists every rule ID.
 
@@ -237,7 +237,7 @@ More: docs/story-map.md#review-the-set-up-after-an-upgrade
 Changes:
 
 Part               Action   Change
-AGENTS.md section  replace  replace with 0.7.8
+AGENTS.md section  replace  replace with 0.7.11
 CI workflow        update   add the story-map diff step
 
 To ask the person, and record only their answer:
@@ -281,25 +281,17 @@ In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the sam
 
 ## Upgrade to 0.7.11
 
-These steps work from 0.7.8 or later, which has the [upgrade review](#review-the-set-up-after-an-upgrade). Existing maps stay valid.
+These steps work from 0.7.0 or later. 0.7.7 to 0.7.10 were not published on their own, so their changes are here too. Existing maps stay valid.
 
 1. From your host repo, run `npm install auto-story-map@0.7.11` and commit the dependency and lockfile changes together.
-2. Run `npx --no-install story-map upgrade`. It offers three new rules in the `AGENTS.md` section, `review-before-ready`, `architecture-decisions` and `write-story-summaries`, or `skill-review-before-ready` and `skill-architecture-decisions` when the rules are in the skill from `init --skill`, and the guide's new sections, [Review a change before it is ready](#review-a-change-before-it-is-ready), [Record architecture decisions](#record-architecture-decisions) and [Write a story summary](#write-a-story-summary). With `init --skill`, the new summary rule is in the skill. Simple mode adds the new rules even to an edited section, and keeps your own wording. In advanced mode, take the `agents` part.
-3. When the run adds the `architecture-decisions` rule and the map has no `settings.architectureDecisions`, it records `required`, so an open plan without a `## Architecture decisions` section gets a warning, which fails `validate --strict`. Before you merge the upgrade, add the section to each open plan, or keep the problems as notices with `npx --no-install story-map settings --architecture-decisions recommended --write`. `story-map diff` lists the setting under **Needs a person**, so a person agrees it. Hosts that keep the rule out see only [notices](#check-the-architecture-section-in-plans).
-4. `story-map plan` now scaffolds a `## Architecture decisions` section, with a hint for each question to replace.
-5. If your repository has a pull request template, add a **Review** section and an **Architecture** line to it, as in [Review a change before it is ready](#review-a-change-before-it-is-ready).
-6. Run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
-
-## Upgrade to 0.7.7
-
-These steps work from 0.7.0 or later. Existing maps stay valid.
-
-1. From your host repo, run `npm install auto-story-map@0.7.7` and commit the dependency and lockfile changes together.
-2. `story-map validate` prints a new `notice` until the map records whether to use delivery plans. Notices never fail validation, even with `--strict`. Ask the person the question in [Choose whether to use delivery plans](#choose-whether-to-use-delivery-plans), and record their answer with `npx --no-install story-map settings --plans <folder>` or `--plans off`. Do not copy the planning rules into `AGENTS.md` before they say yes.
-3. `StoryMapIssueSeverity` now includes `"notice"`, and `checkStoryMap` returns a `notices` count. Host code that switches over every severity, or reads `--format json`, needs a case for it.
-4. Every `validate` problem now names its [rule](#validation-rules) and links to the guide. Text output adds ` [rule]` to the end of each problem and a `help:` line under it, GitHub annotations are titled with the rule instead of “Story map”, and JSON issues gain `rule` and `help`. Many messages also say what to change. Scripts that compare validate's text or annotation titles exactly need updating, and should match on `rule` from `--format json` instead. `StoryMapIssue` has a required `rule`, so host code that builds its own issues must set one.
-5. `init` now says when the story map section of `AGENTS.md` differs from the package's. Compare yours with `node_modules/auto-story-map/templates/AGENTS.md`, which gains a **Plan the work** section, and take the paragraphs you want. Copy the new guide over `docs/story-map.md` too, so links to [Write a delivery plan](#write-a-delivery-plan) open in your copy. Until then, the notice links to the guide on GitHub.
-6. Run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
+2. Run `npx --no-install story-map upgrade`. This version adds the [upgrade review](#review-the-set-up-after-an-upgrade), which compares each part of your set-up with this version's, including parts set up before versions were recorded, and keeps your own edits. Ask the person whether they want [simple or advanced mode](#choose-simple-or-advanced-mode) first. It offers the new rules in the `AGENTS.md` section, among them **Plan the work**, `review-before-ready`, `architecture-decisions` and `write-story-summaries`, or `skill-review-before-ready` and `skill-architecture-decisions` when the rules are in the skill from `init --skill`, and the guide's new sections, such as [Write a delivery plan](#write-a-delivery-plan), [Review a change before it is ready](#review-a-change-before-it-is-ready), [Record architecture decisions](#record-architecture-decisions) and [Write a story summary](#write-a-story-summary). It also adds the `pr-check` step to the CI workflow. Simple mode adds the new rules even to an edited section, and keeps your own wording. In advanced mode, take the `agents`, `guide` and `workflow` parts.
+3. `story-map validate` prints a new `notice` until the map records whether to use delivery plans. Notices never fail validation, even with `--strict`. Ask the person the question in [Choose whether to use delivery plans](#choose-whether-to-use-delivery-plans), and record their answer with `npx --no-install story-map settings --plans <folder>` or `--plans off`. Do not add the planning rules before they say yes.
+4. When the run adds the `architecture-decisions` rule and the map has no `settings.architectureDecisions`, it records `required`, so an open plan without a `## Architecture decisions` section gets a warning, which fails `validate --strict`. Before you merge the upgrade, add the section to each open plan, or keep the problems as notices with `npx --no-install story-map settings --architecture-decisions recommended --write`. `story-map diff` lists the setting under **Needs a person**, so a person agrees it. Hosts that keep the rule out see only [notices](#check-the-architecture-section-in-plans). `story-map plan` now scaffolds the section, with a hint for each question to replace.
+5. `StoryMapIssueSeverity` now includes `"notice"`, and `checkStoryMap` returns a `notices` count. Host code that switches over every severity, or reads `--format json`, needs a case for it.
+6. Every `validate` problem now names its [rule](#validation-rules) and links to the guide. Text output adds ` [rule]` to the end of each problem and a `help:` line under it, GitHub annotations are titled with the rule instead of “Story map”, and JSON issues gain `rule` and `help`. Many messages also say what to change. Scripts that compare validate's text or annotation titles exactly need updating, and should match on `rule` from `--format json` instead. `StoryMapIssue` has a required `rule`, so host code that builds its own issues must set one.
+7. The board now scrolls with the page instead of in a box of its own, and `--esm-board-height` no longer has a default. If your page wraps the board in an element with `overflow: auto` or `hidden`, remove it, or set `--esm-board-height` to keep the grid in a box, as [Integrate with a product](#integrate-with-a-product) describes.
+8. If your repository has a pull request template, add a **Review** section and an **Architecture** line to it, as in [Review a change before it is ready](#review-a-change-before-it-is-ready).
+9. Run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
 
 ## Upgrade to 0.7.0
 
