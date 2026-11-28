@@ -33,7 +33,7 @@ From a check against `main` at `575aa60`:
 | Coverage | Not measured in CI. A local run gives 94.29% of lines, 90.73% of branches and 96.08% of functions, with 536 of 536 tests passing. Weakest: `preview.js` 53%, `board.js` 57%, `mcp.js` 70%. The report includes `example/host.mjs` and has no source maps, so it points at `dist/` | No floor, so coverage can fall unnoticed, and the report is hard to act on | ESM-177 |
 | Repeated code | `escapeRegExp` is copied in 5 places | A fix to one copy misses the others | ESM-187 |
 | Architecture decisions | None of the 5 open plans has an architecture section | Where work runs, who consumes it and how to undo it are not recorded | ESM-183, ESM-184 |
-| When to refactor | `src/react.tsx` is 2,967 lines and was changed by 34 stories in the last 300 commits | No rule for when size or churn should prompt a look | ESM-185 |
+| When to refactor | `src/react.tsx` is 2,967 lines and was changed by 34 stories in the last 300 commits (21 when [assessed](#assessment-of-srcreacttsx) at `213fe51`) | No rule for when size or churn should prompt a look | ESM-185 |
 | Hosts | The host templates have no review or architecture rules. They have the rule markers, the [upgrade review](upgrade-review.md) and `known-versions.json` that would carry them | Hosts get nothing from this until it is offered | ESM-186 |
 
 ## 1. Lint the code with Biome in CI
@@ -112,6 +112,21 @@ The guide names four points to review the architecture:
 
 Size and complexity prompt a look, not a refactor. A refactor story needs evidence of its cost from Git and review history, such as how many stories changed a file and how often reviews found problems there. It names that cost, and says how the team will tell that it improved. The first case to assess is `src/react.tsx`: 2,967 lines, changed by 34 stories in the last 300 commits.
 
+The guide's section is [When to review the architecture](../story-map.md#when-to-review-the-architecture), and the overview's is [When to review the architecture here](../ENGINEERING-OVERVIEW.md#when-to-review-the-architecture-here).
+
+### Assessment of `src/react.tsx`
+
+Checked against `main` at `213fe51`. The last 300 commits run from 23 to 28 November 2026.
+
+- **Size and complexity.** 2,967 lines, the largest file in `src/`. The next is `src/board.ts` at 1,167. On #197's Biome configuration it has 8 cognitive-complexity warnings, second to `src/board.ts` with 12.
+- **Stories that changed it.** 21 distinct story IDs in the messages of the 32 commits that touched it, and 21 of the 77 pull requests merged in the window. The 34 above and in the table counted differently and could not be reproduced. `src/index.ts` (35 stories) and `src/cli.ts` (34) changed for more stories, as export and command lists do. The stories are unrelated: briefs and the Share menu, personas, the Actions tab, tokens, dependencies, priorities, sticky headings, test links and validation rules.
+- **Conflicting edits.** Five merge commits in the window touch it. Re-running each with `git merge-tree` shows one conflict in it: `28756bd`, ESM-128's Actions tab against ESM-112's preview saving. The others conflicted only in the map or the changelog.
+- **Regressions.** None found. No revert names it. The nearest case is `9b6646c`, which changed it and `src/board.ts` and fixed two bugs in ESM-147's persona editor the day it was written. Those were defects in that story's own new feature, not a break in behaviour another story had delivered.
+- **Review and CodeQL findings.** No CodeQL alert has been raised in it on the default branch, though the quality queries only started with ESM-178. ESM-178 removed one unused import there. One ReDoS fix, ESM-902, trimmed job outcomes in linear time on 22 November, before the window. No pull request review comment names it.
+- **Rules that work around it.** None. No `AGENTS.md` rule or lint exception exists because of it.
+
+**Result: no refactor story.** The size and churn signals are there, but the evidence of cost is one conflict in five days and no repeated finding. Look again at the 0.8 release planning, or sooner if a second conflict or a repeated review finding lands in it within one release.
+
 ## 9. Offer the review step and architecture decisions to hosts
 
 Built after the pilot, and after item 6 has been used on a real change that affects hosts.
@@ -179,6 +194,7 @@ Ten PRs run the review step from item 5 before ready. Each row records the revie
 | 6 | #195 | ESM-182: Warn when a ready PR has no review recorded | Yes: `/code-review 195`, medium, at `ecccf7f` | 3 nits: the warning pinned to line 1 of the map, placeholder values such as `pending` counting as a review, and no test of the repository's workflow | 1 nit: a `### Review` heading anywhere, or in a code block, counts as the section, as for Tokens used, which shares the reader | | Not recorded separately | ready |
 | 7 | #198 | ESM-177: Measure test coverage with a floor | Yes: `/code-review 198`, medium, at `7d85752`, and again at `446f7fb` after the timing fix and merging main | 6, all fixed. At `7d85752`: the coverage summary crashed on c8's "Unknown" percentage and didn't say it reads the last report (2 nits), and the linear-time tests' limits were unreliable under coverage, fixed with `assertFasterThan`, which skips only the limit while V8 collects coverage. At `446f7fb`: this row was out of date, an assertion only restated the helper, and the helper runs as an empty test file (3 nits) | None | OSV flagged c8's glob and minimatch after the push, fixed in the PR with overrides. Under load, one coverage run failed a 3,000 ms limit, which led to the timing fix. After it was ready, its `npm pack` test raced the other test files on Node 20 by running `prepare`, which rebuilt `dist/` mid-run, so ESM-741's CLI tests failed twice. Fixed before merging by checking the packed files in `scripts/smoke-package.sh` instead | Review time and tokens not recorded separately. The whole PR took 15,773,230 tokens ($5.43) | ready |
 | 8 | #197 | ESM-176: Lint the code with Biome in CI | Yes: `/code-review 197`, medium, at `994c354` | 1 nit: the test that every rule turned off has a reason could borrow a neighbouring rule's comment (test coverage) | None | | Not recorded separately | in progress |
+| 9 | #201 | ESM-185: Say when to review the architecture and refactor | Yes: `/code-review 201`, medium, at `5fffb2f` | 5: a `git log -300 -- <file>` command that counted 300 commits of the file, not the last 300; a CodeQL claim wider than the default branch; two story counts for one file; "rules that work around the tool"; an example file name close to real ones | 1 nit: the Planning point names a plan section hosts don't have until ESM-186 | | Review time and tokens not recorded separately. The whole PR took 5,670,689 tokens ($2.34) | draft |
 | 10 | #202 | ESM-184: Check the architecture section in plans | Yes: `/code-review 202`, medium, at `abb9fdb`, with the fixes in `a8387e2` | 5: a `None:` reason wrapped onto the next line counted as missing (important); hints quoted in fenced code, and `None:` in HTML comments, reported; a case-sensitive `None:`; a CHANGELOG line that overstated the plans-off case. The fixes also blank comments in linear time | 1 nit: an explicit `recommended` shows under Needs a person but not under Settings, as `storyIds` does for its default | | Not recorded separately | draft |
 
 From row 2 on, a PR records its review in the template's **Review** section, and its time and tokens when the tool reports them. "Defects found later" counts problems in the PR's own change found after it was marked ready: by CodeQL, CI, a person or a later story.
