@@ -23,8 +23,14 @@ test("ESM-176: every rule turned off in biome.jsonc has a comment giving its rea
   const off = lines.flatMap((line, index) => (/"off"/.test(line) ? [index] : []));
   assert.ok(off.length > 0);
   for (const index of off) {
-    // The reason sits on the line above the rule, or above the override that holds it.
-    const above = lines.slice(Math.max(0, index - 3), index).reverse().find(line => line.trim().startsWith("//"));
+    // The reason sits on the line just above the rule, or, for a rule inside an override,
+    // just above the override's "includes" line, with no other rule in between.
+    let at = index - 1;
+    if (!lines[at].trim().startsWith("//")) {
+      at = lines.slice(0, index).findLastIndex(line => /"includes"/.test(line)) - 1;
+      if (lines.slice(at + 2, index).some(line => /":\s*"(off|warn|error|on|info)"/.test(line))) at = -1;
+    }
+    const above = lines[at];
     assert.ok(above && above.replace(/^\s*\/\/\s*/, "").length >= 20, `line ${index + 1} turns a rule off without a reason`);
   }
 });
