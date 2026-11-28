@@ -8,6 +8,11 @@ trap 'rm -rf -- "$consumer_dir"' EXIT
 
 cd "$repo_dir"
 archive="$(npm pack --silent --pack-destination "$consumer_dir")"
+# The build writes source maps for coverage (ESM-177), but the package leaves them out.
+if tar -tzf "$consumer_dir/$archive" | grep -q '\.map$'; then
+  echo "The package includes source maps; package.json files should exclude dist/**/*.map." >&2
+  exit 1
+fi
 
 cd "$consumer_dir"
 npm init --yes >/dev/null
