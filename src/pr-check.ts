@@ -1,5 +1,6 @@
 import { needsPersonLabels, type StoryMapDiff } from "./diff.js";
 import type { NeedsPersonChange } from "./needs-person.js";
+import { escapeRegExp } from "./references.js";
 import type { StoryMapRuleId } from "./rules.js";
 import type { StoryMapDocument, StoryMapIssue } from "./schema.js";
 
@@ -64,7 +65,6 @@ export interface PrCheckResult {
   issues: PrCheckIssue[];
 }
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const agentPattern = new RegExp(`\\b(${knownAgentNames.map(escapeRegExp).join("|")})\\b`, "i");
 
 /**
