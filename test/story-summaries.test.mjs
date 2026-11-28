@@ -50,6 +50,8 @@ test("ESM-191: the story panel keeps a summary's line breaks", async () => {
   const css = await read("styles.css");
   assert.match(css, /\.esm-detail-summary-line \{ display: block; \}/);
   assert.match(css, /\.esm-detail-summary-line \+ \.esm-detail-summary-line \{ margin-top: 6px; \}/);
+  // More space between the summary and the For, Jobs and other rows under it.
+  assert.match(css, /\.esm-detail-summary \+ \.esm-detail-context \{ margin-top: 24px; \}/);
   const map = parseStoryMap([
     "version: 1",
     "id: quotes",

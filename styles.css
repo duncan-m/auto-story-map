@@ -535,6 +535,7 @@
 .esm-detail-summary { margin: 14px 0 0; font-size: .9375rem; line-height: 1.5; overflow-wrap: anywhere; }
 .esm-detail-summary-line { display: block; }
 .esm-detail-summary-line + .esm-detail-summary-line { margin-top: 6px; }
+.esm-detail-summary + .esm-detail-context { margin-top: 24px; }
 .esm-detail-context { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 16px 0 0; font-size: .875rem; }
 .esm-detail-context dt { color: var(--esm-muted); font-weight: 650; }
 .esm-detail-context dd { margin: 0; overflow-wrap: anywhere; }
