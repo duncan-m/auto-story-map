@@ -461,7 +461,7 @@ for (const release of releases) {
 }
 // One formula-looking title, to check it is not run in a spreadsheet.
 csvRows.push([activities[0].title, releases[0].title, "TEST-1", "=1+1 should show as text"]);
-const csv = "﻿" + csvRows.map(row => row.map(csvField).join(",")).join("\r\n") + "\r\n";
+const csv = `﻿${csvRows.map(row => row.map(csvField).join(",")).join("\r\n")}\r\n`;
 
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, "story-map-test.vsdx"), zipStored(parts));

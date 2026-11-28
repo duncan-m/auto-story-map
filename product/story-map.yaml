@@ -2594,7 +2594,9 @@ stories:
     title: Lint the code with Biome in CI
     activity: review
     release: v0-7-11
-    status: planned
+    status: merged
+    tokens: 3771288
+    estimatedCostUsd: 1.75
     jobs:
       - plan-and-build
     personas:
@@ -2606,7 +2608,9 @@ stories:
     title: Measure test coverage with a floor
     activity: review
     release: v0-7-11
-    status: planned
+    status: merged
+    tokens: 15773230
+    estimatedCostUsd: 5.43
     jobs:
       - plan-and-build
     personas:

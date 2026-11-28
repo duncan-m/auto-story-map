@@ -83,7 +83,10 @@ export function jobStepCounter(map: { stories: readonly { activity: string; stat
     if (!isActiveStatus(story.status)) continue;
     for (const job of new Set(story.jobs ?? [])) {
       let byActivity = counts.get(job);
-      if (!byActivity) counts.set(job, byActivity = new Map());
+      if (!byActivity) {
+        byActivity = new Map();
+        counts.set(job, byActivity);
+      }
       byActivity.set(story.activity, (byActivity.get(story.activity) ?? 0) + 1);
     }
   }

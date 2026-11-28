@@ -214,7 +214,8 @@ export function compareVersions(a: string, b: string) {
 export function knownSetupVersionsFrom(templates: Iterable<ReleasedSetupTemplate>): KnownSetupVersions {
   const known: KnownSetupVersions & { rules: KnownAgentsRules } = { agents: {}, guide: {}, workflow: {}, rules: {} };
   const add = (hashes: Record<string, string[]>, hash: string, version: string) => {
-    const versions = (hashes[hash] ??= []);
+    hashes[hash] ??= [];
+    const versions = hashes[hash];
     if (!versions.includes(version)) versions.push(version);
   };
   for (const { part, version, text, form } of templates) {
@@ -222,7 +223,10 @@ export function knownSetupVersionsFrom(templates: Iterable<ReleasedSetupTemplate
     if (body === undefined) continue;
     add(known[part], setupBodyHash(body), version);
     if (part !== "agents") continue;
-    for (const [id, rule] of templateRules(body, form ?? agentsRuleForm(body)).rules) add((known.rules[id] ??= {}), agentsRuleHash(rule), version);
+    for (const [id, rule] of templateRules(body, form ?? agentsRuleForm(body)).rules) {
+      known.rules[id] ??= {};
+      add(known.rules[id], agentsRuleHash(rule), version);
+    }
   }
   const sorted = (hashes: Record<string, string[]>) =>
     Object.fromEntries(

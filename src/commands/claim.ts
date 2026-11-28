@@ -76,7 +76,7 @@ const storeOf = (options: StoreOptions) => ({ root: process.cwd(), ...(options.s
 export const claim = defineCommand({
   parse(rest: string[]): ClaimOptions | null {
     const parsed = parseOptions(rest, ["--map", "--agent", "--ttl", "--branch"], ["--renew", "--take-over"]);
-    if (!parsed || parsed.positional.length !== 1) return null;
+    if (parsed?.positional.length !== 1) return null;
     if (parsed.set.has("--renew") && parsed.set.has("--take-over")) throw new ArgumentError("pass --renew or --take-over, not both");
     const { values, set, positional, store } = parsed;
     return {
@@ -148,7 +148,7 @@ export const claims = defineCommand({
 export const unclaim = defineCommand({
   parse(rest: string[]): UnclaimOptions | null {
     const parsed = parseOptions(rest, ["--agent"]);
-    if (!parsed || parsed.positional.length !== 1) return null;
+    if (parsed?.positional.length !== 1) return null;
     return { ...parsed.store, id: parsed.positional[0], agent: parsed.values["--agent"] };
   },
 

@@ -41,6 +41,7 @@ import {
 import { StoryMapBoard } from "auto-story-map/react";
 import { escapeRegExp } from "../dist/references.js";
 import { makeStoryMapResponse } from "../example/host.mjs";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 // The builder estimates sample map: test data with stable IDs, separate from this product’s own map.
 const sample = await readFile(new URL("./fixtures/builder-estimates.yaml", import.meta.url), "utf8");
@@ -60,7 +61,7 @@ test("applies internal and planned defaults to new content", () => {
 });
 
 test("rejects duplicate YAML keys, duplicate IDs and dangling references", () => {
-  assert.throws(() => parseStoryMap(sample + "version: 1\n"), /unique/i);
+  assert.throws(() => parseStoryMap(`${sample}version: 1\n`), /unique/i);
   const invalid = structuredClone(map);
   invalid.stories.push({ ...invalid.stories[0], release: "missing" });
   assert.throws(() => parseStoryMap(stringify(invalid)), /Duplicate ID[\s\S]*Unknown release/);
@@ -188,7 +189,7 @@ test("renders one Markdown overview link and lists the other sources", async () 
 
   const html = await makeStoryMapResponse("/story-map", document, engineer, { sourceBaseUrl }).text();
   const overviewLinks = [...html.matchAll(/<a class="esm-overview-link" href="([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(overviewLinks, [sourceBaseUrl + "docs/example-builder-estimate-plan.md#builder-workflow"]);
+  assert.deepEqual(overviewLinks, [`${sourceBaseUrl}docs/example-builder-estimate-plan.md#builder-workflow`]);
   const panel = panelFor(html, story.title);
   assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}source/lib/ap/controls.ts" target="_blank" rel="noopener noreferrer"><code>source/lib/ap/controls.ts</code><svg[^>]*esm-external[\\s\\S]*?<span class="esm-visually-hidden"> \\(opens in a new tab\\)</span></a>`));
   assert.match(html, /<a class="esm-overview-link" href="[^"]+" aria-label="Engineering overview for [^"]+ \(opens in a new tab\)" target="_blank" rel="noopener noreferrer">/);
@@ -355,7 +356,7 @@ test("many unknown fields are located in linear time", () => {
   const unknown = error.issues.filter(issue => issue.message === "Unknown field. Remove it, or correct its spelling.");
   assert.equal(unknown.length, count);
   assert.equal(unknown.at(-1).line, count + 1);
-  assert.ok(performance.now() - started < 3000);
+  assertFasterThan(started, 3000);
 });
 
 test("unknown fields below many unknown top-level fields are located in linear time", () => {
@@ -375,7 +376,7 @@ test("unknown fields below many unknown top-level fields are located in linear t
   assert.equal(nested.length, count);
   assert.deepEqual(nested.at(-1).path, ["stories", 0, `field${count - 1}`]);
   assert.equal(nested.at(-1).line, 2 * count + 3);
-  assert.ok(performance.now() - started < 3000);
+  assertFasterThan(started, 3000);
 });
 
 test("the CLI prints file positions and GitHub annotations", async t => {
@@ -743,7 +744,7 @@ test("Markdown anchors stay linear for headings with unclosed markup", async () 
   const started = performance.now();
   for (const text of ["<", "[", "[a](", "![a]", "`"]) markdownAnchors(`# ${text.repeat(size / text.length)}`);
   markdownAnchors(`# a${" ".repeat(size)}x\n${"<a ".repeat(size / 3)}`);
-  assert.ok(performance.now() - started < 1000, "anchor extraction took too long");
+  assertFasterThan(started, 1000, "anchor extraction took too long");
 });
 
 test("source checks skip heading anchors in oversized Markdown files", async t => {
@@ -1131,7 +1132,10 @@ test("ESM-120: history records the pull request behind each change", async t => 
   const story = (document, id) => document.stories.find(story => story.id === id);
   const branchEdit = async (branch, edit, author, date) => {
     git(["checkout", "-q", "-b", branch]);
-    await writeMap(document => (edit(document), document));
+    await writeMap(document => {
+      edit(document);
+      return document;
+    });
     git(["commit", "-q", "-am", `Edit on ${branch}`], { author, date });
     git(["checkout", "-q", "main"]);
   };
@@ -1143,7 +1147,10 @@ test("ESM-120: history records the pull request behind each change", async t => 
   await branchEdit("approvals", document => { story(document, "FINANCE-201").status = "in-progress"; }, "Sam", "2026-11-19T11:00:00Z");
   git(["merge", "-q", "--no-ff", "-m", "Merge branch 'approvals' into 'main'\n\nStart approvals\n\nSee merge request acme/product!12", "approvals"], { author: "Carol", date: "2026-11-19T12:00:00Z" });
   // A direct commit that mentions a number mid-subject.
-  await writeMap(document => (story(document, "BUILDER-103").notes = "Check totals.", document));
+  await writeMap(document => {
+    story(document, "BUILDER-103").notes = "Check totals.";
+    return document;
+  });
   git(["commit", "-q", "-am", "Note (#99) for checks"], { author: "Dan", date: "2026-11-19T13:00:00Z" });
 
   const history = await build();
@@ -1434,7 +1441,7 @@ test("ESM-122: board.js opens the permalinked panel, expands its lane and copies
     dataset: { esmOpen: "p-3" },
     contains: () => true,
     querySelector: selector => selector.startsWith("[popovertarget=") ? (selector.includes('"p-3"') ? opener : null) : selector === "[data-esm-copy-status]" ? status : null,
-    addEventListener: (type, handler) => { click = handler; },
+    addEventListener: (_type, handler) => { click = handler; },
   };
   const globals = {
     Element: FakeElement,
@@ -2042,7 +2049,7 @@ test("getStoryMapPage projects and filters in one call", () => {
     const view = getStoryMapForViewer(map, viewer, { now, ...options });
     return view && filterStoryMapView(view, readStoryMapFilters(new URLSearchParams(query)), { now });
   };
-  const queries = ["", "q=estimate", "status=all", "status=shipped&q=draft", "status=stalled", "changed=7d", "q=" + "x".repeat(300)];
+  const queries = ["", "q=estimate", "status=all", "status=shipped&q=draft", "status=stalled", "changed=7d", `q=${"x".repeat(300)}`];
   for (const viewer of [engineer, superAdmin, regular, null]) {
     for (const query of queries) {
       assert.deepEqual(getStoryMapPage(map, viewer, { now, searchParams: new URLSearchParams(query) }), separately(viewer, query), `${JSON.stringify(viewer)} ${query}`);
@@ -2534,7 +2541,7 @@ test("board.js remembers collapsed release lanes", async t => {
       links,
       get listeners() { return listeners; },
       querySelectorAll: selector => selector.includes("data-esm-export") ? links : inputs,
-      addEventListener: (type, handler) => { listeners++; listener = handler; },
+      addEventListener: (_type, handler) => { listeners++; listener = handler; },
       toggle(index) { inputs[index].checked = !inputs[index].checked; listener({ target: inputs[index] }); },
     };
   }
@@ -2616,7 +2623,7 @@ test("groups story history newest first in linear time, keeping equal timestamps
   const many = Array.from({ length: 100_000 }, (_, i) => event("planned", new Date(Date.UTC(2026, 0, 1) + i * 1000).toISOString(), "b000000"));
   const started = performance.now();
   const view = getStoryMapForViewer(map, engineer, { history: { ...history, events: many } });
-  assert.ok(performance.now() - started < 2000);
+  assertFasterThan(started, 2000);
   assert.equal(view.stories.find(s => s.id === "BUILDER-101").history.length, 100_000);
 });
 
@@ -2840,9 +2847,15 @@ function parseCsv(text) {
       else if (char === '"') quoted = false;
       else field += char;
     } else if (char === '"') quoted = true;
-    else if (char === ",") rows.at(-1).push(field), (field = "");
-    else if (char === "\r" && text[i + 1] === "\n") rows.at(-1).push(field), (field = ""), rows.push([]), i++;
-    else field += char;
+    else if (char === ",") {
+      rows.at(-1).push(field);
+      field = "";
+    } else if (char === "\r" && text[i + 1] === "\n") {
+      rows.at(-1).push(field);
+      field = "";
+      rows.push([]);
+      i++;
+    } else field += char;
   }
   assert.equal(field, "", "the file ends with CRLF");
   assert.deepEqual(rows.pop(), [], "the file ends with CRLF");
@@ -3161,7 +3174,7 @@ test("ESM-414: board.js applies the status filter when its menu closes with a ch
     HTMLInputElement: class {},
     HTMLSelectElement: class {},
     sessionStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
-    document: { readyState: "complete", querySelectorAll: () => [], addEventListener: (type, handler) => documentListeners.push(handler) },
+    document: { readyState: "complete", querySelectorAll: () => [], addEventListener: (_type, handler) => documentListeners.push(handler) },
   };
   const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
@@ -3295,6 +3308,7 @@ test("ESM-801: finds tests tagged with story IDs without running them", async t 
     ["test/calls.js", 29, "test", "BUILDER-101 BUILDER-102", "BUILDER-101 and BUILDER-102 together"],
     ["test/calls.js", 30, "test", "BUILDER-101", "BUILDER-101: twice, BUILDER-101"],
     // A template literal keeps its ${…} as written, and IDs are matched on its literal text only.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: this is the literal text the scanner should report.
     ["test/calls.js", 31, "test", "BUILDER-101", 'BUILDER-101: ${"template"} part'],
     ["test/calls.js", 33, "test", "BUILDER-999", "Tagged at the end (BUILDER-999)"],
   ]);
@@ -3315,7 +3329,7 @@ test("ESM-801: finds tests tagged with story IDs without running them", async t 
   ]);
 
   // Oversized files are reported and skipped.
-  await writeFile(join(root, "test/big.test.js"), 'test("BUILDER-101: big", () => {});\n' + " ".repeat(5 * 1024 * 1024));
+  await writeFile(join(root, "test/big.test.js"), `test("BUILDER-101: big", () => {});\n${" ".repeat(5 * 1024 * 1024)}`);
   const big = await findStoryTests(loaded, root, { paths: ["test/big.test.js"] });
   assert.deepEqual(big.tests, []);
   assert.deepEqual(big.issues.map(issue => [issue.severity, issue.file, issue.message]), [["warning", "test/big.test.js", "Larger than 5 MB, so its tests were not read. Split the file to have its tests counted."]]);
@@ -3328,7 +3342,7 @@ test("ESM-801: finds tests tagged with story IDs without running them", async t 
   const hostile = 'test.each(' .repeat(20_000) + "test(`".repeat(20_000) + '/"'.repeat(20_000);
   const started = performance.now();
   scanTestCalls(hostile);
-  assert.ok(performance.now() - started < 2000, "scans hostile text quickly");
+  assertFasterThan(started, 2000, "scans hostile text quickly");
 });
 
 test("ESM-801: story-map tests writes an index the board can parse", async t => {
@@ -3582,7 +3596,7 @@ test("ESM-119: a tagged describe block links every test inside it", async t => {
   await writeFile(join(root, "deep.test.js"), deep);
   const started = performance.now();
   const nested = await findStoryTests(loaded, root, { paths: ["deep.test.js"] });
-  assert.ok(performance.now() - started < 2000, "reads deep nesting quickly");
+  assertFasterThan(started, 2000, "reads deep nesting quickly");
   assert.equal(nested.tests.at(-1).inheritedIds.length, 20);
 });
 
@@ -3887,7 +3901,7 @@ test("ESM-157: board.js shrinks the activity row once its descriptions scroll pa
     setAttribute: name => attributes.add(name),
     removeAttribute: name => attributes.delete(name),
     toggleAttribute: (name, on) => on ? attributes.add(name) : attributes.delete(name),
-    addEventListener: (type, handler) => listeners.push(handler),
+    addEventListener: (_type, handler) => listeners.push(handler),
   };
   const scroll = top => { box.scrollTop = top; listeners[0](); return attributes.has("data-esm-stuck"); };
   const { enhanceStoryMapHeadings } = await import("auto-story-map/board.js");
