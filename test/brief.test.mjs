@@ -18,6 +18,7 @@ import {
   storyMapBriefDetails,
   storyMapToJson,
 } from "auto-story-map";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const engineer = { roles: ["engineer"] };
 const commit = "a".repeat(40);
@@ -266,7 +267,7 @@ test("ESM-123: names branches from the ID and the first words of the title", () 
   // Long runs of hyphens stay fast, because names are split rather than trimmed with a backtracking regex.
   const started = performance.now();
   assert.equal(storyMapBriefBranch(`${"-".repeat(100_000)}x`, `${"-".repeat(1_000_000)}zebra`), "feat/x-zebra");
-  assert.ok(performance.now() - started < 1000);
+  assertFasterThan(started, 1000);
 });
 
 test("ESM-124: the view writes a brief for each open story and release only when asked", () => {
@@ -342,7 +343,7 @@ test("ESM-124: board.js shows Copy brief, copies the brief and says what it copi
     contains: node => node === pre,
     querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
     querySelectorAll: selector => selector === "button[data-esm-copy-brief]" ? [button] : [],
-    addEventListener: (type, handler) => { click = handler; },
+    addEventListener: (_type, handler) => { click = handler; },
   };
   let clipboard = { writeText: async text => { written.push(text); } };
   const globals = {
@@ -520,7 +521,7 @@ test("ESM-125: board.js shows the long-brief links and copies the brief as the c
     contains: node => node === pre,
     querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
     querySelectorAll: selector => selector === "a[data-esm-brief-copy]" ? [link] : [],
-    addEventListener: (type, handler) => { click = handler; },
+    addEventListener: (_type, handler) => { click = handler; },
   };
   fakeGlobals(t, {
     Element: FakeElement,
@@ -561,7 +562,7 @@ test("ESM-125: the Share menu closes after a choice and its button says Copied w
   const board = {
     dataset: {},
     querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
-    addEventListener: (type, handler) => { click = handler; },
+    addEventListener: (_type, handler) => { click = handler; },
   };
   const written = [];
   fakeGlobals(t, {

@@ -7,6 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { changelogVersions, suggestedReleaseId, surveyRepository, surveyTodosMaxItems, surveyTextMaxLength, tagVersion } from "auto-story-map";
 import { markdownHeadings } from "../dist/references.js";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 
@@ -244,7 +245,7 @@ test("ESM-118: reads version headings, tag versions and release IDs", () => {
   const start = performance.now();
   tagVersion(`9.9-${"-0.0-".repeat(20000)}!`);
   assert.equal(suggestedReleaseId(`a${"-".repeat(50000)}!`), "a");
-  assert.ok(performance.now() - start < 1000, "long runs of hyphens and versions stay quick");
+  assertFasterThan(start, 1000, "long runs of hyphens and versions stay quick");
   assert.deepEqual(markdownHeadings("Title\n=====\n\n#### Deep `code` [link](x)\n").map(({ level, text, anchor, line }) => [level, text, anchor, line]), [
     [1, "Title", "title", 1],
     [4, "Deep code link", "deep-code-link", 4],
