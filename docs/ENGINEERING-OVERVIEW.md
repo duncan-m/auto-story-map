@@ -531,11 +531,15 @@ Tests that need Git create temporary repositories and clean them up. They need `
 1. `npm ci --ignore-scripts`, then `npm run build`, so no dependency's install script runs in CI
 2. Validate the product map with `--format github --check-sources --plans docs --tests test`
 3. On PRs, once per run, append `story-map diff origin/<base>` to the job summary. The checkout uses `fetch-depth: 0` for this.
-4. `npm test`
+4. `npm test`, or `npm run coverage` in the Node 26 / React 19 cell, which then appends the coverage table to the job summary
 5. Fail if `story-map.schema.json` differs from the freshly built schema
 6. `scripts/smoke-package.sh`: pack the package, install it with the matrix React version into an empty project, run `validate` and `init`, render the board, check popover wiring, and resolve the stylesheet and schema through the package exports
 
 The smoke test is the only check of what actually ships. A file that works in the repository but is missing from `files` in `package.json` fails here.
+
+`npm run coverage` measures test coverage with [c8](https://github.com/bcoe/c8) (ESM-177), using the settings in `.c8rc.json`. It counts the production modules in `src/` only, excluding the generated `src/version.ts`, and reports them by their TypeScript lines through the source maps `tsc` writes next to `dist/`. The source maps stay out of the package. `all` adds modules no test imports at 0%, so a new untested module lowers the total rather than vanishing from it. Node's own `--experimental-test-coverage` is not used, because on Node 26 it fails to merge the source-mapped coverage of the CLI processes the tests start.
+
+The run fails if line, branch or function coverage falls below its floor in `.c8rc.json`. The floors are a ratchet: they only go up. A PR that raises coverage may raise a floor to the new total, rounded down to a whole number, and no PR lowers one. If a change can't keep coverage above the floor, add tests rather than moving it.
 
 `codeql.yml` runs CodeQL on every PR, on pushes to `main` and weekly. It runs the `security-and-quality` suite, so as well as security problems it reports code-quality ones such as unused variables, useless assignments and comparisons that are always true (ESM-178). Fix an alert in the PR that raises it when the fix is small. A person dismisses the rest in GitHub's Security tab with a reason: false positive, won't fix or used in tests. CodeQL filters a PR's results to the lines it changes, so to see every alert on a branch, run the workflow on it with **Run workflow**. To read a file under a size limit, use `readTextFileWithin` from `src/read-text.ts`, which checks the size on the open file rather than with a separate `stat`.
 

@@ -1,0 +1,14 @@
+{
+  "all": true,
+  "src": ["src"],
+  "include": ["src/**"],
+  "exclude": ["src/version.ts"],
+  "extension": [".ts", ".tsx"],
+  "excludeAfterRemap": true,
+  "reporter": ["text", "json-summary"],
+  "reportsDirectory": "coverage",
+  "checkCoverage": true,
+  "lines": 94,
+  "branches": 89,
+  "functions": 96
+}
