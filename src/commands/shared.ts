@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { parseStoryMapHistory, type StoryMapHistory } from "../history.js";
+import { storyMapRuleLinker } from "../check.js";
 import type { ReferenceIssue } from "../references.js";
 import { describeIssueTarget, loadStoryMap, StoryMapValidationError, type LoadedStoryMap } from "../schema.js";
 import { parseStoryMapTests, type StoryMapTests } from "../tests-index.js";
@@ -59,19 +60,24 @@ export function escapeLines(value: string): string[] {
 export type ReportFormat = "text" | "github";
 
 /** Prints one issue: `file:line:column: problem` on stderr, or a GitHub Actions annotation on stdout. */
-export function report(mapPath: string, issue: ReferenceIssue, format: ReportFormat = "text") {
+/**
+ * Prints one issue. Text gives the rule in brackets after the message and the guide link on the
+ * next line. GitHub annotations are titled with the rule, and the message ends with the link.
+ */
+export function report(mapPath: string, issue: ReferenceIssue & { help?: string }, format: ReportFormat = "text") {
   const path = issue.file ?? mapPath;
   const message = issue.path.length ? `${describeIssueTarget(issue)}: ${issue.message}` : issue.message;
-  const warning = issue.severity === "warning";
+  const level = issue.severity === "error" ? "" : `${issue.severity}: `;
   if (format === "github") {
     const properties = [`file=${escapeProperty(path)}`];
     if (issue.line) properties.push(`line=${issue.line}`);
     if (issue.column) properties.push(`col=${issue.column}`);
-    properties.push("title=Story map");
-    console.log(`::${warning ? "warning" : "error"} ${properties.join(",")}::${escapeData(message)}`);
+    properties.push(`title=${escapeProperty(issue.rule)}`);
+    console.log(`::${issue.severity} ${properties.join(",")}::${escapeData(issue.help ? `${message} ${issue.help}` : message)}`);
   } else {
     const position = issue.line ? `:${issue.line}${issue.column ? `:${issue.column}` : ""}` : "";
-    console.error(`${escapeText(path)}${position}: ${warning ? "warning: " : ""}${escapeText(message)}`);
+    console.error(`${escapeText(path)}${position}: ${level}${escapeText(message)} [${issue.rule}]`);
+    if (issue.help) console.error(`  help: ${escapeText(issue.help)}`);
   }
 }
 
@@ -87,7 +93,8 @@ export async function loadMapOrReport(path: string): Promise<LoadedStoryMap | nu
   } catch (error) {
     process.exitCode = 1;
     if (error instanceof StoryMapValidationError) {
-      for (const issue of error.issues) report(path, issue);
+      const link = await storyMapRuleLinker(process.cwd());
+      for (const issue of error.issues) report(path, { ...issue, help: link(issue.rule) });
     } else {
       reportFile(path, error);
     }

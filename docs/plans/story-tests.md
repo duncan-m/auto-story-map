@@ -1,6 +1,6 @@
 # Plan: show a story's tests in its panel
 
-Status: done, released in 0.7.0. The work is ESM-801, with the card count added as ESM-802, both in the **0.7.0** release of the map.
+Status: shipped, in 0.7.0. The work is ESM-801, with the card count added as ESM-802, both in the **0.7.0: Export, test links and status choices** release of the map.
 
 Internal viewers open a story and see the tests that cover it, each linking to its line in the repository. Tests point to stories, not the other way round: a test names its story ID, and a build step collects them. The links then keep up as tests are added, renamed or moved, without anyone editing the map.
 
@@ -164,6 +164,6 @@ Pass and fail results are out of scope here, but the index is designed so they c
 
 ## Open questions
 
-1. Should a tag on a `describe` apply to every test inside it, instead of being listed once? It would match how people group tests, but needs the scanner to track nesting.
+1. Should a tag on a `describe` apply to every test inside it, instead of being listed once? It would match how people group tests, but needs the scanner to track nesting. Answered by ESM-119: it does, as [Tag a describe block for all its tests](0.8.0-agents-and-adoption.md#4-tag-a-describe-block-for-all-its-tests) planned.
 2. Should shipped stories without tests be warned about too, perhaps only with `--strict`?
 3. Should the card face show a test count? This plan keeps the card to the ID, title and status.

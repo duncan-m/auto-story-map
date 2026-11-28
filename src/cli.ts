@@ -1,60 +1,130 @@
 #!/usr/bin/env node
+import actions from "./commands/actions.js";
+import brief from "./commands/brief.js";
 import { claim, claims, unclaim } from "./commands/claim.js";
 import confirm from "./commands/confirm.js";
 import diff from "./commands/diff.js";
-import { add, edit, releaseImpact } from "./commands/edit.js";
+import { add, edit, releaseImpact, settings } from "./commands/edit.js";
 import evidence from "./commands/evidence.js";
 import exportMap from "./commands/export.js";
 import history from "./commands/history.js";
 import init from "./commands/init.js";
 import mcp from "./commands/mcp.js";
+import plan from "./commands/plan.js";
+import prCheck from "./commands/pr-check.js";
 import preview from "./commands/preview.js";
 import { releases, stories, story } from "./commands/read.js";
 import { ArgumentError, type Command } from "./commands/shared.js";
 import tests from "./commands/tests.js";
 import tokens from "./commands/tokens.js";
 import survey from "./commands/survey.js";
+import upgrade from "./commands/upgrade.js";
 import validate from "./commands/validate.js";
 import { defaultExportMaxStories } from "./export.js";
 
 const usage = `Usage:
-  story-map init [--no-ci] [--skill] [--dir <path>]
+  story-map init [--no-ci] [--skill] [--dir <path>] [--mode simple|advanced] [--apply <parts>] [--plans <folder>|off] [--story-ids next|lowest-free]
+  story-map upgrade [--format text|markdown|json] [--diff] [--root <path>] [--map <path>] [--mode simple|advanced] [--apply <parts>] [--plans <folder>|off] [--story-ids next|lowest-free] [--write]
   story-map validate [--format text|github|json] [--strict] [--check-sources] [--plans <path>] [--tests <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
+  story-map pr-check [--format text|github|json] [--map <path>] [--head <ref>] [--bot-names <names>] [--approved] [--body-file <file>|-] [--draft true|false] [--strict] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
   story-map tests [--tests <path>] [--root <path>] [--out <file>] [<map.yaml>]
   story-map export --format vsdx|csv|json [--output <file>] [--history <file>] [--tests-index <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
   story-map story [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] <ID> [...]
   story-map stories [--format text|json] [--map <path>] [--status <status>] [--release <ID>] [--activity <ID>] [--persona <ID>] [--job <ID>] [--readiness <state>] [--query <text>] [--changed-within <days>] [--history <file>] [--tests-index <file>]
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
+  story-map actions [--format text|json] [--map <path>] [--kind <kind>] [--item-type <type>] [--release <ID>] [--needs-person] [--tests <path> | --tests-index <file>] [--root <path>]
   story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [<ID> ...]
+  story-map brief [--format text|json] [--map <path>] [--full] [--read-first <path>] [--history <file>] [--tests-index <file>] [--root <path>] [--default-branch <name>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [--no-evidence] <ID> [...] | --release <ID> | --activity <ID>
   story-map survey [--format text|json] [--root <path>] [--tags <pattern>] [--changelog <file>] [--docs <path>] [--plans <path>]
   story-map claim [--format text|json] [--map <path>] [--remote <name>] [--store <dir>] --agent <name> [--ttl <duration>] [--branch <name>] [--renew | --take-over] <ID>
   story-map claims [--format text|json] [--remote <name>] [--store <dir>]
   story-map unclaim [--format text|json] [--remote <name>] [--store <dir>] [--agent <name>] <ID>
-  story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] [--prices <file>] <ID>
-  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--tokens <n>] [--estimated-cost <usd>] [common edit options]
+  story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] [--prices <file>] [--since <time>] [--until <time>] <ID>
+  story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--priority must|should|could|none] [--tokens <n>] [--estimated-cost <usd>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
+  story-map settings [--plans <folder>|off] [--story-ids next|lowest-free] [--upgrade simple|advanced] [--architecture-decisions recommended|required] [common edit options]
+  story-map plan [--map <path>] [--release <ID>] [<ID> ...]
   story-map confirm [--format text|json] [--map <path>] [--write] <job ID> | <persona ID> | <release ID> --impact <n> | --all-in <persona ID>
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--read-only] [<map.yaml>]
   story-map mcp [--root <path>] [--map <path>] [--read-only]
   story-map help [<command>]
 
 init
-  Sets up a host repository: a starter product/story-map.yaml, the story map
-  guide in docs/story-map.md, a story map section in AGENTS.md and a GitHub
-  Actions workflow that validates the map. Existing files are never overwritten.
-  --skill writes the rules to .claude/skills/story-map/SKILL.md instead, with a
-  short pointer to it in AGENTS.md.
+  Sets up a host repository. It prints how Auto Story Map works and the list
+  of parts, then writes a starter product/story-map.yaml and the parts: the
+  story map guide in docs/story-map.md, a story map section in AGENTS.md and a
+  GitHub Actions workflow that validates the map. Existing files are never
+  overwritten. --skill writes the rules to .claude/skills/story-map/SKILL.md
+  instead, with a short pointer to it in AGENTS.md.
 
-  --no-ci          Skip the GitHub Actions workflow.
-  --dir <path>     Repository root. Defaults to the current directory.
+  Simple mode, the default, adds the recommended set: every part. Advanced
+  mode adds only the parts you choose with --apply, or asks at a terminal.
+  The product choices, delivery plans and the story ID policy, are asked at
+  a terminal, or listed for the person to answer with --plans and
+  --story-ids. A repository that is already set up is handed over to
+  story-map upgrade, which reports what this version changes and writes
+  nothing until you run it with --write.
+
+  --no-ci            Skip the GitHub Actions workflow.
+  --dir <path>       Repository root. Defaults to the current directory.
+  --mode <mode>      simple or advanced. Defaults to the map's
+                     settings.upgrade, or simple.
+  --apply <parts>    Add only these parts: agents, guide, workflow or skill,
+                     separated by commas. Implies advanced.
+  --plans <folder>|off   Record the person's answer on delivery plans.
+  --story-ids next|lowest-free   Record the person's story ID policy.
+
+upgrade
+  Reports the state of each part of the set-up, compared with this version of
+  the package: the story map section of AGENTS.md, the guide, the CI
+  workflow, the story map skill, and the choices kept in the map's settings,
+  delivery plans and the story ID policy. Each part is not
+  added, current, outdated (unedited, from an earlier version), edited,
+  edited and outdated, not chosen or chosen, with the version it came from
+  and what this version changes. Workflow steps are compared by the commands
+  they run, so a missing step, such as story-map diff, is an addition.
+
+  --mode simple applies what the review recommends: it replaces unedited
+  parts, adds missing ones and missing workflow steps, updates the rules of
+  an edited AGENTS.md section that you left as the package wrote them, and
+  keeps everything you edited. --apply <parts> applies only the parts you
+  accept, such as --apply guide,workflow, replacing them even when edited.
+  --mode advanced alone prints the report with every diff. Both are a dry run
+  until --write. A product choice nobody has made is asked at a terminal, or
+  listed for the person to answer with --plans and --story-ids. Only record
+  an answer they gave.
+
+  Without --mode, the review runs in the mode kept in the map's
+  settings.upgrade. Left out, it asks at an interactive terminal, and in
+  advanced mode walks through each part that would change, asking whether to
+  take it. Agents get the report, with the question to ask the person: record
+  their answer with story-map settings --upgrade simple|advanced.
+
+  --format markdown  Print a table for a pull request, with each diff folded.
+  --format json      Print each part's state, from, change, recommendation,
+                     additions and diff, for agents and scripts.
+  --diff             Also print each outdated or edited part's diff.
+  --root <path>      Repository root. Defaults to the current directory.
+  --map <path>       Map whose settings hold the choices, relative to the
+                     root. Defaults to product/story-map.yaml.
+  --mode <mode>      simple applies the recommended changes; advanced shows
+                     every diff, for --apply. Overrides settings.upgrade for
+                     this run.
+  --apply <parts>    Apply these parts: agents, guide, workflow, skill, plans
+                     or storyIds, separated by commas. Implies advanced.
+  --plans <folder>|off, --story-ids next|lowest-free
+                     Record the person's answer to a product choice.
+  --write            Write the changes. Without it, nothing is written.
 
 validate
   Errors make the map invalid and exit 1. Warnings, such as a blocked story
   with no statusReason, are printed but exit 0 unless --strict is set.
+  Notices, such as delivery plans not chosen yet, are questions for a person
+  and never fail, even with --strict.
 
   --format text      Print file:line:column: problem (default).
   --format github    Print GitHub Actions annotations so problems appear on the PR diff.
@@ -62,9 +132,13 @@ validate
                      issue's severity, file, line, column, YAML path and message.
   --strict           Treat warnings as errors.
   --check-sources    Check that repository-relative sources exist and that
-                     Markdown #heading fragments match a heading.
+                     Markdown #heading fragments match a heading, and the
+                     story IDs in the settings.plans folder when it is set.
   --plans <path>     Check that story IDs mentioned in Markdown files under
-                     <path> exist in the map. Repeat for several paths.
+                     <path> exist in the map, and warn when a plan's Status:
+                     line is behind the map, uses other words or names a
+                     release title the map no longer has. Repeat for several
+                     paths.
   --tests <path>     Check story IDs in the names of tests under <path>: an
                      error for an ID that is not in the map, and a warning for
                      an in-progress or merged story with no tagged tests.
@@ -78,6 +152,36 @@ diff
 
   --map <path>       Map to compare. Defaults to product/story-map.yaml.
   --format json      Print the comparison as JSON instead.
+
+pr-check
+  Checks a pull request against the map rules a check can see, and exits 1
+  when it breaks one. When any commit in <base-ref>..HEAD that changes the map
+  was written with an agent, each change story-map diff lists under Needs a
+  person, such as a confirmed draft or a new estimate, is an error unless
+  --approved is passed. A commit is an agent's when its author is a bot or a
+  Co-Authored-By trailer names a known agent, such as Claude or Codex. With
+  --body-file, each story the pull request marks merged needs a Tokens used
+  section in the description that names it, or says why there is no count.
+  With --body-file and --draft false, a pull request that is ready for review
+  gets a warning when its description has no Review section that records a
+  review. It is a guardrail for agents that follow their attribution rules, not a
+  security boundary.
+
+  --format text      Print file:line:column: problem (default).
+  --format github    Print GitHub Actions annotations on the map's lines.
+  --format json      Print the result, with the agent commits and each issue.
+  --map <path>       Map to check. Defaults to product/story-map.yaml.
+  --head <ref>       Last commit of the pull request. Defaults to HEAD.
+  --bot-names <names>
+                     Comma-separated commit authors that are bots, as for
+                     history. Authors ending in [bot] always are.
+  --approved         A person approved the changes that need a person, such
+                     as with a map-approved label.
+  --body-file <file> The pull request's description, or - for stdin.
+  --draft <true|false>
+                     Whether the pull request is a draft. Only false checks
+                     the Review section, so a draft is never warned.
+  --strict           Exit 1 on warnings too.
 
 history
   Reads the map's Git history and writes when each story was added, each
@@ -170,6 +274,26 @@ releases
   notes and expected impact. Impact items drafted by an agent are marked
   [draft]. Takes the same options as story.
 
+actions
+  Lists what the map is waiting for, as the board's Actions tab does: every
+  validate warning about the map, grouped by kind, each with its line and the
+  command that fixes it. Kinds marked "needs a person", such as drafts to
+  confirm and estimates to agree, are for people only. Agents act on the
+  others and leave these alone. Exits 0 whatever it finds.
+
+  --format json      Print the groups and actions as JSON.
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --kind <kind>      Only actions of this kind, such as missing-estimate.
+  --item-type <type> Only actions on a persona, story, release or the map.
+  --release <ID>     Only actions on this release or its stories.
+  --needs-person     Only actions a person must take.
+  --tests <path>     Scan tests under <path>, as validate --tests does, so
+                     in-progress and merged stories with no tagged tests are
+                     listed too. Repeat for several paths.
+  --tests-index <file>
+                     Read the tests from story-map tests output instead.
+  --root <path>      Repository root for --tests. Defaults to the current directory.
+
 evidence
   Reports what has already happened on each story, or on every active story
   when no ID is given, and suggests a status without changing anything:
@@ -203,6 +327,38 @@ evidence
                      stale. Claims never change the suggested status.
   --claims-remote <name>, --claims-store <dir>
                      Read claims from this remote or claim store instead.
+
+brief
+  Prints a handoff brief for a coding agent, the same brief as the board's
+  Copy brief: rules, the target stories, what is already built nearby, what
+  not to build yet, work in flight, open decisions and when the work is done.
+  Name one or more stories, or brief a release's or an activity's planned and
+  in-progress stories. The in-flight section adds what story-map evidence
+  finds for each target: branches, commits on the default branch, tagged
+  tests and broken sources, and claims with --claims. It never changes the
+  map. An ID that is not in the map exits 1.
+
+  --release <ID>     Brief the release's open stories, in board order.
+  --activity <ID>    Brief the activity's open stories, earliest release first.
+  --full             Include each target's notes, persona context, job
+                     statements and every tagged test, for agents that
+                     cannot run commands.
+  --format json      Print the brief and each of its sections as JSON.
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --read-first <path>
+                     A document the agent reads first, such as
+                     docs/ENGINEERING-OVERVIEW.md. Repeat for several.
+  --history <file>, --tests-index <file>
+                     History and tests index, as for story.
+  --root <path>      Repository root for the evidence. Defaults to the
+                     current directory.
+  --default-branch <name>
+                     Branch to read merged commits from, as for evidence.
+  --claims           Also read claims from origin, which needs the network.
+  --claims-remote <name>, --claims-store <dir>
+                     Read claims from this remote or claim store instead.
+  --no-evidence      Leave Git out, and list only what the map, history and
+                     tests index know, as the board does.
 
 survey
   Collects the facts an agent needs to draft a first map for a repository
@@ -286,6 +442,11 @@ tokens
                      tokens, such as {"claude-opus-5-5": {"input": 4,
                      "output": 20, "cacheRead": 0.2}}. cacheWrite5m and
                      cacheWrite1h default to 1.25 and 2 times input.
+  --since <time>     Count only the responses made at or after this time,
+                     such as 2026-11-20T10:42:00Z, when a review started, to
+                     record the review's own cost. With --format markdown it
+                     prints a Review cost line for the Review section instead.
+  --until <time>     Count only the responses made at or before this time.
 
 edit
   Changes a story with named edits instead of editing the YAML by hand. By
@@ -310,6 +471,9 @@ edit
                      Repeat for several.
   --customer-title, --customer-summary <text>
                      Customer-facing copy. Needs --customer.
+  --priority <must|should|could|none>
+                     Set the story's MoSCoW priority, shown on internal
+                     cards as MH, SH or CH. none removes it.
   --tokens <n>       Record the model tokens used to deliver the story, in
                      the pull request that finishes it. story-map tokens
                      counts them from Claude Code's logs.
@@ -319,12 +483,13 @@ edit
   --from <file>      A JSON list of edits, such as
                      [{"op": "status", "id": "ESM-744", "status": "merged"}],
                      applied all or none. The ops are status, release,
-                     activity, title, summary, notes, tokens,
+                     activity, title, summary, notes, priority, tokens,
                      estimated-cost, add-source,
                      remove-source, add-job, remove-job, add-persona,
                      remove-persona, add-dependency, remove-dependency,
-                     customer-title, customer-summary, add and
-                     release-impact.
+                     customer-title, customer-summary, add,
+                     release-impact, plans, story-ids, upgrade-mode and
+                     architecture-decisions.
 
   Common edit options:
   --write            Save the change, only when the edited map is valid.
@@ -344,7 +509,9 @@ edit
 add
   Adds a story, as planned unless --status says otherwise, after the last
   story in its release. It takes the next ID in sequence, one after the highest
-  in the whole map, counting cut stories so an ID is never reused, or --id. Takes
+  in the whole map, counting cut stories so an ID is never reused, or --id. With
+  settings.storyIds: lowest-free in the map, it takes the lowest free number
+  instead, still counting cut stories. Takes
   --source for each source, --job for each job it serves, --persona for each
   persona it helps, --dependency for each story that must land first, and the
   common edit options in story-map help edit.
@@ -353,6 +520,46 @@ release-impact
   Adds an expected impact item to a release, always with draft: true. Only a
   person confirms it, with story-map confirm. Takes the common edit options
   in story-map help edit.
+
+settings
+  Records the person's answer to whether to use delivery plans, in the map's
+  settings.plans, to the story ID policy, in settings.storyIds, to which
+  mode story-map upgrade runs in, in settings.upgrade, or to how validate
+  treats plans' architecture sections, in settings.architectureDecisions. Only
+  record an answer they gave: "not now" changes nothing, so the question is
+  asked again. A dry run unless --write is given. Takes the common edit
+  options in story-map help edit.
+
+  --plans <folder>   Keep delivery plans in this repository-relative folder,
+                     such as docs/plans. validate --check-sources then checks
+                     the story IDs in it.
+  --plans off        Do not use delivery plans. Nothing asks again.
+  --story-ids next|lowest-free
+                     How add numbers new stories: one after the highest
+                     number, or the lowest free number. Both count cut
+                     stories, so an ID is never reused.
+  --upgrade simple|advanced
+                     How story-map upgrade reviews the set-up: apply the
+                     recommended changes, or show each part's diff to accept
+                     or keep.
+  --architecture-decisions recommended|required
+                     How validate --plans reports an open plan whose
+                     Architecture decisions section is missing, empty, still
+                     holds the scaffold's hints or answers None: with no
+                     reason: as a notice, which never fails, or as a
+                     warning, which fails with --strict.
+
+plan
+  Prints a delivery plan skeleton for the stories given, in the structure
+  from Write a delivery plan in docs/story-map.md: a status line, a numbered
+  item for each story, the stories it builds on and overlaps, empty UI
+  mockup, Decisions to make and Not now sections, and an effort table with
+  agreed estimates. It writes nothing, so pipe it into a new file. It never
+  sets an estimate. An ID that is not in the map exits 1.
+
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --release <ID>     Every planned and in-progress story in this release,
+                     in place of IDs.
 
 confirm
   Confirms a draft by removing its draft: true: a job by its ID, a persona's
@@ -411,7 +618,8 @@ mcp
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, validate, diff, history, tests, export: exportMap, story, stories, releases, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, confirm };
+// biome-ignore lint/suspicious/noExplicitAny: each command has its own options type, and Command is invariant in it, so no narrower type holds them all.
+const commands: Record<string, Command<any>> = { init, upgrade, validate, diff, "pr-check": prCheck, history, tests, export: exportMap, story, stories, releases, actions, evidence, brief, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {

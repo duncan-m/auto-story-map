@@ -2,6 +2,8 @@ name: Story map
 
 on:
   pull_request:
+    # edited and labeled re-run pr-check when the description or the map-approved label changes.
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
     paths:
       - product/story-map.yaml
       - docs/**
@@ -32,3 +34,12 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: npx --no-install story-map diff "origin/$BASE_REF" >> "$GITHUB_STEP_SUMMARY"
+      # Fails when an agent's commits make a change only a person should make, unless a
+      # person adds the map-approved label, or when a story is marked merged without a
+      # Tokens used section in the description.
+      - name: Check the pull request against the map rules
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'map-approved') && 'yes' || '' }}
+        run: printf '%s' "$PR_BODY" | npx --no-install story-map pr-check --format github ${APPROVED:+--approved} --body-file - "origin/$BASE_REF"

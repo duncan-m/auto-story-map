@@ -1,5 +1,6 @@
 import { lstat, readdir, readFile, readlink, realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import type { StoryMapRuleId } from "./rules.js";
 import type { LoadedStoryMap, StoryMapIssue } from "./schema.js";
 
 /** An issue found outside the map itself, such as in a delivery plan. */
@@ -218,7 +219,7 @@ export async function checkSources(loaded: LoadedStoryMap, root: string): Promis
     for (const [sourceIndex, source] of (story.sources ?? []).entries()) {
       if (!looksLikePath(source)) continue;
       const path = ["stories", storyIndex, "sources", sourceIndex];
-      const report = (message: string) => issues.push({ severity: "error", path, message, itemId: story.id, ...loaded.locate(path) });
+      const report = (message: string, rule: StoryMapRuleId) => issues.push({ severity: "error", path, message, rule, itemId: story.id, ...loaded.locate(path) });
 
       const [rawFile, rawFragment] = source.split("#", 2);
       let file: string;
@@ -227,38 +228,38 @@ export async function checkSources(loaded: LoadedStoryMap, root: string): Promis
         file = decodeURIComponent(rawFile).replace(/^\.?\//, "");
         fragment = rawFragment === undefined ? undefined : decodeURIComponent(rawFragment);
       } catch {
-        report(`Source '${source}' is not a valid path.`);
+        report(`Source '${source}' is not a valid path. Correct its percent-encoding.`, "invalid-source-path");
         continue;
       }
       if (!file) continue;
 
       if (!insideRoot(root, resolve(root, file))) {
-        report(`Source '${source}' points outside the repository.`);
+        report(`Source '${source}' points outside the repository. Use a path inside it, or a full URL.`, "outside-repository");
         continue;
       }
       const resolved = await resolveInRepository(realRoot, file);
       if (resolved.kind === "outside") {
-        report(`Source '${source}' points outside the repository through a symbolic link.`);
+        report(`Source '${source}' points outside the repository through a symbolic link. Use a path inside it, or a full URL.`, "outside-repository");
         continue;
       }
       const absolute = resolved.kind === "inside" ? resolved.path : undefined;
       const info = absolute && await statOrNull(absolute);
       if (!absolute || !info) {
-        report(`Source file '${file}' does not exist.`);
+        report(`Source file '${file}' does not exist. Correct the path, or remove the source.`, "missing-source");
         continue;
       }
       if (!fragment || !info.isFile() || !markdownExtensions.has(extname(file).toLowerCase())) continue;
 
       let anchors = anchorCache.get(absolute);
       if (!anchors && info.size > maxMarkdownBytes) {
-        report(`'${file}' is larger than ${maxMarkdownBytes / 1024 / 1024} MB, so '#${fragment}' was not checked.`);
+        report(`'${file}' is larger than ${maxMarkdownBytes / 1024 / 1024} MB, so '#${fragment}' was not checked. Link to a smaller file.`, "source-too-large");
         continue;
       }
       if (!anchors) {
         anchors = markdownAnchors(await readFile(absolute, "utf8"));
         anchorCache.set(absolute, anchors);
       }
-      if (!anchors.has(fragment.toLowerCase())) report(`'${file}' has no heading for '#${fragment}'.`);
+      if (!anchors.has(fragment.toLowerCase())) report(`'${file}' has no heading for '#${fragment}'. Link to a heading the file has, or add one.`, "missing-heading");
     }
   }
   return issues;
@@ -306,13 +307,16 @@ export async function repositoryFiles(realRoot: string, path: string, filter: Fi
   return [...new Set(files)].sort();
 }
 
+/** Text escaped so a regular expression matches it literally. Escapes every metacharacter, backslash included. */
+export const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const markdownFilter: FileFilter = { include: (_, name) => markdownExtensions.has(extname(name).toLowerCase()) };
 
 /** The map's story ID prefixes, such as BUILDER in BUILDER-102, escaped for a regular expression. */
 function storyIdPrefixes(loaded: Pick<LoadedStoryMap, "map">): string | undefined {
   const prefixes = new Set(loaded.map.stories.flatMap(story => /^([A-Za-z][A-Za-z0-9]*)-\d+$/.exec(story.id)?.[1] ?? []));
   if (!prefixes.size) return undefined;
-  return `(?:${[...prefixes].map(prefix => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`;
+  return `(?:${[...prefixes].map(escapeRegExp).join("|")})`;
 }
 
 /**
@@ -343,18 +347,18 @@ export type RootedPath = { kind: "inside"; path: string } | { kind: "missing" } 
 /** Resolves a command-line path against the root, reporting one that leaves it directly or through a symbolic link. */
 export async function resolveRootedPath(root: string, realRoot: string, path: string): Promise<RootedPath> {
   if (!insideRoot(root, resolve(root, path))) {
-    return { kind: "issue", issue: { severity: "error", path: [], file: path, message: "Points outside the repository." } };
+    return { kind: "issue", issue: { severity: "error", path: [], file: path, message: "Points outside the repository. Pass a path inside it.", rule: "outside-repository" } };
   }
   const resolved = await resolveInRepository(realRoot, relative(root, resolve(root, path)));
   if (resolved.kind === "outside") {
-    return { kind: "issue", issue: { severity: "error", path: [], file: path, message: "Points outside the repository through a symbolic link." } };
+    return { kind: "issue", issue: { severity: "error", path: [], file: path, message: "Points outside the repository through a symbolic link. Pass a path inside it.", rule: "outside-repository" } };
   }
   return resolved;
 }
 
 /** The issue for a file that a walk skipped because a symbolic link leads out of the repository. */
 export const outsideLinkIssue = (file: string): ReferenceIssue =>
-  ({ severity: "error", path: [], file, message: "Points outside the repository through a symbolic link, so it was not read." });
+  ({ severity: "error", path: [], file, message: "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository.", rule: "outside-repository" });
 
 /** A story ID mentioned in a Markdown file. */
 export interface StoryMention {
@@ -392,7 +396,7 @@ export async function findStoryMentions(loaded: LoadedStoryMap, root: string, pa
     const files = resolved.kind === "inside" ? await repositoryFiles(realRoot, resolved.path, markdownFilter, outside) : [];
     for (const link of outside) issues.push(outsideLinkIssue(shown(link)));
     if (!files.length) {
-      issues.push({ severity: "error", path: [], file: planPath, message: "No Markdown files found." });
+      issues.push({ severity: "error", path: [], file: planPath, message: "No Markdown files found. Pass a folder or file that holds the plans.", rule: "plans-not-found" });
       continue;
     }
     for (const file of files) {
@@ -429,6 +433,7 @@ export async function checkPlanReferences(loaded: LoadedStoryMap, root: string, 
         line: mention.line,
         column: mention.column,
         message: `Unknown story ID '${mention.id}'. Add it to the map or correct the reference.`,
+        rule: "unknown-plan-story",
       });
     }
   }

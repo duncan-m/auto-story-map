@@ -1,10 +1,11 @@
+import { getStoryMapActions, type StoryMapActionFilter, type StoryMapActionGroup } from "./actions.js";
 import { storyMapBrief, type StoryMapBriefOptions } from "./brief.js";
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
 import type { AnalyticsMeasure, AnalyticsMilestone, AnalyticsPeriod } from "./analytics.js";
 import type { StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { storyMapReadiness, type StoryReadiness } from "./readiness.js";
-import { defaultStalledAfterWeeks, type EstimatePoints, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
+import { defaultStalledAfterWeeks, loadStoryMap, type EstimatePoints, type StoryPriority, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
 
@@ -43,6 +44,12 @@ export interface StoryMapAccessOptions<Viewer extends StoryMapViewer = StoryMapV
    * brief's options, such as `mapPath` and `readFirst`. Off by default. Internal views only.
    */
   brief?: true | StoryMapBriefOptions;
+  /**
+   * The map's YAML text and its path in the repository, such as `product/story-map.yaml`. With
+   * them, each action on the Actions tab says its line, and links to it with the board's
+   * `sourceBaseUrl`. Internal views only. Without them, actions still list, with no lines.
+   */
+  mapFile?: { path: string; source: string };
 }
 
 export const defaultInternalRoles: readonly string[] = ["engineer", "super-admin"];
@@ -149,6 +156,8 @@ export interface InternalStoryCard extends StoryCard {
   statusReason?: string;
   /** Effort estimate in story points. */
   estimate?: EstimatePoints;
+  /** MoSCoW priority: must, should or could have. */
+  priority?: StoryPriority;
   /** Model tokens used to deliver the story, recorded in the pull request that finished it. */
   tokens?: number;
   /** Estimated cost of those tokens in US dollars at API list prices. */
@@ -190,7 +199,10 @@ export interface InternalStoryCard extends StoryCard {
 }
 
 /** A test or group tagged with a story, as internal viewers see it. */
-export type StoryTestLink = Omit<StoryTestEntry, "storyIds">;
+export type StoryTestLink = Omit<StoryTestEntry, "storyIds" | "inheritedIds"> & {
+  /** True when the test is linked to the story only by a tagged `describe` or `suite` block around it. */
+  inherited?: true;
+};
 
 /** Present when the host has applied `filterStoryMapView`. The board shows its search toolbar only then. */
 export interface StoryMapFilterState {
@@ -212,7 +224,9 @@ export interface StoryMapFilterState {
    * `personas` when the board shows the Personas tab, with the first of `persona` as its page, or the
    * first persona when none is chosen. `analytics` when it shows the Analytics tab. Internal views only.
    */
-  view?: "personas" | "analytics";
+  view?: "personas" | "actions" | "analytics";
+  /** What the Actions tab narrows its list to, keeping only values the view has. Internal views only. */
+  actions?: StoryMapActionFilter;
   /** The Analytics tab's choices, with defaults filled in. Present with `view: "analytics"`. */
   analytics?: { period: AnalyticsPeriod; completed: AnalyticsMilestone; chart: AnalyticsMeasure };
   /** The story a permalink opened, when it is in the view. It is kept whatever the other filters say. */
@@ -266,6 +280,15 @@ export type StoryMapView =
     testsGeneratedAt?: string;
     /** True when the history lists changes, so a story without `changes` has none that name it. */
     changesIndexed?: true;
+    /**
+     * What validate warns about, grouped by kind, for the Actions tab and the panels' Actions rows.
+     * Built before any filter, so counts do not change with the filters. Internal views only.
+     */
+    actions: StoryMapActionGroup[];
+    /** When the actions were worked out, so an empty tab can say when the map was checked. */
+    actionsCheckedAt: string;
+    /** The map's path in the repository, from `mapFile`, for linking each action's line. */
+    mapPath?: string;
   })
   | (StoryMapBaseView & {
     audience: "all-users";
@@ -390,11 +413,12 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       entries.reverse().sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
     }
     const testsByStory = new Map<string, StoryTestLink[]>();
-    for (const { storyIds, ...test } of options.tests?.tests ?? []) {
+    for (const { storyIds, inheritedIds, ...test } of options.tests?.tests ?? []) {
       for (const id of new Set(storyIds)) {
+        const link: StoryTestLink = inheritedIds?.includes(id) ? { ...test, inherited: true } : { ...test };
         const entries = testsByStory.get(id);
-        if (entries) entries.push({ ...test });
-        else testsByStory.set(id, [{ ...test }]);
+        if (entries) entries.push(link);
+        else testsByStory.set(id, [link]);
       }
     }
     const moreTestsByStory = new Map<string, { file: string; count: number }[]>();
@@ -426,7 +450,10 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       // Cut stories have left the release, so they add nothing, as in release progress.
       if (story.status === "cut") continue;
       let totals = estimates.get(story.release);
-      if (!totals) estimates.set(story.release, totals = { total: 0, merged: 0, left: 0, unestimated: 0, estimated: 0 });
+      if (!totals) {
+        totals = { total: 0, merged: 0, left: 0, unestimated: 0, estimated: 0 };
+        estimates.set(story.release, totals);
+      }
       if (story.estimate === undefined) {
         totals.unestimated++;
         continue;
@@ -449,7 +476,10 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     for (const story of map.stories) {
       for (const id of new Set(story.jobs ?? [])) {
         let counts = jobCounts.get(id);
-        if (!counts) jobCounts.set(id, counts = Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>);
+        if (!counts) {
+          counts = Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>;
+          jobCounts.set(id, counts);
+        }
         counts[story.status]++;
       }
       if (!isActiveStatus(story.status)) continue;
@@ -473,6 +503,15 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       })),
       activeStories: personaCounts.get(persona.id) ?? 0,
     }));
+    let locate;
+    if (options.mapFile) {
+      try {
+        locate = loadStoryMap(options.mapFile.source).locate;
+      } catch {
+        // A source that no longer parses gives no lines; the actions still list from the map.
+      }
+    }
+    const actions = getStoryMapActions(map, { tests: options.tests, locate });
     const internalView: StoryMapView = {
       audience: "internal",
       title: map.title,
@@ -499,6 +538,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           status: story.status,
           statusReason: story.statusReason,
           ...(story.estimate !== undefined ? { estimate: story.estimate } : {}),
+          ...(story.priority !== undefined ? { priority: story.priority } : {}),
           ...(story.tokens !== undefined ? { tokens: story.tokens } : {}),
           ...(story.estimatedCostUsd !== undefined ? { estimatedCostUsd: story.estimatedCostUsd } : {}),
           ...dependencies(story),
@@ -522,6 +562,9 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       ...(recentUpdates ? { recentUpdates } : {}),
       ...(options.tests ? { testsIndexed: true as const, testsGeneratedAt: options.tests.generatedAt } : {}),
       ...(history?.changes ? { changesIndexed: true as const } : {}),
+      actions,
+      actionsCheckedAt: (options.now ?? new Date()).toISOString(),
+      ...(options.mapFile && locate ? { mapPath: options.mapFile.path } : {}),
     };
     if (options.brief) attachBriefs(internalView, options.brief === true ? {} : options.brief);
     return internalView;

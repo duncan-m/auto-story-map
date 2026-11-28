@@ -90,6 +90,7 @@ function storyText(view: Extract<StoryMapView, { audience: "internal" }>, story:
   field(lines, "Release", labelled(view, "releases", story.release));
   field(lines, "Activity", labelled(view, "activities", story.activity));
   if (story.estimate) field(lines, "Estimate", `${story.estimate} pts`);
+  if (story.priority) field(lines, "Priority", `${story.priority[0].toUpperCase()}${story.priority.slice(1)} have`);
   if (story.tokens !== undefined) field(lines, "Tokens used", story.tokens.toLocaleString("en-US"));
   if (story.estimatedCostUsd !== undefined) field(lines, "Est. cost", `$${story.estimatedCostUsd.toFixed(2)}`);
   if (story.dependsOn?.length) field(lines, "Depends on", dependencyList(story.dependsOn));

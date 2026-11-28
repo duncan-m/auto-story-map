@@ -1,3 +1,4 @@
+import { isStoryMapActionItemType, isStoryMapActionKind, type StoryMapActionFilter } from "./actions.js";
 import { activeStoryStatuses, customerStoryStatuses, isActiveStatus, storyStatuses, type StoryStatusFilter } from "./status.js";
 import { jobStatement } from "./personas.js";
 import { analyticsMeasures, analyticsMilestones, analyticsPeriods, type AnalyticsMeasure, type AnalyticsMilestone, type AnalyticsPeriod } from "./analytics.js";
@@ -37,6 +38,11 @@ export interface StoryMapFilters {
   /** The measure the Analytics tab charts: `stories` (the default), `points`, `tokens` or `spend`. */
   chart?: AnalyticsMeasure;
   /**
+   * What the Actions tab narrows its list to: a kind, a release, one story, release or persona,
+   * and whether only actions a person must take. Internal views only; unknown values are ignored.
+   */
+  actions?: StoryMapActionFilter;
+  /**
    * A story ID from a permalink. The story is kept whatever the other filters say, and the
    * board opens its panel. Ignored unless the story is in the view, so a customer board treats
    * an internal-only story like one that does not exist.
@@ -46,8 +52,8 @@ export interface StoryMapFilters {
   release?: string;
 }
 
-/** The pages of an internal board: the story map, the Personas tab or the Analytics tab. */
-export type StoryMapPage = "map" | "personas" | "analytics";
+/** The pages of an internal board: the story map, the Personas tab, the Actions tab or the Analytics tab. */
+export type StoryMapPage = "map" | "personas" | "actions" | "analytics";
 
 export interface FilterOptions {
   /** Time to measure “changed in” windows from. Defaults to now. */
@@ -67,7 +73,7 @@ function readIds(values: readonly string[]) {
 }
 
 /** The pages `view` can open. The map is the default, so it has no value. */
-const pages = ["personas", "analytics"] as const;
+const pages = ["personas", "actions", "analytics"] as const;
 
 const statusChoices: readonly StoryStatusFilter[] = [...storyStatuses, "stalled"];
 
@@ -84,7 +90,8 @@ function readStatuses(value: unknown): StoryStatusFilter[] {
  * and a permalink's `story` or `release`. `status` can repeat, once for each chosen
  * status or `stalled`, and `status=all` chooses every status. `persona`, `job`
  * and `activity` repeat, once for each ID. `view=personas` opens the Personas
- * tab and `view=analytics` the Analytics tab. Unknown values are ignored.
+ * tab, `view=actions` the Actions tab, which reads `action-kind`, `action-item-type`, `action-release`,
+ * `action-item` and `needs-person=1`, and `view=analytics` the Analytics tab. Unknown values are ignored.
  */
 export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const query = params.get("q")?.trim().slice(0, maxQueryLength) || undefined;
@@ -99,6 +106,17 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const period = analyticsPeriods.find(value => value === params.get("period"));
   const completed = analyticsMilestones.find(value => value === params.get("completed"));
   const chart = analyticsMeasures.find(value => value === params.get("chart"));
+  const actionKind = params.get("action-kind") ?? undefined;
+  const actionItemType = params.get("action-item-type") ?? undefined;
+  const [actionRelease] = readIds(params.getAll("action-release"));
+  const [actionItem] = readIds(params.getAll("action-item"));
+  const actions: StoryMapActionFilter = {
+    ...(isStoryMapActionKind(actionKind) ? { kind: actionKind } : {}),
+    ...(isStoryMapActionItemType(actionItemType) ? { itemType: actionItemType } : {}),
+    ...(actionRelease ? { release: actionRelease } : {}),
+    ...(actionItem ? { item: actionItem } : {}),
+    ...(params.get("needs-person") === "1" ? { needsPerson: true } : {}),
+  };
   const [story] = readIds(params.getAll("story"));
   const [release] = readIds(params.getAll("release"));
   return {
@@ -112,6 +130,7 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
     ...(period ? { period } : {}),
     ...(completed ? { completed } : {}),
     ...(chart ? { chart } : {}),
+    ...(Object.keys(actions).length ? { actions } : {}),
     ...(story ? { story } : {}),
     ...(release ? { release } : {}),
   };
@@ -164,6 +183,18 @@ export function filterStoryMapView<View extends StoryMapView>(
   const personasPage = filters.view === "personas" && internal;
   // Nor do customers get the Analytics tab or its options: points, tokens and spend never reach them.
   const analyticsPage = filters.view === "analytics" && internal;
+  const actionsPage = filters.view === "actions" && internal;
+  // Action filters only count for values the view has, so customers and unknown IDs change nothing.
+  const actionFilter: StoryMapActionFilter = {};
+  if (internal && filters.actions) {
+    const { kind, itemType, release, item, needsPerson } = filters.actions;
+    const itemIds = new Set(view.actions.flatMap(group => group.actions.flatMap(action => "id" in action.item ? [action.item.id] : [])));
+    if (isStoryMapActionKind(kind)) actionFilter.kind = kind;
+    if (isStoryMapActionItemType(itemType)) actionFilter.itemType = itemType;
+    if (release !== undefined && view.releases.some(entry => entry.id === release)) actionFilter.release = release;
+    if (item !== undefined && itemIds.has(item)) actionFilter.item = item;
+    if (needsPerson === true) actionFilter.needsPerson = true;
+  }
   // Search also matches the titles of a story's personas and the statements of its jobs, for internal viewers.
   const personaTitles = new Map(internalPersonas.map(item => [item.id, item.title]));
   const statements = new Map(internalPersonas.flatMap(item => item.jobs.map(entry => [entry.id, jobStatement(entry)] as const)));
@@ -208,7 +239,8 @@ export function filterStoryMapView<View extends StoryMapView>(
       ...(persona.length ? { persona } : {}),
       ...(job.length ? { job } : {}),
       ...(activity.length ? { activity } : {}),
-      ...(personasPage ? { view: "personas" as const } : {}),
+      ...(personasPage ? { view: "personas" as const } : actionsPage ? { view: "actions" as const } : {}),
+      ...(Object.keys(actionFilter).length ? { actions: actionFilter } : {}),
       ...(analyticsPage ? {
         view: "analytics" as const,
         analytics: {

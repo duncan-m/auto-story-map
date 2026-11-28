@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
-import { readdir, readFile, realpath, stat } from "node:fs/promises";
+import { readdir, realpath, stat } from "node:fs/promises";
 import { basename, extname, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
+import { readTextFileWithin } from "./read-text.js";
 import {
   markdownHeadings,
   maxMarkdownBytes,
@@ -343,8 +344,11 @@ function followsCommentMarker(before: string) {
   return commentOpeners.some(opener => before.endsWith(opener));
 }
 
+/** A problem a survey notes. Only the checks it shares with validate have a rule. */
+type SurveyIssue = Omit<ReferenceIssue, "rule"> & Partial<Pick<ReferenceIssue, "rule">>;
+
 /** Lists the files a set of paths names, through `repositoryFiles`, reporting paths that leave the root. */
-async function listFiles(root: string, realRoot: string, paths: readonly string[], filter: FileFilter, issues: ReferenceIssue[], empty: string) {
+async function listFiles(root: string, realRoot: string, paths: readonly string[], filter: FileFilter, issues: SurveyIssue[], empty: string) {
   const shown = (file: string) => relative(realRoot, file).split(sep).join("/");
   const files = new Set<string>();
   for (const path of paths) {
@@ -377,7 +381,7 @@ export async function surveyRepository(options: RepositorySurveyOptions = {}): P
   if (!(await stat(root).catch(() => undefined))?.isDirectory()) throw new RepositorySurveyError(`--root ${options.root ?? "."} is not a folder.`);
   const realRoot = await realpath(root);
   const notes: string[] = [];
-  const issues: ReferenceIssue[] = [];
+  const issues: SurveyIssue[] = [];
   const checked: RepositorySurvey["checked"] = [];
 
   let tags: SurveyTag[] = [];
@@ -406,10 +410,11 @@ export async function surveyRepository(options: RepositorySurveyOptions = {}): P
     if (resolved.kind === "issue") throw new RepositorySurveyError(`--changelog ${changelog}: ${resolved.issue.message}`);
     if (resolved.kind === "missing") throw new RepositorySurveyError(`--changelog ${changelog} does not exist.`);
     const file = relative(realRoot, resolved.path).split(sep).join("/");
-    if ((await stat(resolved.path)).size > maxMarkdownBytes) {
+    const source = await readTextFileWithin(resolved.path, maxMarkdownBytes);
+    if (source === undefined) {
       notes.push(`${file} is larger than ${maxMarkdownBytes / 1024 / 1024} MB, so it was not read.`);
     } else {
-      versions = changelogVersions(await readFile(resolved.path, "utf8"), file);
+      versions = changelogVersions(source, file);
       if (!versions.length) notes.push(`${file} has no version headings, such as ## 1.2.0 or ## Unreleased.`);
       checked.push("changelog");
     }
@@ -428,12 +433,9 @@ export async function surveyRepository(options: RepositorySurveyOptions = {}): P
   const markdown = new Map<string, string | undefined>();
   const readMarkdown = async (doc: { absolute: string; file: string }) => {
     if (!markdown.has(doc.absolute)) {
-      if ((await stat(doc.absolute)).size > maxMarkdownBytes) {
-        issues.push({ severity: "warning", path: [], file: doc.file, message: `Larger than ${maxMarkdownBytes / 1024 / 1024} MB, so it was not read.` });
-        markdown.set(doc.absolute, undefined);
-      } else {
-        markdown.set(doc.absolute, await readFile(doc.absolute, "utf8"));
-      }
+      const source = await readTextFileWithin(doc.absolute, maxMarkdownBytes);
+      if (source === undefined) issues.push({ severity: "warning", path: [], file: doc.file, message: `Larger than ${maxMarkdownBytes / 1024 / 1024} MB, so it was not read.` });
+      markdown.set(doc.absolute, source);
     }
     return markdown.get(doc.absolute);
   };
@@ -468,11 +470,12 @@ export async function surveyRepository(options: RepositorySurveyOptions = {}): P
 
   const allTodos: SurveyTodo[] = [];
   for (const code of await listFiles(root, realRoot, ["."], codeFilter, issues, "No code files found.")) {
-    if ((await stat(code.absolute)).size > surveyCodeFileMaxBytes) {
+    const source = await readTextFileWithin(code.absolute, surveyCodeFileMaxBytes);
+    if (source === undefined) {
       issues.push({ severity: "warning", path: [], file: code.file, message: `Larger than ${surveyCodeFileMaxBytes / 1024 / 1024} MB, so its comments were not read.` });
       continue;
     }
-    (await readFile(code.absolute, "utf8")).split(/\r?\n/).forEach((line, index) => {
+    source.split(/\r?\n/).forEach((line, index) => {
       const todo = todoIn(line);
       if (todo) allTodos.push({ file: code.file, line: index + 1, ...todo });
     });

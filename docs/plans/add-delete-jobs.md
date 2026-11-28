@@ -1,6 +1,6 @@
 # Plan: add and delete jobs on the local Personas tab
 
-Status: merged. The work is ESM-154 in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 3 points.
+Status: shipped. The work is ESM-154 in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 3 points.
 
 ESM-147 lets a person reword a persona's jobs on the local Personas tab, but adding a job or removing one still means editing the YAML. Reviewing an agent's drafted persona often ends with "this job is not real" or "they also need to…", so the tab should handle both.
 

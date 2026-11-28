@@ -1,6 +1,6 @@
 # Plan: personas on the story map
 
-Status: ESM-901 to ESM-909 are merged, ready for the 0.7.3 release, in the **0.7.3: Personas** release of the map. ESM-910 and ESM-911 are merged for the same release. The release's notes and expected impact are in the map.
+Status: shipped. The work is ESM-901 to ESM-911 in the **0.7.3: Personas** release of the map. The release's notes and expected impact are in the map.
 
 A story map answers “what do we build, in what order”. It does not yet say **who each story is for**, or **which need it meets**. Personas and their jobs to be done add that: the map file names the people the product serves and the jobs each of them is trying to get done, each story says which jobs it serves, and the board lets viewers read the map one persona at a time and see which jobs have no stories.
 
@@ -331,7 +331,7 @@ jobs:
 - The job lanes are drawn on the Personas tab, so they are built with item 11, as items 7 and 8 leave their full display to it.
 - Validate warns about a step whose activity has no active stories for its job.
 - `src/diff.ts` and the JSON export: steps and their coverage.
-- Steps point to activities. Activity steps (ESM-108) come later, in 0.8.0. When they land, a job step can also point to an activity step, as an optional addition that leaves this format unchanged.
+- Steps point to activities. Activity steps (ESM-108) come later, in 0.8.2. When they land, a job step can also point to an activity step, as an optional addition that leaves this format unchanged.
 
 **Docs.** Steps in the persona section, and how they relate to activities.
 

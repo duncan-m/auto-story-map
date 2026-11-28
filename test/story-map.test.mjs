@@ -36,9 +36,12 @@ import {
   storyMapToJson,
   storyMapToVsdx,
   vsdxContentType,
+  storyMapPackagedGuideUrl,
 } from "auto-story-map";
 import { StoryMapBoard } from "auto-story-map/react";
+import { escapeRegExp } from "../dist/references.js";
 import { makeStoryMapResponse } from "../example/host.mjs";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 // The builder estimates sample map: test data with stable IDs, separate from this product’s own map.
 const sample = await readFile(new URL("./fixtures/builder-estimates.yaml", import.meta.url), "utf8");
@@ -58,7 +61,7 @@ test("applies internal and planned defaults to new content", () => {
 });
 
 test("rejects duplicate YAML keys, duplicate IDs and dangling references", () => {
-  assert.throws(() => parseStoryMap(sample + "version: 1\n"), /unique/i);
+  assert.throws(() => parseStoryMap(`${sample}version: 1\n`), /unique/i);
   const invalid = structuredClone(map);
   invalid.stories.push({ ...invalid.stories[0], release: "missing" });
   assert.throws(() => parseStoryMap(stringify(invalid)), /Duplicate ID[\s\S]*Unknown release/);
@@ -152,7 +155,7 @@ test("each card opens its own detail panel through the popover API", async () =>
   const targets = cardsIn(html).map(card => card.match(/popoverTarget="([^"]+)"/i)[1]);
   assert.equal(new Set(targets).size, targets.length);
   for (const target of targets) {
-    const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escaped = escapeRegExp(target);
     assert.match(html, new RegExp(`<div class="esm-detail" id="${escaped}" popover="auto" role="dialog"`));
     assert.match(html, new RegExp(`aria-label="Close" autofocus="" popoverTarget="${escaped}" popoverTargetAction="hide"`, "i"));
   }
@@ -186,7 +189,7 @@ test("renders one Markdown overview link and lists the other sources", async () 
 
   const html = await makeStoryMapResponse("/story-map", document, engineer, { sourceBaseUrl }).text();
   const overviewLinks = [...html.matchAll(/<a class="esm-overview-link" href="([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(overviewLinks, [sourceBaseUrl + "docs/example-builder-estimate-plan.md#builder-workflow"]);
+  assert.deepEqual(overviewLinks, [`${sourceBaseUrl}docs/example-builder-estimate-plan.md#builder-workflow`]);
   const panel = panelFor(html, story.title);
   assert.match(panel, new RegExp(`<a href="${sourceBaseUrl}source/lib/ap/controls.ts" target="_blank" rel="noopener noreferrer"><code>source/lib/ap/controls.ts</code><svg[^>]*esm-external[\\s\\S]*?<span class="esm-visually-hidden"> \\(opens in a new tab\\)</span></a>`));
   assert.match(html, /<a class="esm-overview-link" href="[^"]+" aria-label="Engineering overview for [^"]+ \(opens in a new tab\)" target="_blank" rel="noopener noreferrer">/);
@@ -322,14 +325,14 @@ test("validation errors name the item and source line", () => {
   }
   assert.ok(error instanceof StoryMapValidationError);
   const byPath = Object.fromEntries(error.issues.map(issue => [issue.path.join("."), issue]));
-  assert.deepEqual(byPath["activities.3.title"], { severity: "error", path: ["activities", 3, "title"], message: "Missing required field.", itemId: "finance-ops", line: lineOf("- id: finance-ops"), column: 5 });
+  assert.deepEqual(byPath["activities.3.title"], { severity: "error", path: ["activities", 3, "title"], message: "Missing required field.", rule: "missing-field", itemId: "finance-ops", line: lineOf("- id: finance-ops"), column: 5 });
   assert.equal(byPath["stories.0.status"].itemId, "BUILDER-101");
   assert.equal(byPath["stories.0.status"].line, lineOf("status: started"));
   assert.match(byPath["stories.0.status"].message, /Use one of 'planned', 'in-progress', 'merged', 'shipped', 'blocked', 'cut'\./);
-  assert.equal(byPath["stories.1.owner"].message, "Unknown field.");
+  assert.equal(byPath["stories.1.owner"].message, "Unknown field. Remove it, or correct its spelling.");
   assert.equal(byPath["stories.1.owner"].line, lineOf("owner: Sam"));
   // Reference checks still run when another field is invalid.
-  assert.equal(byPath["stories.3.release"].message, "Unknown release 'finance-later'.");
+  assert.equal(byPath["stories.3.release"].message, "Unknown release 'finance-later'. Use a release ID from the map.");
   assert.equal(byPath["stories.3.release"].itemId, "FINANCE-201");
   assert.match(error.message, new RegExp(`line ${lineOf("finance-later")}: stories\\.3\\.release \\(FINANCE-201\\): Unknown release 'finance-later'\\.`));
 
@@ -350,10 +353,10 @@ test("many unknown fields are located in linear time", () => {
     error = caught;
   }
   assert.ok(error instanceof StoryMapValidationError);
-  const unknown = error.issues.filter(issue => issue.message === "Unknown field.");
+  const unknown = error.issues.filter(issue => issue.message === "Unknown field. Remove it, or correct its spelling.");
   assert.equal(unknown.length, count);
   assert.equal(unknown.at(-1).line, count + 1);
-  assert.ok(performance.now() - started < 3000);
+  assertFasterThan(started, 3000);
 });
 
 test("unknown fields below many unknown top-level fields are located in linear time", () => {
@@ -369,11 +372,11 @@ test("unknown fields below many unknown top-level fields are located in linear t
     error = caught;
   }
   assert.ok(error instanceof StoryMapValidationError);
-  const nested = error.issues.filter(issue => issue.message === "Unknown field." && issue.path[0] === "stories");
+  const nested = error.issues.filter(issue => issue.message === "Unknown field. Remove it, or correct its spelling." && issue.path[0] === "stories");
   assert.equal(nested.length, count);
   assert.deepEqual(nested.at(-1).path, ["stories", 0, `field${count - 1}`]);
   assert.equal(nested.at(-1).line, 2 * count + 3);
-  assert.ok(performance.now() - started < 3000);
+  assertFasterThan(started, 3000);
 });
 
 test("the CLI prints file positions and GitHub annotations", async t => {
@@ -386,11 +389,11 @@ test("the CLI prints file positions and GitHub annotations", async t => {
 
   const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
   assert.equal(text.status, 1);
-  assert.equal(text.stderr.trim(), `${file}:${line}:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'.`);
+  assert.equal(text.stderr.trim(), `${file}:${line}:14: stories.3.release (FINANCE-201): Unknown release 'finance-later'. Use a release ID from the map. [unknown-reference]\n  help: docs/story-map.md#validate-a-change`);
 
   const github = spawnSync(process.execPath, [cli, "validate", "--format", "github", file], { encoding: "utf8" });
   assert.equal(github.status, 1);
-  assert.equal(github.stdout.trim(), `::error file=${file.replace(/:/g, "%3A")},line=${line},col=14,title=Story map::stories.3.release (FINANCE-201): Unknown release 'finance-later'.`);
+  assert.equal(github.stdout.trim(), `::error file=${file.replace(/:/g, "%3A")},line=${line},col=14,title=unknown-reference::stories.3.release (FINANCE-201): Unknown release 'finance-later'. Use a release ID from the map. docs/story-map.md#validate-a-change`);
 
   assert.equal(spawnSync(process.execPath, [cli, "validate", "--format", "xml", file]).status, 2);
 });
@@ -433,9 +436,10 @@ test("init sets up a host repository without overwriting anything", async t => {
   assert.equal(starter.title, "Field Ops Story Map");
   assert.equal(starter.visibility, "internal");
   assert.match(starter.summary, /^Starter map/);
-  assert.equal(await readFile(join(root, "docs/story-map.md"), "utf8"), await readFile(new URL("../docs/story-map.md", import.meta.url), "utf8"));
+  const guide = await readFile(join(root, "docs/story-map.md"), "utf8");
+  assert.equal(guide.slice(guide.indexOf("\n") + 1), await readFile(new URL("../docs/story-map.md", import.meta.url), "utf8"));
   const agents = await readFile(join(root, "AGENTS.md"), "utf8");
-  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- auto-story-map:start -->\n## Story map\n/);
+  assert.match(agents, /^# House rules\n\nUse British English\.\n\n<!-- auto-story-map:start \S+ sha256:[0-9a-f]{64} -->\n## Story map\n/);
   assert.match(agents, /<!-- auto-story-map:end -->\n$/);
   assert.match(await readFile(join(root, ".github/workflows/story-map.yml"), "utf8"), /story-map validate --format github --check-sources product\/story-map\.yaml/);
 
@@ -487,7 +491,9 @@ test("init refuses links that lead outside the repository", async t => {
   await assert.rejects(readFile(join(outside, "missing", "story-map.md")));
 
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
-  const run = spawnSync(process.execPath, [cli, "init", "--dir", agentsLink], { encoding: "utf8" });
+  const freshLink = await host("fresh-agents-link");
+  await symlink(join(outside, "AGENTS.md"), join(freshLink, "AGENTS.md"));
+  const run = spawnSync(process.execPath, [cli, "init", "--dir", freshLink], { encoding: "utf8" });
   assert.equal(run.status, 1);
   assert.match(run.stderr, /points outside the repository/);
 
@@ -499,7 +505,7 @@ test("init refuses links that lead outside the repository", async t => {
   const steps = await initStoryMap(inside);
   assert.deepEqual(steps.slice(1, 3).map(step => [step.path, step.action]), [["docs/story-map.md", "created"], ["AGENTS.md", "updated"]]);
   assert.match(await readFile(join(inside, "documentation/story-map.md"), "utf8"), /./);
-  assert.match(await readFile(join(inside, "RULES.md"), "utf8"), /^# Rules\n\n<!-- auto-story-map:start -->/);
+  assert.match(await readFile(join(inside, "RULES.md"), "utf8"), /^# Rules\n\n<!-- auto-story-map:start \S+ sha256:/);
 
   const dotted = await host("dotted");
   await mkdir(join(dotted, "..documentation"));
@@ -521,11 +527,14 @@ test("init skips the workflow without npm or when asked", async t => {
   assert.equal(run.status, 0);
   assert.match(run.stdout, /skipped  \.github\/workflows\/story-map\.yml \(no package-lock\.json/);
   assert.match(run.stdout, /Next, ask an agent/);
-  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- auto-story-map:start -->/);
+  assert.match(await readFile(join(root, "AGENTS.md"), "utf8"), /^<!-- auto-story-map:start \S+ sha256:/);
 
-  await writeFile(join(root, "package-lock.json"), "{}");
-  const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
+  const npm = await mkdtemp(join(tmpdir(), "story-map-host-"));
+  t.after(() => rm(npm, { recursive: true, force: true }));
+  await writeFile(join(npm, "package-lock.json"), "{}");
+  const noCi = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", npm], { encoding: "utf8" });
   assert.doesNotMatch(noCi.stdout, /workflows/);
+  await assert.rejects(readFile(join(npm, ".github/workflows/story-map.yml")));
   assert.equal(spawnSync(process.execPath, [cli, "init", "--force"]).status, 2);
 });
 
@@ -535,7 +544,8 @@ test("ESM-117: the skill carries every rule in the AGENTS.md section", async () 
   const skill = await skillFile();
   assert.match(skill, /^---\nname: story-map\ndescription: \S[^\n]+\n---\n\n# Story map\n\n/);
   assert.doesNotMatch(skill, /__RULES__|auto-story-map:(start|end)/);
-  const rules = agents.replace(/<!-- auto-story-map:(start|end) -->/g, "").split("\n\n").map(part => part.trim()).filter(part => part && part !== "## Story map");
+  assert.doesNotMatch(skill, /<!-- rule:/, "rule markers stay in AGENTS.md");
+  const rules = agents.replace(/<!-- auto-story-map:(start|end) -->/g, "").replace(/^<!-- rule: [a-z0-9-]+ -->\n/gm, "").split("\n\n").map(part => part.trim()).filter(part => part && part !== "## Story map");
   assert.ok(rules.length > 10);
   const relink = text => text.replace(/^### /, "## ").replace(/\]\((product|docs)\//g, "](../../../$1/");
   for (const rule of rules) assert.ok(skill.includes(relink(rule)), `missing from the skill: ${rule.slice(0, 60)}`);
@@ -560,7 +570,7 @@ test("ESM-117: init --skill writes the skill and a short pointer in AGENTS.md", 
   assert.equal(skillPath, ".claude/skills/story-map/SKILL.md");
   assert.equal(await readFile(join(root, skillPath), "utf8"), await skillFile());
   const agents = await readFile(join(root, "AGENTS.md"), "utf8");
-  assert.match(agents, /^<!-- auto-story-map:start -->\n## Story map\n/);
+  assert.match(agents, /^<!-- auto-story-map:start \S+ sha256:[0-9a-f]{64} -->\n## Story map\n/);
   assert.match(agents, /\[story map skill\]\(\.claude\/skills\/story-map\/SKILL\.md\)/);
   assert.match(agents, /Never remove `draft` yourself/);
   assert.match(agents, /story-map validate --check-sources product\/story-map\.yaml/);
@@ -588,9 +598,12 @@ test("ESM-117: init --skill writes the skill and a short pointer in AGENTS.md", 
   t.after(() => rm(plain, { recursive: true, force: true }));
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   assert.equal(spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", plain]).status, 0);
-  assert.equal(await readFile(join(plain, "AGENTS.md"), "utf8"), full);
+  const plainAgents = await readFile(join(plain, "AGENTS.md"), "utf8");
+  assert.equal(plainAgents.replace(/^<!-- auto-story-map:start \S+ sha256:[0-9a-f]{64} -->/, "<!-- auto-story-map:start -->"), full);
   await assert.rejects(readFile(join(plain, skillPath)));
-  const run = spawnSync(process.execPath, [cli, "init", "--skill", "--no-ci", "--dir", plain], { encoding: "utf8" });
+  const fresh = await mkdtemp(join(tmpdir(), "story-map-skill-"));
+  t.after(() => rm(fresh, { recursive: true, force: true }));
+  const run = spawnSync(process.execPath, [cli, "init", "--skill", "--no-ci", "--dir", fresh], { encoding: "utf8" });
   assert.equal(run.status, 0);
   assert.match(run.stdout, /created  \.claude\/skills\/story-map\/SKILL\.md/);
 });
@@ -620,11 +633,18 @@ test("text diagnostics escape line breaks and control characters from the map", 
   const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
   const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
   assert.equal(text.status, 0);
-  const lines = text.stderr.trimEnd().split("\n");
-  assert.equal(lines.length, 1);
+  const lines = withoutNotices(text.stderr).trimEnd().split("\n");
+  assert.equal(lines.length, 2);
+  assert.match(lines[1], /^  help: \S+#confirm-a-draft$/);
   assert.ok(lines[0].includes("“Turnaround\\nmap.yaml:1:1: error: forged\\r\\u001b[2Kdone”"), lines[0]);
   assert.doesNotMatch(text.stderr, /[\r\u001b]/);
 });
+
+/** Drops the delivery plans notice, which every map without settings.plans gets, and its help line, from validate's text output. */
+function withoutNotices(stderr) {
+  const lines = stderr.split("\n");
+  return lines.filter((line, index) => !/: notice: /.test(line) && !(line.startsWith("  help: ") && /: notice: /.test(lines[index - 1] ?? ""))).join("\n");
+}
 
 function editedSample(edit, base = map) {
   const document = structuredClone(base);
@@ -724,7 +744,7 @@ test("Markdown anchors stay linear for headings with unclosed markup", async () 
   const started = performance.now();
   for (const text of ["<", "[", "[a](", "![a]", "`"]) markdownAnchors(`# ${text.repeat(size / text.length)}`);
   markdownAnchors(`# a${" ".repeat(size)}x\n${"<a ".repeat(size / 3)}`);
-  assert.ok(performance.now() - started < 1000, "anchor extraction took too long");
+  assertFasterThan(started, 1000, "anchor extraction took too long");
 });
 
 test("source checks skip heading anchors in oversized Markdown files", async t => {
@@ -735,7 +755,7 @@ test("source checks skip heading anchors in oversized Markdown files", async t =
   await writeFile(join(root, "big.md"), `# Big\n${"x".repeat(maxMarkdownBytes)}`);
   const loaded = loadStoryMap(sample.replace("docs/example-builder-estimate-plan.md#builder-workflow", "big.md#big"));
   const issues = await checkSources(loaded, root);
-  assert.ok(issues.some(issue => issue.message === "'big.md' is larger than 5 MB, so '#big' was not checked."));
+  assert.ok(issues.some(issue => issue.message === "'big.md' is larger than 5 MB, so '#big' was not checked. Link to a smaller file."));
 });
 
 test("source and plan checks report missing files, headings and story IDs", async t => {
@@ -763,15 +783,15 @@ test("source and plan checks report missing files, headings and story IDs", asyn
 
   const sourceIssues = await checkSources(loaded, root);
   assert.deepEqual(sourceIssues.map(issue => [issue.path.join("."), issue.itemId, issue.line, issue.message]), [
-    ["stories.1.sources.2", "BUILDER-102", lineOf("#missing-heading"), "'docs/plans/estimates.md' has no heading for '#missing-heading'."],
-    ["stories.1.sources.3", "BUILDER-102", lineOf("docs/nothing.md"), "Source file 'docs/nothing.md' does not exist."],
-    ["stories.1.sources.4", "BUILDER-102", lineOf("../outside.md"), "Source '../outside.md' points outside the repository."],
+    ["stories.1.sources.2", "BUILDER-102", lineOf("#missing-heading"), "'docs/plans/estimates.md' has no heading for '#missing-heading'. Link to a heading the file has, or add one."],
+    ["stories.1.sources.3", "BUILDER-102", lineOf("docs/nothing.md"), "Source file 'docs/nothing.md' does not exist. Correct the path, or remove the source."],
+    ["stories.1.sources.4", "BUILDER-102", lineOf("../outside.md"), "Source '../outside.md' points outside the repository. Use a path inside it, or a full URL."],
   ]);
 
   const planIssues = await checkPlanReferences(loaded, root, ["docs", "missing-folder"]);
   assert.deepEqual(planIssues.map(issue => [issue.file, issue.line, issue.column, issue.message]), [
     ["docs/plans/estimates.md", 5, 17, "Unknown story ID 'BUILDER-999'. Add it to the map or correct the reference."],
-    ["missing-folder", undefined, undefined, "No Markdown files found."],
+    ["missing-folder", undefined, undefined, "No Markdown files found. Pass a folder or file that holds the plans."],
   ]);
 });
 
@@ -869,21 +889,21 @@ test("source and plan checks do not follow symbolic links out of the repository"
   const source = sample.replace("      - docs/example-builder-estimate-plan.md#builder-workflow\n", sources.map(path => `      - ${path}\n`).join(""));
   const issues = await checkSources(loadStoryMap(source), root);
   assert.deepEqual(issues.map(issue => issue.message), [
-    "Source 'docs/secret.md#secret-heading' points outside the repository through a symbolic link.",
+    "Source 'docs/secret.md#secret-heading' points outside the repository through a symbolic link. Use a path inside it, or a full URL.",
     // A link out of the repository says the same whether or not its target exists.
-    "Source 'docs/dangling.md' points outside the repository through a symbolic link.",
-    "Source 'notes/plan.md' points outside the repository through a symbolic link.",
-    "'docs/inside.md' has no heading for '#no-such-heading'.",
-    "Source file 'docs/loop-a.md' does not exist.",
+    "Source 'docs/dangling.md' points outside the repository through a symbolic link. Use a path inside it, or a full URL.",
+    "Source 'notes/plan.md' points outside the repository through a symbolic link. Use a path inside it, or a full URL.",
+    "'docs/inside.md' has no heading for '#no-such-heading'. Link to a heading the file has, or add one.",
+    "Source file 'docs/loop-a.md' does not exist. Correct the path, or remove the source.",
   ]);
 
   const loaded = loadStoryMap(sample);
   const plans = await checkPlanReferences(loaded, root, ["docs", "notes", "../outside"]);
   assert.deepEqual(plans.map(issue => [issue.file, issue.message]), [
-    ["docs/dangling.md", "Points outside the repository through a symbolic link, so it was not read."],
-    ["docs/secret.md", "Points outside the repository through a symbolic link, so it was not read."],
-    ["notes", "Points outside the repository through a symbolic link."],
-    ["../outside", "Points outside the repository."],
+    ["docs/dangling.md", "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository."],
+    ["docs/secret.md", "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository."],
+    ["notes", "Points outside the repository through a symbolic link. Pass a path inside it."],
+    ["../outside", "Points outside the repository. Pass a path inside it."],
   ]);
   // Links inside the repository are still read: an unknown ID in a linked plan is found once.
   await writeFile(join(root, "docs/guides/real.md"), "# Real heading\n\nBUILDER-997\n");
@@ -1112,7 +1132,10 @@ test("ESM-120: history records the pull request behind each change", async t => 
   const story = (document, id) => document.stories.find(story => story.id === id);
   const branchEdit = async (branch, edit, author, date) => {
     git(["checkout", "-q", "-b", branch]);
-    await writeMap(document => (edit(document), document));
+    await writeMap(document => {
+      edit(document);
+      return document;
+    });
     git(["commit", "-q", "-am", `Edit on ${branch}`], { author, date });
     git(["checkout", "-q", "main"]);
   };
@@ -1124,7 +1147,10 @@ test("ESM-120: history records the pull request behind each change", async t => 
   await branchEdit("approvals", document => { story(document, "FINANCE-201").status = "in-progress"; }, "Sam", "2026-11-19T11:00:00Z");
   git(["merge", "-q", "--no-ff", "-m", "Merge branch 'approvals' into 'main'\n\nStart approvals\n\nSee merge request acme/product!12", "approvals"], { author: "Carol", date: "2026-11-19T12:00:00Z" });
   // A direct commit that mentions a number mid-subject.
-  await writeMap(document => (story(document, "BUILDER-103").notes = "Check totals.", document));
+  await writeMap(document => {
+    story(document, "BUILDER-103").notes = "Check totals.";
+    return document;
+  });
   git(["commit", "-q", "-am", "Note (#99) for checks"], { author: "Dan", date: "2026-11-19T13:00:00Z" });
 
   const history = await build();
@@ -1327,7 +1353,9 @@ test("ESM-122: a story permalink keeps the story on the board whatever the filte
   assert.deepEqual(readStoryMapFilters(new URLSearchParams("story=FINANCE-202&release=finance-follow-up")), { query: undefined, status: undefined, story: "FINANCE-202", release: "finance-follow-up" });
   assert.deepEqual(readStoryMapFilters(new URLSearchParams("story=<script>&release=../x")), { query: undefined, status: undefined });
 
-  const page = (viewer, query) => getStoryMapPage(map, viewer, { searchParams: new URLSearchParams(query) });
+  // A fixed time, so pages built a millisecond apart still compare equal.
+  const now = new Date("2026-11-27T00:00:00Z");
+  const page = (viewer, query) => getStoryMapPage(map, viewer, { now, searchParams: new URLSearchParams(query) });
   // FINANCE-202 is cut, so the default status filter hides it, and the search does not match it.
   const linked = page(engineer, "story=FINANCE-202&q=prices");
   assert.deepEqual(linked.stories.map(story => story.id), ["BUILDER-102", "FINANCE-202"]);
@@ -1358,7 +1386,7 @@ test("ESM-122: story and release panels offer a permalink, and the board names t
   assert.equal(render(engineer, "q=estimate&story=BUILDER-103").match(/id="esm-story-BUILDER-103"/g).length, 1);
   // The link keeps the host's parameters and drops the viewer's filters.
   const panel = panelFor(html, "Submit the estimate to finance");
-  assert.match(panel, /<div class="esm-detail-actions"><a class="esm-copy-link" href="\?as=engineer&amp;story=BUILDER-103#esm-story-BUILDER-103" data-esm-copy-link="" title="Link to this story"><svg[^>]*>[\s\S]*?<\/svg><span data-esm-copy-label="">Copy link<\/span><span class="esm-visually-hidden"> to this story<\/span><\/a><button type="button" class="esm-close"/);
+  assert.match(panel, /<div class="esm-detail-actions">(?:<details class="esm-menu esm-panel-menu esm-change-menu"[\s\S]*?<\/details>)?<a class="esm-copy-link" href="\?as=engineer&amp;story=BUILDER-103#esm-story-BUILDER-103" data-esm-copy-link="" title="Link to this story"><svg[^>]*>[\s\S]*?<\/svg><span data-esm-copy-label="">Copy link<\/span><span class="esm-visually-hidden"> to this story<\/span><\/a><button type="button" class="esm-close"/);
   const panelId = /<div class="esm-detail" id="([^"]+)"[^>]*>(?:(?!<div class="esm-detail").)*Submit the estimate to finance/s.exec(html)[1];
   assert.match(html, new RegExp(`<section class="esm-board" data-theme="light" data-esm-open="${panelId}"`));
   assert.match(html, /<p class="esm-visually-hidden" role="status" data-esm-copy-status=""><\/p>/);
@@ -1373,7 +1401,7 @@ test("ESM-122: story and release panels offer a permalink, and the board names t
   assert.match(render(engineer, "", { permalinkBase: "https://example.test/app/story-map?tab=1" }), /href="https:\/\/example\.test\/app\/story-map\?tab=1&amp;as=engineer&amp;story=BUILDER-101#esm-story-BUILDER-101"/);
   assert.match(render(engineer, "", { permalinkBase: "/app/story-map" }), /href="\/app\/story-map\?as=engineer&amp;story=BUILDER-101#esm-story-BUILDER-101"/);
   const unsafe = render(engineer, "", { permalinkBase: "javascript:alert(1)" });
-  assert.doesNotMatch(unsafe, /esm-copy-link|javascript:/);
+  assert.doesNotMatch(unsafe, /<a class="esm-copy-link|data-esm-copy-link|javascript:/);
   assert.doesNotMatch(render(engineer, ""), /data-esm-open/);
 
   // Customers link to their own stories by public ID, and have no release panels to open.
@@ -1413,7 +1441,7 @@ test("ESM-122: board.js opens the permalinked panel, expands its lane and copies
     dataset: { esmOpen: "p-3" },
     contains: () => true,
     querySelector: selector => selector.startsWith("[popovertarget=") ? (selector.includes('"p-3"') ? opener : null) : selector === "[data-esm-copy-status]" ? status : null,
-    addEventListener: (type, handler) => { click = handler; },
+    addEventListener: (_type, handler) => { click = handler; },
   };
   const globals = {
     Element: FakeElement,
@@ -1495,12 +1523,12 @@ test("warnings come back with a valid map and pass validation unless strict", as
 
   const text = spawnSync(process.execPath, [cli, "validate", file], { encoding: "utf8" });
   assert.equal(text.status, 0);
-  assert.equal(text.stderr.split("\n")[0], `${file}:${line}:13: warning: stories.3.status (FINANCE-201): Add a statusReason explaining why the story is blocked.`);
+  assert.equal(withoutNotices(text.stderr).split("\n")[0], `${file}:${line}:13: warning: stories.3.status (FINANCE-201): Add a statusReason explaining why the story is blocked. [missing-status-reason]`);
   assert.match(text.stdout, /valid \(4 activities, 3 releases, 5 stories\), 2 warnings/);
 
   const github = spawnSync(process.execPath, [cli, "validate", "--format", "github", file], { encoding: "utf8" });
   assert.equal(github.status, 0);
-  assert.match(github.stdout, new RegExp(`^::warning file=[^,]+,line=${line},col=13,title=Story map::stories\\.3\\.status \\(FINANCE-201\\): Add a statusReason`));
+  assert.match(github.stdout, new RegExp(`^::warning file=[^,]+,line=${line},col=13,title=missing-status-reason::stories\\.3\\.status \\(FINANCE-201\\): Add a statusReason`, "m"));
 
   const strict = spawnSync(process.execPath, [cli, "validate", "--strict", file], { encoding: "utf8" });
   assert.equal(strict.status, 1);
@@ -2021,7 +2049,7 @@ test("getStoryMapPage projects and filters in one call", () => {
     const view = getStoryMapForViewer(map, viewer, { now, ...options });
     return view && filterStoryMapView(view, readStoryMapFilters(new URLSearchParams(query)), { now });
   };
-  const queries = ["", "q=estimate", "status=all", "status=shipped&q=draft", "status=stalled", "changed=7d", "q=" + "x".repeat(300)];
+  const queries = ["", "q=estimate", "status=all", "status=shipped&q=draft", "status=stalled", "changed=7d", `q=${"x".repeat(300)}`];
   for (const viewer of [engineer, superAdmin, regular, null]) {
     for (const query of queries) {
       assert.deepEqual(getStoryMapPage(map, viewer, { now, searchParams: new URLSearchParams(query) }), separately(viewer, query), `${JSON.stringify(viewer)} ${query}`);
@@ -2513,7 +2541,7 @@ test("board.js remembers collapsed release lanes", async t => {
       links,
       get listeners() { return listeners; },
       querySelectorAll: selector => selector.includes("data-esm-export") ? links : inputs,
-      addEventListener: (type, handler) => { listeners++; listener = handler; },
+      addEventListener: (_type, handler) => { listeners++; listener = handler; },
       toggle(index) { inputs[index].checked = !inputs[index].checked; listener({ target: inputs[index] }); },
     };
   }
@@ -2595,7 +2623,7 @@ test("groups story history newest first in linear time, keeping equal timestamps
   const many = Array.from({ length: 100_000 }, (_, i) => event("planned", new Date(Date.UTC(2026, 0, 1) + i * 1000).toISOString(), "b000000"));
   const started = performance.now();
   const view = getStoryMapForViewer(map, engineer, { history: { ...history, events: many } });
-  assert.ok(performance.now() - started < 2000);
+  assertFasterThan(started, 2000);
   assert.equal(view.stories.find(s => s.id === "BUILDER-101").history.length, 100_000);
 });
 
@@ -2654,8 +2682,6 @@ function assertWellFormedXml(xml, name) {
   assert.deepEqual(stack, [], `${name}: unclosed elements`);
 }
 
-/** Escapes every character with a meaning in a regular expression. */
-const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const exportNow = new Date("2026-11-20T09:00:00Z");
 const exportView = (source = map, options = {}) => getStoryMapForViewer(source, engineer, options);
 const page = files => files.get("visio/pages/page1.xml");
@@ -2821,9 +2847,15 @@ function parseCsv(text) {
       else if (char === '"') quoted = false;
       else field += char;
     } else if (char === '"') quoted = true;
-    else if (char === ",") rows.at(-1).push(field), (field = "");
-    else if (char === "\r" && text[i + 1] === "\n") rows.at(-1).push(field), (field = ""), rows.push([]), i++;
-    else field += char;
+    else if (char === ",") {
+      rows.at(-1).push(field);
+      field = "";
+    } else if (char === "\r" && text[i + 1] === "\n") {
+      rows.at(-1).push(field);
+      field = "";
+      rows.push([]);
+      i++;
+    } else field += char;
   }
   assert.equal(field, "", "the file ends with CRLF");
   assert.deepEqual(rows.pop(), [], "the file ends with CRLF");
@@ -3142,7 +3174,7 @@ test("ESM-414: board.js applies the status filter when its menu closes with a ch
     HTMLInputElement: class {},
     HTMLSelectElement: class {},
     sessionStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
-    document: { readyState: "complete", querySelectorAll: () => [], addEventListener: (type, handler) => documentListeners.push(handler) },
+    document: { readyState: "complete", querySelectorAll: () => [], addEventListener: (_type, handler) => documentListeners.push(handler) },
   };
   const saved = Object.fromEntries(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
@@ -3268,36 +3300,39 @@ test("ESM-801: finds tests tagged with story IDs without running them", async t 
     ["test/calls.js", 15, "test", "BUILDER-102", "BUILDER-102: each %s"],
     ["test/calls.js", 16, "test", "BUILDER-102", "BUILDER-102: each table $a"],
     ["test/calls.js", 20, "group", "BUILDER-103", "BUILDER-103: describe"],
+    // An untagged test inside a tagged describe is linked to its story (ESM-119).
+    ["test/calls.js", 21, "test", "BUILDER-103", "names no story"],
     ["test/calls.js", 23, "group", "BUILDER-103", "BUILDER-103: suite"],
     ["test/calls.js", 24, "test", "BUILDER-101", `BUILDER-101: it's "escaped" \u2014 here`],
     ["test/calls.js", 25, "test", "BUILDER-101", "BUILDER-101: name on the next line"],
     ["test/calls.js", 29, "test", "BUILDER-101 BUILDER-102", "BUILDER-101 and BUILDER-102 together"],
     ["test/calls.js", 30, "test", "BUILDER-101", "BUILDER-101: twice, BUILDER-101"],
     // A template literal keeps its ${…} as written, and IDs are matched on its literal text only.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: this is the literal text the scanner should report.
     ["test/calls.js", 31, "test", "BUILDER-101", 'BUILDER-101: ${"template"} part'],
     ["test/calls.js", 33, "test", "BUILDER-999", "Tagged at the end (BUILDER-999)"],
   ]);
   // Not read: built output, dot folders, dependencies, non-test files, and links out of the repository.
   assert.deepEqual(issues.map(issue => [issue.severity, issue.file, issue.message]), [
-    ["error", "outside", "Points outside the repository through a symbolic link, so it was not read."],
-    ["error", "test/linked.test.js", "Points outside the repository through a symbolic link, so it was not read."],
+    ["error", "outside", "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository."],
+    ["error", "test/linked.test.js", "Points outside the repository through a symbolic link, so it was not read. Remove the link, or point it inside the repository."],
   ]);
 
   // Named paths: a file is read whatever its name, and paths outside the root are refused.
   const named = await findStoryTests(loaded, root, { paths: ["src/estimate.ts", "../outside", "outside", "missing", "test/linked.test.js"] });
   assert.deepEqual(named.tests.map(found => found.name), ["BUILDER-103: not a test file"]);
   assert.deepEqual(named.issues.map(issue => [issue.file, issue.message]), [
-    ["../outside", "Points outside the repository."],
-    ["outside", "Points outside the repository through a symbolic link."],
-    ["missing", "No test files found."],
-    ["test/linked.test.js", "Points outside the repository through a symbolic link."],
+    ["../outside", "Points outside the repository. Pass a path inside it."],
+    ["outside", "Points outside the repository through a symbolic link. Pass a path inside it."],
+    ["missing", "No test files found. Pass a folder or file that holds the tests."],
+    ["test/linked.test.js", "Points outside the repository through a symbolic link. Pass a path inside it."],
   ]);
 
   // Oversized files are reported and skipped.
-  await writeFile(join(root, "test/big.test.js"), 'test("BUILDER-101: big", () => {});\n' + " ".repeat(5 * 1024 * 1024));
+  await writeFile(join(root, "test/big.test.js"), `test("BUILDER-101: big", () => {});\n${" ".repeat(5 * 1024 * 1024)}`);
   const big = await findStoryTests(loaded, root, { paths: ["test/big.test.js"] });
   assert.deepEqual(big.tests, []);
-  assert.deepEqual(big.issues.map(issue => [issue.severity, issue.file, issue.message]), [["warning", "test/big.test.js", "Larger than 5 MB, so its tests were not read."]]);
+  assert.deepEqual(big.issues.map(issue => [issue.severity, issue.file, issue.message]), [["warning", "test/big.test.js", "Larger than 5 MB, so its tests were not read. Split the file to have its tests counted."]]);
 
   // Without prefixed story IDs in the map, nothing is tagged.
   const unprefixed = loadStoryMap(sample.replaceAll("BUILDER-", "builder_"));
@@ -3307,7 +3342,7 @@ test("ESM-801: finds tests tagged with story IDs without running them", async t 
   const hostile = 'test.each(' .repeat(20_000) + "test(`".repeat(20_000) + '/"'.repeat(20_000);
   const started = performance.now();
   scanTestCalls(hostile);
-  assert.ok(performance.now() - started < 2000, "scans hostile text quickly");
+  assertFasterThan(started, 2000, "scans hostile text quickly");
 });
 
 test("ESM-801: story-map tests writes an index the board can parse", async t => {
@@ -3324,7 +3359,7 @@ test("ESM-801: story-map tests writes an index the board can parse", async t => 
   assert.equal(index.version, 1);
   assert.equal(index.omitted, undefined);
   assert.deepEqual(index.tests[0], { storyIds: ["BUILDER-101"], file: "test/calls.js", line: 7, name: "BUILDER-101: double quotes", kind: "test" });
-  assert.equal(index.tests.length, 17);
+  assert.equal(index.tests.length, 18);
   assert.ok(!printed.stdout.includes("BUILDER-999"));
   assert.ok(!printed.stdout.includes('"column"'));
 
@@ -3333,8 +3368,8 @@ test("ESM-801: story-map tests writes an index the board can parse", async t => 
   await writeFile(join(root, "product/story-map.yaml"), sample);
   const written = run("--out", "out/tests.json");
   assert.equal(written.status, 0, written.stderr);
-  assert.match(written.stderr, /out\/tests\.json: 19 tests for 3 stories\n$/);
-  assert.equal(parseStoryMapTests(await readFile(join(root, "out/tests.json"), "utf8")).tests.length, 19);
+  assert.match(written.stderr, /out\/tests\.json: 20 tests for 3 stories\n$/);
+  assert.equal(parseStoryMapTests(await readFile(join(root, "out/tests.json"), "utf8")).tests.length, 20);
 
   assert.equal(run("--tests", "../elsewhere", "map.yaml").status, 2);
   assert.equal(run("--tests", "missing", "map.yaml").status, 2);
@@ -3403,22 +3438,24 @@ test("ESM-801: validate --tests reports unknown tags and active stories without 
 
   const text = run("--tests", "only-102.test.js", "map.yaml");
   assert.equal(text.status, 1);
-  assert.equal(text.stderr, [
-    `map.yaml:${storyLine}:13: warning: stories.0.status (BUILDER-101): No tests are tagged BUILDER-101. Put the story ID in the name of each test that covers it.`,
-    "only-102.test.js:2:1: Unknown story ID 'BUILDER-999' in a test name. Add the story to the map or correct the tag.",
+  assert.equal(withoutNotices(text.stderr), [
+    `map.yaml:${storyLine}:13: warning: stories.0.status (BUILDER-101): No tests are tagged BUILDER-101. Put the story ID in the name of each test that covers it. [story-without-tests]`,
+    `  help: ${storyMapPackagedGuideUrl}#link-tests-to-stories`,
+    "only-102.test.js:2:1: Unknown story ID 'BUILDER-999' in a test name. Add the story to the map or correct the tag. [unknown-test-story]",
+    `  help: ${storyMapPackagedGuideUrl}#link-tests-to-stories`,
     "",
   ].join("\n"));
 
   const github = run("--format", "github", "--tests", "only-102.test.js", "map.yaml");
   assert.equal(github.status, 1);
-  assert.match(github.stdout, /^::warning file=map\.yaml,line=\d+,col=13,title=Story map::stories\.0\.status \(BUILDER-101\): No tests are tagged BUILDER-101\./m);
-  assert.match(github.stdout, /^::error file=only-102\.test\.js,line=2,col=1,title=Story map::Unknown story ID 'BUILDER-999'/m);
+  assert.match(github.stdout, /^::warning file=map\.yaml,line=\d+,col=13,title=story-without-tests::stories\.0\.status \(BUILDER-101\): No tests are tagged BUILDER-101\./m);
+  assert.match(github.stdout, /^::error file=only-102\.test\.js,line=2,col=1,title=unknown-test-story::Unknown story ID 'BUILDER-999'/m);
 
   // The warning alone passes, unless --strict.
   await writeFile(join(root, "only-102.test.js"), 'test("BUILDER-102: covered", () => {});\n');
   const warned = run("--tests", "only-102.test.js", "map.yaml");
   assert.equal(warned.status, 0, warned.stderr);
-  assert.match(warned.stdout, /valid \(.*\), 1 warning; checked test tags\n$/);
+  assert.match(warned.stdout, /valid \(.*\), 1 warning(, 1 notice)?; checked test tags\n$/);
   assert.equal(run("--strict", "--tests", "only-102.test.js", "map.yaml").status, 1);
 
   // Tagging the in-progress story clears the warning. Planned and cut stories are never warned about.
@@ -3430,7 +3467,7 @@ test("ESM-801: validate --tests reports unknown tags and active stories without 
   // Unreadable paths fail, and without --tests nothing changes.
   assert.equal(run("--tests", "../elsewhere", "map.yaml").status, 1);
   assert.equal(run("--tests", "test", "map.yaml").status, 1);
-  assert.equal(run("map.yaml").stderr, "");
+  assert.equal(withoutNotices(run("map.yaml").stderr), "");
 });
 
 test("ESM-801: the story panel lists tagged tests by file, linking to each line", () => {
@@ -3483,6 +3520,108 @@ test("ESM-801: the story panel lists tagged tests by file, linking to each line"
   for (const file of ["/etc/passwd", "../outside.test.js", "https://evil.test/x.js", "//evil.test/x.js", "test\\x.js"]) {
     assert.throws(() => parseStoryMapTests({ ...tests, tests: [{ ...tests.tests[0], file }], omitted: undefined }), /relative to the repository root/, file);
   }
+});
+
+const describeBlocks = `import { describe, it, suite, test } from "vitest";
+describe("BUILDER-101: estimates", () => {
+  it("totals materials", () => {});
+  describe("rounding", () => {
+    it("rounds to the penny", () => {});
+    describe.each([1, 2])("BUILDER-102: tax band %s", () => {
+      test.each([[1]])("applies the band", () => {});
+    });
+  });
+  it("BUILDER-102: shares a total", () => {});
+  it("BUILDER-101: names its own story too", () => {});
+});
+test("outside every block", () => {});
+describe(\`\${"dynamic"} name\`, () => {
+  it("BUILDER-103: tagged inside an untagged block", () => {});
+});
+suite.concurrent("BUILDER-999: unknown group", () => {
+  it("one", () => {});
+  it("two", () => {});
+});
+describe("BUILDER-103: groups by reference", sharedTests);
+it("after a block passed by reference", () => {});
+`;
+
+test("ESM-119: a tagged describe block links every test inside it", async t => {
+  const { findStoryTests, buildStoryMapTests, checkStoryTests } = await import("../dist/tests.js");
+  const { loadStoryMap } = await import("../dist/schema.js");
+  const root = await mkdtemp(join(tmpdir(), "story-map-describe-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await writeFile(join(root, "blocks.test.ts"), describeBlocks);
+  const loaded = loadStoryMap(sample);
+  const { tests } = await findStoryTests(loaded, root, { paths: ["."] });
+
+  assert.deepEqual(tests.map(found => [found.line, found.kind, found.storyIds.join(" "), (found.inheritedIds ?? []).join(" "), found.name]), [
+    [2, "group", "BUILDER-101", "", "BUILDER-101: estimates"],
+    [3, "test", "BUILDER-101", "BUILDER-101", "totals materials"],
+    // Nested blocks pass the IDs down, untagged or not.
+    [4, "group", "BUILDER-101", "BUILDER-101", "rounding"],
+    [5, "test", "BUILDER-101", "BUILDER-101", "rounds to the penny"],
+    // A tagged block inside a tagged block: its own ID first, then the outer ones.
+    [6, "group", "BUILDER-102 BUILDER-101", "BUILDER-101", "BUILDER-102: tax band %s"],
+    [7, "test", "BUILDER-102 BUILDER-101", "BUILDER-102 BUILDER-101", "applies the band"],
+    // A test with its own ID keeps it and also gets the block's.
+    [10, "test", "BUILDER-102 BUILDER-101", "BUILDER-101", "BUILDER-102: shares a total"],
+    // Naming the block's story again is not inheriting it.
+    [11, "test", "BUILDER-101", "", "BUILDER-101: names its own story too"],
+    [15, "test", "BUILDER-103", "", "BUILDER-103: tagged inside an untagged block"],
+    [17, "group", "BUILDER-999", "", "BUILDER-999: unknown group"],
+    [18, "test", "BUILDER-999", "BUILDER-999", "one"],
+    [19, "test", "BUILDER-999", "BUILDER-999", "two"],
+    // A block passed by reference has no tests in its text, and the block ends at its closing bracket.
+    [21, "group", "BUILDER-103", "", "BUILDER-103: groups by reference"],
+  ]);
+
+  // An unknown ID in a block's name is reported once, at the block.
+  assert.deepEqual(checkStoryTests(loaded, tests).filter(issue => issue.severity === "error").map(issue => [issue.line, issue.message]), [
+    [17, "Unknown story ID 'BUILDER-999' in a test name. Add the story to the map or correct the tag."],
+  ]);
+
+  // The index marks the IDs a test has only from its block.
+  const { index } = buildStoryMapTests(loaded, tests);
+  assert.deepEqual(index.tests.find(entry => entry.line === 10), { storyIds: ["BUILDER-102", "BUILDER-101"], inheritedIds: ["BUILDER-101"], file: "blocks.test.ts", line: 10, name: "BUILDER-102: shares a total", kind: "test" });
+  assert.equal(index.tests.find(entry => entry.line === 11).inheritedIds, undefined);
+  assert.ok(!index.tests.some(entry => entry.storyIds.includes("BUILDER-999")));
+  assert.deepEqual(parseStoryMapTests(JSON.stringify(index)), index);
+  const entry = index.tests.find(found => found.line === 3);
+  assert.throws(() => parseStoryMapTests({ ...index, tests: [{ ...entry, inheritedIds: ["BUILDER-102"] }] }), /inherited ID in storyIds/);
+  assert.throws(() => parseStoryMapTests({ ...index, tests: [{ ...entry, inheritedIds: [] }] }), /inheritedIds/);
+
+  // Deeply nested tagged blocks stay quick to read, and each test inherits at most 20 IDs.
+  const deep = Array.from({ length: 20_000 }, (_, n) => `describe("BUILDER-${n}", () => { it("x", () => {});\n`).join("") + "})".repeat(20_000);
+  await writeFile(join(root, "deep.test.js"), deep);
+  const started = performance.now();
+  const nested = await findStoryTests(loaded, root, { paths: ["deep.test.js"] });
+  assertFasterThan(started, 2000, "reads deep nesting quickly");
+  assert.equal(nested.tests.at(-1).inheritedIds.length, 20);
+});
+
+test("ESM-119: the story panel marks tests covered by their block", () => {
+  const tests = parseStoryMapTests({
+    version: 1,
+    generatedAt: "2026-11-27T12:00:00.000Z",
+    tests: [
+      { storyIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 2, name: "BUILDER-101: estimates", kind: "group" },
+      { storyIds: ["BUILDER-101"], inheritedIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 3, name: "totals materials", kind: "test" },
+      { storyIds: ["BUILDER-102", "BUILDER-101"], inheritedIds: ["BUILDER-101"], file: "test/estimate.test.js", line: 10, name: "BUILDER-102: shares a total", kind: "test" },
+    ],
+  });
+  const view = getStoryMapForViewer(map, engineer, { tests });
+  const byId = id => view.stories.find(card => card.id === id).tests;
+  assert.deepEqual(byId("BUILDER-101").map(test => [test.line, test.inherited ?? false]), [[2, false], [3, true], [10, true]]);
+  // The test names BUILDER-102 itself, so it is not inherited there.
+  assert.deepEqual(byId("BUILDER-102").map(test => [test.line, test.inherited ?? false]), [[10, false]]);
+  assert.ok(!("inheritedIds" in byId("BUILDER-101")[1]));
+
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+  const panel = html.split('<div class="esm-detail"').find(part => part.includes('<p class="esm-card-id">BUILDER-101</p>'));
+  assert.match(panel, /All tests in this group · line 2/);
+  assert.match(panel, /<span class="esm-test-name">totals materials<\/span><\/span><span class="esm-test-line">Covered by its group · line 3/);
+  assert.match(panel, /Covered by its group · line 10/);
 });
 
 test("ESM-801: customers never see test names or paths", async () => {
@@ -3723,53 +3862,89 @@ test("ESM-157: the sticky release heading holds only the toggle and name", () =>
   }
 });
 
-test("ESM-157: the grid scrolls in a box only on screens with room for sticky headings", async () => {
+test("ESM-157: the headings stick only on screens with room for them", async () => {
   const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
   const start = css.indexOf("@media screen and (min-width: 651px) and (min-height: 480px) {");
   assert.ok(start > 0);
   const block = css.slice(start, css.indexOf("\n}", start));
-  assert.match(block, /\.esm-scroll \{ position: relative; max-height: var\(--esm-board-height, calc\(100dvh - 7\.5rem\)\); overflow: auto;/);
   for (const name of ["activities", "corner", "release", "release-heading"]) {
     assert.match(block, new RegExp(`\\.esm-${name} \\{ position: sticky; [^}]*background:`), `${name} sticks and is opaque`);
   }
-  assert.doesNotMatch(css.slice(0, start), /max-height: var\(--esm-board-height/);
+  assert.doesNotMatch(css.slice(0, start), /position: sticky/);
 });
 
-test("ESM-157: board.js shrinks the activity row once its descriptions scroll past", async t => {
-  const saved = Object.getOwnPropertyDescriptor(globalThis, "document");
+test("ESM-192: the page scrolls the grid, unless the host gives it a height", async () => {
+  const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+  const start = css.indexOf("@media screen and (min-width: 651px) and (min-height: 480px) {");
+  const block = css.slice(start, css.indexOf("\n}", start));
+  assert.match(block, /\.esm-scroll \{ position: relative; overflow: visible; isolation: isolate; \}/, "no scroll box of its own");
+  assert.match(block, /\.esm-frame:has\(> \.esm-scroll:not\(\[data-esm-scroll-box\]\)\) \{ min-width: min-content; \}/, "a wide grid scrolls the page");
+  assert.match(block, /\.esm-scroll:not\(\[data-esm-scroll-box\]\) :is\(\.esm-lane, \.esm-card, \.esm-card :is\(a, button, summary, \[tabindex\]\)\) \{ scroll-margin: calc\(var\(--esm-activities-height/, "targets clear the headings");
+  assert.match(block, /\.esm-scroll\[data-esm-scroll-box\] \{ max-height: var\(--esm-board-height\); overflow: auto; scroll-padding:/, "opt-in box");
+  assert.doesNotMatch(css, /var\(--esm-board-height,/, "no default height");
+});
+
+const headingGlobals = new WeakMap();
+
+/** Runs enhanceStoryMapHeadings on a fake grid, scrolled by the page or, with a board height, in its own box. */
+async function headingsHarness(t, boardHeight = "") {
+  // Save the real globals once per test, so a second harness in the same test restores them, not the first one's fakes.
+  if (!headingGlobals.has(t)) {
+    const saved = Object.fromEntries(["document", "window", "getComputedStyle"].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
+    headingGlobals.set(t, saved);
+    t.after(() => {
+      for (const [name, descriptor] of Object.entries(saved)) {
+        if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+        else delete globalThis[name];
+      }
+    });
+  }
   const page = { readyState: "complete", activeElement: null, querySelectorAll: () => [] };
-  Object.defineProperty(globalThis, "document", { value: page, configurable: true, writable: true });
-  t.after(() => {
-    if (saved) Object.defineProperty(globalThis, "document", saved);
-    else delete globalThis.document;
-  });
+  const windowListeners = [];
+  const define = (name, value) => Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
+  define("document", page);
+  define("window", { addEventListener: (type, handler) => type === "scroll" && windowListeners.push(handler) });
+  define("getComputedStyle", () => ({ getPropertyValue: name => (name === "--esm-board-height" ? boardHeight : "") }));
   const attributes = new Set();
   const styles = new Map();
-  const listeners = [];
+  const boxListeners = [];
   const avatar = {};
   const row = {
-    getBoundingClientRect: () => ({ height: attributes.has("data-esm-stuck") ? 90 : 200 }),
+    getBoundingClientRect: () => ({ height: attributes.has("data-esm-stuck") ? 90 : 200, top: 0 }),
     contains: element => element === avatar,
     addEventListener() {},
     querySelector: () => null,
   };
   const corner = { getBoundingClientRect: () => ({ width: 180 }) };
+  let pageTop = 0;
   const box = {
     scrollTop: 0,
     style: { setProperty: (name, value) => styles.set(name, value) },
-    querySelector: selector => selector === ".esm-activities" ? row : corner,
+    getBoundingClientRect: () => ({ top: -pageTop }),
+    querySelector: selector => (selector === ".esm-activities" ? row : selector === ".esm-corner" ? corner : null),
     hasAttribute: name => attributes.has(name),
     setAttribute: name => attributes.add(name),
     removeAttribute: name => attributes.delete(name),
-    toggleAttribute: (name, on) => on ? attributes.add(name) : attributes.delete(name),
-    addEventListener: (type, handler) => listeners.push(handler),
+    toggleAttribute: (name, on) => (on ? attributes.add(name) : attributes.delete(name)),
+    addEventListener: (type, handler) => type === "scroll" && boxListeners.push(handler),
   };
-  const scroll = top => { box.scrollTop = top; listeners[0](); return attributes.has("data-esm-stuck"); };
+  const listeners = boardHeight && boardHeight !== "none" ? boxListeners : windowListeners;
+  const scroll = top => {
+    if (listeners === boxListeners) box.scrollTop = top;
+    else pageTop = top;
+    for (const listener of listeners) listener();
+    return attributes.has("data-esm-stuck");
+  };
   const { enhanceStoryMapHeadings } = await import("auto-story-map/board.js");
   const root = { querySelectorAll: () => [box] };
   enhanceStoryMapHeadings(root);
   enhanceStoryMapHeadings(root);
-  assert.equal(listeners.length, 1, "enhancing twice adds one listener");
+  return { attributes, styles, boxListeners, windowListeners, scroll, page, avatar, enhanceStoryMapHeadings };
+}
+
+test("ESM-157: board.js shrinks the activity row once its descriptions scroll past", async t => {
+  const { attributes, styles, windowListeners, scroll, page, avatar, enhanceStoryMapHeadings } = await headingsHarness(t);
+  assert.equal(windowListeners.length, 1, "enhancing twice adds one listener");
   assert.equal(attributes.size, 0, "full size at the top");
   assert.equal(styles.get("--esm-activities-height"), "200px");
   assert.equal(styles.get("--esm-activities-saved"), "110px");
@@ -3786,6 +3961,29 @@ test("ESM-157: board.js shrinks the activity row once its descriptions scroll pa
   enhanceStoryMapHeadings({ querySelectorAll: () => [] });
 });
 
+test("ESM-192: board.js follows the page scroll, and a box only when the host sets a height", async t => {
+  const paged = await headingsHarness(t);
+  assert.equal(paged.boxListeners.length, 0);
+  assert.equal(paged.windowListeners.length, 1);
+  assert.equal(paged.attributes.has("data-esm-scroll-box"), false);
+
+  const none = await headingsHarness(t, "none");
+  assert.equal(none.attributes.has("data-esm-scroll-box"), false, "none keeps the page scroll");
+  assert.equal(none.windowListeners.length, 1);
+
+  const boxed = await headingsHarness(t, "calc(100dvh - 12rem)");
+  assert.equal(boxed.attributes.has("data-esm-scroll-box"), true);
+  assert.equal(boxed.windowListeners.length, 0, "only the box's scroll counts");
+  assert.equal(boxed.boxListeners.length, 1);
+  assert.equal(boxed.scroll(110), true);
+  assert.equal(boxed.scroll(0), false);
+});
+
+test("ESM-192: the board.js heading tests put the real globals back", () => {
+  assert.equal(typeof getComputedStyle, "undefined");
+  assert.equal(typeof window, "undefined");
+});
+
 test("ESM-912: detail panels slide in from the right as a full-height sheet", async () => {
   const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
   const rule = css.match(/\n\.esm-detail \{([^}]*)\}/)?.[1] ?? "";
@@ -3795,4 +3993,56 @@ test("ESM-912: detail panels slide in from the right as a full-height sheet", as
   assert.match(css, /\.esm-detail:popover-open \{ transform: none; \}/);
   assert.match(css, /@starting-style \{\n  \.esm-detail:popover-open \{ transform: translateX\(100%\); \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\n  \.esm-detail, \.esm-detail::backdrop \{ transition: none; \}/);
+});
+
+test("ESM-158: priorities accept only must, should and could", async () => {
+  const { storyPriorities } = await import("auto-story-map");
+  assert.deepEqual(storyPriorities, ["must", "should", "could"]);
+  for (const priority of storyPriorities) {
+    const parsed = editedSample(document => { document.stories[0].priority = priority; });
+    assert.equal(parsed.stories[0].priority, priority);
+  }
+  for (const priority of ["wont", "MH", "Must", 1]) {
+    assert.throws(() => editedSample(document => { document.stories[0].priority = priority; }), error =>
+      error.issues.length === 1
+      && error.issues[0].path.join(".") === "stories.0.priority"
+      && error.issues[0].message === "Use one of must, should, could.", `priority: ${JSON.stringify(priority)}`);
+  }
+});
+
+test("ESM-158: the board tags cards and panels with MH, SH or CH, for internal viewers only", async () => {
+  const prioritised = editedSample(document => {
+    const story = id => document.stories.find(story => story.id === id);
+    story("BUILDER-101").priority = "must";
+    Object.assign(story("BUILDER-102"), { priority: "should", estimate: 3 });
+    story("BUILDER-103").priority = "could";
+  });
+  const render = view => renderToStaticMarkup(createElement(StoryMapBoard, { map: view }));
+  const internal = getStoryMapForViewer(prioritised, engineer);
+  assert.equal(internal.stories.find(story => story.id === "BUILDER-101").priority, "must");
+  const html = render(internal);
+  // The tag sits on the ID line, before the estimate, with the full name for screen readers.
+  assert.match(html, /<span class="esm-card-head"><span class="esm-card-id">BUILDER-101<\/span><span class="esm-priority esm-priority-must" title="Priority: Must have"><span aria-hidden="true">MH<\/span><span class="esm-visually-hidden">Priority: Must have<\/span><\/span><\/span>/);
+  assert.match(html, /<span class="esm-card-id">BUILDER-102<\/span><span class="esm-card-tags"><span class="esm-priority esm-priority-should"[^>]*><span aria-hidden="true">SH<\/span>.*?<\/span><\/span><span class="esm-estimate"/);
+  assert.match(html, /<dt>Priority<\/dt><dd><span class="esm-priority esm-priority-could"[^>]*><span aria-hidden="true">CH<\/span>.*?<\/span><\/span> Could have<\/dd>/);
+  assert.doesNotMatch(render(getStoryMapForViewer(map, engineer)), /esm-priority|<dt>Priority/);
+
+  const customer = getStoryMapForViewer(prioritised, regular);
+  assert.ok(customer.stories.every(story => !("priority" in story)));
+  assert.doesNotMatch(render(customer), /esm-priority|<dt>Priority|Must have/);
+  const payload = await makeStoryMapResponse("/api/story-map", prioritised, regular).text();
+  assert.doesNotMatch(payload, /"priority"/);
+});
+
+test("ESM-158: diffs show priority changes, outside the customer-facing comparison", () => {
+  const before = editedSample(document => { document.stories[0].priority = "should"; });
+  const after = editedSample(document => { document.stories[0].priority = "must"; document.stories[1].priority = "could"; });
+  const diff = diffStoryMaps(before, after);
+  const updates = Object.fromEntries(diff.stories.updated.map(update => [update.id, update]));
+  assert.deepEqual(updates[before.stories[0].id].priority, { from: "should", to: "must" });
+  assert.deepEqual(updates[before.stories[1].id].priority, { to: "could" });
+  assert.equal(diff.customer.length, 0);
+  const markdown = formatStoryMapDiff(diff);
+  assert.match(markdown, /Priority: should → must/);
+  assert.match(markdown, /Priority: none → could/);
 });

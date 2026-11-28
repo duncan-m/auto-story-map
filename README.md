@@ -13,7 +13,7 @@ Export the map as JSON and an agent can review your stories and tests and sugges
 
 ## Screenshot
 
-![This library's own story map in the demo, as a super admin sees it. Under the title, a line says when the map was last updated, by whom, and which releases recent changes focused on. Story map and Personas tabs sit above the search, status, persona and time filters and an Export menu. Activities from setting up to tracking delivery run across the top, each with avatars for the personas it serves, with a lane for each release and its expected impact, and story cards showing each story's ID, title, status and persona avatars.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
+![This library's own story map in the demo, as a super admin sees it. Under the title, a line says when the map was last updated, by whom, and which releases recent changes focused on. Story map, Personas and Actions tabs, each with a count, sit above the search, status, persona and time filters and an Export menu. Activities from setting up to tracking delivery run across the top, each with avatars for the personas it serves, with a lane for each release and its expected impact, and story cards showing each story's ID, title, status and persona avatars.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-screenshot.png)
 
 ![Close-ups of the board: a story card for ESM-115 with persona avatars, an 8-point estimate, its status and dependency count; the story panel's dependencies list and its activity, release, tokens used and estimated cost; the Personas tab showing the Solo Builder's jobs to be done and the stories that serve them; and the Share menu with Copy link, Copy brief, and Open in Claude, Claude Code or ChatGPT.](https://raw.githubusercontent.com/duncan-m/auto-story-map/main/story-map-features.webp)
 
@@ -161,7 +161,7 @@ Run `npx story-map init` in the host repo. It creates:
 
 Pass `--skill` to put the rules and common commands in a skill at `.claude/skills/story-map/SKILL.md` instead. `AGENTS.md` then gets a short pointer to the skill, so agents read the full rules only when a task needs them. The skill and the full section come from the same template.
 
-It never overwrites an existing file, so it is safe to run again. [This library’s own map][example-map] shows a fuller map.
+First it prints how Auto Story Map works and the list of parts. Simple mode, the default, adds them all. `--mode advanced` or `--apply agents,guide` adds only the parts you choose. See [Choose the parts at install](docs/story-map.md#choose-the-parts-at-install). It never overwrites an existing file. In a repo that is already set up, it hands over to `story-map upgrade`, which reports what this version changes and writes only with `--write`. [This library’s own map][example-map] shows a fuller map.
 
 For a repo that already has history, `npx story-map survey --format json` lists its release tags and changelog versions, its docs and their headings, and its open plans and `TODO` comments, for the agent to draft the map from. It reads and suggests only. See [Survey a repository](docs/story-map.md#survey-a-repository).
 
@@ -178,11 +178,12 @@ npx story-map stories --query "export" --status all
 npx story-map story ESM-741
 npx story-map releases
 npx story-map evidence ESM-105
+npx story-map brief ESM-126
 npx story-map claim ESM-106 --agent audit-bot
 npx story-map validate --format json product/story-map.yaml
 ```
 
-`stories` takes the board's filters, `evidence` reports the branches, merged commits, plans, tests and broken sources that mention a story and suggests a status, `claim` tells a second agent that someone is already on a story, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
+`stories` takes the board's filters, `evidence` reports the branches, merged commits, plans, tests and broken sources that mention a story and suggests a status, `brief` prints a handoff prompt for an agent, the same as the board's Copy brief, `claim` tells a second agent that someone is already on a story, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
 
 Change it the same way. Each edit is a dry run that prints the YAML diff, the PR summary and any problems it causes, until you add `--write`. Comments and untouched lines stay exactly as they were:
 
@@ -233,6 +234,10 @@ The deployed board is read-only. Every change to the map, including release note
 
 You can’t edit the map in the deployed app. The map ships with each deployment, so an edit saved from the board would only appear after a merge and redeploy, and could overwrite newer changes on the default branch. Editing in the app would need the map stored on a separate hosted service instead of in the product repo. That isn’t part of this library. While you run the app on your own machine, the Personas tab can [edit personas][edit-personas] and save them to your checkout, ready for a PR.
 
+## Related projects
+
+[Story map on a Presto][presto] shows the next stories you can build on a [Pimoroni Presto](https://learn.pimoroni.com/article/getting-started-with-presto) touchscreen, and starts a Claude Code session to build one with a tap.
+
 ## Changes and releases
 
 See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one. To work on the library itself, start with [the engineering overview][overview].
@@ -256,6 +261,7 @@ You use the software at your own risk and are responsible for reviewing, testing
 The [GNU Affero General Public License, version 3][license], in particular its sections 15 (Disclaimer of Warranty) and 16 (Limitation of Liability), governs your use of this software. Where this summary and the licence differ, the licence applies.
 
 [source]: https://github.com/duncan-m/auto-story-map
+[presto]: https://github.com/duncan-m/auto-story-map-presto
 [example-map]: https://github.com/duncan-m/auto-story-map/blob/main/product/story-map.yaml
 [guide]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md
 [first-run]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#populate-the-first-map

@@ -6,7 +6,7 @@ import { StoryMapBoard } from "auto-story-map/react";
 // The enclosing app supplies a viewer from its verified session.
 // `target` is the request URL or path, including any `q` and `status` filter parameters.
 export function makeStoryMapResponse(target, document, viewer, options = {}) {
-  const { navigation = null, sourceBaseUrl, repositoryUrl, preservedParams, canViewInternal, history, tests, stalledAfterWeeks, now, brief, webAgents, personaEditing } = options;
+  const { navigation = null, sourceBaseUrl, repositoryUrl, preservedParams, canViewInternal, history, tests, stalledAfterWeeks, now, brief, webAgents, personaEditing, mapFile } = options;
   const url = new URL(target, "http://localhost");
   const headers = storyMapResponseHeaders;
   const isApi = url.pathname === "/api/story-map";
@@ -32,7 +32,8 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
 
   // Projects for this viewer, then filters, so a search only ever sees what this viewer may see.
   // The page writes an agent brief for each open story and release panel. The JSON endpoint leaves them out to stay small.
-  const map = getStoryMapPage(document, viewer, { canViewInternal, history, tests, stalledAfterWeeks, now, searchParams: url.searchParams, ...(isApi ? {} : { brief }) });
+  // With the map's text and path, each action on the Actions tab links to its line in the map.
+  const map = getStoryMapPage(document, viewer, { canViewInternal, history, tests, stalledAfterWeeks, now, mapFile, searchParams: url.searchParams, ...(isApi ? {} : { brief }) });
   const status = map ? 200 : viewer ? 403 : 401;
   const message = viewer ? "This story map is only available to the product team." : "Sign in to view the story map.";
 
@@ -64,7 +65,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
       ),
     ),
   );
-  return new Response("<!doctype html>" + renderToStaticMarkup(page), {
+  return new Response(`<!doctype html>${renderToStaticMarkup(page)}`, {
     status,
     headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
   });

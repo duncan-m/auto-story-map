@@ -2,20 +2,20 @@
 
 Status: proposed. Planning and backlog only; no implementation in this PR.
 
-Release proposal: readiness (ESM-139) in **0.7.6: Triage, readiness and agent access**, then **0.7.9: Dependency planning and graph** for order, briefs and the graph, before the proposed delivery analytics releases. It builds on the `dependsOn` links from ESM-129, described in [Record dependencies](../story-map.md#record-dependencies) and planned in [the story dependencies plan](story-dependencies.md), rather than adding a second dependency system. Readiness and a suggested order come first, where agents and the existing panels can use them. The graph follows in the same release.
+Release proposal: readiness (ESM-139) in **0.7.6: Triage, readiness and agent access**, then **0.8.1: Dependency planning and graph** for order, briefs and the graph, before the proposed delivery analytics releases. It builds on the `dependsOn` links from ESM-129, described in [Record dependencies](../story-map.md#record-dependencies) and planned in [the story dependencies plan](story-dependencies.md), rather than adding a second dependency system. Readiness and a suggested order come first, where agents and the existing panels can use them. The graph follows in the same release.
 
 0.7.6: Triage, readiness and agent access
 
 1. [Work out readiness and dependency risks](#1-work-out-readiness-and-dependency-risks) (ESM-139)
 
-0.7.9: Dependency planning and graph
+0.8.1: Dependency planning and graph
 
 2. [Suggest a delivery order for a release](#2-suggest-a-delivery-order-for-a-release) (ESM-142)
 3. [List prerequisites in agent briefs](#3-list-prerequisites-in-agent-briefs) (ESM-143)
 4. [Explore dependencies as a graph](#4-explore-dependencies-as-a-graph) (ESM-140)
 5. [Focus on a release or story](#5-focus-on-a-release-or-story) (ESM-141)
 
-Estimates: ESM-139 5 points in 0.7.6, and ESM-142 5 and ESM-143 3 in 0.7.9. ESM-140 and ESM-141, also in 0.7.9, have none yet. No customer-facing copy is approved.
+Estimates: ESM-139 5 points in 0.7.6, and ESM-142 5 and ESM-143 3 in 0.8.1. ESM-140 and ESM-141, also in 0.8.1, have none yet. No customer-facing copy is approved.
 
 ## Why and customer outcome
 
@@ -106,6 +106,13 @@ Add each target's prerequisites and readiness to the `<target>` section of the h
 - Briefs stay compact: IDs, titles and statuses, not the prerequisites' summaries.
 - Tests named `ESM-143:` cover ready, waiting and at-risk targets and a release brief.
 
+**Brief fixes found when trying ESM-126.** Running `story-map brief` on this map turned up four more problems. They change the same brief code, so they are part of this story:
+- **Personas and jobs once.** `--full` prints each persona and job once, in a section of their own, and each target names them by ID. Today a release brief repeats a persona's full text under every story that serves it, which can double the brief's length.
+- **Related context.** `<context>` lists the stories the targets build on, such as their prerequisites and shipped stories in the same activities, instead of the stories in the releases either side. The "Not yet" list names only stories that touch the targets' activities or depend on them.
+- **Empty briefs.** A brief with no targets, such as an activity whose stories are all merged or shipped, prints one line saying there is nothing to build and exits with its own code. It suggests no branch, and JSON gives `branch: null` and empty sections. It does not print rules with `<ID>` placeholders or a done-when list.
+- **A narrower hint.** When `<context>` leaves stories out, its hint names a command that shows only those, such as `npx story-map stories --activity set-up --status all`, rather than the whole map.
+- Tests named `ESM-143:` cover each of these.
+
 ## 4. Explore dependencies as a graph
 
 **Story:** ESM-140 · depends on ESM-142 · activity `explore` · jobs `triage-backlog`, `plan-and-build`.
@@ -133,11 +140,24 @@ Let the viewer choose a release or focus on a story, with direct neighbours by d
 - Large sets show truncation and expansion without hiding a blocking link.
 - Tests named `ESM-141:` cover deep chains, filters, missing and obsolete selections and mixed releases.
 
+## Architecture decisions
+
+Following [Record architecture decisions](../ENGINEERING-OVERVIEW.md#record-architecture-decisions). ESM-139 has shipped, and ESM-140 to ESM-143 are planned.
+
+- **Where it runs.** Inside the existing package: a pure projection of the validated map, shown in the story and release panels, the CLI, the JSON export, the brief and a new internal board tab. The graph is server-rendered SVG with a layered layout written here, and pan and zoom are added by `board.js`. No service, data store or new dependency.
+- **Data and contracts.** Upstream, it reads only the `dependsOn` links from ESM-129, and the YAML schema does not change. Downstream: the JSON export carries `readiness` (shipped in ESM-139); `story-map releases <ID> --format json` gains the steps and risks (ESM-142); the brief's `<target>` and `<open_decisions>` gain prerequisites (ESM-143), which agents read; and the board gains `view=dependencies` with `release`, `story` and `depth`.
+- **Boundaries.** [Project, then filter, then render](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve) and the customer allow-list: customer viewers get no dependency data, including in JSON or client-side payloads. **Permalinks reveal nothing new**: an internal-only or unknown story or release ID gives the same view as no ID, and only internal viewers are told that a bookmark is stale. **React escapes all text**: the SVG's labels are rendered as text, never as markup.
+- **Reversibility.** Easy. Everything is worked out from the links each time and nothing is saved, so the tab, the CLI output and the brief lines can each be removed in a release, with a changelog note for the JSON fields.
+
+None: keeps the existing design because it adds computed views over links the map already has, with no new store, service, saved-format field or package export. The new JSON fields and CLI output are additive. If ESM-140's benchmark calls for a layout library such as Dagre or ELK, that adds a dependency every host installs, and becomes a consequential decision for a person to agree before the story continues.
+
+Proposal, for a person to agree before ESM-143 goes `in-progress`: the [brief fixes](#3-list-prerequisites-in-agent-briefs) change two contracts that are not additive. An empty brief gives `branch: null` in `story-map brief --format json` and the MCP server's `get_brief`, where `branch` is a string today, and it exits with a code of its own, which the plan doesn't name yet. Consumers: agents and scripts that read the brief's JSON or its exit code. Alternative considered: keep `branch` a string, such as an empty one, and exit 0 with the one-line message. Agreed by: not yet. Revisit if no consumer relies on `branch` being set.
+
 ## Delivery sequence
 
 **0.7.6:** ESM-139. The story panel and CLI show readiness, with no new tab.
 
-**0.7.9:** ESM-142 and ESM-143 in parallel, so agents and the existing panels get an order and briefs that name prerequisites. Then ESM-140, then ESM-141. The tab reuses the readiness and order.
+**0.8.1:** ESM-142 and ESM-143 in parallel, so agents and the existing panels get an order and briefs that name prerequisites. Then ESM-140, then ESM-141. The tab reuses the readiness and order.
 
 Implementation should use focused PRs per story, include the story IDs in test names and commit messages, and run `npm run validate`, the relevant tests and `story-map diff origin/main`.
 
@@ -147,7 +167,7 @@ Implementation should use focused PRs per story, include the story IDs in test n
 
 - **Time to identify the unfinished prerequisites for a chosen story:** shown on its panel and from the CLI, instead of opening each related story in turn; solves opaque build order.
 
-0.7.9:
+0.8.1:
 
 - **Time to find a feasible sequence for a release:** a ready set and order in the release panel and CLI, without tracing links by hand; solves repeated sequencing work.
 - **Release-order dependency conflicts surfaced before implementation:** warnings for prerequisites that are cut, blocked or in later releases; solves hidden planning conflicts.

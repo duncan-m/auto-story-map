@@ -116,7 +116,7 @@ export const escapeDiff = (diff: string) => diff.split("\n").map(escapeText).joi
 
 export const edit = defineCommand({
   parse(rest: string[]) {
-    const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from" | "tokens" | "estimatedCost", string>> = {};
+    const fields: Partial<Record<"status" | "reason" | "release" | "activity" | "title" | "summary" | "notes" | "customerTitle" | "customerSummary" | "from" | "priority" | "tokens" | "estimatedCost", string>> = {};
     const lists: [option: string, op: string, key: string][] = [
       ["--add-source", "add-source", "source"], ["--remove-source", "remove-source", "source"],
       ["--add-job", "add-job", "job"], ["--remove-job", "remove-job", "job"],
@@ -128,7 +128,7 @@ export const edit = defineCommand({
     const names: Record<string, keyof typeof fields> = {
       "--status": "status", "--reason": "reason", "--release": "release", "--activity": "activity", "--title": "title",
       "--summary": "summary", "--notes": "notes", "--customer-title": "customerTitle", "--customer-summary": "customerSummary", "--from": "from",
-      "--tokens": "tokens", "--estimated-cost": "estimatedCost",
+      "--priority": "priority", "--tokens": "tokens", "--estimated-cost": "estimatedCost",
     };
     const common = parseEditArgs(rest, (name, value) => {
       const list = lists.find(([option]) => option === name);
@@ -149,6 +149,11 @@ export const edit = defineCommand({
     if (fields.status) operations.push({ op: "status", id, status: fields.status, ...(fields.reason ? { reason: fields.reason } : {}) });
     for (const key of ["release", "activity", "title", "summary", "notes"] as const) {
       if (fields[key]) operations.push({ op: key, id, [key]: fields[key] });
+    }
+    if (fields.priority) {
+      const priority = fields.priority.toLowerCase();
+      if (!["must", "should", "could", "none"].includes(priority)) throw new ArgumentError(`--priority must be must, should, could or none, not ${fields.priority}`);
+      operations.push({ op: "priority", id, priority });
     }
     if (fields.tokens) {
       const tokens = fields.tokens.replace(/[,_]/g, "");
@@ -230,6 +235,47 @@ export const releaseImpact = defineCommand({
       if (!fields[required]) throw new ArgumentError(`--${required} is required`);
     }
     return { ...common, operations: [{ op: "release-impact", release: releases[0], ...fields } as StoryMapEditOperation] };
+  },
+  async run(options) {
+    await runEdit(options, async () => options.operations);
+  },
+});
+
+/** Records the person's answers to the product choices: delivery plans in `settings.plans`, the story ID policy in `settings.storyIds`, the upgrade review's mode in `settings.upgrade`, and how validate treats plans' architecture sections in `settings.architectureDecisions`. */
+export const settings = defineCommand({
+  parse(rest: string[]) {
+    let plans: string | false | undefined;
+    let storyIds: string | undefined;
+    let upgrade: string | undefined;
+    let architectureDecisions: string | undefined;
+    const positional: string[] = [];
+    const common = parseEditArgs(rest, (name, value) => {
+      if (name === "--plans") {
+        const folder = value();
+        plans = folder === "off" ? false : folder;
+      } else if (name === "--story-ids") {
+        storyIds = value();
+        if (storyIds !== "next" && storyIds !== "lowest-free") throw new ArgumentError("--story-ids must be next or lowest-free");
+      } else if (name === "--upgrade") {
+        upgrade = value();
+        if (upgrade !== "simple" && upgrade !== "advanced") throw new ArgumentError("--upgrade must be simple or advanced");
+      } else if (name === "--architecture-decisions") {
+        architectureDecisions = value();
+        if (architectureDecisions !== "recommended" && architectureDecisions !== "required") throw new ArgumentError("--architecture-decisions must be recommended or required");
+      } else return false;
+      return true;
+    }, positional);
+    if (!common || positional.length) return null;
+    if (plans === undefined && storyIds === undefined && upgrade === undefined && architectureDecisions === undefined) {
+      throw new ArgumentError("--plans, --story-ids, --upgrade or --architecture-decisions is required: --plans with a folder, such as docs/plans, or off, --story-ids with next or lowest-free, --upgrade with simple or advanced, and --architecture-decisions with recommended or required");
+    }
+    const operations = [
+      ...(plans === undefined ? [] : [{ op: "plans", plans }]),
+      ...(storyIds === undefined ? [] : [{ op: "story-ids", storyIds }]),
+      ...(upgrade === undefined ? [] : [{ op: "upgrade-mode", upgrade }]),
+      ...(architectureDecisions === undefined ? [] : [{ op: "architecture-decisions", architectureDecisions }]),
+    ] as StoryMapEditOperation[];
+    return { ...common, operations };
   },
   async run(options) {
     await runEdit(options, async () => options.operations);

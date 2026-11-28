@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { LineCounter, isMap, isScalar, isSeq, parseDocument, visit, type Document, type Node } from "yaml";
 import { jobStepCounter, storyPersonaResolver } from "./personas.js";
+import { isStoryMapRuleId, type StoryMapRuleId } from "./rules.js";
 import { isActiveStatus, storyStatuses } from "./status.js";
 
 export { storyStatuses };
@@ -18,6 +19,10 @@ export const releaseImpactMaxItems = 10;
 /** The story point scale an estimate must use. Any other value fails validation. */
 export const estimatePoints = [1, 2, 3, 5, 8, 13] as const;
 export type EstimatePoints = typeof estimatePoints[number];
+
+/** MoSCoW priorities a story can carry, most important first. */
+export const storyPriorities = ["must", "should", "could"] as const;
+export type StoryPriority = typeof storyPriorities[number];
 
 /** Most personas on one map. */
 export const personasMaxItems = 12;
@@ -152,6 +157,8 @@ function formatSchemas(strict: boolean) {
       .describe(`Optional. Up to ${storyDependsOnMaxItems} IDs of stories that must land before this one, most important first. Internal only. The stories waiting for a story are worked out from these lists, so list each dependency once, on the story that waits.`),
     estimate: z.literal(estimatePoints, { error: `Use one of ${estimatePoints.join(", ")} story points.` }).optional()
       .describe(`Optional effort estimate in story points: ${estimatePoints.join(", ")}. Internal only. A story above 13 should be split.`),
+    priority: z.enum(storyPriorities, { error: `Use one of ${storyPriorities.join(", ")}.` }).optional()
+      .describe("Optional MoSCoW priority: must, should or could have. Internal only. The board shows it as an MH, SH or CH tag."),
     tokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional()
       .describe("Optional. Model tokens used to deliver the story, counting input, output and cache tokens, recorded in the pull request that finishes it, such as from `story-map tokens`. Internal only."),
     estimatedCostUsd: z.number().min(0).max(1_000_000_000).optional()
@@ -166,6 +173,18 @@ function formatSchemas(strict: boolean) {
   const settings = object({
     stalledAfterWeeks: z.number().int().min(0).max(104).optional()
       .describe("Flag a story as stalled when it has been in progress for longer than this many weeks. Defaults to 4. 0 turns the flag off. Needs the history file from `story-map history`."),
+    plans: z.union([
+      z.string().trim().min(1).max(250)
+        .refine(folder => !/^([a-zA-Z]:)?[\\/]/.test(folder) && !folder.split(/[\\/]/).includes(".."), "Use a folder inside the repository, relative to its root, such as docs/plans."),
+      z.literal(false),
+    ]).optional()
+      .describe("Whether this product keeps delivery plans: the repository-relative folder they go in, such as docs/plans, or false for no plans. Leave it out until a person has chosen, and validate asks for the choice. Set it with `story-map settings --plans`. See Write a delivery plan in docs/story-map.md."),
+    storyIds: z.enum(["next", "lowest-free"]).optional()
+      .describe("How `story-map add` numbers a new story when --id is left out. next, the default, takes one after the highest number. lowest-free takes the lowest unused number above the lowest one in use. Both use the prefix most stories have and count cut stories, so an ID is never reused."),
+    architectureDecisions: z.enum(["recommended", "required"]).optional()
+      .describe("How `validate --plans` treats an open plan whose Architecture decisions section is missing, empty, still holds the scaffold's hints, or answers None: with no reason. recommended, the default, reports it as a notice, which never fails. required reports it as a warning, which fails with --strict. See Check the architecture section in plans in docs/story-map.md."),
+    upgrade: z.enum(["simple", "advanced"]).optional()
+      .describe("How `story-map upgrade` reviews the set-up. simple shows what changes for the team and applies the recommended changes, keeping the host's own edits. advanced also shows each part's diff, to accept or keep one at a time. Leave it out until a person has chosen, and the review asks. --mode overrides it for one run. Set it with `story-map settings --upgrade`. See Choose simple or advanced mode in docs/story-map.md."),
   }).describe("Optional settings for everyone who views the map. Hosts can override them.");
 
   const map = object({
@@ -200,21 +219,24 @@ function items(value: unknown): Item[] {
  * Checks IDs and references across the map. It reads the input defensively, so
  * it can also report these problems for a map with structural errors.
  */
-function crossReferenceIssues(input: unknown): { path: Path; message: string }[] {
+/** A problem the cross-reference checks find, with the rule it breaks. */
+type CrossReferenceIssue = { path: Path; message: string; rule: StoryMapRuleId };
+
+function crossReferenceIssues(input: unknown): CrossReferenceIssue[] {
   if (!input || typeof input !== "object") return [];
   const map = input as Record<string, unknown>;
-  const issues: { path: Path; message: string }[] = [];
-  const issue = (path: Path, message: string) => issues.push({ path, message });
+  const issues: CrossReferenceIssue[] = [];
+  const issue = (path: Path, message: string, rule: StoryMapRuleId) => issues.push({ path, message, rule });
 
   if (map.visibility === "all-users" && !map.customer) {
-    issue(["customer"], "The all-users view requires customer-facing map copy.");
+    issue(["customer"], "The all-users view requires customer-facing map copy. Add customer.title, or set visibility to internal.", "customer-copy-required");
   }
 
   for (const field of ["personas", "activities", "releases", "stories"] as const) {
     const ids = new Set<unknown>();
     items(map[field]).forEach((entry, index) => {
       if (typeof entry.id !== "string") return;
-      if (ids.has(entry.id)) issue([field, index, "id"], `Duplicate ID '${entry.id}'.`);
+      if (ids.has(entry.id)) issue([field, index, "id"], `Duplicate ID '${entry.id}'. Give one of them a new ID.`, "duplicate-id");
       ids.add(entry.id);
     });
   }
@@ -226,16 +248,16 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
     const context = persona.context;
     if (context && typeof context === "object" && !Array.isArray(context)
       && !(["success", "usesToday", "constraints"] as const).some(field => (context as Record<string, unknown>)[field] !== undefined)) {
-      issue(["personas", personaIndex, "context"], "Context needs at least one of success, usesToday and constraints.");
+      issue(["personas", personaIndex, "context"], "Context needs at least one of success, usesToday and constraints. Add one, or remove context.", "empty-persona-context");
     }
     items(persona.jobs).forEach((job, jobIndex) => {
       items(job.steps).forEach((step, stepIndex) => {
         if (typeof step.activity === "string" && !activityIds.has(step.activity)) {
-          issue(["personas", personaIndex, "jobs", jobIndex, "steps", stepIndex, "activity"], `Unknown activity '${step.activity}'.`);
+          issue(["personas", personaIndex, "jobs", jobIndex, "steps", stepIndex, "activity"], `Unknown activity '${step.activity}'. Use an activity ID from the map.`, "unknown-reference");
         }
       });
       if (typeof job.id !== "string") return;
-      if (jobIds.has(job.id)) issue(["personas", personaIndex, "jobs", jobIndex, "id"], `Duplicate job ID '${job.id}'. Job IDs are unique across the map.`);
+      if (jobIds.has(job.id)) issue(["personas", personaIndex, "jobs", jobIndex, "id"], `Duplicate job ID '${job.id}'. Job IDs are unique across the map, so give one of them a new ID.`, "duplicate-id");
       jobIds.add(job.id);
     });
   });
@@ -249,29 +271,29 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
     const activity = activities.get(story.activity);
     const release = releases.get(story.release);
 
-    if (typeof story.activity === "string" && !activity) issue(["stories", index, "activity"], `Unknown activity '${story.activity}'.`);
-    if (typeof story.release === "string" && !release) issue(["stories", index, "release"], `Unknown release '${story.release}'.`);
+    if (typeof story.activity === "string" && !activity) issue(["stories", index, "activity"], `Unknown activity '${story.activity}'. Use an activity ID from the map.`, "unknown-reference");
+    if (typeof story.release === "string" && !release) issue(["stories", index, "release"], `Unknown release '${story.release}'. Use a release ID from the map.`, "unknown-reference");
     for (const [field, known, kind] of [["jobs", jobIds, "job"], ["personas", personaIds, "persona"]] as const) {
       const listed = Array.isArray(story[field]) ? story[field] as unknown[] : [];
       listed.forEach((ref, refIndex) => {
         if (typeof ref !== "string") return;
-        if (listed.indexOf(ref) !== refIndex) issue(["stories", index, field, refIndex], `${kind === "job" ? "Job" : "Persona"} '${ref}' is listed twice.`);
-        else if (!known.has(ref)) issue(["stories", index, field, refIndex], `Unknown ${kind} '${ref}'.`);
+        if (listed.indexOf(ref) !== refIndex) issue(["stories", index, field, refIndex], `${kind === "job" ? "Job" : "Persona"} '${ref}' is listed twice. Remove one.`, "duplicate-reference");
+        else if (!known.has(ref)) issue(["stories", index, field, refIndex], `Unknown ${kind} '${ref}'. Use a ${kind} ID from the map's personas.`, "unknown-reference");
       });
     }
     const dependsOn = Array.isArray(story.dependsOn) ? story.dependsOn as unknown[] : [];
     dependsOn.forEach((ref, refIndex) => {
       if (typeof ref !== "string") return;
       const path = ["stories", index, "dependsOn", refIndex];
-      if (dependsOn.indexOf(ref) !== refIndex) issue(path, `Story '${ref}' is listed twice.`);
-      else if (ref === story.id) issue(path, "A story cannot depend on itself.");
-      else if (!storyIds.has(ref)) issue(path, `Unknown story '${ref}'.`);
+      if (dependsOn.indexOf(ref) !== refIndex) issue(path, `Story '${ref}' is listed twice. Remove one.`, "duplicate-reference");
+      else if (ref === story.id) issue(path, "A story cannot depend on itself. Remove the dependency.", "dependency-cycle");
+      else if (!storyIds.has(ref)) issue(path, `Unknown story '${ref}'. Use a story ID from the map.`, "unknown-reference");
     });
     if (story.customer && activity && !activity.customer) {
-      issue(["stories", index, "activity"], "A customer-facing story requires customer-facing copy for its activity.");
+      issue(["stories", index, "activity"], "A customer-facing story requires customer-facing copy for its activity. Add customer copy to the activity, or remove it from the story.", "customer-copy-required");
     }
     if (story.customer && release && !release.customer) {
-      issue(["stories", index, "release"], "A customer-facing story requires customer-facing copy for its release.");
+      issue(["stories", index, "release"], "A customer-facing story requires customer-facing copy for its release. Add customer copy to the release, or remove it from the story.", "customer-copy-required");
     }
   });
   issues.push(...dependencyCycleIssues(items(map.stories)));
@@ -283,7 +305,7 @@ function crossReferenceIssues(input: unknown): { path: Path; message: string }[]
  * `dependsOn` entry that closes it. Self-dependencies, duplicates and unknown
  * IDs are reported elsewhere, so they are skipped here.
  */
-function dependencyCycleIssues(stories: Item[]): { path: Path; message: string }[] {
+function dependencyCycleIssues(stories: Item[]): CrossReferenceIssue[] {
   const index = new Map<string, number>();
   stories.forEach((story, storyIndex) => {
     if (typeof story.id === "string" && !index.has(story.id)) index.set(story.id, storyIndex);
@@ -294,7 +316,7 @@ function dependencyCycleIssues(stories: Item[]): { path: Path; message: string }
     return listed.flatMap((ref, refIndex) => typeof ref === "string" && ref !== story.id && index.has(ref) && listed.indexOf(ref) === refIndex
       ? [{ to: index.get(ref)!, refIndex }] : []);
   };
-  const issues: { path: Path; message: string }[] = [];
+  const issues: CrossReferenceIssue[] = [];
   // 0: not visited, 1: on the current path, 2: done.
   const state = new Array<number>(stories.length).fill(0);
   for (let start = 0; start < stories.length; start++) {
@@ -318,6 +340,7 @@ function dependencyCycleIssues(stories: Item[]): { path: Path; message: string }
         issues.push({
           path: ["stories", path[depth], "dependsOn", edge.refIndex],
           message: `Dependency cycle: ${[...loop, loop[0]].join(" → ")}. Remove one of these dependencies.`,
+          rule: "dependency-cycle",
         });
       } else if (state[edge.to] === 0) {
         state[edge.to] = 1;
@@ -331,8 +354,8 @@ function dependencyCycleIssues(stories: Item[]): { path: Path; message: string }
 }
 
 export const storyMapSchema = strictSchemas.map.superRefine((map, context) => {
-  for (const { path, message } of crossReferenceIssues(map)) {
-    context.addIssue({ code: "custom", path, message });
+  for (const { path, message, rule } of crossReferenceIssues(map)) {
+    context.addIssue({ code: "custom", path, message, params: { rule } });
   }
 }).meta({
   title: "Auto Story Map",
@@ -346,7 +369,11 @@ export type StoryMapJob = z.infer<typeof strictSchemas.job>;
 export type StoryMapJobStep = z.infer<typeof strictSchemas.jobStep>;
 export type StoryMapPersonaContext = z.infer<typeof strictSchemas.personaContext>;
 
-export type StoryMapIssueSeverity = "error" | "warning";
+/**
+ * Errors make the map invalid. Warnings are advice, and fail validation only with `--strict`.
+ * Notices are questions for a person, such as whether to use delivery plans, and never fail validation.
+ */
+export type StoryMapIssueSeverity = "error" | "warning" | "notice";
 
 export interface StoryMapIssue {
   /** Errors make the map invalid. Warnings are advice: the map still parses and CI passes unless run with `--strict`. */
@@ -354,13 +381,55 @@ export interface StoryMapIssue {
   /** Location in the map, such as `["stories", 3, "release"]`. Empty for the whole file. */
   path: (string | number)[];
   message: string;
+  /** The rule the issue breaks, such as `unknown-reference`. Stable across releases, so scripts can match it. See `storyMapRules`. */
+  rule: StoryMapRuleId;
   /** 1-based line in the YAML source, when it can be located. */
   line?: number;
   /** 1-based column in the YAML source, when it can be located. */
   column?: number;
   /** ID of the activity, release or story that contains the issue. */
   itemId?: string;
+  /** What a warning asks for, so the Actions tab can group and explain it without reading `message`. Absent on errors. */
+  kind?: StoryMapWarningKind;
 }
+
+/**
+ * Every kind of warning `storyMapWarnings` and `validate --tests` return. `src/actions.ts` gives
+ * each a title, who can act on it and the command that fixes it.
+ */
+export const storyMapWarningKinds = [
+  "job-without-stories",
+  "step-without-stories",
+  "persona-without-stories",
+  "stories-without-personas",
+  "persona-without-job",
+  "confirm-draft-job",
+  "confirm-draft-context",
+  "confirm-draft-impact",
+  "missing-estimate",
+  "story-without-tests",
+  "missing-impact",
+  "missing-status-reason",
+  "depends-on-cut",
+] as const;
+export type StoryMapWarningKind = (typeof storyMapWarningKinds)[number];
+
+// Each kind of warning is also the rule it breaks, so a new kind fails to compile until it is a rule.
+const warningKindsAreRules: readonly StoryMapRuleId[] = storyMapWarningKinds;
+void warningKindsAreRules;
+
+/** A warning about a valid map, which always says what kind it is. */
+export interface StoryMapWarning extends StoryMapIssue {
+  severity: "warning";
+  kind: StoryMapWarningKind;
+}
+
+/** A warning before its rule is set from its kind. */
+export type StoryMapWarningDraft = Omit<StoryMapWarning, "rule">;
+
+/** Sets each warning's rule to its kind. */
+export const withWarningRules = (warnings: readonly StoryMapWarningDraft[]): StoryMapWarning[] =>
+  warnings.map(warning => ({ ...warning, rule: warning.kind }));
 
 /** Names the part of the map an issue is about, such as `stories.3.release (FINANCE-201)`. */
 export function describeIssueTarget(issue: StoryMapIssue): string {
@@ -370,7 +439,7 @@ export function describeIssueTarget(issue: StoryMapIssue): string {
 
 export function formatStoryMapIssue(issue: StoryMapIssue): string {
   const line = issue.line ? `line ${issue.line}: ` : "";
-  const level = issue.severity === "warning" ? "warning: " : "";
+  const level = issue.severity === "error" ? "" : `${issue.severity}: `;
   return `${line}${level}${describeIssueTarget(issue)}: ${issue.message}`;
 }
 
@@ -448,8 +517,8 @@ export function parseStoryMap(source: string): StoryMapDocument {
  * Checks a valid map for problems that should not fail validation, such as a
  * blocked story with no reason. Paths point into the map like error paths.
  */
-export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
-  const warnings: StoryMapIssue[] = [];
+export function storyMapWarnings(map: StoryMapDocument): StoryMapWarning[] {
+  const warnings: StoryMapWarningDraft[] = [];
   const releasesWithShipped = new Set<string>();
   const releasesWithActive = new Set<string>();
   for (const story of map.stories) {
@@ -460,6 +529,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
     if (releasesWithActive.has(release.id) && !release.impact?.length) {
       warnings.push({
         severity: "warning",
+        kind: "missing-impact",
         path: ["releases", index],
         message: "Add impact: what the release is expected to change, and how it will be measured.",
         itemId: release.id,
@@ -470,6 +540,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
       if (!item.draft) return;
       warnings.push({
         severity: "warning",
+        kind: "confirm-draft-impact",
         path: ["releases", index, "impact", itemIndex, "draft"],
         message: `Confirm the drafted impact for “${item.metric}” and remove draft: true. The release has shipped stories.`,
         itemId: release.id,
@@ -486,6 +557,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
       && (releasesWithEstimates.get(story.release) ?? 0) > 0) {
       warnings.push({
         severity: "warning",
+        kind: "missing-estimate",
         path: ["stories", index],
         message: "Add an estimate: other stories in this release have one, so the release total leaves this story out.",
         itemId: story.id,
@@ -496,6 +568,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
         if (!cutStories.has(ref)) return;
         warnings.push({
           severity: "warning",
+          kind: "depends-on-cut",
           path: ["stories", index, "dependsOn", refIndex],
           message: `Depends on ${ref}, which is cut, so that work will not land. Remove the dependency, or cut or replan this story.`,
           itemId: story.id,
@@ -505,6 +578,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
     if ((story.status === "blocked" || story.status === "cut") && !story.statusReason) {
       warnings.push({
         severity: "warning",
+        kind: "missing-status-reason",
         path: ["stories", index, "status"],
         message: `Add a statusReason explaining why the story is ${story.status}.`,
         itemId: story.id,
@@ -512,7 +586,7 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
     }
   });
   warnings.push(...personaWarnings(map));
-  return warnings;
+  return withWarningRules(warnings);
 }
 
 /**
@@ -520,11 +594,11 @@ export function storyMapWarnings(map: StoryMapDocument): StoryMapIssue[] {
  * about who they are for, and drafts that have shipped. A map with no personas,
  * or no active stories yet, gets none.
  */
-function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
+function personaWarnings(map: StoryMapDocument): StoryMapWarningDraft[] {
   const personas = map.personas ?? [];
   const active = map.stories.filter(story => isActiveStatus(story.status));
   if (!personas.length || !active.length) return [];
-  const warnings: StoryMapIssue[] = [];
+  const warnings: StoryMapWarningDraft[] = [];
   const resolve = storyPersonaResolver(map);
   const used = new Set(map.stories.flatMap(story => resolve(story)));
   const served = new Set(active.flatMap(story => story.jobs ?? []));
@@ -538,6 +612,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
     if (!used.has(persona.id)) {
       warnings.push({
         severity: "warning",
+        kind: "persona-without-stories",
         path: ["personas", index],
         message: `No story is for ${persona.title}. Tag the stories that serve them, or remove the persona.`,
         itemId: persona.id,
@@ -547,9 +622,10 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
       if (!served.has(job.id)) {
         warnings.push({
           severity: "warning",
+          kind: "job-without-stories",
           path: ["personas", index, "jobs", jobIndex],
           // The first job is the core job, so a gap there matters most.
-          message: `${jobIndex === 0 ? "Core job" : "Job"} ${job.id} (${persona.title}) has no stories.`,
+          message: `${jobIndex === 0 ? "Core job" : "Job"} ${job.id} (${persona.title}) has no stories. Tag the stories that serve it, or review whether the job is still right.`,
           itemId: persona.id,
         });
       }
@@ -560,6 +636,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
           const activity = activityTitles.get(step.activity) ?? step.activity;
           warnings.push({
             severity: "warning",
+            kind: "step-without-stories",
             path: ["personas", index, "jobs", jobIndex, "steps", stepIndex],
             message: `Step “${step.title}” of job ${job.id} (${persona.title}) has no stories in ${activity}. Tag the stories there that serve the job, or point the step to another activity.`,
             itemId: persona.id,
@@ -569,6 +646,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
       if (job.draft && shipped.has(job.id)) {
         warnings.push({
           severity: "warning",
+          kind: "confirm-draft-job",
           path: ["personas", index, "jobs", jobIndex, "draft"],
           message: `Confirm the drafted job ${job.id} and remove draft: true. Stories that serve it have shipped.`,
           itemId: persona.id,
@@ -578,6 +656,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
     if (persona.context?.draft && shippedFor.has(persona.id)) {
       warnings.push({
         severity: "warning",
+        kind: "confirm-draft-context",
         path: ["personas", index, "context", "draft"],
         message: `Confirm the drafted context for ${persona.title} and remove draft: true. Stories for them have shipped.`,
         itemId: persona.id,
@@ -589,6 +668,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
   if (untagged * 2 > active.length) {
     warnings.push({
       severity: "warning",
+      kind: "stories-without-personas",
       path: ["personas"],
       message: `${untagged} of ${active.length} active stories do not say who they are for. Add the jobs each serves, or its personas.`,
     });
@@ -602,6 +682,7 @@ function personaWarnings(map: StoryMapDocument): StoryMapIssue[] {
       if (!persona?.jobs?.length || persona.jobs.some(job => story.jobs?.includes(job.id))) return;
       warnings.push({
         severity: "warning",
+        kind: "persona-without-job",
         path: ["stories", index, "personas", personaIndex],
         message: `For ${persona.title}, but serves none of their jobs, so it may not match a known need. Add the job it serves, or draft one.`,
         itemId: story.id,
@@ -658,20 +739,39 @@ function readYaml(source: string) {
     return {
       severity: "error" as const,
       path: [],
-      message: error.message.replace(/ at line \d+, column \d+:[\s\S]*$/, "").trim(),
+      message: `${error.message.replace(/ at line \d+, column \d+:[\s\S]*$/, "").trim().replace(/\.?$/, ".")} Fix the YAML at this position.`,
+      rule: "yaml-syntax" as const,
       line: position?.line,
       column: position?.col,
     };
   });
   for (const offset of duplicateKeyOffsets(document)) {
     const { line, col } = lineCounter.linePos(offset);
-    problems.push({ severity: "error", path: [], message: "Map keys must be unique", line, column: col });
+    problems.push({ severity: "error", path: [], message: "Map keys must be unique. Remove or rename the repeated key.", rule: "duplicate-key", line, column: col });
   }
   if (problems.length) {
     problems.sort((a, b) => (a.line ?? 0) - (b.line ?? 0) || (a.column ?? 0) - (b.column ?? 0));
     throw new StoryMapValidationError(problems);
   }
   return { document, lineCounter, data: migrateStoryMap(document.toJS({ maxAliasCount: 20 })) };
+}
+
+/** The value at `path` in parsed YAML, or undefined when the path leaves it. */
+function valueAt(data: unknown, path: readonly (string | number)[]) {
+  let value = data;
+  for (const segment of path) {
+    if (!value || typeof value !== "object") return undefined;
+    value = (value as Record<string | number, unknown>)[segment];
+  }
+  return value;
+}
+
+/** The rule a schema issue breaks, from its code and, for the cross-reference checks, the rule they set. */
+function schemaIssueRule(issue: z.core.$ZodIssue, data: unknown): StoryMapRuleId {
+  if (issue.code === "custom") return isStoryMapRuleId(issue.params?.rule) ? issue.params.rule : "invalid-value";
+  if (issue.code === "unrecognized_keys") return "unknown-field";
+  if (issue.code === "invalid_type" && valueAt(data, issue.path as (string | number)[]) === undefined) return "missing-field";
+  return "invalid-value";
 }
 
 const errorMessages: z.core.$ZodErrorMap = issue => {
@@ -700,20 +800,20 @@ export function loadStoryMap(source: string): LoadedStoryMap {
   const reported = new Set(result.error.issues.map(issue => `${issue.path.join(".")}\n${issue.message}`));
   const extra = crossReferenceIssues(data)
     .filter(issue => !reported.has(`${issue.path.join(".")}\n${issue.message}`))
-    .map(issue => ({ ...issue, code: "custom" as const }));
+    .map(({ rule, ...issue }) => ({ ...issue, code: "custom" as const, params: { rule } }));
 
   const issues: StoryMapIssue[] = [];
   const keyIndex: KeyIndex = new WeakMap();
-  for (const issue of [...result.error.issues, ...extra]) {
+  for (const issue of [...result.error.issues, ...extra] as z.core.$ZodIssue[]) {
     const path = issue.path.map(segment => typeof segment === "number" ? segment : String(segment));
     const itemId = itemIdAt(data, path);
     if (issue.code === "unrecognized_keys") {
       for (const key of issue.keys) {
-        issues.push({ severity: "error", path: [...path, key], message: "Unknown field.", itemId, ...locate(document, lineCounter, keyIndex, path, key) });
+        issues.push({ severity: "error", path: [...path, key], message: "Unknown field. Remove it, or correct its spelling.", rule: "unknown-field", itemId, ...locate(document, lineCounter, keyIndex, path, key) });
       }
       continue;
     }
-    issues.push({ severity: "error", path, message: issue.message, itemId, ...locate(document, lineCounter, keyIndex, path) });
+    issues.push({ severity: "error", path, message: issue.message, rule: schemaIssueRule(issue, data), itemId, ...locate(document, lineCounter, keyIndex, path) });
   }
   issues.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
   throw new StoryMapValidationError(issues);
@@ -767,6 +867,7 @@ export function loadHistoricalStoryMap(source: string): HistoricalStoryMap {
       severity: "error" as const,
       path: issue.path.map(segment => typeof segment === "number" ? segment : String(segment)),
       message: issue.message,
+      rule: schemaIssueRule(issue, data),
     })));
   }
 

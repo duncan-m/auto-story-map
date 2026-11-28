@@ -6,7 +6,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import fc from "fast-check";
-import { nextStoryId, parseStoryMap, proposeStoryMapEdit, StoryMapEditError } from "auto-story-map";
+import { diffStoryMaps, formatStoryMapDiff, nextStoryId, parseStoryMap, proposeStoryMapEdit, StoryMapEditError } from "auto-story-map";
+import { escapeRegExp } from "../dist/references.js";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const ownMap = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
@@ -30,7 +32,7 @@ async function scratch(t, source = ownMap) {
 /** The lines of a story's block, from its `- id:` line to the line before the next item or comment at that depth. */
 function storyBlock(source, id) {
   const lines = source.split("\n");
-  const start = lines.findIndex(line => line === `  - id: ${id}`);
+  const start = lines.indexOf(`  - id: ${id}`);
   let end = start + 1;
   while (end < lines.length && lines[end].startsWith("    ")) end++;
   return { before: lines.slice(0, start).join("\n"), after: lines.slice(end).join("\n") };
@@ -78,7 +80,10 @@ test("ESM-744: leaving blocked or cut drops the reason, and removing the last so
 });
 
 test("ESM-744: add gives the next ID in sequence across the map, and never reuses one", async () => {
-  const map = parseStoryMap(ownMap);
+  // This repository's map fills gaps (ESM-180), so take the setting out to check the default.
+  const sequentialMap = ownMap.replace("  storyIds: lowest-free\n", "");
+  assert.notEqual(sequentialMap, ownMap);
+  const map = parseStoryMap(sequentialMap);
   const next = `ESM-${Math.max(...map.stories.map(story => Number(story.id.slice(4)))) + 1}`;
   assert.equal(nextStoryId(map.stories, "v0-7-5"), next, "the release does not change the number");
   assert.equal(nextStoryId(map.stories), next);
@@ -88,17 +93,77 @@ test("ESM-744: add gives the next ID in sequence across the map, and never reuse
   assert.equal(nextStoryId([{ id: "7", release: "a" }, { id: "A9B-12", release: "a" }, { id: "x", release: "a" }], "a"), "8", "IDs without a prefix and without digits are handled");
   const started = performance.now();
   assert.throws(() => nextStoryId([{ id: `${"9".repeat(50000)}x`, release: "a" }], "a"), StoryMapEditError);
-  assert.ok(performance.now() - started < 200, "an ID of many digits with no trailing number is split in linear time");
+  assertFasterThan(started, 200, "an ID of many digits with no trailing number is split in linear time");
 
-  const result = await proposeStoryMapEdit(ownMap, [{ op: "add", title: "Check claims in CI", activity: "review", release: "v0-7-5" }]);
+  const result = await proposeStoryMapEdit(sequentialMap, [{ op: "add", title: "Check claims in CI", activity: "review", release: "v0-7-5" }]);
   assert.deepEqual(result.addedIds, [next]);
   const lastSource = map.stories.filter(story => story.release === "v0-7-5").at(-1).sources.at(-1);
-  const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   assert.match(result.source, new RegExp(`- ${escapeRegExp(lastSource)}\\n {2}- id: ${next}\\n {4}title: Check claims in CI\\n {4}activity: review\\n {4}release: v0-7-5\\n {4}status: planned\\n {2}# Personas\\n`));
-  assert.equal(result.source.replace(new RegExp(` {2}- id: ${next}\\n(?: {4}.*\\n)+`), ""), ownMap, "only the new story's lines are added");
+  assert.equal(result.source.replace(new RegExp(` {2}- id: ${next}\\n(?: {4}.*\\n)+`), ""), sequentialMap, "only the new story's lines are added");
   assert.ok(result.newIssues.some(issue => issue.itemId === next && /estimate/.test(issue.message)), "the missing estimate is a new warning");
 
-  await assert.rejects(proposeStoryMapEdit(ownMap, [{ op: "add", id: "ESM-701", title: "Again", activity: "review", release: "v0-7-5" }]), /already in the map. IDs are never reused/);
+  await assert.rejects(proposeStoryMapEdit(sequentialMap, [{ op: "add", id: "ESM-701", title: "Again", activity: "review", release: "v0-7-5" }]), /already in the map. IDs are never reused/);
+});
+
+/** The sample map with a gap at BUILDER-104, a cut story at BUILDER-102 and, unless `scheme` is null, `settings.storyIds`. */
+function gappedFixture(scheme = "lowest-free") {
+  const source = fixture
+    .replace("  - id: BUILDER-102\n", "  - id: BUILDER-105\n")
+    .replace("  - id: FINANCE-202\n", "  - id: BUILDER-102\n");
+  return scheme ? source.replace("\nactivities:\n", `\nsettings:\n  storyIds: ${scheme}\nactivities:\n`) : source;
+}
+
+test("ESM-180: lowest-free takes the lowest unused number in the main prefix", () => {
+  assert.equal(nextStoryId([{ id: "B-101" }, { id: "B-103" }, { id: "B-102" }, { id: "B-107" }], undefined, "lowest-free"), "B-104", "fills the first gap");
+  assert.equal(nextStoryId([{ id: "B-101" }, { id: "B-102" }], undefined, "lowest-free"), "B-103", "with no gap, takes one after the highest");
+  assert.equal(nextStoryId([{ id: "B-101" }, { id: "B-103" }]), "B-104", "the default still follows the highest");
+  assert.equal(nextStoryId([{ id: "B-101" }, { id: "B-103" }], undefined, "next"), "B-104");
+  assert.equal(nextStoryId([{ id: "B-101" }, { id: "B-104" }, { id: "C-102" }, { id: "B-103" }], undefined, "lowest-free"), "B-102", "another prefix's numbers do not fill the gap");
+  assert.equal(nextStoryId([{ id: "C-1" }, { id: "B-5" }, { id: "B-7" }, { id: "C-3" }], undefined, "lowest-free"), "C-2", "a tie goes to the prefix that comes first");
+  assert.equal(nextStoryId([{ id: "B-007" }, { id: "B-009" }], undefined, "lowest-free"), "B-008", "keeps the number's width");
+  assert.throws(() => nextStoryId([{ id: `B-${"9".repeat(400)}` }], undefined, "lowest-free"), StoryMapEditError, "a number too large to count is refused, not looped on");
+});
+
+test("ESM-180: add fills a gap but never reuses a cut story's number", async () => {
+  const lowestFree = await proposeStoryMapEdit(gappedFixture(), [{ op: "add", title: "Export estimates", activity: "prepare", release: "builder-mvp" }]);
+  assert.deepEqual(lowestFree.addedIds, ["BUILDER-104"], "BUILDER-102 is cut, so the first free number is 104");
+  assert.equal(parseStoryMap(gappedFixture()).stories.find(story => story.id === "BUILDER-102").status, "cut");
+  const two = await proposeStoryMapEdit(gappedFixture(), [
+    { op: "add", title: "One", activity: "prepare", release: "builder-mvp" },
+    { op: "add", title: "Two", activity: "prepare", release: "builder-mvp" },
+  ]);
+  assert.deepEqual(two.addedIds, ["BUILDER-104", "BUILDER-106"], "each add in one edit counts the ones before it");
+  const chosen = await proposeStoryMapEdit(gappedFixture(), [{ op: "add", id: "BUILDER-900", title: "Chosen", activity: "prepare", release: "builder-mvp" }]);
+  assert.deepEqual(chosen.addedIds, ["BUILDER-900"], "--id still wins");
+  await assert.rejects(proposeStoryMapEdit(gappedFixture(), [{ op: "add", id: "BUILDER-102", title: "Again", activity: "prepare", release: "builder-mvp" }]), /already in the map/);
+});
+
+test("ESM-180: without the setting, or set to next, add numbers in sequence as before", async () => {
+  for (const scheme of [null, "next"]) {
+    const result = await proposeStoryMapEdit(gappedFixture(scheme), [{ op: "add", title: "Export estimates", activity: "prepare", release: "builder-mvp" }]);
+    assert.deepEqual(result.addedIds, ["BUILDER-106"], `scheme ${scheme}`);
+  }
+  assert.throws(() => parseStoryMap(gappedFixture("lowest")), /storyIds/, "an unknown scheme fails validation");
+});
+
+test("ESM-180: add previews the lowest free ID on a dry run and writes it with --write", async t => {
+  const { run, read } = await scratch(t, gappedFixture());
+  const args = ["add", "--title", "Export estimates", "--activity", "prepare", "--release", "builder-mvp"];
+  const dry = run(...args);
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.match(dry.stdout + dry.stderr, /BUILDER-104/);
+  assert.equal(await read(), gappedFixture(), "a dry run leaves the map alone");
+  const written = run(...args, "--write");
+  assert.equal(written.status, 0, written.stderr);
+  assert.match(written.stderr, /Added BUILDER-104\./);
+  assert.match(await read(), /- id: BUILDER-104\n {4}title: Export estimates/);
+});
+
+test("ESM-180: story-map diff lists a change to storyIds under Settings", () => {
+  const before = parseStoryMap(gappedFixture(null));
+  const after = parseStoryMap(gappedFixture());
+  assert.match(formatStoryMapDiff(diffStoryMaps(before, after)), /### Settings\n\n- `add` gives new stories the lowest free number \(was one after the highest number\)\./);
+  assert.equal(diffStoryMaps(before, parseStoryMap(gappedFixture("next"))).storyIds, undefined, "next is the default, so setting it is no change");
 });
 
 test("ESM-744: release-impact always adds a draft item", async () => {
@@ -163,7 +228,7 @@ test("ESM-744: story-map edit is a dry run until --write, and writes only a vali
 
 test("ESM-744: story-map edit --from applies every edit or none", async t => {
   const { root, run, read } = await scratch(t);
-  const next = nextStoryId(parseStoryMap(ownMap).stories);
+  const next = nextStoryId(parseStoryMap(ownMap).stories, undefined, "lowest-free");
   await writeFile(join(root, "edits.json"), JSON.stringify([
     { op: "status", id: "ESM-744", status: newStatus },
     { op: "add", title: "Check claims in CI", activity: "review", release: "v0-7-5" },
@@ -263,4 +328,19 @@ test("ESM-744: random sequences of edits change only what they name, and validat
     }
     parseStoryMap(source);
   }), { numRuns });
+});
+
+test("ESM-158: edit --priority sets, changes and removes a story's priority", async t => {
+  const { run, read } = await scratch(t, fixture);
+  const id = parseStoryMap(fixture).stories[0].id;
+  assert.equal(run("edit", id, "--priority", "Must", "--write").status, 0);
+  assert.equal(parseStoryMap(await read()).stories[0].priority, "must");
+  const changed = run("edit", id, "--priority", "could");
+  assert.equal(changed.status, 0);
+  assert.match(changed.stdout, /Priority: must → could/);
+  assert.equal(run("edit", id, "--priority", "none", "--write").status, 0);
+  assert.ok(!("priority" in parseStoryMap(await read()).stories[0]));
+  const wrong = run("edit", id, "--priority", "wont");
+  assert.notEqual(wrong.status, 0);
+  assert.match(wrong.stderr, /--priority must be must, should, could or none, not wont/);
 });

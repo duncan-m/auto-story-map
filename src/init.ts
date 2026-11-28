@@ -1,13 +1,27 @@
 import { constants } from "node:fs";
 import { access, lstat, mkdir, open, readFile, realpath, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
+import { hasAgentsSection, setupBody, stampSetupFile } from "./setup-versions.js";
+import { storyMapVersion } from "./version.js";
 
 export interface InitOptions {
   /** Write a GitHub Actions workflow that validates the map. Defaults to true. */
   ci?: boolean;
   /** Write the rules as a skill, with a short pointer in `AGENTS.md`. Defaults to false. */
   skill?: boolean;
+  /**
+   * Only these parts, besides the map, which is always written when it is
+   * missing. Left out, every part is written: the `AGENTS.md` section, the
+   * guide, the workflow unless `ci` is false, and the skill with `skill`.
+   * Naming `skill` writes the skill and the short pointer form of the section.
+   */
+  parts?: readonly InitPart[];
 }
+
+/** The parts `init` can write besides the map, as the upgrade review names them. */
+export type InitPart = "agents" | "guide" | "workflow" | "skill";
+
+export const initParts: readonly InitPart[] = ["agents", "guide", "workflow", "skill"];
 
 export interface InitStep {
   /** Path relative to the host repository root. */
@@ -18,18 +32,18 @@ export interface InitStep {
 
 const packageRoot = new URL("../", import.meta.url);
 const template = (name: string) => readFile(new URL(`templates/${name}`, packageRoot), "utf8");
-const agentsMarker = "<!-- auto-story-map:start -->";
 export const skillPath = ".claude/skills/story-map/SKILL.md";
 
 /**
  * Builds the skill from the `AGENTS.md` section, so the two carry the same
- * rules. Headings move up a level, and links to the host's files gain the path
- * back to the root from the skill's folder.
+ * rules. Rule markers are left out, headings move up a level, and links to
+ * the host's files gain the path back to the root from the skill's folder.
  */
 export async function skillFile() {
   const rules = (await template("AGENTS.md"))
     .replace(/^<!-- auto-story-map:start -->\n## Story map\n\n/, "")
     .replace(/\n<!-- auto-story-map:end -->\n$/, "")
+    .replace(/^<!-- rule: [a-z0-9-]+ -->\n/gm, "")
     .replace(/^### /gm, "## ")
     .replace(/\]\((product|docs)\//g, "](../../../$1/");
   return (await template("SKILL.md")).replace("__RULES__", () => rules);
@@ -56,7 +70,7 @@ function isInside(realRoot: string, path: string) {
  * links along the way only while they stay inside it. The result contains no
  * links, so later writes cannot be redirected outside the root by one.
  */
-async function destination(realRoot: string, path: string) {
+export async function destination(realRoot: string, path: string) {
   let current = realRoot;
   const parts = path.split("/");
   for (const [index, part] of parts.entries()) {
@@ -88,7 +102,7 @@ async function destination(realRoot: string, path: string) {
 }
 
 /** The host's first top-level test folder, as a real folder rather than a link, or undefined. */
-async function testFolder(realRoot: string) {
+export async function testFolder(realRoot: string) {
   for (const name of ["test", "tests", "__tests__"]) {
     const info = await lstat(join(realRoot, name)).catch(() => null);
     if (info?.isDirectory()) return name;
@@ -130,7 +144,7 @@ async function appendGuidance(realRoot: string, path: string, agents: string) {
     const reader = await open(target, constants.O_RDONLY | noFollow).catch(() => undefined);
     if (!reader) throw error;
     try {
-      if ((await reader.stat()).isFile() && (await reader.readFile("utf8")).includes(agentsMarker)) return false;
+      if ((await reader.stat()).isFile() && hasAgentsSection(await reader.readFile("utf8"))) return false;
     } finally {
       await reader.close();
     }
@@ -139,13 +153,22 @@ async function appendGuidance(realRoot: string, path: string, agents: string) {
   try {
     if (!(await handle.stat()).isFile()) throw new Error(`${path} is not a file`);
     const current = await handle.readFile("utf8");
-    if (current.includes(agentsMarker)) return false;
+    if (hasAgentsSection(current)) return false;
     const separator = current.length === 0 || current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
     await handle.appendFile(separator + agents);
     return true;
   } finally {
     await handle.close();
   }
+}
+
+/**
+ * The text between the story map markers, without them, with line endings
+ * evened out, or undefined without them. The start marker's version and hash
+ * are left out, so a section matches its template whichever version stamped it.
+ */
+export function agentsSection(text: string): string | undefined {
+  return setupBody("agents", text);
 }
 
 async function productName(root: string) {
@@ -171,10 +194,16 @@ export function describeProduct(name: string) {
  * Sets up Auto Story Map in a host repository: a starter map, the story
  * map guide, the agent instructions, optionally as a skill, and a validation
  * workflow. Existing files
- * are never overwritten, so it is safe to run again.
+ * are never overwritten, so it is safe to run again. A starter map written with the
+ * agent rules or the skill sets `settings.architectureDecisions: required`, since the
+ * rules ask for architecture decisions. Each part except the map
+ * and the skill records the package version and a hash of its template, so a
+ * later review can tell the host's edits from the package's changes.
  */
 export async function initStoryMap(root: string, options: InitOptions = {}): Promise<InitStep[]> {
   const steps: InitStep[] = [];
+  const wants = (part: InitPart) => !options.parts || options.parts.includes(part);
+  const useSkill = !!options.skill || !!options.parts?.includes("skill");
   const realRoot = await realpath(root);
   const at = (path: string) => destination(realRoot, path);
 
@@ -183,17 +212,21 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     steps.push({ path: mapPath, action: "skipped", reason: "already exists" });
   } else {
     const { id, title } = describeProduct(await productName(root));
-    const map = (await template("story-map.yaml")).replace("__ID__", id).replace("__TITLE__", title);
+    let map = (await template("story-map.yaml")).replace("__ID__", id).replace("__TITLE__", title);
+    // The rules ask for architecture decisions, so a new install that takes them checks open plans for them too.
+    if (wants("agents") || useSkill) map = map.replace("\nvisibility: internal\n", "\nvisibility: internal\nsettings:\n  architectureDecisions: required\n");
     await writeNew(realRoot, mapPath, map);
     steps.push({ path: mapPath, action: "created" });
   }
 
   const guidePath = "docs/story-map.md";
   const guide = await readFile(new URL("docs/story-map.md", packageRoot), "utf8");
-  if (!(await exists(await at(guidePath)))) {
-    await writeNew(realRoot, guidePath, guide);
+  if (!wants("guide")) {
+    // Left out by the person.
+  } else if (!(await exists(await at(guidePath)))) {
+    await writeNew(realRoot, guidePath, stampSetupFile("guide", guide, storyMapVersion));
     steps.push({ path: guidePath, action: "created" });
-  } else if (await readFile(await at(guidePath), "utf8") === guide) {
+  } else if (setupBody("guide", await readFile(await at(guidePath), "utf8")) === setupBody("guide", guide)) {
     steps.push({ path: guidePath, action: "skipped", reason: "already up to date" });
   } else {
     steps.push({
@@ -203,7 +236,7 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     });
   }
 
-  if (options.skill) {
+  if (useSkill) {
     const skill = await skillFile();
     if (!(await exists(await at(skillPath)))) {
       await writeNew(realRoot, skillPath, skill);
@@ -216,17 +249,27 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
   }
 
   const agentsPath = "AGENTS.md";
-  const agents = await template(options.skill ? "AGENTS-skill.md" : "AGENTS.md");
-  if (!(await exists(await at(agentsPath)))) {
+  const agents = stampSetupFile("agents", await template(useSkill ? "AGENTS-skill.md" : "AGENTS.md"), storyMapVersion);
+  if (!wants("agents")) {
+    // Left out by the person.
+  } else if (!(await exists(await at(agentsPath)))) {
     await writeNew(realRoot, agentsPath, agents);
     steps.push({ path: agentsPath, action: "created" });
   } else if (await appendGuidance(realRoot, agentsPath, agents)) {
     steps.push({ path: agentsPath, action: "updated", reason: "added the story map section" });
-  } else {
+  } else if ([await template("AGENTS.md"), await template("AGENTS-skill.md")].map(agentsSection).includes(agentsSection(await readFile(await at(agentsPath), "utf8")))) {
+    // Either form of the section is current: the full rules, or the pointer to the skill.
     steps.push({ path: agentsPath, action: "skipped", reason: "already has the story map section" });
+  } else {
+    // Hosts edit this section, so it is reported rather than replaced.
+    steps.push({
+      path: agentsPath,
+      action: "skipped",
+      reason: `has the story map section, but it differs from this version's; compare it with node_modules/auto-story-map/templates/${useSkill ? "AGENTS-skill.md" : "AGENTS.md"}`,
+    });
   }
 
-  if (options.ci !== false) {
+  if (options.ci !== false && wants("workflow")) {
     const workflowPath = ".github/workflows/story-map.yml";
     if (await exists(await at(workflowPath))) {
       steps.push({ path: workflowPath, action: "skipped", reason: "already exists" });
@@ -237,7 +280,8 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
         reason: "no package-lock.json; add `story-map validate --format github product/story-map.yaml` to your CI",
       });
     } else {
-      await writeNew(realRoot, workflowPath, workflowWithTests(await template("story-map-ci.yml"), await testFolder(realRoot)));
+      const workflow = workflowWithTests(await template("story-map-ci.yml"), await testFolder(realRoot));
+      await writeNew(realRoot, workflowPath, stampSetupFile("workflow", workflow, storyMapVersion));
       steps.push({ path: workflowPath, action: "created" });
     }
   }

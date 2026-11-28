@@ -1,8 +1,8 @@
 # Plan: Git-native delivery metrics
 
 Status: proposed. Planning only; no implementation in this PR. Work is split into two releases:
-- **0.8.2: Delivery visibility** — a spike first, ESM-174, then the full version, ESM-130 through ESM-134.
-- **0.8.3: Delivery intelligence** — ESM-135, ESM-136 and ESM-138.
+- **0.8.3: Delivery visibility** — a spike first, ESM-174, then the full version, ESM-130 through ESM-134.
+- **0.8.4: Delivery intelligence** — ESM-135, ESM-136 and ESM-138.
 
 0. [Spike: show delivery totals in an Analytics tab](#spike-show-delivery-totals-in-an-analytics-tab) (ESM-174)
 1. [Reconstruct delivery events from Git](#1-reconstruct-delivery-events-from-git) (ESM-130)
@@ -14,7 +14,7 @@ Status: proposed. Planning only; no implementation in this PR. Work is split int
 7. [Baseline releases and expose scope changes](#7-baseline-releases-and-expose-scope-changes) (ESM-136)
 8. [Display cumulative flow and bottlenecks](#8-display-cumulative-flow-and-bottlenecks) (ESM-138)
 
-The team agreed estimates for 0.8.2 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. For 0.8.3 (18 points): ESM-135 5, ESM-136 5 and ESM-138 8. ESM-174 has no estimate yet: the team needs to agree one. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
+The team agreed estimates for 0.8.3 (27 points): ESM-130 5, ESM-131 8, ESM-132 8, ESM-133 3 and ESM-134 3. For 0.8.4 (18 points): ESM-135 5, ESM-136 5 and ESM-138 8. ESM-174 has no estimate yet: the team needs to agree one. Estimates must be agreed before adding them to the map. All metrics are internal-only by default; no new tracking ceremony, server or mandatory database.
 
 ## Why and product outcome
 
@@ -33,7 +33,7 @@ Success: a user can open a release, see delivered versus changing scope, through
 - **Privacy:** analytics require internal-map permission; customer viewers never receive internal history, point estimates or velocity.
 - **Performance:** read Git only when `story-map history` runs, as it does today. Every metric is calculated from the map and the history file, so there is no second generated file and no Git scan per UI request. If a calculation later proves too slow or too large to run in the board, add a precomputed file then.
 
-## Release 0.8.2 — Delivery visibility
+## Release 0.8.3 — Delivery visibility
 
 The release starts with a spike, ESM-174, which puts a simple delivery report in front of people quickly, using only data the map and the history file already hold. The full version, ESM-130 to ESM-134, follows on from it: it builds on the spike's Analytics tab and calculations rather than starting again, and adds what the spike leaves out, scope change and remaining work.
 
@@ -105,9 +105,9 @@ The release starts with a spike, ESM-174, which puts a simple delivery report in
 
 **Acceptance:** progress matches current map and selected completion milestone; blocked and cut states are distinguished; internal-only analytics do not leak through customer projection.
 
-**Depends on:** nothing. It can land first in 0.8.2.
+**Depends on:** nothing. It can land first in 0.8.3.
 
-## Release 0.8.3 — Delivery intelligence
+## Release 0.8.4 — Delivery intelligence
 
 ### 6. Measure lead time
 
@@ -166,6 +166,22 @@ What it shows:
 4. Reuse existing styling, keyboard/accessibility conventions, release panel and progressive enhancement. Do not introduce a heavy chart dependency without an evaluated bundle-size justification.
 5. Add fixtures and unit tests prefixed with the corresponding ESM ID. Validate docs and map references as part of the normal repository checks.
 
+## Architecture decisions
+
+Following [Record architecture decisions](../ENGINEERING-OVERVIEW.md#record-architecture-decisions):
+
+- **Where it runs.** Inside the existing package: pure functions of the map and the history file, shared by the board's Analytics tab and any CLI output. `story-map history` stays the only Git reader. No server, database or second generated file, as the [measurement contract](#measurement-contract-applies-to-every-story) says, and no chart library.
+- **Data and contracts.** Upstream, it reads the map and the history file that hosts already pass to the board with `--history`. Downstream, ESM-130 adds a new optional list of estimate, release and cut changes to the history file, kept out of `events` so a board from an earlier release still reads it. ESM-136 adds an optional `baselineDate` to releases in the map format and its JSON Schema. The board gains an Analytics tab and its query parameters, and ESM-134 adds a summary to each release lane.
+- **Boundaries.** [Project, then filter, then render](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve) and the customer allow-list: the tab, its data, points, tokens, spend and its query parameters never reach a customer view. **History contains names**: the new history list stays in the internal history file. **Bounded input**: the history file keeps the schema's limits.
+- **Reversibility.** The tab and the calculations are additive and save nothing, so they can be removed in a release. The new history list and `baselineDate` are the harder parts: once hosts build history files or write maps with them, the parsers must keep accepting them.
+
+Consequential decision, a **proposal** for a person to agree before ESM-130 and ESM-136 go `in-progress`: extend two saved formats, the history file with a new optional list (ESM-130), and the map with `baselineDate` on releases (ESM-136).
+
+- **Consumers:** hosts that build the history file or write maps, the board, and any host code that parses either file.
+- **Alternatives considered:** for the history file, adding the changes to `events`, not chosen because `parseStoryMapHistory` accepts only `added` and `status` events, so an older board would reject the file; and a separate precomputed metrics file, deferred until a real limit needs one.
+- **Agreed by:** not yet. The team agreed the estimates, but the plan does not record agreement of the format changes.
+- **Revisit if** an older board rejects history files with the new list, if teams rarely set `baselineDate`, or if calculating in the board proves too slow for a large history, which is when the plan says to add a precomputed file.
+
 ## Decisions to settle before implementation
 
 - Whether a 'completed' story that subsequently reopens should reduce cumulative burn-up or whether separate net-completed versus ever-completed series should be offered. Proposed default: net-completed, with status history explaining reversals.
@@ -179,7 +195,7 @@ Sprint creation, timesheets, manual daily updates, agent leaderboards, cost-per-
 ## Delivery checklist
 
 - All 9 stories remain `planned` until implementation begins.
-- No estimates are assigned without team agreement. The 0.8.2 and 0.8.3 estimates are agreed, except ESM-174's.
+- No estimates are assigned without team agreement. The 0.8.3 and 0.8.4 estimates are agreed, except ESM-174's.
 - Validate map/schema; add linked tests at implementation time.
 - Keep delivery metrics out of customer-facing projections.
 - Review usability with a Solo Builder and an inheriting PM before considering the feature shipped.

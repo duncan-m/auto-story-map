@@ -1,6 +1,6 @@
 # Plan: an Actions tab for outstanding work on the map
 
-Status: proposed. The work is one story, ESM-128, in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 8 points, about the size of the triage work in the same release (ESM-111 and ESM-112), because the tab is new board UI and the CLI command and panel rows come with it.
+Status: shipped. The work is one story, ESM-128, in the **0.7.6: Triage, readiness and agent access** release of the map. Its estimate is agreed: 8 points, about the size of the triage work in the same release (ESM-111 and ESM-112), because the tab is new board UI and the CLI command and panel rows come with it.
 
 Before this plan, `npm run validate` on this repository printed 44 warnings. Most of them ask a person to do something: confirm a drafted job or impact item, agree an estimate, tag a test. Only people who run the CLI, or read CI logs, ever see them. The people most of them are for, product managers and founders reading the board in the product, never do.
 
@@ -97,6 +97,12 @@ The four parts share one function, `getStoryMapActions`, so they fit in one PR, 
 ## Later: file checks
 
 Missing sources, broken `#heading` links and unknown IDs in plans and tests need the repository's files, which the board does not have. This map has none of these problems today, and listing them needs a new CI step in each host, so they are left out of ESM-128. A follow-up story could add `story-map validate --out <file>` to write the JSON result in CI, and have the host pass it to the view as `checks`, on the server, like the history and tests index. The tab would list those issues first, with the time they were checked. The tests index the host already passes is enough for `story-without-tests`, so that kind is in ESM-128.
+
+## UI screenshot
+
+The tab as built, on this repository's map in `story-map preview`, with the board's real `styles.css`:
+
+![The Actions tab, listing the map's actions grouped by kind](actions-tab-screenshot.png)
 
 ## Not now
 

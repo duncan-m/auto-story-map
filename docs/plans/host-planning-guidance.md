@@ -1,6 +1,6 @@
 # Plan: offer the planning approach to host products
 
-Status: proposed. The work is ESM-148, ESM-153, ESM-150, ESM-149, ESM-151 and ESM-152 in the **0.7.7: Delivery plans and test tags** release of the map. None has an agreed estimate yet.
+Status: merged. The work is ESM-148, ESM-153, ESM-150, ESM-149, ESM-151 and ESM-152 in the **0.7.7: Delivery plans and test tags** release of the map, built as proposed below with the decisions in [Decisions made](#decisions-made). None has an agreed estimate yet.
 
 Hosts that install auto-story-map get the map mechanics: the format, the validator, the board and the commands. They do not get the way this repository plans the work that goes into the map. That lives in this repository's own `AGENTS.md` and, mostly, as habits the plans in `docs/plans/` share: a status line, numbered items in build order, the stories the work builds on, a UI mockup, decisions, Not now and an effort table. None of it is in [the guide](../story-map.md), the host [`AGENTS.md` template](../../templates/AGENTS.md) leaves out the UI mockup and builds-on rules, and `docs/plans/` is not in the package.
 
@@ -143,6 +143,10 @@ If ESM-117 is cut or moved, this item moves with it, and ESM-150's paragraphs ar
 ## UI mockup
 
 No mockup: this work changes docs, the `AGENTS.md` template and the command line, not the board. The example plan in ESM-149 has a mockup of its own, as an example.
+
+## Decisions made
+
+The build took every proposal below. For B, validate reports the unset choice with a new `notice` severity: printed first by every format, a `::notice` annotation with `--format github`, counted in `notices`, and never failing, even with `--strict`. The Actions tab does not list notices yet, since it lists warnings only. For E, "not now" leaves `settings.plans` unset.
 
 ## Decisions to make
 

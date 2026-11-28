@@ -1,9 +1,9 @@
 # Plan: hand a story or release to a coding agent
 
-Status: proposed. The work is split across two releases of the map. Copying a brief and opening it in a web agent come first, to test how briefs work in practice. The command-line brief and starting a local agent follow once the format has settled.
+Status: merged. ESM-123, ESM-124, ESM-125 and ESM-144 shipped in 0.7.5, and ESM-126 merged in 0.7.10. ESM-127, starting a local agent, was cut. The work was split across two releases of the map, so that copying a brief and opening it in a web agent could test how briefs work in practice before the command-line brief.
 
 - **0.7.5: Evidence and claims for agents**: ESM-123, ESM-124, ESM-125 and ESM-144
-- **0.7.8: Agent briefs**: ESM-126 and ESM-127
+- **0.7.10: Agent briefs**: ESM-126 and ESM-127
 
 The estimates below are agreed.
 
@@ -186,7 +186,7 @@ npx story-map brief --activity explore
 - **In flight from Git.** The `<in_flight>` section adds what `story-map evidence` (ESM-105) finds for each target: branches that name it, commits on the default branch, claims (ESM-106) and broken sources. The brief calls the evidence code rather than reading Git a second time, so the two stay consistent.
 - When the MCP server from ESM-116 exists, it gets a `get_brief` tool that wraps this command.
 
-This is why this item is in 0.7.8: it comes after evidence and claims in 0.7.5, after the MCP server in 0.7.6, and after the brief format has been tested from the panel in 0.7.5.
+This is why this item is in 0.7.10: it comes after evidence and claims in 0.7.5, after the MCP server in 0.7.6, and after the brief format has been tested from the panel in 0.7.5.
 
 Estimate: 3 points, agreed.
 
@@ -215,6 +215,17 @@ Estimate: 5 points, agreed. It depends on ESM-112 in 0.7.6.
 
 The brief uses evidence where it can, in its `<in_flight>` section, and never repeats evidence's Git reads. The handoff serves the Coding Agent's `pick-up-work` job. Evidence serves the audit and the Product Manager's `validate-inherited-map` job.
 
+## Architecture decisions
+
+Following [Record architecture decisions](../ENGINEERING-OVERVIEW.md#record-architecture-decisions). ESM-123 to ESM-125 and ESM-144 have shipped, ESM-126 has merged and ESM-127 was cut, so these answers record what was built.
+
+- **Where it runs.** Inside the existing package: `storyMapBrief` in `src/brief.ts`, the board's panels, `board.js` and the CLI's `brief` command. No service, worker or bridge package. The [Not now](#not-now) list says why a localhost bridge was not built.
+- **Data and contracts.** Upstream, the brief reads the internal projection, the tests index, the changes in the history file and, on the command line, `story-map evidence`. Downstream, `storyMapBrief` is a new export from the root entry point, the brief's tagged sections are a format agents read, the board gains the `webAgents` prop and the Share menu, and `brief --format json` is a new CLI output. The Open links send the brief to Anthropic or OpenAI.
+- **Boundaries.** [Exports are internal only](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve): the brief refuses a customer view, like the exports. Map text is escaped so it cannot close or add a brief section. Sending a brief to a web agent takes internal map content outside the host, so it is off until the host turns it on with `webAgents`. ESM-127's launch endpoint, which would have started a process from the preview, was cut, so no boundary for running commands was added.
+- **Reversibility.** The panel section and the Share menu can be removed in a release. `storyMapBrief`, the `webAgents` prop and the brief format are public, so removing them is a breaking change for hosts and agents that use them. The Open links depend on `claude.ai` and `chatgpt.com` parameters that are not documented, and they degrade to an empty chat if those change.
+
+Consequential decision, recorded after the build: letting a host send briefs to web agents run by other companies (ESM-125, ESM-144). Consumers: hosts that turn on `webAgents`, and their viewers, whose internal map content goes to Anthropic or OpenAI. Alternative considered: a localhost bridge that starts an agent, not built for the reasons in [Not now](#not-now). Agreed by: the plan records the agreed estimates but not who agreed the decision itself, so this is a **proposal** for a person to confirm before it moves to the engineering overview. Revisit if the undocumented parameters stop working, or a host needs a web agent that is not on the fixed list.
+
 ## Decisions to make
 
 These are proposals. Each is easy to change during review.
@@ -240,7 +251,7 @@ These are proposals. Each is easy to change during review.
 | ESM-124: Copy an agent brief from the story and release panels | 0.7.5 | 2, agreed |
 | ESM-125: Open an agent brief in Claude or ChatGPT | 0.7.5 | 2, agreed |
 | ESM-144: Open an agent brief in Claude Code on the web | 0.7.5 | 1, agreed |
-| ESM-126: Write agent briefs from the command line | 0.7.8 | 3, agreed |
-| ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.7.8 | 5, agreed |
+| ESM-126: Write agent briefs from the command line | 0.7.10 | 3, agreed |
+| ESM-127: Start Claude Code or Codex on a brief from the local preview | 0.7.10 | 5, agreed |
 
 ESM-123 to ESM-125 depend on nothing else in 0.7.5, so they can be built before or alongside the evidence and claim work. ESM-126 uses the evidence code from ESM-105.

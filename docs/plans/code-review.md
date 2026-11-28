@@ -1,0 +1,278 @@
+# Plan: code review, architecture decisions and review points
+
+Status: in progress. The work is ESM-176 to ESM-179 and ESM-182 to ESM-187 in the **0.7.11: Code review and architecture checks** release of the map, all merged, with three follow-ups from a review of the repository against this plan: ESM-188 and ESM-189, merged, and ESM-190, planned. None has an agreed estimate yet.
+
+Agents write almost every change in this repository, and nobody else reads most of them before they merge. Of the last 30 merged PRs, none had an independent review. CodeQL is the only reviewer, and it runs after the push: it found escaping or sanitising problems in #162, #169, #178 and #179, and ReDoS in #169 and #186. One of those alerts, in `fileSlug` in `src/export-response.ts`, shipped to hosts in 0.7.6 and is being fixed as ESM-175. Nothing asks whether a change kept the promise of its story, which saved input it could break, or whether it made an architecture decision that nobody recorded. The plans in `docs/plans/` say what to build, but none of the 5 open ones says where it runs, who consumes it, or how to undo it.
+
+This plan adds review in layers. Cheap deterministic checks come first: lint, a coverage floor, CodeQL's quality queries and one shared escape helper. Then a review step that starts from the story, piloted on ten PRs. Then architecture decisions in plans, with a check, and guidance on when to review the architecture and refactor. Last, once the pilot shows it works, the review step and architecture decisions are offered to hosts. It follows the rule from [Turn agent rules into checks](rules-as-checks.md): a correction becomes a check or an API change, and prose is kept for what needs judgement.
+
+Items are numbered by topic. The [build order](#build-order) differs:
+
+1. [Lint the code with Biome in CI](#1-lint-the-code-with-biome-in-ci) (ESM-176)
+2. [Measure test coverage with a floor](#2-measure-test-coverage-with-a-floor) (ESM-177)
+3. [Run CodeQL's quality queries](#3-run-codeqls-quality-queries) (ESM-178)
+4. [Review against the story first, then the repo checklist](#4-review-against-the-story-first-then-the-repo-checklist) (ESM-179)
+5. [Review each PR's diff before it is ready, and pilot the step](#5-review-each-prs-diff-before-it-is-ready-and-pilot-the-step) (ESM-182)
+6. [Record architecture decisions in plans and PRs](#6-record-architecture-decisions-in-plans-and-prs) (ESM-183)
+7. [Check the architecture section in plans](#7-check-the-architecture-section-in-plans) (ESM-184)
+8. [Say when to review the architecture and refactor](#8-say-when-to-review-the-architecture-and-refactor) (ESM-185)
+9. [Offer the review step and architecture decisions to hosts](#9-offer-the-review-step-and-architecture-decisions-to-hosts) (ESM-186)
+10. [Share one regular-expression escape helper](#10-share-one-regular-expression-escape-helper) (ESM-187)
+
+ESM-180 and ESM-181 were already taken, so the IDs skip them. ESM-175, the ReDoS fix, is its own story in 0.7.9 and the first PR in the pilot.
+
+## Where we are today
+
+From a check against `main` at `575aa60`:
+
+| Area | Today | Gap | In this plan |
+| --- | --- | --- | --- |
+| Independent review | 0 of the last 30 merged PRs. A person merges each one | Nobody but the author reads most diffs before they merge | ESM-179, ESM-182 |
+| Static analysis | CodeQL's default security queries, after the push. 5 of the last 30 merged PRs had findings: escaping or sanitising in #162, #169, #178 and #179, ReDoS in #169 and #186 | Findings arrive after the PR is open, and quality queries are off | ESM-178, ESM-182 |
+| Lint | None. `tsc` checks types | No check for unused code, suspicious patterns or complexity | ESM-176 |
+| Coverage | Not measured in CI. A local run gives 94.29% of lines, 90.73% of branches and 96.08% of functions, with 536 of 536 tests passing. Weakest: `preview.js` 53%, `board.js` 57%, `mcp.js` 70%. The report includes `example/host.mjs` and has no source maps, so it points at `dist/` | No floor, so coverage can fall unnoticed, and the report is hard to act on | ESM-177 |
+| Repeated code | `escapeRegExp` is copied in 5 places | A fix to one copy misses the others | ESM-187 |
+| Architecture decisions | None of the 5 open plans has an architecture section | Where work runs, who consumes it and how to undo it are not recorded | ESM-183, ESM-184 |
+| When to refactor | `src/react.tsx` is 2,967 lines and was changed by 34 stories in the last 300 commits (21 when [assessed](#assessment-of-srcreacttsx) at `213fe51`) | No rule for when size or churn should prompt a look | ESM-185 |
+| Hosts | The host templates have no review or architecture rules. They have the rule markers, the [upgrade review](upgrade-review.md) and `known-versions.json` that would carry them | Hosts get nothing from this until it is offered | ESM-186 |
+
+## 1. Lint the code with Biome in CI
+
+Repository only.
+
+- Biome is a devDependency at an exact version.
+- `biome.json` turns on the recommended rules and turns the formatter and assist off, so no file is reformatted. `noExcessiveCognitiveComplexity` is a warning. A test keeps the number of those warnings at or under a ceiling that only comes down, so new code can't add them unnoticed (ESM-189).
+- It covers `src/`, `test/`, `scripts/` and `example/`.
+- `npm run lint` runs `biome ci`, and CI runs the same script with `--reporter=github`, so findings appear on the PR diff.
+- Measure the baseline when this is built. Fix the findings, or turn a rule off in `biome.json` with a reason. No bulk ignore comments.
+
+## 2. Measure test coverage with a floor
+
+Repository only.
+
+- Turn on `sourceMap` in `tsconfig.json`, so the report points at `src/*.ts` rather than `dist/`.
+- Exclude `example/` and the generated `version` module.
+- Check that a module nothing imports shows up at 0%. If it does not, use `c8 --all` or a test that imports every module.
+- The floors are set from the baseline, rounded down, about 94% of lines, 90% of branches and 96% of functions today. They only go up.
+- Only the Node 26 cell of the CI matrix runs it. `npm run coverage` runs it locally.
+
+## 3. Run CodeQL's quality queries
+
+Repository only. Add `queries: security-and-quality` to the CodeQL workflow and triage the new alerts: fix them, or dismiss them with a reason. ESM-175 has already cleared the open ReDoS alert.
+
+## 4. Review against the story first, then the repo checklist
+
+A **Review a code change** section in the [engineering overview](../ENGINEERING-OVERVIEW.md), linked from `AGENTS.md`, asks in this order:
+
+1. What did the story promise? Read its summary, `sources` and plan section.
+2. What evidence shows it works? Tests named with the story ID, a screenshot, a run of the command.
+3. Which existing caller or saved input could break? Maps, plans and `AGENTS.md` files that hosts already have, and every caller of a changed function.
+4. Did it make an architecture decision that wasn't recorded? See [item 6](#6-record-architecture-decisions-in-plans-and-prs).
+5. Then the repository's own checks, such as escaping, the audience filter and the [security boundaries](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve).
+
+A serious defect gets a regression test the first time it is found. A lower-impact problem that recurs gets a lint rule, a test or an API change the second time, as [item 10](#10-share-one-regular-expression-escape-helper) does for escaping.
+
+Item 6 (ESM-183) added question 4, so the review now asks all five.
+
+## 5. Review each PR's diff before it is ready, and pilot the step
+
+- Run `/code-review <PR number>`, or review `origin/main...HEAD` before a PR exists. Review again after any material change.
+- A **Review** section in the PR template records the target, the commit SHA reviewed, the level, the findings fixed and the findings declined, with a reason for each. A person's review of the same diff also counts.
+- An agent that cannot run a review leaves the PR as a draft and says so.
+- `pr-check --body-file` warns when a ready PR has an empty Review section, with a rule ID from ESM-159.
+- The [pilot](#pilot) covers ten PRs and records the findings before ready, the defects found later, and the time and token cost of each review.
+
+## 6. Record architecture decisions in plans and PRs
+
+Repository first. A `## Architecture decisions` section in a plan answers four questions:
+
+1. **Where it runs:** inside the app, or as its own service, worker or package.
+2. **Data and contracts:** the consumers upstream and downstream, such as the map format, the CLI's output formats, the board and hosts' files.
+3. **Boundaries:** what the change may touch and what stays out of it.
+4. **Reversibility:** how to undo it, including for hosts that have already upgraded.
+
+Routine work answers in one line with a real reason, such as "Inside the CLI, no new consumers: it adds a flag to an existing command." A consequential decision records each affected consumer and the consequence for it, the alternative considered, who agreed it, and what would justify revisiting it. A person agrees it before its stories go `in-progress`.
+
+Work without a plan puts an **Architecture** line in the PR description, which `pr-check` reads (ESM-188). Agreed decisions move into the engineering overview's [Runtime and architecture](../ENGINEERING-OVERVIEW.md#runtime-and-architecture) section, so the overview stays the one place to look.
+
+## 7. Check the architecture section in plans
+
+`validate --plans` reports an open plan with no `## Architecture decisions` section, an empty one, the scaffold's placeholder hints left in it, or a "None:" line with no reason. The rule is `plan-architecture-section`.
+
+It is a **notice** by default, and a **warning** once `settings.architectureDecisions: required` is set. This repository sets it, and the 5 open plans gain the section in the same PR.
+
+## 8. Say when to review the architecture and refactor
+
+The guide names four points to review the architecture:
+
+1. **Planning**, through the section in [item 6](#6-record-architecture-decisions-in-plans-and-prs).
+2. **Review**, through question 4 in [item 4](#4-review-against-the-story-first-then-the-repo-checklist).
+3. **Release planning**, when a release groups work that shares a module or a contract.
+4. **The scheduled audit** (ESM-109), unchanged.
+
+Size and complexity prompt a look, not a refactor. A refactor story needs evidence of its cost from Git and review history, such as how many stories changed a file and how often reviews found problems there. It names that cost, and says how the team will tell that it improved. The first case to assess is `src/react.tsx`: 2,967 lines, changed by 34 stories in the last 300 commits.
+
+The guide's section is [When to review the architecture](../story-map.md#when-to-review-the-architecture), and the overview's is [When to review the architecture here](../ENGINEERING-OVERVIEW.md#when-to-review-the-architecture-here).
+
+### Assessment of `src/react.tsx`
+
+Checked against `main` at `213fe51`. The last 300 commits run from 23 to 28 November 2026.
+
+- **Size and complexity.** 2,967 lines, the largest file in `src/`. The next is `src/board.ts` at 1,167. On #197's Biome configuration it has 8 cognitive-complexity warnings, second to `src/board.ts` with 12.
+- **Stories that changed it.** 21 distinct story IDs in the messages of the 32 commits that touched it, and 21 of the 77 pull requests merged in the window. The 34 above and in the table counted differently and could not be reproduced. `src/index.ts` (35 stories) and `src/cli.ts` (34) changed for more stories, as export and command lists do. The stories are unrelated: briefs and the Share menu, personas, the Actions tab, tokens, dependencies, priorities, sticky headings, test links and validation rules.
+- **Conflicting edits.** Five merge commits in the window touch it. Re-running each with `git merge-tree` shows one conflict in it: `28756bd`, ESM-128's Actions tab against ESM-112's preview saving. The others conflicted only in the map or the changelog.
+- **Regressions.** None found. No revert names it. The nearest case is `9b6646c`, which changed it and `src/board.ts` and fixed two bugs in ESM-147's persona editor the day it was written. Those were defects in that story's own new feature, not a break in behaviour another story had delivered.
+- **Review and CodeQL findings.** No CodeQL alert has been raised in it on the default branch, though the quality queries only started with ESM-178. ESM-178 removed one unused import there. One ReDoS fix, ESM-902, trimmed job outcomes in linear time on 22 November, before the window. No pull request review comment names it.
+- **Rules that work around it.** None. No `AGENTS.md` rule or lint exception exists because of it.
+
+**Result: no refactor story.** The size and churn signals are there, but the evidence of cost is one conflict in five days and no repeated finding. Look again at the 0.8 release planning, or sooner if a second conflict or a repeated review finding lands in it within one release.
+
+## 9. Offer the review step and architecture decisions to hosts
+
+Built after the pilot, and after item 6 has been used on a real change that affects hosts.
+
+- Rule markers `review-before-ready` and `architecture-decisions` in `templates/AGENTS.md`, with matching short rules in `AGENTS-skill.md` and `SKILL.md`.
+- Guide sections, the section in the [`story-map plan` scaffold](../story-map.md#scaffold-a-plan), and the example plan.
+- Entries in `known-versions.json`, so the [upgrade review](upgrade-review.md) offers both and sets `settings.architectureDecisions`. A changelog entry and an upgrade section in the guide.
+- Host tests cover an old host with an edited `AGENTS.md` that upgrades, an open plan under `--strict` without adoption, plans turned off, `init --skill` and a fresh install.
+
+This is the only item that changes what hosts receive.
+
+After the pilot it also records the review's own cost, keeps no shared results table for hosts, and says review doesn't replace CI, as the [pilot result](#pilot-result) agreed.
+
+As built, `templates/AGENTS.md` has the `architecture-decisions` rule under **Plan the work** and `review-before-ready` at the end of **Branches and pull requests**, and `templates/AGENTS-skill.md` has the short `skill-architecture-decisions` and `skill-review-before-ready`, all four listed in `agentsRules`. The skill gains a "Review before ready in detail" section and the `## Architecture decisions` part of a plan. The guide gains [Review a change before it is ready](../story-map.md#review-a-change-before-it-is-ready), [Record architecture decisions](../story-map.md#record-architecture-decisions), the sixth part in [The parts of a plan](../story-map.md#the-parts-of-a-plan) and [Upgrade to 0.7.11](../story-map.md#upgrade-to-0711). `story-map plan` writes the section with `planArchitectureHints` from ESM-184, so a section left as scaffolded is reported. `applyUpgrade()` records `settings.architectureDecisions: required` when the run's `AGENTS.md` section gains either architecture rule and the map has no value, through the same edit operation as `story-map settings`, and `init` writes it into the starter map when it takes the rules. `templates/known-versions.json` comes from the release tags, so `npm run known-versions` leaves it as it is: the two rules are new to every earlier release, so the review offers them as new rules to add. `story-map tokens --since <time>` counts the review's own cost, and its `--format markdown` prints a Review cost line.
+
+## 10. Share one regular-expression escape helper
+
+Repository only.
+
+- Export one `escapeRegExp` from an existing shared `src/` module.
+- Replace the copies in `src/tokens.ts`, `src/pr-check.ts`, `test/upgrade-overview.test.mjs`, `test/story-map.test.mjs` and `test/cli-edit.test.mjs`. Tests import it from `dist/`.
+- Add a property test that escaped text always matches itself literally.
+- Behaviour does not change.
+
+It is the first case of the "found twice, fix it in the API" rule in item 4.
+
+## Build order
+
+1. ESM-187, ESM-178, ESM-176 and ESM-177, alongside the pilot in ESM-182, with ESM-179's review asking questions 1 to 3 and 5 only.
+2. ESM-183, then question 4 in ESM-179.
+3. ESM-184 and ESM-185.
+4. ESM-186.
+
+The cheap checks come first because every later PR in the pilot benefits from them. Architecture decisions come before their check, and the hosts item waits for the pilot's results.
+
+## Architecture decisions
+
+This plan's own answers, as a worked example of item 6:
+
+- **Where it runs.** Inside the existing tools: CI workflows, `npm` scripts, and the `validate` and `pr-check` commands. No new service, worker or package. Biome, and any coverage tool item 2 needs, such as c8, are devDependencies, so hosts never install them.
+- **Data and contracts.** Upstream, `pr-check` reads the PR description, which gains a **Review** section and an **Architecture** line, and `validate --plans` reads plans, which gain a section. Downstream, the new issues use ESM-159's rule IDs and appear in the text, GitHub and JSON formats without a format version change. `settings.architectureDecisions` is a new optional map setting. Item 9 changes `templates/AGENTS.md`, the skill files and `known-versions.json`, which hosts receive. Item 2's source maps are build output only: `files` in `package.json` keeps the `.map` files out of the package, so the only change hosts receive is a `sourceMappingURL` comment at the end of each `dist` file, pointing at a map that isn't shipped.
+- **Boundaries.** Items 1 to 3 and 10 touch only this repository's tooling and code. Items 4 to 8 change this repository's docs, the template for PRs and the two commands. No board change, and no change to the map format beyond the setting.
+- **Reversibility.** Items 1 to 3 revert by removing a config file or a line. The check in item 5 is a warning, and the check in item 7 is a notice, which never fails. Item 7 only blocks a PR for a host that has both set `settings.architectureDecisions: required` and runs `validate --strict`, and removing the setting undoes it. Item 9 is the hard one to undo: rule text copied into a host's `AGENTS.md` stays there. That is why it is last, after the pilot. Existing hosts get it only through the upgrade review, when a person accepts it, and new installs get it from `init`.
+
+Consequential decision, a **proposal** for a person to agree before ESM-184 is ready for review: the `settings.architectureDecisions` field in the map format (item 7). Consumers: every host map and the JSON Schema in editors, which accept `recommended` or `required`; `validate`, `story-map diff`, which lists a change under **Settings** and **Needs a person**, and `story-map settings --architecture-decisions`. Hosts with open plans see the new notice after upgrading, without a failure. Alternative considered: a `validate` flag such as `--require-architecture`, not chosen because a host's CI command comes from `init` and is rarely edited, while a setting is reviewed in the map like any other choice, as decision D proposes. Agreed by: not yet. Revisit if hosts never set it, or if the notice is too noisy for hosts whose open plans predate the section.
+
+Consequential decision: offering the review step to hosts (item 9). Consumers: every host that upgrades, through its `AGENTS.md` and settings. Alternative considered: ship it straight away with item 5. Agreed by: the repository owner, after the pilot, with the three changes in [Pilot result](#pilot-result), as [decision B](#decisions-to-make) proposed. Revisit if the pilot finds that reviews before ready catch little that CodeQL and the tests would not.
+
+## The #179 retrospective
+
+#179 (ESM-168) built regular expressions in `test/upgrade-overview.test.mjs` from text escaped by hand, without escaping backslashes. CodeQL flagged it as incomplete string escaping after the push, and a follow-up commit fixed it.
+
+- **Biome** would probably not have caught it. Its recommended rules check patterns, not whether an escape is complete.
+- **CodeQL** caught it, but only after the push.
+- **`/code-review` on the PR before ready**, with item 4's questions, would probably have caught it. Question 3 asks which input could break the change, and question 5's escaping check asks whether every metacharacter, backslash included, is escaped.
+- **Item 10** removes this kind of bug for regular-expression escaping, because there is one tested helper to call.
+
+## Pilot
+
+Ten PRs run the review step from item 5 before ready. Each row records the review and what happened afterwards.
+
+| # | PR | Story | Reviewed before ready | Findings fixed | Findings declined | Defects found later | Time and tokens | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | #190 | ESM-175: Keep export file names fast on crafted titles | Yes: `/code-review`, medium, at `65e9ca3` | None | 2: the slug can still end in a hyphen or dot after the 80-character cut (pre-existing, and the fix had to keep the output the same), and the 100 ms timing limit could flake (nit, with a margin of about 250 times) | None so far | Not recorded separately: the PR's token count was taken before the review | merged |
+| 2 | #193 | ESM-187: Share one regular-expression escape helper | Yes: `/code-review 193`, medium, at `af854b7` | 4: a near-miss property, because the "nothing else" property rarely tested anything (test coverage); a token count taken before the review; a doubled blank line; a wrong count of replaced copies in a comment | None | None so far | Review time and tokens not recorded separately. The whole PR took 3,497,422 tokens ($1.49) | merged |
+| 3 | #192 | ESM-178: Run CodeQL's quality queries | Yes: `/code-review 192`, medium, at `1adba42`, still valid after merging main | 2: a comment that overstated what `readTextFileWithin` guarantees, and a misplaced import | 1: `findStoryTests` reads test files for a map with no stories, where it used to only stat them, which isn't worth a second `stat` | None so far in its own change. The new query suite found 11 alerts in existing code: 7 fixed in the PR, 4 left to dismiss | Review time and tokens not recorded separately. The whole PR took 4,479,167 tokens ($1.81) | merged |
+| 4 | #194 | ESM-179, ESM-182: Review each PR against its story before it is ready | Yes: `/code-review 194`, medium, at `4490930` | 3 nits: the ready rule and commits after the review, the both-`AGENTS.md` check for a repository-only rule, and this row's PR number | 1 nit: whether `origin/main...HEAD` is a valid target, kept as the plan specifies | None so far | Not recorded separately | merged |
+| 5 | #196 | ESM-183: Record architecture decisions in plans and PRs | Yes: `/code-review 196`, medium, at `9fc3f61`, with the fixes re-read at `a4cee95` | 5: a definition of consequential decisions so broad that the plans applied it inconsistently; a permalink answer that contradicted the boundary; an "Agreed by" that read as the agent agreeing; a revisit trigger that missed the format changes; an irrelevant boundary cited | None | None | Not recorded separately | merged |
+| 6 | #195 | ESM-182: Warn when a ready PR has no review recorded | Yes: `/code-review 195`, medium, at `ecccf7f` | 3 nits: the warning pinned to line 1 of the map, placeholder values such as `pending` counting as a review, and no test of the repository's workflow | 1 nit: a `### Review` heading anywhere, or in a code block, counts as the section, as for Tokens used, which shares the reader | None | Not recorded separately | merged |
+| 7 | #198 | ESM-177: Measure test coverage with a floor | Yes: `/code-review 198`, medium, at `7d85752`, and again at `446f7fb` after the timing fix and merging main | 6, all fixed. At `7d85752`: the coverage summary crashed on c8's "Unknown" percentage and didn't say it reads the last report (2 nits), and the linear-time tests' limits were unreliable under coverage, fixed with `assertFasterThan`, which skips only the limit while V8 collects coverage. At `446f7fb`: this row was out of date, an assertion only restated the helper, and the helper runs as an empty test file (3 nits) | None | OSV flagged c8's glob and minimatch after the push, fixed in the PR with overrides. Under load, one coverage run failed a 3,000 ms limit, which led to the timing fix. After it was ready, its `npm pack` test raced the other test files on Node 20 by running `prepare`, which rebuilt `dist/` mid-run, so ESM-741's CLI tests failed twice. Fixed before merging by checking the packed files in `scripts/smoke-package.sh` instead | Review time and tokens not recorded separately. The whole PR took 15,773,230 tokens ($5.43) | merged |
+| 8 | #197 | ESM-176: Lint the code with Biome in CI | Yes: `/code-review 197`, medium, at `994c354` | 1 nit: the test that every rule turned off has a reason could borrow a neighbouring rule's comment (test coverage) | None | None | Not recorded separately | merged |
+| 9 | #201 | ESM-185: Say when to review the architecture and refactor | Yes: `/code-review 201`, medium, at `5fffb2f` | 5: a `git log -300 -- <file>` command that counted 300 commits of the file, not the last 300; a CodeQL claim wider than the default branch; two story counts for one file; "rules that work around the tool"; an example file name close to real ones | 1 nit: the Planning point names a plan section hosts don't have until ESM-186 | None | Review time and tokens not recorded separately. The whole PR took 5,670,689 tokens ($2.34) | merged |
+| 10 | #202 | ESM-184: Check the architecture section in plans | Yes: `/code-review 202`, medium, at `abb9fdb`, with the fixes in `a8387e2` | 5: a `None:` reason wrapped onto the next line counted as missing (important); hints quoted in fenced code, and `None:` in HTML comments, reported; a case-sensitive `None:`; a CHANGELOG line that overstated the plans-off case. The fixes also blank comments in linear time | 1 nit: an explicit `recommended` shows under Needs a person but not under Settings, as `storyIds` does for its default | None | Not recorded separately | merged |
+
+From row 2 on, a PR records its review in the template's **Review** section, and its time and tokens when the tool reports them. "Defects found later" counts problems in the PR's own change found after it was marked ready: by CodeQL, CI, a person or a later story.
+
+### Pilot result
+
+All 10 PRs, #190 to #202, were reviewed before they were ready, at medium, with an explicit target. The reviews fixed 34 findings and declined 7. About a dozen of the fixed ones were real bugs, in 7 of the 10 PRs, such as #202's `None:` reason wrapped onto the next line, #195's `pending` placeholder counting as a review, #198's crash on c8's "Unknown" percentage and its unreliable time limits under coverage, #201's wrong `git log` count and #196's over-broad definition of a consequential decision. The rest were nits.
+
+Nothing in the PRs' own changes reached main. CI caught #198's `npm pack` race on Node 20, which the review missed, and OSV caught its dependency flags. CodeQL found nothing in the PRs' own code, against 5 of the 30 PRs before the pilot.
+
+The 10 stories took about 59M tokens, about $24, but no PR recorded the review's own cost, so the pilot can't say whether review pays for itself. Every PR also edited this table, which caused a merge conflict on each merge.
+
+**Decision:** item 9 goes ahead, with three changes agreed after the pilot:
+
+1. **Record the review's own cost separately.** Each PR's Review section records the tokens and cost of the review itself, apart from the story's. `story-map tokens <ID> --since <time>` counts them from when the review started.
+2. **No shared results table for hosts.** Each PR's Review section is the record. To collect results across PRs, read their descriptions, such as with `gh pr list --state merged --json number,body`, rather than editing one file in every PR.
+3. **Review doesn't replace CI.** A diff review won't find timing or concurrency problems such as #198's race, so the tests and checks in CI stay the backstop.
+
+## What it builds on
+
+Shipped or merged:
+
+- **ESM-159**, [Give each validation issue a rule and a link](rules-as-checks.md#2-give-each-issue-a-rule-and-a-link): the rule IDs the new checks in items 5 and 7 use.
+- **ESM-161**, [Check plan mockups](rules-as-checks.md#4-check-plan-mockups): the pattern item 7 follows, a check of one plan section.
+- **ESM-163**, [Check pull requests in CI](rules-as-checks.md#6-check-pull-requests-in-ci): `pr-check`, which items 5 and 6 extend to read the Review section and the Architecture line.
+- **ESM-148** to **ESM-153**, [Offer the planning approach to hosts](host-planning-guidance.md): delivery plans and `story-map plan`, which gain the architecture section in item 9.
+- **ESM-173**, [Review edited rules one at a time](upgrade-review.md#8-review-edited-rules-one-at-a-time): the upgrade review that offers item 9 to hosts.
+- **ESM-303**, [Report validation problems by line on the PR diff](../story-map.md#validate-a-change): the annotations that lint and the new checks appear as.
+- **ESM-610**, [Keep source checks fast on crafted headings](0.6.0-review-fixes.md#11-source-checks-that-stay-fast): earlier ReDoS work, whose example ESM-175 follows.
+
+Planned, and overlapping:
+
+- **ESM-109**, [Audit the map against the code on a schedule](0.4.0-enhancements.md#7-scheduled-map-audit): the fourth review point in item 8, unchanged.
+- **ESM-175**, the ReDoS fix in `fileSlug`: the first PR in the pilot.
+
+## Decisions to make
+
+These are proposals. Each is easy to change during review.
+
+| Question | Proposal |
+| --- | --- |
+| A. Releases | The ReDoS fix, ESM-175, goes in 0.7.9, which has merged but not shipped, so it goes out with the next tag. The review stories go in a new release, 0.7.11, after 0.7.10: Agent briefs |
+| B. When hosts get the review rule | After the pilot, and after item 6 has been used on a real change that affects hosts. Copied rule text is hard to take back |
+| C. Where agreed architecture decisions live | In the engineering overview's Runtime and architecture section. No ADR files, so there is one place to look |
+| D. How hosts adopt the architecture check | Through `settings.architectureDecisions: required`, set by the upgrade review when the person accepts it. Without it the check is a notice |
+| E. The coverage floor | A ratchet: set from the baseline, rounded down, and raised as coverage rises. Never lowered without a reason in the PR |
+| F. Claude review in CI | Not now. See [Not now](#not-now) |
+
+## Not now
+
+- **Claude review in CI.** A review on every push costs tokens on PRs nobody is ready to review, and the pilot has not yet shown what a review finds. Revisit after the pilot.
+- **Formatting with Biome.** Reformatting every file would bury real changes in the diff and conflict with open PRs. Lint only.
+- **ADR files.** One more place to look. Decisions go in the plan and then the engineering overview, as decision C says.
+- **Refactoring `src/react.tsx` now.** Item 8 assesses it first. A refactor needs evidence of its cost, not only its size.
+- **Failing CI on an empty Review section.** A warning first, while the pilot shows how often it is empty for a good reason.
+- **A coverage floor per file.** The weakest files, such as `preview.js` and `board.js`, need tests written first, and a global floor is enough to stop a fall.
+
+## Effort and release fit
+
+| Story | Release | Points |
+| --- | --- | --- |
+| ESM-176: Lint the code with Biome in CI | 0.7.11 | not agreed |
+| ESM-177: Measure test coverage with a floor | 0.7.11 | not agreed |
+| ESM-178: Run CodeQL's quality queries | 0.7.11 | not agreed |
+| ESM-179: Review against the story first, then the repo checklist | 0.7.11 | not agreed |
+| ESM-182: Review each PR's diff before it is ready, and pilot the step | 0.7.11 | not agreed |
+| ESM-183: Record architecture decisions in plans and PRs | 0.7.11 | not agreed |
+| ESM-184: Check the architecture section in plans | 0.7.11 | not agreed |
+| ESM-185: Say when to review the architecture and refactor | 0.7.11 | not agreed |
+| ESM-186: Offer the review step and architecture decisions to hosts | 0.7.11 | not agreed |
+| ESM-187: Share one regular-expression escape helper | 0.7.11 | not agreed |
+| ESM-188: Check the Architecture line in pull requests | 0.7.11 | not agreed |
+| ESM-189: Keep complexity warnings from growing | 0.7.11 | not agreed |
+| ESM-190: Check for missing values instead of assuming they are there | 0.7.11 | not agreed |
+| **Total** | | **not agreed** |
+
+None of these has an agreed estimate, so the team should size them in review. ESM-186 is the largest: templates, the skill, the scaffold, the upgrade review and host tests. ESM-178 and ESM-187 are the smallest. ESM-186 could move to a later release if the pilot runs long, since nothing else depends on it.

@@ -1,6 +1,6 @@
 # Plan: record the tokens used to deliver a story
 
-Status: built. The work is ESM-145 in the **0.7.5: Evidence and claims for agents** release of the map.
+Status: shipped. The work is ESM-145 in the **0.7.5: Evidence and claims for agents** release of the map.
 
 Agents deliver most stories in this map, but nothing records what that work used. A builder who wants to know whether a story was cheap or expensive to hand to an agent has to dig through each session's `/cost` output, if they kept it. This plan records the tokens and their estimated cost on each story, in the pull request that finishes it, from the logs the agent already writes.
 

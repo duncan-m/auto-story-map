@@ -138,6 +138,18 @@ export function storyCompletedAt(story: Pick<InternalStoryCard, "status" | "hist
   return story.history?.find(entry => complete.includes(entry.to) && !(entry.from && complete.includes(entry.from)));
 }
 
+/** The first readable version of the map: every story in it was added then, whatever its status. */
+function earliestVersion(stories: readonly InternalStoryCard[]) {
+  let earliest: { time: number; commit: string } | undefined;
+  for (const story of stories) {
+    for (const entry of story.history ?? []) {
+      const time = Date.parse(entry.at);
+      if (!earliest || time < earliest.time) earliest = { time, commit: entry.commit };
+    }
+  }
+  return earliest;
+}
+
 /**
  * Counts the stories, points, tokens and spend completed in each UTC day, week or month, for the
  * Analytics tab: the last 8 days, 8 weeks or 6 months, ending with the period that holds `now`,
@@ -162,15 +174,7 @@ export function storyMapAnalytics(
     return { start, end: shiftPeriod(start, period, 1), totals: emptyTotals() };
   });
   const totals = emptyTotals();
-
-  // The first readable version of the map: every story in it was added then, whatever its status.
-  let earliest: { time: number; commit: string } | undefined;
-  for (const story of view.stories) {
-    for (const entry of story.history ?? []) {
-      const time = Date.parse(entry.at);
-      if (!earliest || time < earliest.time) earliest = { time, commit: entry.commit };
-    }
-  }
+  const earliest = earliestVersion(view.stories);
 
   let undated = 0;
   for (const story of view.stories) {

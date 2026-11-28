@@ -11,7 +11,7 @@
  * the board's export links so the downloaded file matches, and which job lanes
  * they collapsed on the Personas tab. It opens the panel a permalink names, and
  * turns each panel's **Copy link** into a button that copies the permalink. It builds the
- * `story-map edit` command for the story panel's **Change** pickers, to copy. It keeps
+ * `story-map edit` command for the story panel's **Actions** menu, to copy. It keeps
  * release names in view beside their lanes, and shrinks the activity row as the grid scrolls.
  * On `story-map preview` it lets the Personas tab edit personas in place. On a host's
  * board opened from `localhost` without a save route, it notes that editing is not set up.
@@ -154,10 +154,18 @@ export function enhanceStoryMapReleases(root: ParentNode = document) {
 
 const enhancedGrids = new WeakSet<Element>();
 
+/** True when the host gives the grid a height of its own with `--esm-board-height`, rather than leaving it out or setting `none`. */
+function hasBoardHeight(box: HTMLElement) {
+  if (typeof getComputedStyle === "undefined") return false;
+  const height = getComputedStyle(box).getPropertyValue("--esm-board-height").trim();
+  return height !== "" && height !== "none";
+}
+
 /**
  * Keeps the grid's headings in view. Measures the activity row and release column for CSS,
  * and sets `data-esm-stuck`, which shrinks the row to its titles, once the grid has scrolled
- * by the height that saves. Safe to call more than once.
+ * by the height that saves. The page scrolls the grid, unless the host sets `--esm-board-height`
+ * to a length, which gets `data-esm-scroll-box` and a scroll box of that height. Safe to call more than once.
  */
 export function enhanceStoryMapHeadings(root: ParentNode = document) {
   for (const box of root.querySelectorAll<HTMLElement>(".esm-scroll")) {
@@ -165,41 +173,57 @@ export function enhanceStoryMapHeadings(root: ParentNode = document) {
     const corner = box.querySelector<HTMLElement>(".esm-corner");
     if (!row || !corner || enhancedGrids.has(box)) continue;
     enhancedGrids.add(box);
-    const set = (name: string, pixels: number) => box.style.setProperty(name, `${pixels}px`);
-    let saved = 0;
-    const update = () => {
-      // Shrinking hides the persona avatars, so wait while one of them has focus.
-      const stuck = saved > 0 && box.scrollTop >= saved && !row.contains(document.activeElement);
-      if (box.hasAttribute("data-esm-stuck") !== stuck) box.toggleAttribute("data-esm-stuck", stuck);
-      set("--esm-activities-height", row.getBoundingClientRect().height);
-    };
-    const measure = () => {
-      box.removeAttribute("data-esm-stuck");
-      const full = row.getBoundingClientRect().height;
-      box.setAttribute("data-esm-stuck", "");
-      saved = full - row.getBoundingClientRect().height;
-      set("--esm-activities-saved", saved);
-      set("--esm-labels-width", corner.getBoundingClientRect().width);
-      update();
-    };
-    measure();
-    box.addEventListener("scroll", update, { passive: true });
-    row.addEventListener("focusout", () => requestAnimationFrame(update));
-    // Following a permalink scrolls the page as well as the grid, which can push the headings off the window.
-    const reveal = () => {
-      if (box.querySelector(":target") && row.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start" });
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("load", () => requestAnimationFrame(reveal));
-      window.addEventListener("hashchange", () => requestAnimationFrame(reveal));
-    }
-    if (typeof ResizeObserver === "undefined") continue;
-    // The row's height changes as it shrinks, so watch the box and a title, for new widths and text sizes.
-    const observer = new ResizeObserver(measure);
-    observer.observe(box);
-    const title = row.querySelector(".esm-activity-title");
-    if (title) observer.observe(title);
+    enhanceGridHeadings(box, row, corner);
   }
+}
+
+/** Measures one grid's headings, follows its scroll, in its own box or with the page, and watches its size. */
+function enhanceGridHeadings(box: HTMLElement, row: HTMLElement, corner: HTMLElement) {
+  const set = (name: string, pixels: number) => box.style.setProperty(name, `${pixels}px`);
+  const boxed = hasBoardHeight(box);
+  if (boxed) box.setAttribute("data-esm-scroll-box", "");
+  // How far the grid has scrolled under its headings: in its own box, or with the page.
+  const scrolled = () => (boxed ? box.scrollTop : -box.getBoundingClientRect().top);
+  let saved = 0;
+  const update = () => {
+    // Shrinking hides the persona avatars, so wait while one of them has focus.
+    const stuck = saved > 0 && scrolled() >= saved && !row.contains(document.activeElement);
+    if (box.hasAttribute("data-esm-stuck") !== stuck) box.toggleAttribute("data-esm-stuck", stuck);
+    set("--esm-activities-height", row.getBoundingClientRect().height);
+  };
+  const measure = () => {
+    box.removeAttribute("data-esm-stuck");
+    const full = row.getBoundingClientRect().height;
+    box.setAttribute("data-esm-stuck", "");
+    saved = full - row.getBoundingClientRect().height;
+    set("--esm-activities-saved", saved);
+    set("--esm-labels-width", corner.getBoundingClientRect().width);
+    update();
+  };
+  measure();
+  if (boxed) {
+    box.addEventListener("scroll", update, { passive: true });
+    revealGridAfterPermalink(box, row);
+  } else if (typeof window !== "undefined") {
+    window.addEventListener("scroll", update, { passive: true });
+  }
+  row.addEventListener("focusout", () => requestAnimationFrame(update));
+  if (typeof ResizeObserver === "undefined") return;
+  // The row's height changes as it shrinks, so watch the box and a title, for new widths and text sizes.
+  const observer = new ResizeObserver(measure);
+  observer.observe(box);
+  const title = row.querySelector(".esm-activity-title");
+  if (title) observer.observe(title);
+}
+
+/** Following a permalink scrolls the page as well as a boxed grid, which can push the headings off the window. */
+function revealGridAfterPermalink(box: HTMLElement, row: HTMLElement) {
+  if (typeof window === "undefined") return;
+  const reveal = () => {
+    if (box.querySelector(":target") && row.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start" });
+  };
+  window.addEventListener("load", () => requestAnimationFrame(reveal));
+  window.addEventListener("hashchange", () => requestAnimationFrame(reveal));
 }
 
 const enhancedMenus = new WeakSet<Element>();
@@ -406,7 +430,7 @@ type ChangeStory = { id: string; status: string; release: string; reason?: strin
 type ChangeChoice = { status: string; release: string; reason?: string };
 
 /**
- * What the story panel's **Change** pickers change, or why there is nothing yet: nothing
+ * What the story panel's **Actions** menu changes, or why there is nothing yet: nothing
  * differs from the story, or a blocked or cut story has no reason. Only what changed is
  * kept. A new reason for a story that stays blocked or cut repeats its status, since
  * `--reason` goes with `--status`.
@@ -426,7 +450,7 @@ function storyMapChange(story: ChangeStory, chosen: ChangeChoice): { change: Sto
   };
 }
 
-/** The command for what the story panel's **Change** pickers say, or why there is none yet, as `storyMapChange` decides. */
+/** The command for what the story panel's **Actions** menu chooses, or why there is none yet, as `storyMapChange` decides. */
 export function storyMapChangeCommand(story: ChangeStory, chosen: ChangeChoice): { command: string } | { message: string } {
   const result = storyMapChange(story, chosen);
   return "change" in result ? { command: storyMapEditCommand(result.change) } : result;
@@ -457,34 +481,35 @@ function storyPageUrl(id: string) {
 const enhancedChanges = new WeakSet<Element>();
 
 /**
- * Shows the **Change** section of each internal story panel and builds the matching
- * `story-map edit` command as its status, reason and release pickers change. The reason
- * field shows for blocked and cut. With clipboard access, **Copy** copies the command and
- * says what it copied, such as “Copied command: ESM-111”. When the page was rendered with
- * `storyEditing`, as `story-map preview` does, **Save** posts the change to the map file and
- * reopens the panel. A save the server refuses, such as from a page older than the file,
- * says why in the section and saves nothing. Safe to call more than once.
+ * Shows the **Actions** menu of each internal story panel, and keeps its buttons off until
+ * its status, reason and release pickers differ from the story. The reason field shows for
+ * blocked and cut, and they need one. With clipboard access, **Copy command** copies the
+ * matching `story-map edit` command without showing it, closes the menu, and says what it
+ * copied, such as “Copied command: ESM-111”. When the page was rendered with `storyEditing`,
+ * as `story-map preview` does, **Save** posts the change to the map file and reopens the
+ * panel. A save the server refuses, such as from a page older than the file, says why in
+ * the menu and saves nothing. A menu that can neither save nor copy stays hidden. Safe to
+ * call more than once.
  */
 export function enhanceStoryMapChanges(root: ParentNode = document) {
   const canCopy = typeof navigator !== "undefined" && !!navigator.clipboard?.writeText;
   for (const form of root.querySelectorAll<HTMLFormElement>("form[data-esm-change]")) {
     if (enhancedChanges.has(form)) continue;
     enhancedChanges.add(form);
-    const section = form.closest<HTMLElement>("section.esm-change-section");
-    if (section) section.hidden = false;
     const field = <Field extends HTMLElement>(selector: string) => form.querySelector<Field>(selector);
     const status = field<HTMLSelectElement>("[name=status]");
     const release = field<HTMLSelectElement>("[name=release]");
     const reason = field<HTMLInputElement>("[name=reason]");
     const reasonField = field<HTMLElement>("[data-esm-change-reason]");
-    const output = field<HTMLElement>("[data-esm-change-command]");
     const copy = field<HTMLButtonElement>("button[data-esm-change-copy]");
     const save = field<HTMLButtonElement>("button[data-esm-change-save]");
     const error = field<HTMLElement>(".esm-change-error");
-    if (!status || !release || !output) continue;
+    if (!status || !release) continue;
     const { esmChange: id = "", esmStatus: current = "", esmRelease: currentRelease = "", esmReason: currentReason = "" } = form.dataset;
     const { esmEditEndpoint: endpoint, esmEditToken: token, esmEditRevision: revision } = form.dataset;
     if (copy) copy.hidden = !canCopy;
+    const menu = form.closest<HTMLDetailsElement>("details.esm-change-menu");
+    if (menu) menu.hidden = !save && !canCopy;
     let pending: StoryMapEditChange | undefined;
     let saving = false;
 
@@ -495,9 +520,6 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
         { status: status.value, release: release.value, reason: reason?.value },
       );
       pending = "change" in result ? result.change : undefined;
-      output.textContent = pending ? storyMapEditCommand(pending) : (result as { message: string }).message;
-      if (pending) delete output.dataset.empty;
-      else output.dataset.empty = "";
       if (copy) copy.disabled = !pending;
       if (save) save.disabled = !pending || saving;
       if (error && !saving) error.hidden = true;
@@ -545,9 +567,10 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
         });
     });
     copy?.addEventListener("click", () => {
-      if (copy.disabled || !canCopy) return;
+      if (copy.disabled || !canCopy || !pending) return;
       const board = form.closest(".esm-board");
-      navigator.clipboard.writeText(output.textContent ?? "").then(() => {
+      navigator.clipboard.writeText(storyMapEditCommand(pending)).then(() => {
+        if (menu) menu.open = false;
         showCopied(copy, "Copied");
         if (board) announce(board, `Copied command: ${id}`);
       }, () => {
@@ -567,6 +590,81 @@ export function enhanceStoryMapChanges(root: ParentNode = document) {
   }
   const board = saved && typeof document !== "undefined" ? document.querySelector(".esm-board") : null;
   if (saved && board) announce(board, `Saved ${saved} to the map file.`);
+}
+
+const enhancedActions = new WeakSet<Element>();
+
+/** “Copy 3 commands”, or “Copy commands” when nothing is chosen. */
+function selectedLabel(count: number) {
+  return count === 0 ? "Copy commands" : count === 1 ? "Copy 1 command" : `Copy ${count} commands`;
+}
+
+/**
+ * Turns on the Actions tables, on the Actions tab and in panels, once the clipboard can be used:
+ * shows each row's **Copy** button, which copies its command from `data-esm-copy-command`, and,
+ * in tables with more than one command, the row checkboxes, a select-all box and **Copy commands**,
+ * which copies the chosen rows' commands, one per line. Says what it copied in the board's live
+ * region. Without clipboard access, nothing changes and the tables only read. Safe to call more than once.
+ */
+export function enhanceStoryMapActions(root: ParentNode = document) {
+  if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) return;
+  for (const board of root.querySelectorAll<HTMLElement>(".esm-board")) {
+    if (enhancedActions.has(board)) continue;
+    enhancedActions.add(board);
+    // CSS shows the checkbox column once this is set.
+    board.dataset.esmActions = "";
+    for (const button of board.querySelectorAll<HTMLButtonElement>("button[data-esm-copy-command]")) button.hidden = false;
+    for (const bulk of board.querySelectorAll<HTMLElement>(".esm-action-bulk")) bulk.hidden = false;
+
+    const copy = (text: string, control: HTMLElement, said: string) => {
+      navigator.clipboard.writeText(text).then(() => {
+        showCopied(control, "Copied");
+        announce(board, said);
+      }, () => announce(board, "Could not copy. Run story-map actions in a terminal to see the commands."));
+    };
+    const tableFor = (element: Element) => element.closest<HTMLElement>("[data-esm-action-table]");
+    const update = (wrap: HTMLElement) => {
+      const boxes = [...wrap.querySelectorAll<HTMLInputElement>("input[data-esm-select]")];
+      const chosen = boxes.filter(box => box.checked).length;
+      const all = wrap.querySelector<HTMLInputElement>("input[data-esm-select-all]");
+      if (all) {
+        all.checked = chosen > 0 && chosen === boxes.length;
+        all.indeterminate = chosen > 0 && chosen < boxes.length;
+      }
+      const button = wrap.querySelector<HTMLButtonElement>("button[data-esm-copy-selected]");
+      if (button) {
+        button.disabled = chosen === 0;
+        const label = button.querySelector<HTMLElement>("[data-esm-copy-label]");
+        if (label) {
+          label.textContent = selectedLabel(chosen);
+          label.dataset.esmLabel = selectedLabel(chosen);
+        }
+      }
+    };
+
+    board.addEventListener("change", event => {
+      const input = event.target instanceof Element ? event.target.closest<HTMLInputElement>("input[data-esm-select-all], input[data-esm-select]") : null;
+      const wrap = input && tableFor(input);
+      if (!input || !wrap) return;
+      if (input.matches("[data-esm-select-all]")) {
+        for (const box of wrap.querySelectorAll<HTMLInputElement>("input[data-esm-select]")) box.checked = input.checked;
+      }
+      update(wrap);
+    });
+    board.addEventListener("click", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const one = target?.closest<HTMLButtonElement>("button[data-esm-copy-command]");
+      if (one) {
+        copy(one.dataset.esmCopyCommand ?? "", one, "Copied command");
+        return;
+      }
+      const many = target?.closest<HTMLButtonElement>("button[data-esm-copy-selected]");
+      const wrap = many && tableFor(many);
+      if (!many || !wrap || many.disabled) return;
+      const commands = [...wrap.querySelectorAll<HTMLInputElement>("input[data-esm-select]")].filter(box => box.checked).map(box => box.dataset.esmSelect ?? "");
+      if (commands.length) copy(commands.join("\n"), many, commands.length === 1 ? "Copied 1 command" : `Copied ${commands.length} commands`);
+    });
+  }
 }
 
 const editFocusKey = "esm-edit-focus";
@@ -597,6 +695,7 @@ function targetOf(editor: HTMLElement): Record<string, unknown> {
  * Text typed into an editable element, with single spaces. A multi-line field keeps
  * its line breaks, with at most one blank line between paragraphs. Others are one line.
  */
+// biome-ignore lint/performance/useDomNodeTextContent: innerText keeps the line breaks the person typed, which textContent drops.
 function typed(field: HTMLElement, text = field.innerText ?? field.textContent ?? "") {
   if (!field.hasAttribute("data-esm-multiline")) return text.replace(/\s+/g, " ").trim();
   return text.replace(/\r\n?/g, "\n").split("\n").map(line => line.replace(/[^\S\n]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -1079,6 +1178,7 @@ function enhance() {
   enhanceStoryMapPermalinks();
   enhanceStoryMapBriefs();
   enhanceStoryMapChanges();
+  enhanceStoryMapActions();
   enhanceStoryMapPersonaEditing();
   enhanceStoryMapEditSetup();
 }

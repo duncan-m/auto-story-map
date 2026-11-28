@@ -9,6 +9,8 @@ import { branchNamesStory, countStoryTokens, diffStoryMaps, getStoryMapForViewer
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const ownMap = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
+// A story in this repository's map with no tokens or cost recorded yet, so each edit shows as "none → …".
+const untracked = parseStoryMap(ownMap).stories.find(story => story.tokens === undefined && story.estimatedCostUsd === undefined).id;
 
 /** One assistant log line as Claude Code writes it, one per content block. */
 function response({ id, session = "s1", branch, model, speed, input = 0, output = 0, cacheWrite = 0, cacheWrite1h, cacheRead = 0, at = "2026-11-20T10:00:00.000Z" }) {
@@ -113,22 +115,22 @@ test("ESM-145: story-map tokens prints the count, the PR section and JSON, and f
 });
 
 test("ESM-145: edit --tokens records the count, shown in the internal view and the diff but never to customers", async t => {
-  const result = await proposeStoryMapEdit(ownMap, [{ op: "tokens", id: "ESM-126", tokens: 1_843_920 }]);
+  const result = await proposeStoryMapEdit(ownMap, [{ op: "tokens", id: untracked, tokens: 1_843_920 }]);
   assert.equal(result.valid, true);
   assert.match(result.lineDiff, /\n\+ {4}tokens: 1843920\n/);
   assert.match(result.summary, /Tokens used: none → 1,843,920/);
   const map = parseStoryMap(result.source);
-  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === "ESM-126").tokens, 1_843_920);
+  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === untracked).tokens, 1_843_920);
   const customer = getStoryMapForViewer(map, { id: "c", roles: [] });
   assert.notEqual(customer.audience, "internal");
   assert.equal(JSON.stringify(customer).includes("1843920"), false);
   assert.deepEqual(diffStoryMaps(map, map).stories.updated, []);
   assert.doesNotMatch(formatStoryMapDiff(diffStoryMaps(parseStoryMap(ownMap), map)), /Customer-facing/);
 
-  await assert.rejects(proposeStoryMapEdit(ownMap, [{ op: "tokens", id: "ESM-126", tokens: -1 }]), /tokens/);
+  await assert.rejects(proposeStoryMapEdit(ownMap, [{ op: "tokens", id: untracked, tokens: -1 }]), /tokens/);
   const { run } = await scratch(t, {});
-  assert.equal(run("edit", "ESM-126", "--tokens", "1,843,920").status, 0);
-  const bad = run("edit", "ESM-126", "--tokens", "lots");
+  assert.equal(run("edit", untracked, "--tokens", "1,843,920").status, 0);
+  const bad = run("edit", untracked, "--tokens", "lots");
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /--tokens must be a whole number/);
 });
@@ -182,16 +184,66 @@ test("ESM-145: story-map tokens prints the cost and --prices replaces the built-
 });
 
 test("ESM-145: edit --estimated-cost records dollars to the cent, internal only", async t => {
-  const result = await proposeStoryMapEdit(ownMap, [{ op: "estimated-cost", id: "ESM-126", usd: 14.274 }]);
+  const result = await proposeStoryMapEdit(ownMap, [{ op: "estimated-cost", id: untracked, usd: 14.274 }]);
   assert.equal(result.valid, true);
   assert.match(result.lineDiff, /\n\+ {4}estimatedCostUsd: 14\.27\n/);
   assert.match(result.summary, /Estimated cost: none → \$14\.27/);
   const map = parseStoryMap(result.source);
-  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === "ESM-126").estimatedCostUsd, 14.27);
+  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === untracked).estimatedCostUsd, 14.27);
   assert.equal(JSON.stringify(getStoryMapForViewer(map, { id: "c", roles: [] })).includes("14.27"), false);
   const { run } = await scratch(t, {});
-  assert.equal(run("edit", "ESM-126", "--estimated-cost", "$1,204.50").status, 0);
-  const bad = run("edit", "ESM-126", "--estimated-cost", "about ten");
+  assert.equal(run("edit", untracked, "--estimated-cost", "$1,204.50").status, 0);
+  const bad = run("edit", untracked, "--estimated-cost", "about ten");
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /--estimated-cost must be an amount in US dollars/);
+});
+
+test("ESM-186: --since and --until count only the responses in that range, such as a review", async t => {
+  const branch = "feat/esm-186-review";
+  const model = "claude-opus-5-5";
+  const { logs, run } = await scratch(t, {
+    "-repo/a.jsonl": [
+      response({ id: "build", branch, model, input: 1_000_000, output: 100_000, at: "2026-11-20T09:00:00.000Z" }),
+      response({ id: "review", branch, model, input: 200_000, output: 20_000, at: "2026-11-20T10:45:00.000Z" }),
+      response({ id: "fix", branch, model, input: 30_000, output: 3_000, at: "2026-11-20T11:30:00.000Z" }),
+      // A response with no time can't be placed in a range.
+      JSON.stringify({ type: "assistant", sessionId: "s1", gitBranch: branch, requestId: "req-untimed", message: { id: "untimed", model, usage: { input_tokens: 5_000_000 } } }),
+    ],
+  });
+
+  const all = await countStoryTokens("ESM-186", { logs });
+  assert.equal(all.total, 6_353_000);
+  assert.equal(all.since, undefined);
+  const since = await countStoryTokens("ESM-186", { logs, since: new Date("2026-11-20T10:42:00Z") });
+  assert.deepEqual([since.total, since.messages, since.since], [253_000, 2, "2026-11-20T10:42:00.000Z"]);
+  const review = await countStoryTokens("ESM-186", { logs, since: new Date("2026-11-20T10:42:00Z"), until: new Date("2026-11-20T11:00:00Z") });
+  assert.deepEqual([review.total, review.firstAt, review.until], [220_000, "2026-11-20T10:45:00.000Z", "2026-11-20T11:00:00.000Z"]);
+  assert.ok(review.cost.usd > 0 && review.cost.usd < since.cost.usd);
+  await assert.rejects(countStoryTokens("ESM-186", { logs, since: new Date("not a time") }), RangeError);
+
+  // The Markdown is a line for the Review section, not the story's Tokens used section.
+  const markdown = run("tokens", "--format", "markdown", "--logs", logs, "--since", "2026-11-20T10:42:00Z", "--until", "2026-11-20T11:00:00Z", "ESM-186");
+  assert.equal(markdown.status, 0, markdown.stderr);
+  assert.match(markdown.stdout, /^- Review cost: \*\*220,000 tokens\*\*, estimated \$\d+\.\d\d at API list prices as of \d{4}-\d\d-\d\d, on ESM-186 from 2026-11-20 10:42 to 2026-11-20 11:00 UTC, in 1 Claude Code session\.\n$/);
+  assert.doesNotMatch(markdown.stdout, /## Tokens used/);
+
+  // The text says not to record part of the work as the story's total.
+  const text = run("tokens", "--logs", logs, "--since", "2026-11-20T10:42:00Z", "ESM-186");
+  assert.equal(text.status, 0, text.stderr);
+  assert.match(text.stdout, /^ESM-186 {2}253,000 tokens in 2 responses/);
+  assert.match(text.stdout, /Counted: +from 2026-11-20 10:42 to now UTC/);
+  assert.match(text.stderr, /Record it in the pull request's Review section, not with story-map edit --tokens\./);
+  assert.doesNotMatch(text.stderr, /--tokens 253000/);
+
+  const json = JSON.parse(run("tokens", "--format", "json", "--logs", logs, "--until", "2026-11-20T10:00:00Z", "ESM-186").stdout);
+  assert.deepEqual([json.total, json.until, json.since], [1_100_000, "2026-11-20T10:00:00.000Z", undefined]);
+
+  // Nothing in the range fails, as for nothing found at all, and bad times are refused.
+  const none = run("tokens", "--logs", logs, "--since", "2026-11-21T00:00:00Z", "ESM-186");
+  assert.equal(none.status, 1);
+  assert.match(none.stderr, /found no Claude Code usage on a branch named for it from 2026-11-21 00:00 to now UTC/);
+  for (const args of [["--since", "yesterday"], ["--since", "2026-13-45"], ["--since", "2026-11-20T11:00:00Z", "--until", "2026-11-20T10:00:00Z"]]) {
+    const refused = run("tokens", "--logs", logs, ...args, "ESM-186");
+    assert.equal(refused.status, 2, args.join(" "));
+  }
 });

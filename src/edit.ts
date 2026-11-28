@@ -4,7 +4,7 @@ import { z } from "zod";
 import { checkStoryMap, type StoryMapCheckIssue, type StoryMapCheckOptions, type StoryMapCheckResult } from "./check.js";
 import { diffStoryMaps, formatStoryMapDiff, type StoryMapDiff } from "./diff.js";
 import { closestIds } from "./read.js";
-import { parseStoryMap, personaJobsMaxItems, personasMaxItems, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapPersonaContext } from "./schema.js";
+import { parseStoryMap, personaJobsMaxItems, personasMaxItems, storyPriorities, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapPersonaContext } from "./schema.js";
 import { storyStatuses } from "./status.js";
 
 const text = z.string().trim().min(1);
@@ -18,6 +18,7 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("title"), id: storyId, title: text }).strict(),
   z.object({ op: z.literal("summary"), id: storyId, summary: text }).strict(),
   z.object({ op: z.literal("notes"), id: storyId, notes: text }).strict(),
+  z.object({ op: z.literal("priority"), id: storyId, priority: z.enum([...storyPriorities, "none"]) }).strict(),
   z.object({ op: z.literal("tokens"), id: storyId, tokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) }).strict(),
   z.object({ op: z.literal("estimated-cost"), id: storyId, usd: z.number().min(0).max(1_000_000_000) }).strict(),
   z.object({ op: z.literal("add-source"), id: storyId, source: text }).strict(),
@@ -46,6 +47,14 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
     dependsOn: z.array(text).optional(),
   }).strict(),
   z.object({ op: z.literal("release-impact"), release: text, metric: text, expected: text, solves: text.optional() }).strict(),
+  // Records the person's answer to whether to use delivery plans: a folder, or false for no plans.
+  z.object({ op: z.literal("plans"), plans: z.union([text, z.literal(false)]) }).strict(),
+  // Records the person's answer to which story ID policy `add` follows.
+  z.object({ op: z.literal("story-ids"), storyIds: z.enum(["next", "lowest-free"]) }).strict(),
+  // Records the person's answer to whether story-map upgrade runs in simple or advanced mode.
+  z.object({ op: z.literal("upgrade-mode"), upgrade: z.enum(["simple", "advanced"]) }).strict(),
+  // Records the person's answer to whether validate warns, not only notes, a gap in a plan's architecture section.
+  z.object({ op: z.literal("architecture-decisions"), architectureDecisions: z.enum(["recommended", "required"]) }).strict(),
   // Persona edits reword what is there. IDs, order, customer copy and draft are left alone.
   z.object({ op: z.literal("set-persona"), persona: text, title: text.optional(), summary: z.string().trim().optional() }).strict(),
   z.object({
@@ -67,7 +76,7 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
 /** The operations that change a persona or one of their jobs. */
 export const personaEditOperations = ["set-persona", "set-persona-context", "set-job", "create-job", "delete-job", "create-persona"] as const;
 
-/** The operations the story panel's **Change** section saves: a story's status, with its reason, and its release. */
+/** The operations the story panel's **Actions** menu saves: a story's status, with its reason, and its release. */
 export const storyChangeOperations = ["status", "release"] as const;
 
 /** What a board on this machine can save through `createStoryMapEditServer`: persona edits and story changes. */
@@ -121,10 +130,11 @@ export class StoryMapEditError extends Error {
 }
 
 /** The order fields are written in when an edit adds one, following the guide's examples. */
-const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "tokens", "estimatedCostUsd", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
+const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusReason", "estimate", "priority", "tokens", "estimatedCostUsd", "dependsOn", "jobs", "personas", "updatedBy", "summary", "notes", "sources", "customer"];
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 const personaKeyOrder = ["id", "title", "summary", "context", "jobs", "customer"];
-const mapKeyOrder = ["version", "id", "title", "summary", "visibility", "customer", "personas", "activities", "releases", "stories"];
+const mapKeyOrder = ["version", "id", "title", "summary", "visibility", "customer", "settings", "personas", "activities", "releases", "stories"];
+const settingsKeyOrder = ["stalledAfterWeeks", "plans", "storyIds", "upgrade", "architectureDecisions"];
 const contextKeyOrder = ["success", "usesToday", "constraints", "draft"];
 const jobKeyOrder = ["id", "situation", "motivation", "outcome", "draft", "steps"];
 
@@ -152,7 +162,7 @@ function renderItem(value: unknown, indent: number) {
 }
 function indentLines(yaml: string, indent: number) {
   const pad = " ".repeat(indent);
-  return yaml.replace(/\n$/, "").split("\n").map(line => (line ? pad + line : line)).join("\n") + "\n";
+  return `${yaml.replace(/\n$/, "").split("\n").map(line => (line ? pad + line : line)).join("\n")}\n`;
 }
 const ensureNewline = (source: string, at: number) => (at > 0 && source[at - 1] !== "\n" ? "\n" : "");
 
@@ -279,19 +289,32 @@ function splitStoryId(id: string): SplitId | null {
   return start === id.length ? null : [id, id.slice(0, start), id.slice(start)];
 }
 
+/** How `add` chooses an ID: `next` takes one after the highest number, `lowest-free` the lowest unused one. */
+export type StoryIdScheme = "next" | "lowest-free";
+
 /**
- * The next number in sequence for the map: one after the highest number with the map's most used prefix, whatever release the story goes in.
- * Cut stories count, so an ID is never handed out twice. `release` is no longer used and is kept so existing callers still work.
+ * The ID `add` gives a new story, using the map's most used prefix, whatever release the story goes in. Cut stories count, so an ID is never handed out twice.
+ * `next`, the default, takes one after the highest number. `lowest-free` takes the lowest unused number above the lowest one in use, such as `ESM-103` in a
+ * map with ESM-101, ESM-102 and ESM-104. `release` is no longer used and is kept so existing callers still work.
  */
-export function nextStoryId(stories: readonly { id: string; release?: string }[], _release?: string): string {
+export function nextStoryId(stories: readonly { id: string; release?: string }[], _release?: string, scheme: StoryIdScheme = "next"): string {
   const all = stories.map(story => splitStoryId(story.id)).filter(Boolean) as SplitId[];
   if (!all.length) throw new StoryMapEditError("The map has no numbered story IDs to follow, so choose one with --id.");
-  // The most used prefix, so a map with one stray ID still follows its own scheme.
+  // The most used prefix, so a map with one stray ID still follows its own scheme. A tie goes to the prefix that comes first in the map.
   const counts = new Map<string, number>();
   for (const [, prefix] of all) counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
   const prefix = [...counts].sort((a, b) => b[1] - a[1])[0][0];
   const numbered = all.filter(match => match[1] === prefix);
-  const number = Math.max(...numbered.map(match => Number(match[2]))) + 1;
+  const numbers = numbered.map(match => Number(match[2]));
+  let number: number;
+  if (scheme === "lowest-free") {
+    const used = new Set(numbers);
+    number = Math.min(...numbers);
+    if (!Number.isSafeInteger(number)) throw new StoryMapEditError(`The ${prefix} numbers are too large to count, so choose an ID with --id.`);
+    while (used.has(number)) number++;
+  } else {
+    number = Math.max(...numbers) + 1;
+  }
   return `${prefix}${String(number).padStart(numbered[0][2].length, "0")}`;
 }
 
@@ -496,6 +519,23 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       return;
     }
 
+    if (operation.op === "plans" || operation.op === "story-ids" || operation.op === "upgrade-mode" || operation.op === "architecture-decisions") {
+      const [key, value] = operation.op === "plans" ? ["plans", operation.plans] as const
+        : operation.op === "story-ids" ? ["storyIds", operation.storyIds] as const
+        : operation.op === "upgrade-mode" ? ["upgrade", operation.upgrade] as const
+        : ["architectureDecisions", operation.architectureDecisions] as const;
+      const settings = intended.settings as Raw | undefined;
+      if (settings?.[key] === value) return;
+      if (settings) {
+        settings[key] = value;
+        editor.setFieldAt(["settings"], key, value, settingsKeyOrder);
+      } else {
+        intended.settings = { [key]: value };
+        editor.setFieldAt([], "settings", intended.settings, mapKeyOrder);
+      }
+      return;
+    }
+
     if (operation.op === "set-persona" || operation.op === "set-persona-context" || operation.op === "set-job" || operation.op === "create-job" || operation.op === "delete-job" || operation.op === "create-persona") {
       const created = applyPersonaEdit(intended, editor, operation, index);
       if (created) addedPersonaIds.push(created);
@@ -503,7 +543,7 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
     }
 
     if (operation.op === "add") {
-      const id = operation.id ?? nextStoryId(intended.stories);
+      const id = operation.id ?? nextStoryId(intended.stories, undefined, (intended.settings as Raw | undefined)?.storyIds === "lowest-free" ? "lowest-free" : "next");
       if (intended.stories.some(story => story.id === id)) throw new StoryMapEditError(`${id} is already in the map. IDs are never reused, so choose another or leave out --id.`, index);
       const status = operation.status ?? "planned";
       if ((status === "blocked" || status === "cut") !== !!operation.reason) {
@@ -558,6 +598,9 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       case "notes":
       case "tokens":
         set(operation.op, operation[operation.op as keyof typeof operation]);
+        break;
+      case "priority":
+        set("priority", operation.priority === "none" ? undefined : operation.priority);
         break;
       case "estimated-cost":
         // Kept to the cent, as the PR shows it.
@@ -715,7 +758,7 @@ export async function proposeDraftConfirmation(source: string, target: StoryMapD
   } else if ("allJobsOf" in target) {
     const personaIndex = personas.findIndex(persona => persona.id === target.allJobsOf);
     if (personaIndex === -1) unknownPersona(target.allJobsOf, intended.personas ?? [], undefined, "persona");
-    personas[personaIndex].jobs?.forEach((_, jobIndex) => confirmJob(personaIndex, jobIndex));
+    for (const jobIndex of personas[personaIndex].jobs?.keys() ?? []) confirmJob(personaIndex, jobIndex);
   } else {
     const jobOwner = personas.findIndex(persona => persona.jobs?.some(job => job.id === target.id));
     const personaIndex = personas.findIndex(persona => persona.id === target.id);

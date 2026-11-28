@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { storyMapBriefDetails, type StoryMapBriefRequest, type StoryMapBriefTarget } from "./brief.js";
 import { checkStoryMap } from "./check.js";
 import { claimStory, parseClaimTtl, StoryClaimError, StoryClaimHeldError } from "./claims.js";
 import { personaEditOperations, proposeStoryMapEdit, StoryMapEditError, storyMapEditOperationSchema, type StoryMapEditOperation } from "./edit.js";
@@ -29,7 +30,7 @@ export interface StoryMapMcpServerOptions {
 }
 
 /** The tools the server offers, in the order it lists them. */
-export const storyMapMcpTools = ["list_stories", "get_story", "list_releases", "validate_map", "get_evidence", "propose_edit", "claim_story"] as const;
+export const storyMapMcpTools = ["list_stories", "get_story", "list_releases", "validate_map", "get_evidence", "get_brief", "propose_edit", "claim_story"] as const;
 
 /** The tools a read-only server leaves out. */
 export const storyMapMcpWriteTools = ["propose_edit", "claim_story"] as const;
@@ -137,7 +138,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("list_stories", {
     title: "List stories",
-    description: "Lists stories with the board's filters, as story-map stories --format json does. As on the board, blocked and cut stories are hidden unless status chooses them. Use query to find an existing story before adding one. " + untrusted,
+    description: `Lists stories with the board's filters, as story-map stories --format json does. As on the board, blocked and cut stories are hidden unless status chooses them. Use query to find an existing story before adding one. ${untrusted}`,
     inputSchema: {
       map: mapField,
       history: historyField,
@@ -183,7 +184,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("get_story", {
     title: "Get stories",
-    description: "Returns stories in full, as story-map story --format json does: status, release, activity, estimate, personas, jobs, readiness, summary, notes and sources, with history and tagged tests when their files are given. Read a story's sources to find its plan before changing it. An unknown ID is listed under missing, with close matches. " + untrusted,
+    description: `Returns stories in full, as story-map story --format json does: status, release, activity, estimate, personas, jobs, readiness, summary, notes and sources, with history and tagged tests when their files are given. Read a story's sources to find its plan before changing it. An unknown ID is listed under missing, with close matches. ${untrusted}`,
     inputSchema: { ids: idList.min(1).describe("Story IDs, such as ESM-116."), map: mapField, history: historyField, testsIndex: testsIndexField },
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, run("stories", async args => {
@@ -194,7 +195,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("list_releases", {
     title: "List releases",
-    description: "Lists releases, or the ones named, with story counts by status, estimates, notes and expected impact, as story-map releases --format json does. Impact items an agent drafted have draft: true. " + untrusted,
+    description: `Lists releases, or the ones named, with story counts by status, estimates, notes and expected impact, as story-map releases --format json does. Impact items an agent drafted have draft: true. ${untrusted}`,
     inputSchema: { ids: idList.optional().describe("Release IDs. Defaults to every release."), map: mapField, history: historyField, testsIndex: testsIndexField },
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, run("releases", async args => {
@@ -207,7 +208,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("validate_map", {
     title: "Validate the map",
-    description: "Validates the map, as story-map validate --format json does, with every issue's severity, line, column, YAML path and message. Run it after an edit and before opening a pull request.",
+    description: "Validates the map, as story-map validate --format json does, with every issue's severity, line, column, YAML path, message, rule ID and help link to the guide section that explains the rule. Run it after an edit and before opening a pull request.",
     inputSchema: {
       map: mapField,
       checkSources: z.boolean().optional().describe("Also check that repository-relative sources exist and that Markdown #heading fragments match a heading."),
@@ -226,7 +227,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("get_evidence", {
     title: "Get evidence",
-    description: "Reports what has already happened on each story, or every active story, and suggests a status without changing anything, as story-map evidence --format json does: branches, commits on the default branch, Markdown mentions, tagged tests and broken sources. It reads the checkout only, unless claims is set. " + untrusted,
+    description: `Reports what has already happened on each story, or every active story, and suggests a status without changing anything, as story-map evidence --format json does: branches, commits on the default branch, Markdown mentions, tagged tests and broken sources. It reads the checkout only, unless claims is set. ${untrusted}`,
     inputSchema: {
       ids: idList.optional().describe("Story IDs. Defaults to every active story."),
       map: mapField,
@@ -272,6 +273,71 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
       if (error instanceof StoryEvidenceError || error instanceof StoryClaimError) return result("evidence", { error: error.message }, true);
       throw error;
     }
+  }));
+
+  server.registerTool("get_brief", {
+    title: "Get a brief",
+    description:
+      "Writes a handoff brief for stories, a release or an activity, as story-map brief --format json does: the same Markdown prompt as the board's Copy brief, with rules, " +
+      "the target stories, what is already built nearby, what not to build yet, work in flight, open decisions and when the work is done, and each section's lines. " +
+      "Give exactly one of ids, release or activity. The in-flight section adds what get_evidence finds, unless evidence is false. Start from the brief when you pick up work. " + untrusted,
+    inputSchema: {
+      ids: idList.min(1).optional().describe("Story IDs to brief, such as [\"ESM-126\"]."),
+      release: z.string().min(1).optional().describe("Brief this release's planned and in-progress stories."),
+      activity: z.string().min(1).optional().describe("Brief this activity's planned and in-progress stories."),
+      full: z.boolean().optional().describe("Include each target's notes, persona context, job statements and every tagged test."),
+      readFirst: z.array(z.string().min(1)).optional().describe("Documents the agent reads first, such as docs/ENGINEERING-OVERVIEW.md."),
+      evidence: z.boolean().optional().describe("Add branches, commits, tagged tests and broken sources from the checkout to the in-flight section. Defaults to true."),
+      defaultBranch: z.string().optional().describe("Branch to read merged commits from, as for get_evidence."),
+      claims: z.boolean().optional().describe("Also read claims, which needs the network for a remote."),
+      map: mapField,
+      history: historyField,
+      testsIndex: testsIndexField,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true },
+  }, run("brief", async args => {
+    const scopes = [args.ids?.length ? 1 : 0, args.release !== undefined ? 1 : 0, args.activity !== undefined ? 1 : 0].reduce((a, b) => a + b, 0);
+    if (scopes !== 1) return result("brief", { error: "Give exactly one of ids, release or activity." }, true);
+    const view = await loadView(args);
+    const target: StoryMapBriefTarget = args.release !== undefined ? { release: args.release }
+      : args.activity !== undefined ? { activity: args.activity }
+        : args.ids!.length === 1 ? { story: args.ids![0]! } : { stories: args.ids! };
+    const mapPath = args.map ?? defaultMap;
+    const request: StoryMapBriefRequest = {
+      ...target,
+      mapPath,
+      full: args.full ?? false,
+      ...(args.readFirst?.length ? { readFirst: args.readFirst.map(path => ({ path })) } : {}),
+    };
+    let targets: string[];
+    try {
+      targets = storyMapBriefDetails(view, request).targets;
+    } catch (error) {
+      if (error instanceof RangeError) return result("brief", { error: error.message }, true);
+      throw error;
+    }
+    const notes: string[] = [];
+    let evidence: Awaited<ReturnType<typeof gatherStoryEvidence>>["stories"] = [];
+    if (args.evidence !== false && targets.length) {
+      try {
+        const found = await gatherStoryEvidence(await loadMap(mapPath), {
+          root,
+          map: await inside(mapPath, "map"),
+          ids: targets,
+          defaultBranch: args.defaultBranch,
+          // loadView has already checked the history file parses.
+          history: args.history ? parseStoryMapHistory((await readInside(args.history, "history")).text) : undefined,
+          claims: args.claims ? {} : undefined,
+        });
+        evidence = found.stories;
+        notes.push(...found.notes);
+        if (found.defaultBranch) request.baseBranch = found.defaultBranch.replace(/^origin\//, "");
+      } catch (error) {
+        if (error instanceof StoryEvidenceError || error instanceof StoryClaimError) return result("brief", { error: error.message }, true);
+        throw error;
+      }
+    }
+    return result("brief", { ...storyMapBriefDetails(view, { ...request, evidence }), ...(notes.length ? { notes } : {}) });
   }));
 
   if (options.readOnly) return server;

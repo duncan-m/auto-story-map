@@ -1,5 +1,6 @@
-import { readFile, realpath, stat } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { extname, relative, sep } from "node:path";
+import { readTextFileWithin } from "./read-text.js";
 import { fitHistoryText } from "./history.js";
 import {
   outsideLinkIssue,
@@ -9,6 +10,7 @@ import {
   type FileFilter,
   type ReferenceIssue,
 } from "./references.js";
+import { untestedStoryWarnings } from "./actions.js";
 import type { LoadedStoryMap } from "./schema.js";
 import {
   testNameMaxLength,
@@ -35,6 +37,11 @@ export interface FoundStoryTest {
   name: string;
   /** `group` for `describe` and `suite`, `test` for `test` and `it`. */
   kind: "test" | "group";
+  /**
+   * The IDs in `storyIds` that come only from the tagged `describe` or `suite`
+   * blocks around the call, not from its own name. Absent when there are none.
+   */
+  inheritedIds?: string[];
 }
 
 export interface FoundStoryTests {
@@ -158,9 +165,27 @@ function decodeLiteral(literalText: string): { name: string; literal: string } {
   return { name, literal };
 }
 
-type Call = { line: number; column: number; kind: FoundStoryTest["kind"] };
+/**
+ * A call as the scan meets it. `parent` is the nearest group around it whose
+ * name was read, and `index` is set once the call's own name is read.
+ */
+type Call = { line: number; column: number; kind: FoundStoryTest["kind"]; parent?: Call; index?: number };
 type TemplateFrame = { start: number; name?: Call; each?: Call };
-type Frame = { close: string; each?: Call } | { template: TemplateFrame };
+/** `group` is the innermost `describe` or `suite` call whose arguments hold this frame. */
+type Frame = ({ close: string; each?: Call } | { template: TemplateFrame }) & { group?: Call };
+
+/** A test call found by `scanTestCalls`. */
+export interface ScannedTestCall {
+  line: number;
+  column: number;
+  /** The name as written, with escapes decoded. */
+  name: string;
+  /** The text story IDs are matched against: the name with each `${…}` replaced by a space. */
+  literal: string;
+  kind: FoundStoryTest["kind"];
+  /** Index, in the returned list, of the nearest `describe` or `suite` around the call whose name was read. */
+  parent?: number;
+}
 
 /**
  * Finds `test`, `it`, `describe` and `suite` calls in JavaScript or
@@ -173,8 +198,8 @@ type Frame = { close: string; each?: Call } | { template: TemplateFrame };
  * text, such as many unclosed `test.each(` calls, stays linear. A call's name,
  * and the end of a `.each(…)` table, are picked up when the pass reaches them.
  */
-export function scanTestCalls(text: string): { line: number; column: number; name: string; literal: string; kind: FoundStoryTest["kind"] }[] {
-  const calls: ReturnType<typeof scanTestCalls> = [];
+export function scanTestCalls(text: string): ScannedTestCall[] {
+  const calls: ScannedTestCall[] = [];
   const stack: Frame[] = [];
   let line = 1;
   let lineStart = 0;
@@ -184,6 +209,17 @@ export function scanTestCalls(text: string): { line: number; column: number; nam
   // A call whose name, or `.each` table, starts at a known index.
   let pendingName: { call: Call; at: number } | undefined;
   let pendingEach: { call: Call; at: number } | undefined;
+  // The `(` that opens a group's arguments, so the frame it pushes knows its group.
+  let pendingGroup: { call: Call; at: number } | undefined;
+
+  /** Records a call whose name has been read, linking it to the group around it. */
+  const record = (call: Call, literalText: string) => {
+    call.index = calls.length;
+    const found: ScannedTestCall = { line: call.line, column: call.column, kind: call.kind, ...decodeLiteral(literalText) };
+    if (call.parent?.index !== undefined) found.parent = call.parent.index;
+    calls.push(found);
+  };
+  const currentGroup = () => stack[stack.length - 1]?.group;
 
   const countLines = (from: number, to: number) => {
     for (let k = text.indexOf("\n", from); k !== -1 && k < to; k = text.indexOf("\n", k + 1)) {
@@ -196,6 +232,7 @@ export function scanTestCalls(text: string): { line: number; column: number; nam
   const expectName = (from: number, call: Call) => {
     const open = skipTrivia(text, from);
     if (text[open] !== "(") return;
+    if (call.kind === "group") pendingGroup = { call, at: open };
     const start = skipTrivia(text, open + 1);
     let lineBreaks = 0;
     for (let k = text.indexOf("\n", from); k !== -1 && k < start; k = text.indexOf("\n", k + 1)) lineBreaks++;
@@ -240,11 +277,11 @@ export function scanTestCalls(text: string): { line: number; column: number; nam
     }
     countLines(from, end);
     if (expression) {
-      stack.push({ template: frame });
+      stack.push({ template: frame, group: currentGroup() });
       previous = "start";
       return end;
     }
-    if (frame.name && text[end - 1] === "`") calls.push({ ...frame.name, ...decodeLiteral(text.slice(frame.start, end)) });
+    if (frame.name && text[end - 1] === "`") record(frame.name, text.slice(frame.start, end));
     if (frame.each) expectName(end, frame.each);
     previous = "value";
     return end;
@@ -271,7 +308,7 @@ export function scanTestCalls(text: string): { line: number; column: number; nam
     }
     if (char === '"' || char === "'") {
       const end = skipQuoted(text, i);
-      if (end !== -1 && pendingName?.at === i) calls.push({ ...pendingName.call, ...decodeLiteral(text.slice(i, end)) });
+      if (end !== -1 && pendingName?.at === i) record(pendingName.call, text.slice(i, end));
       const to = end === -1 ? (text.indexOf("\n", i) + 1 || text.length) : end;
       countLines(i, to);
       i = to;
@@ -312,7 +349,13 @@ export function scanTestCalls(text: string): { line: number; column: number; nam
       // `expect.test(…)` or `/x/.test(…)` is a method, not a test.
       let back = i - 1;
       while (isSpace(text[back])) back--;
-      if (Object.hasOwn(callNames, word) && text[back] !== ".") readModifiers(end, { line, column: i - lineStart + 1, kind: callNames[word] });
+      if (Object.hasOwn(callNames, word) && text[back] !== ".") {
+        // The nearest group around the call whose name was read. A group's name
+        // comes before its body, so whether it was read is settled by now.
+        const group = currentGroup();
+        const parent = group?.index !== undefined ? group : group?.parent;
+        readModifiers(end, { line, column: i - lineStart + 1, kind: callNames[word], parent });
+      }
       lastWord = word;
       previous = /^\d/.test(word) ? "value" : "word";
       i = end;
@@ -320,7 +363,9 @@ export function scanTestCalls(text: string): { line: number; column: number; nam
     }
     const closer = ({ "(": ")", "[": "]", "{": "}" } as Record<string, string>)[char];
     if (closer) {
-      stack.push(pendingEach?.at === i ? { close: closer, each: pendingEach.call } : { close: closer });
+      const frame: Frame = pendingEach?.at === i ? { close: closer, each: pendingEach.call } : { close: closer };
+      frame.group = pendingGroup?.at === i ? pendingGroup.call : currentGroup();
+      stack.push(frame);
     } else if (char === ")" || char === "]" || char === "}") {
       const top = stack[stack.length - 1];
       if (top && "template" in top) {
@@ -366,20 +411,30 @@ export async function findStoryTests(loaded: LoadedStoryMap, root: string, { pat
     const files = resolved.kind === "inside" ? await repositoryFiles(realRoot, resolved.path, testFileFilter, outside) : [];
     for (const link of outside) issues.push(outsideLinkIssue(shown(link)));
     if (!files.length) {
-      issues.push({ severity: "error", path: [], file: path, message: "No test files found." });
+      issues.push({ severity: "error", path: [], file: path, message: "No test files found. Pass a folder or file that holds the tests.", rule: "tests-not-found" });
       continue;
     }
     for (const file of files) {
       if (read.has(file)) continue;
       read.add(file);
-      if ((await stat(file)).size > maxTestFileBytes) {
-        issues.push({ severity: "warning", path: [], file: shown(file), message: `Larger than ${maxTestFileBytes / 1024 / 1024} MB, so its tests were not read.` });
+      const source = await readTextFileWithin(file, maxTestFileBytes);
+      if (source === undefined) {
+        issues.push({ severity: "warning", path: [], file: shown(file), message: `Larger than ${maxTestFileBytes / 1024 / 1024} MB, so its tests were not read. Split the file to have its tests counted.`, rule: "test-file-too-large" });
         continue;
       }
       if (!pattern) continue;
-      for (const call of scanTestCalls(await readFile(file, "utf8"))) {
-        const storyIds = [...new Set(Array.from(call.literal.matchAll(pattern), match => match[0]))];
-        if (storyIds.length) tests.push({ storyIds, file: shown(file), line: call.line, column: call.column, name: call.name, kind: call.kind });
+      // Each call's IDs: its own, then those of the groups around it, innermost first.
+      const idsOf: string[][] = [];
+      for (const call of scanTestCalls(source)) {
+        const own = [...new Set(Array.from(call.literal.matchAll(pattern), match => match[0]))];
+        // Capped like the index, so deeply nested tagged blocks stay quick to read.
+        const inheritedIds = call.parent === undefined ? [] : idsOf[call.parent].filter(id => !own.includes(id)).slice(0, testStoryIdsMaxItems);
+        const storyIds = [...own, ...inheritedIds];
+        idsOf.push(storyIds);
+        if (!storyIds.length) continue;
+        const test: FoundStoryTest = { storyIds, file: shown(file), line: call.line, column: call.column, name: call.name, kind: call.kind };
+        if (inheritedIds.length) test.inheritedIds = inheritedIds;
+        tests.push(test);
       }
     }
   }
@@ -420,7 +475,10 @@ export function buildStoryMapTests(loaded: LoadedStoryMap, found: FoundStoryTest
     }
     if (!listed.length) continue;
     for (const id of listed) perStory.set(id, (perStory.get(id) ?? 0) + 1);
-    tests.push({ storyIds: listed, file: test.file, line: test.line, name: fitHistoryText(test.name, testNameMaxLength)!, kind: test.kind });
+    const entry: StoryTestEntry = { storyIds: listed, file: test.file, line: test.line, name: fitHistoryText(test.name, testNameMaxLength)!, kind: test.kind };
+    const inheritedIds = listed.filter(id => test.inheritedIds?.includes(id));
+    if (inheritedIds.length) entry.inheritedIds = inheritedIds;
+    tests.push(entry);
   }
 
   const index: StoryMapTests = { version: 1, generatedAt: now.toISOString(), tests };
@@ -430,7 +488,8 @@ export function buildStoryMapTests(loaded: LoadedStoryMap, found: FoundStoryTest
 
 /**
  * The checks `validate --tests` runs on found tests: an error for each tag
- * naming a story that is not in the map, at the test, and a warning for each
+ * naming a story that is not in the map, at the test or group whose name has
+ * it, and a warning for each
  * `in-progress` or `merged` story that no test names, at the story.
  */
 export function checkStoryTests(loaded: LoadedStoryMap, found: FoundStoryTest[]): ReferenceIssue[] {
@@ -439,7 +498,8 @@ export function checkStoryTests(loaded: LoadedStoryMap, found: FoundStoryTest[])
   const issues: ReferenceIssue[] = [];
   for (const test of found) {
     for (const id of test.storyIds) {
-      if (known.has(id)) continue;
+      // An unknown ID in a group's name is reported once, at the group, not at every test inside it.
+      if (known.has(id) || test.inheritedIds?.includes(id)) continue;
       issues.push({
         severity: "error",
         path: [],
@@ -447,19 +507,10 @@ export function checkStoryTests(loaded: LoadedStoryMap, found: FoundStoryTest[])
         line: test.line,
         column: test.column,
         message: `Unknown story ID '${id}' in a test name. Add the story to the map or correct the tag.`,
+        rule: "unknown-test-story",
       });
     }
   }
-  loaded.map.stories.forEach((story, index) => {
-    if ((story.status !== "in-progress" && story.status !== "merged") || tagged.has(story.id)) return;
-    const path = ["stories", index, "status"];
-    issues.push({
-      severity: "warning",
-      path,
-      itemId: story.id,
-      message: `No tests are tagged ${story.id}. Put the story ID in the name of each test that covers it.`,
-      ...loaded.locate(path),
-    });
-  });
+  for (const warning of untestedStoryWarnings(loaded.map, tagged)) issues.push({ ...warning, ...loaded.locate(warning.path) });
   return issues;
 }

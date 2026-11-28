@@ -11,6 +11,8 @@ export interface StoryTestEntry {
   /** The test's name as written, including any leading story ID, cut to `testNameMaxLength`. */
   name: string;
   kind: "test" | "group";
+  /** The IDs in `storyIds` that the test has only from a tagged `describe` or `suite` block around it. Absent when there are none. */
+  inheritedIds?: string[];
 }
 
 /** Tests a story has in a file beyond those the index lists. */
@@ -58,7 +60,11 @@ export const storyMapTestsSchema = z.object({
     line: z.number().int().min(1),
     name: z.string().min(1).refine(name => codePoints(name) <= testNameMaxLength, `Use at most ${testNameMaxLength} characters.`),
     kind: z.enum(["test", "group"]),
-  })).max(testsMaxItems).superRefine((tests, context) => {
+    inheritedIds: z.array(storyId).min(1).max(testStoryIdsMaxItems).optional(),
+  }).refine(
+    test => (test.inheritedIds ?? []).every(id => test.storyIds.includes(id)),
+    { message: "List each inherited ID in storyIds too.", path: ["inheritedIds"] },
+  )).max(testsMaxItems).superRefine((tests, context) => {
     const counts = new Map<string, number>();
     for (const test of tests) {
       for (const id of test.storyIds) {

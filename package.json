@@ -1,6 +1,6 @@
 {
   "name": "auto-story-map",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "Git-backed user story maps embedded in product applications",
   "license": "AGPL-3.0-only",
   "author": {
@@ -53,10 +53,14 @@
   },
   "files": [
     "dist",
+    "!dist/**/*.map",
     "styles.css",
     "story-map.schema.json",
     "templates",
     "docs/story-map.md",
+    "docs/example-builder-estimate-plan.md",
+    "docs/example-builder-estimate-mockup.html",
+    "docs/example-builder-estimate-mockup.png",
     "CHANGELOG.md"
   ],
   "scripts": {
@@ -64,7 +68,10 @@
     "prepare": "npm run build",
     "validate": "node dist/cli.js validate --check-sources --plans docs --tests test product/story-map.yaml",
     "test": "npm run build && node --test",
-    "demo": "npm run build && node example/demo.mjs"
+    "lint": "biome ci",
+    "coverage": "npm run build && c8 node --test",
+    "demo": "npm run build && node example/demo.mjs",
+    "known-versions": "npm run build && node scripts/known-versions.mjs"
   },
   "dependencies": {
     "yaml": "^2.8.0",
@@ -87,13 +94,21 @@
     }
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.7",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.3.0",
+    "c8": "12.0.0",
     "fast-check": "^4.10.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "~7.0.2"
+  },
+  "overrides": {
+    "test-exclude": {
+      "glob": "^14.0.2",
+      "minimatch": "^11.0.1"
+    }
   }
 }

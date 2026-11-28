@@ -1,5 +1,6 @@
 import { jobStatement, personaCoreJob, storyMapJobs } from "./personas.js";
 import { defaultStalledAfterWeeks, type StoryMapDocument, type StoryMapJob, type StoryMapPersona } from "./schema.js";
+import { needsPersonChanges, type NeedsPersonChange } from "./needs-person.js";
 import { customerStatus, isActiveStatus, storyStatusLabels, type StoryStatus } from "./status.js";
 
 type Story = StoryMapDocument["stories"][number];
@@ -35,6 +36,8 @@ export interface StoryUpdate extends StoryDiffRef {
   dependsOn?: Change<string[]>;
   /** Story points before and after. Absent on one side when the story had no estimate. */
   estimate?: { from?: number; to?: number };
+  /** MoSCoW priority before and after. Absent on one side when the story had none. */
+  priority?: { from?: string; to?: string };
   /** Tokens used to deliver the story, before and after. Absent on one side when none were recorded. */
   tokens?: { from?: number; to?: number };
   /** Estimated cost in US dollars, before and after. */
@@ -164,6 +167,19 @@ export interface StoryMapDiff {
   releaseDetails: ReleaseDetailChange[];
   /** The stalled threshold in weeks, including the default of 4 when the map does not set it. 0 is off. */
   stalledAfterWeeks?: Change<number>;
+  /** Whether the product keeps delivery plans: a folder, false for no plans, or undefined when nobody has chosen. */
+  plans?: Change<string | false | undefined>;
+  /** How `add` numbers new stories, including the default of next when the map does not set it. */
+  storyIds?: Change<"next" | "lowest-free">;
+  /** How `story-map upgrade` reviews the set-up: simple, advanced, or undefined when nobody has chosen. */
+  upgrade?: Change<"simple" | "advanced" | undefined>;
+  /** How `validate --plans` treats a plan's architecture section, including the default of recommended when the map does not set it. */
+  architectureDecisions?: Change<"recommended" | "required">;
+  /**
+   * Changes that `AGENTS.md` leaves to people, such as a confirmed draft or a new estimate,
+   * each with its rule. They also appear in the lists above. Empty for most changes.
+   */
+  needsPerson: NeedsPersonChange[];
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -316,6 +332,12 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
         ...(story.estimate !== undefined ? { to: story.estimate } : {}),
       };
     }
+    if (previous.priority !== story.priority) {
+      update.priority = {
+        ...(previous.priority !== undefined ? { from: previous.priority } : {}),
+        ...(story.priority !== undefined ? { to: story.priority } : {}),
+      };
+    }
     if (previous.tokens !== story.tokens) {
       update.tokens = {
         ...(previous.tokens !== undefined ? { from: previous.tokens } : {}),
@@ -334,7 +356,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     for (const field of ["summary", "statusReason", "notes", "sources", "customer", "updatedBy"] as const) {
       if (!same(previous[field], story[field])) update.details.push(field);
     }
-    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.tokens || update.estimatedCostUsd || update.dependsOn || update.jobs || update.personas || update.details.length) {
+    if (update.titleChange || update.status || update.activity || update.release || update.estimate || update.priority || update.tokens || update.estimatedCostUsd || update.dependsOn || update.jobs || update.personas || update.details.length) {
       updated.push(update);
     }
   }
@@ -377,7 +399,7 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
   const stalledBefore = before?.settings?.stalledAfterWeeks ?? defaultStalledAfterWeeks;
   const stalledAfter = after.settings?.stalledAfterWeeks ?? defaultStalledAfterWeeks;
 
-  return {
+  const diff: Omit<StoryMapDiff, "needsPerson"> = {
     created: before === null,
     visibility: before && before.visibility !== after.visibility ? { from: before.visibility, to: after.visibility } : undefined,
     titleChange: before && before.title !== after.title ? { from: before.title, to: after.title } : undefined,
@@ -395,7 +417,14 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
       return change ? [change] : [];
     }),
     stalledAfterWeeks: before && stalledBefore !== stalledAfter ? { from: stalledBefore, to: stalledAfter } : undefined,
+    plans: before && before.settings?.plans !== after.settings?.plans ? { from: before.settings?.plans, to: after.settings?.plans } : undefined,
+    storyIds: before && (before.settings?.storyIds ?? "next") !== (after.settings?.storyIds ?? "next") ? { from: before.settings?.storyIds ?? "next", to: after.settings?.storyIds ?? "next" } : undefined,
+    upgrade: before && before.settings?.upgrade !== after.settings?.upgrade ? { from: before.settings?.upgrade, to: after.settings?.upgrade } : undefined,
+    architectureDecisions: before && (before.settings?.architectureDecisions ?? "recommended") !== (after.settings?.architectureDecisions ?? "recommended")
+      ? { from: before.settings?.architectureDecisions ?? "recommended", to: after.settings?.architectureDecisions ?? "recommended" }
+      : undefined,
   };
+  return { ...diff, needsPerson: needsPersonChanges(before, after, diff) };
 }
 
 export function hasStoryMapChanges(diff: StoryMapDiff) {
@@ -405,7 +434,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
     || groups(diff.activities) || groups(diff.releases) || groups(diff.personas) || Object.values(diff.jobs).some(list => list.length)
     || Object.values(diff.personaContexts).some(list => list.length)
-    || diff.releaseDetails.length || diff.stalledAfterWeeks);
+    || diff.releaseDetails.length || diff.stalledAfterWeeks || diff.plans || diff.storyIds || diff.upgrade || diff.architectureDecisions || diff.needsPerson.length);
 }
 
 /**
@@ -468,6 +497,17 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     lines.push("");
   }
 
+  if (diff.needsPerson.length) {
+    lines.push("### Needs a person", "", "`AGENTS.md` leaves these changes to people. Check that a person made or agreed each one.", "");
+    for (const change of diff.needsPerson) {
+      const item = change.itemType === "job" ? `job ${code(change.itemId)} (${text(change.title)})`
+        : change.rule === "settings-changed" ? `setting ${code(change.itemId)}`
+        : `${change.itemType} ${code(change.itemId)} ${text(change.title)}`;
+      lines.push(`- **${needsPersonLabels[change.rule]}:** ${item}: ${text(change.change)} (${code(change.rule)})`);
+    }
+    lines.push("");
+  }
+
   if (diff.blockedOrCut.length) {
     lines.push("### Blocked and cut", "");
     for (const change of diff.blockedOrCut) {
@@ -493,6 +533,7 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
     if (update.release) changes.push(`Release: ${text(update.release.from)} → ${text(update.release.to)}`);
     if (update.titleChange) changes.push(`Renamed from “${text(update.titleChange.from)}”`);
     if (update.estimate) changes.push(`Estimate: ${update.estimate.from ?? "none"} → ${update.estimate.to ?? "none"}`);
+    if (update.priority) changes.push(`Priority: ${update.priority.from ?? "none"} → ${update.priority.to ?? "none"}`);
     if (update.tokens) changes.push(`Tokens used: ${formatTokens(update.tokens.from)} → ${formatTokens(update.tokens.to)}`);
     if (update.estimatedCostUsd) changes.push(`Estimated cost: ${formatUsd(update.estimatedCostUsd.from)} → ${formatUsd(update.estimatedCostUsd.to)}`);
     const ids = (list: string[]) => list.map(code).join(", ") || "none";
@@ -555,16 +596,44 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
   ];
   if (personas.length) lines.push("### Personas and jobs", "", ...personas, "");
 
+  const settings: string[] = [];
   if (diff.stalledAfterWeeks) {
     const { from, to } = diff.stalledAfterWeeks;
     const weeks = (count: number) => `${count} ${count === 1 ? "week" : "weeks"}`;
-    lines.push("### Settings", "", to === 0
+    settings.push(to === 0
       ? `- Turned off the stalled flag (was ${weeks(from)}).`
-      : `- Stories are flagged as stalled after ${weeks(to)} in progress (was ${from === 0 ? "off" : weeks(from)}).`, "");
+      : `- Stories are flagged as stalled after ${weeks(to)} in progress (was ${from === 0 ? "off" : weeks(from)}).`);
   }
+  if (diff.plans) {
+    const plans = (value: string | false | undefined) => value === undefined ? "not chosen" : value === false ? "not used" : `kept in ${code(value)}`;
+    settings.push(`- Delivery plans: ${plans(diff.plans.to)} (was ${plans(diff.plans.from)}).`);
+  }
+  if (diff.storyIds) {
+    const scheme = (value: "next" | "lowest-free") => value === "lowest-free" ? "the lowest free number" : "one after the highest number";
+    settings.push(`- \`add\` gives new stories ${scheme(diff.storyIds.to)} (was ${scheme(diff.storyIds.from)}).`);
+  }
+  if (diff.upgrade) {
+    const mode = (value: "simple" | "advanced" | undefined) => value === undefined ? "not chosen" : `${value} mode`;
+    settings.push(`- Upgrade review: ${mode(diff.upgrade.to)} (was ${mode(diff.upgrade.from)}).`);
+  }
+  if (diff.architectureDecisions) {
+    const level = (value: "recommended" | "required") => value === "required" ? "required, so a gap in an open plan is a warning" : "recommended, so a gap in an open plan is a notice";
+    settings.push(`- Architecture decisions in plans: ${level(diff.architectureDecisions.to)} (was ${diff.architectureDecisions.from}).`);
+  }
+  if (settings.length) lines.push("### Settings", "", ...settings, "");
 
   return lines.join("\n");
 }
+
+/** A short label for each kind of change that needs a person, as the diff and `pr-check` show it. */
+export const needsPersonLabels: Record<NeedsPersonChange["rule"], string> = {
+  "draft-confirmed": "Draft confirmed",
+  "estimate-changed": "Estimate",
+  "story-removed": "Story removed",
+  "possible-renumber": "Possible renumber",
+  "customer-copy-changed": "Customer copy",
+  "settings-changed": "Setting",
+};
 
 /** “1,843,920”, or “none” when no count was recorded. */
 const formatTokens = (tokens: number | undefined) => (tokens === undefined ? "none" : tokens.toLocaleString("en-US"));

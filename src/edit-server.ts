@@ -48,7 +48,7 @@ export interface StoryMapEditRead {
   source: string;
   /** The parsed map, for `getStoryMapPage`. */
   document: StoryMapDocument;
-  /** Pass as `personaEditing`, and as `storyEditing` to save the story panel's **Change** section. `undefined` unless editing is on for this request. */
+  /** Pass as `personaEditing`, and as `storyEditing` to save the story panel's **Actions** menu. `undefined` unless editing is on for this request. */
   editing: StoryMapEditingProps | undefined;
 }
 

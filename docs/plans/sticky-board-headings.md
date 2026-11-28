@@ -1,6 +1,6 @@
 # Plan: keep activity and release titles in view while scrolling
 
-Status: in progress. The work is ESM-157 in the **0.8.0: Map versions, steps and audit** release of the map. It has no agreed estimate yet.
+Status: shipped. The work is ESM-157 in the **0.7.6: Triage, readiness and agent access** release of the map. It has no agreed estimate yet.
 
 On a map with several releases, scrolling down takes the activity titles off the top of the screen, and a tall release lane takes its own title with them. Scrolling sideways on a narrow window takes the release titles off the left. The reader is left with cards and no sign of which activity or release they belong to.
 
@@ -8,7 +8,7 @@ It builds on **ESM-104**, [Render the map as a board](../ENGINEERING-OVERVIEW.md
 
 It overlaps two planned stories, and neither has to land first:
 
-- **ESM-108**, [Expand activities into steps](0.4.0-enhancements.md#6-expandable-steps-within-activities), also in 0.8.0, changes the heading row. Whichever lands second must decide whether step headings stay in view too, and any toggle must stay reachable when the row shrinks.
+- **ESM-108**, [Expand activities into steps](0.4.0-enhancements.md#6-expandable-steps-within-activities), also in 0.8.2, changes the heading row. Whichever lands second must decide whether step headings stay in view too, and any toggle must stay reachable when the row shrinks.
 - **ESM-134**, [Summarise delivery on each release lane](delivery-metrics.md#5-summarise-delivery-on-each-release-lane), adds content to the release column. It belongs below the pinned name, not in it.
 
 ## Why CSS alone on today's markup does not work
@@ -75,7 +75,7 @@ Not agreed yet.
 ## Questions for review
 
 - **Inner scroll area.** Is a grid that scrolls inside the page acceptable by default in host products, or should hosts opt in? The plan has it on by default.
-- **Release.** Placed in 0.8.0 beside ESM-108, the other change to the heading row. 0.7.6 was already split to make it smaller, but this could move there.
+- **Release.** Placed in 0.8.2 beside ESM-108, the other change to the heading row. 0.7.6 was already split to make it smaller, but this could move there.
 - **Shrinking the heading row.** Should the persona avatars stay when the row shrinks? The plan hides them to save space. They return at the top of the board.
 
 ## As built
@@ -87,3 +87,5 @@ Testing the real preview in Chrome changed three things from the first draft:
 - `enhanceStoryMapHeadings` brings the top of the grid back into the window after a permalink, which scrolls the page as well as the grid.
 
 The row also stays full size while one of its persona avatars has focus, so shrinking never drops focus.
+
+ESM-192 later took the grid out of its box, so the page is the only thing that scrolls. A host that sets `--esm-board-height` keeps the box. See [Scroll the board with the page](page-scroll-board.md).
