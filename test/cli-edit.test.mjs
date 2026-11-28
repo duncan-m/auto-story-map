@@ -7,6 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import fc from "fast-check";
 import { diffStoryMaps, formatStoryMapDiff, nextStoryId, parseStoryMap, proposeStoryMapEdit, StoryMapEditError } from "auto-story-map";
+import { escapeRegExp } from "../dist/references.js";
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const ownMap = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
@@ -96,7 +97,6 @@ test("ESM-744: add gives the next ID in sequence across the map, and never reuse
   const result = await proposeStoryMapEdit(sequentialMap, [{ op: "add", title: "Check claims in CI", activity: "review", release: "v0-7-5" }]);
   assert.deepEqual(result.addedIds, [next]);
   const lastSource = map.stories.filter(story => story.release === "v0-7-5").at(-1).sources.at(-1);
-  const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   assert.match(result.source, new RegExp(`- ${escapeRegExp(lastSource)}\\n {2}- id: ${next}\\n {4}title: Check claims in CI\\n {4}activity: review\\n {4}release: v0-7-5\\n {4}status: planned\\n {2}# Personas\\n`));
   assert.equal(result.source.replace(new RegExp(` {2}- id: ${next}\\n(?: {4}.*\\n)+`), ""), sequentialMap, "only the new story's lines are added");
   assert.ok(result.newIssues.some(issue => issue.itemId === next && /estimate/.test(issue.message)), "the missing estimate is a new warning");

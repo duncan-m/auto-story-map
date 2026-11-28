@@ -19,6 +19,7 @@ import {
   upgradeOverview,
   upgradeReport,
 } from "auto-story-map";
+import { escapeRegExp } from "../dist/references.js";
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const packaged = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -42,9 +43,6 @@ async function host(t, files = {}) {
   }
   return root;
 }
-
-/** Text as a regular expression that matches it literally. */
-const escapeRegExp = text => text.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 
 const run = (root, ...args) => spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8" });
 
