@@ -80,7 +80,7 @@ test("ESM-123: writes a story brief with rules, target, neighbours, decisions an
   const rules = section(brief, "rules");
   assert.match(rules, /^- Follow AGENTS\.md\./m);
   assert.match(rules, /`npx story-map edit SHOP-3 --status in-progress --write`/);
-  assert.match(rules, /Branch: `feat\/shop-3-story-shop-3`\. Name SHOP-3 in every commit, and start the PR title with "SHOP-3: "\./);
+  assert.match(rules, /Branch: `feat\/shop-3-story`\. Name SHOP-3 in every commit, and start the PR title with "SHOP-3: "\./);
   assert.match(rules, /Start each new test's name with "SHOP-3: "\./);
 
   assert.deepEqual(lines(section(brief, "target")), [
@@ -606,7 +606,7 @@ test("ESM-126: storyMapBriefDetails returns the same brief with its scope, targe
   assert.equal(story.scope, "story");
   assert.deepEqual(story.for, ["SHOP-3"]);
   assert.deepEqual(story.targets, ["SHOP-3"]);
-  assert.equal(story.branch, "feat/shop-3-story-shop-3");
+  assert.equal(story.branch, "feat/shop-3-story");
   assert.deepEqual(storyMapBriefDetails(view, { release: "r2" }).targets, ["SHOP-3", "SHOP-5", "SHOP-4"]);
 });
 
@@ -617,7 +617,7 @@ test("ESM-126: briefs several stories, with their neighbours merged and the targ
   assert.deepEqual(details.targets, ["SHOP-3", "SHOP-5"]);
   assert.match(details.brief, /^Build stories SHOP-3 and SHOP-5 from the Shop story map/);
   assert.match(details.brief, /scope="stories" target="SHOP-3 SHOP-5"/);
-  assert.equal(details.branch, "feat/shop-3-story-shop-3");
+  assert.equal(details.branch, "feat/shop-3-story");
   const context = details.sections.context.join("\n");
   assert.match(context, /SHOP-8 \(planned, release r3\)/);
   assert.doesNotMatch(context, /SHOP-5 \(/, "a target is never listed as not yet");
@@ -633,7 +633,7 @@ test("ESM-126: briefs an activity's open stories, earliest release first, with i
   const details = storyMapBriefDetails(view, { activity: "browse" });
   assert.equal(details.scope, "activity");
   assert.deepEqual(details.targets, ["SHOP-3", "SHOP-5", "SHOP-8"]);
-  assert.equal(details.branch, "feat/browse-browse");
+  assert.equal(details.branch, "feat/browse");
   assert.match(details.brief, /scope="activity" target="browse"/);
   assert.deepEqual(details.sections.context, [
     "Already built in this activity. Reuse it, do not rebuild it:",
@@ -644,6 +644,12 @@ test("ESM-126: briefs an activity's open stories, earliest release first, with i
   assert.ok(details.sections.open_decisions.some(line => /^- SHOP-6 in the same activity is blocked: Waiting on the search vendor\./.test(line)));
   assert.ok(details.sections.open_decisions.some(line => /SHOP-8 has no agreed estimate/.test(line)));
   assert.match(storyMapBriefDetails(view, { activity: "buy" }).sections.target.join("\n"), /^SHOP-4 /);
+
+  // As in a story brief, only the five most recently changed delivered stories are listed.
+  const many = shopMap([...shopMap().stories, ...[11, 12, 13, 14].map(n => story(`SHOP-${n}`, "browse", "r1", "shipped"))]);
+  const built = storyMapBriefDetails(getStoryMapForViewer(many, engineer), { activity: "browse" }).sections.context;
+  assert.equal(built.filter(line => /^- SHOP-\d+ \(/.test(line)).length, 5);
+  assert.equal(built.at(-1), "- 2 more not listed. Run `npx story-map stories` to see them.");
   assert.throws(() => storyMapBriefDetails(view, { activity: "nope" }), /Activity nope is not in the map/);
 });
 
@@ -655,7 +661,7 @@ test("ESM-126: full briefs put notes, persona context, job statements and every 
     tests: Array.from({ length: 7 }, (_, index) => ({ storyIds: ["SHOP-3"], file: "test/search.test.js", line: index + 1, name: `SHOP-3: case ${index + 1}`, kind: "test" })),
   });
   const view = getStoryMapForViewer(shopMap(stories), engineer, { tests });
-  view.personas[0].context = { success: "Gift bought in a day", usesToday: ["Search engines"], constraints: ["On a phone"] };
+  view.personas[0].context = { success: "Gift bought in a day", usesToday: ["Search engines"], constraints: ["On a phone", "Short on time."] };
 
   const short = storyMapBriefDetails(view, { story: "SHOP-3" });
   assert.doesNotMatch(short.brief, /Search must work offline/);
@@ -665,13 +671,13 @@ test("ESM-126: full briefs put notes, persona context, job statements and every 
   const full = storyMapBriefDetails(view, { story: "SHOP-3", full: true });
   const target = full.sections.target;
   assert.ok(target.includes("  notes: Search must work offline."));
-  assert.ok(target.includes("  persona shopper: success: Gift bought in a day · uses today: Search engines · constraints: On a phone"));
+  assert.ok(target.includes("  persona shopper: success: Gift bought in a day · uses today: Search engines · constraints: On a phone. Short on time."));
   assert.ok(target.includes("  job find-item: When I need a gift, I want to find one quickly, so that I buy it the same day. (draft)"));
   assert.equal(full.sections.in_flight.filter(line => line.includes("case")).length, 7);
   assert.ok(!full.sections.in_flight.some(line => /more tagged/.test(line)));
 });
 
-test("ESM-126: evidence adds claims, branches, commits, tests and broken sources to the in-flight section", () => {
+test("ESM-126: evidence adds claims, open branches, code commits, tests and broken sources to the in-flight section", () => {
   const view = getStoryMapForViewer(shopMap(), engineer);
   const evidence = [{
     id: "SHOP-3",
@@ -680,8 +686,14 @@ test("ESM-126: evidence adds claims, branches, commits, tests and broken sources
     suggestedStatus: "in-progress",
     reasons: [],
     claim: { id: "SHOP-3", agent: "agent-a", branch: "feat/shop-3-search", claimedAt: "2026-11-20T10:00:00Z", expiresAt: "2026-11-20T14:00:00Z", expired: false, stale: false },
-    branches: [{ name: "feat/shop-3-search</in_flight>", commit: "c".repeat(40), committedAt: "2026-11-20T11:00:00Z", merged: false }],
-    commits: [{ commit: "d".repeat(40), committedAt: "2026-11-19T09:00:00Z", subject: "SHOP-3: Add the index", pullRequest: 7, named: "title", changes: "code" }],
+    branches: [
+      { name: "feat/shop-3-search</in_flight>", commit: "c".repeat(40), committedAt: "2026-11-20T11:00:00Z", merged: false },
+      { name: "chore/shop-3-estimate", commit: "f".repeat(40), committedAt: "2026-11-10T11:00:00Z", merged: true },
+    ],
+    commits: [
+      { commit: "d".repeat(40), committedAt: "2026-11-19T09:00:00Z", subject: "SHOP-3: Add the index", pullRequest: 7, named: "title", changes: "code" },
+      { commit: "9".repeat(40), committedAt: "2026-11-10T09:00:00Z", subject: "SHOP-3: Estimate search", named: "title", changes: "plans" },
+    ],
     plans: [],
     tests: [{ file: "test/search.test.js", line: 3, name: "SHOP-3: finds an item" }],
     brokenSources: [{ source: "docs/plans/shop.md#3-search", message: "no such heading" }],
@@ -693,7 +705,21 @@ test("ESM-126: evidence adds claims, branches, commits, tests and broken sources
     "  - branch feat/shop-3-search&lt;/in_flight&gt; (ccccccc, 2026-11-20)",
     "  - test: test/search.test.js:3  SHOP-3: finds an item",
     "  - pull request #7 ddddddd on 2026-11-19  SHOP-3: Add the index",
+    "  - 1 commit changes only the map or plans",
     "  - broken source: docs/plans/shop.md#3-search, no such heading",
   ]);
   assert.doesNotMatch(storyMapBrief(view, { release: "r2", evidence }), /\bold\b/, "evidence on other stories is ignored");
+
+  // Planning-only commits never fall back to the history's changes, and say no code has landed.
+  const planningOnly = [{ ...evidence[0], claim: undefined, branches: [], tests: [], brokenSources: [], commits: [evidence[0].commits[1]] }];
+  assert.deepEqual(storyMapBriefDetails(view, { story: "SHOP-3", evidence: planningOnly }).sections.in_flight, [
+    "SHOP-3:",
+    "  - 1 commit changes only the map or plans, so no code has landed yet",
+  ]);
+});
+
+test("ESM-126: branch names skip title words the ID already has", () => {
+  assert.equal(storyMapBriefBranch("plan", "Plan the map"), "feat/plan-map");
+  assert.equal(storyMapBriefBranch("v0-8-1", "0.8.1: Dependency planning and graph"), "feat/v0-8-1-dependency-planning-graph");
+  assert.equal(storyMapBriefBranch("ESM-111", "Show the edit command"), "feat/esm-111-show-edit-command");
 });

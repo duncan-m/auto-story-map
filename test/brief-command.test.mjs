@@ -60,7 +60,7 @@ const env = {
   GIT_CONFIG_NOSYSTEM: "1",
 };
 
-/** A scratch repository holding the map on main, with a branch and a commit that name ESM-1. */
+/** A scratch repository holding the map on main, with a code commit for ESM-2, a planning commit for ESM-4 and an open branch for ESM-1. */
 async function repository(t) {
   const root = await mkdtemp(join(tmpdir(), "story-map-brief-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -75,15 +75,21 @@ async function repository(t) {
   await writeFile(join(root, "work.js"), "export const work = 1;\n");
   git("add", "-A");
   git("commit", "-q", "-m", "ESM-2: Start the work");
-  git("branch", "feat/esm-1-planned-work");
-  return { root, git, read: () => readFile(join(root, "product/story-map.yaml"), "utf8") };
+  await writeFile(join(root, "product/story-map.yaml"), map.replace("title: Later work", "title: Later work\n    summary: Estimated."));
+  git("commit", "-q", "-am", "ESM-4: Estimate the later work");
+  git("checkout", "-q", "-b", "feat/esm-1-planned-work");
+  await writeFile(join(root, "planned.js"), "export const planned = 1;\n");
+  git("add", "-A");
+  git("commit", "-q", "-m", "ESM-1: Begin");
+  git("checkout", "-q", "main");
+  return { root, git, read: () => readFile(join(root, "product/story-map.yaml"), "utf8"), mapOnMain: map.replace("title: Later work", "title: Later work\n    summary: Estimated.") };
 }
 
 const run = (cwd, ...args) => spawnSync(process.execPath, [cli, ...args], { cwd, env, encoding: "utf8" });
 
 test("ESM-126: story-map brief prints the board's brief, with Git evidence in flight", async t => {
-  const { root, read } = await repository(t);
-  const view = getStoryMapForViewer(parseStoryMap(map), {}, { canViewInternal: () => true });
+  const { root, read, mapOnMain } = await repository(t);
+  const view = getStoryMapForViewer(parseStoryMap(mapOnMain), {}, { canViewInternal: () => true });
 
   // Without evidence it is the board's brief, word for word.
   const plain = run(root, "brief", "--no-evidence", "ESM-1");
@@ -94,8 +100,13 @@ test("ESM-126: story-map brief prints the board's brief, with Git evidence in fl
   assert.equal(withGit.status, 0, withGit.stderr);
   assert.match(withGit.stdout, /<in_flight>\nESM-2:\n {2}- commit [0-9a-f]{7} on \d{4}-\d\d-\d\d {2}ESM-2: Start the work\n<\/in_flight>/);
   const branch = run(root, "brief", "ESM-1");
-  assert.match(branch.stdout, /^ {2}- branch feat\/esm-1-planned-work \([0-9a-f]{7}, \d{4}-\d\d-\d\d, merged\)$/m);
-  assert.equal(await read(), map, "the map is never changed");
+  assert.match(branch.stdout, /^ {2}- branch feat\/esm-1-planned-work \([0-9a-f]{7}, \d{4}-\d\d-\d\d\)$/m);
+
+  // A commit that only changes the map is planning, so it is counted, not listed as work in flight.
+  const planning = run(root, "brief", "ESM-4");
+  assert.match(planning.stdout, /<in_flight>\nESM-4:\n {2}- 1 commit changes only the map or plans, so no code has landed yet\n<\/in_flight>/);
+  assert.doesNotMatch(planning.stdout, /Estimate the later work/);
+  assert.equal(await read(), mapOnMain, "the map is never changed");
 });
 
 test("ESM-126: story-map brief takes several stories, a release or an activity, and --full", async t => {
@@ -127,7 +138,7 @@ test("ESM-126: story-map brief --format json prints the scope, targets, branch a
   assert.equal(body.scope, "release");
   assert.deepEqual(body.for, ["now"]);
   assert.deepEqual(body.targets, ["ESM-1", "ESM-2"]);
-  assert.equal(body.branch, "feat/now-now");
+  assert.equal(body.branch, "feat/now");
   assert.ok(body.sections.in_flight.some(line => /ESM-2: Start the work/.test(line)));
   assert.match(body.brief, /^Build release now /);
 });

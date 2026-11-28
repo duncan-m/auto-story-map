@@ -100,7 +100,9 @@ export function storyMapBriefBranch(id: string, title: string): string {
   const slugWords = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   let branch = `feat/${slugWords(id).join("-") || "work"}`.slice(0, briefBranchMaxLength);
   while (branch.endsWith("-")) branch = branch.slice(0, -1);
-  const words = slugWords(title.replace(/^\s*v?\d+(?:\.\d+)*\s*:\s*/i, "")).filter(word => !branchStopWords.has(word));
+  // Words the ID already has, such as "plan" for activity plan "Plan the map", are skipped too.
+  const idWords = new Set(slugWords(id));
+  const words = slugWords(title.replace(/^\s*v?\d+(?:\.\d+)*\s*:\s*/i, "")).filter(word => !branchStopWords.has(word) && !idWords.has(word));
   for (const word of words.slice(0, branchWords)) {
     if (branch.length + 1 + word.length > briefBranchMaxLength) break;
     branch += `-${word}`;
@@ -115,6 +117,12 @@ export function storyMapBriefBranch(id: string, title: string): string {
  */
 function safe(text: string | undefined): string {
   return (text ?? "").replace(/\s+/g, " ").trim().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Map text as a sentence, with a full stop added when it has no closing punctuation, so sentences can be joined with a space. */
+function sentence(text: string): string {
+  const clean = safe(text);
+  return /[.!?]$/.test(clean) ? clean : `${clean}.`;
 }
 
 function attribute(text: string): string {
@@ -163,6 +171,8 @@ interface BriefParts {
   decisions: string[];
   doneWhen: string[];
   maxBytes: number;
+  /** Most "Already built" stories to list before the size limit applies. Defaults to all. */
+  builtLimit?: number;
 }
 
 function storyLine(entry: Neighbour) {
@@ -460,6 +470,7 @@ function activityParts(view: InternalView, id: string, options: ResolvedOptions)
     decisions,
     doneWhen: manyDoneWhen(options),
     maxBytes: releaseBriefMaxBytes,
+    builtLimit: briefBuiltNearbyMaxItems,
   };
 }
 
@@ -528,7 +539,7 @@ function targetLines(view: InternalView, story: InternalStoryCard, full: boolean
       const facts = [
         context.success ? `success: ${safe(context.success)}` : "",
         context.usesToday?.length ? `uses today: ${context.usesToday.map(safe).join(", ")}` : "",
-        context.constraints?.length ? `constraints: ${context.constraints.map(safe).join("; ")}` : "",
+        context.constraints?.length ? `constraints: ${context.constraints.map(sentence).join(" ")}` : "",
       ].filter(Boolean);
       if (facts.length) lines.push(`  persona ${safe(id)}: ${facts.join(" · ")}`);
     }
@@ -555,21 +566,27 @@ function inFlightLines(story: InternalStoryCard, options: ResolvedOptions): stri
       ? `  - claim: unreadable, ${safe(claim.problem)}`
       : `  - claim: ${safe(claim.agent)}${claim.branch ? ` on ${safe(claim.branch)}` : ""}, ${claim.expired ? "expired" : "expires"} ${safe(claim.expiresAt.slice(0, 16))}${claim.stale ? ", stale" : ""}`);
   }
-  for (const branch of (found?.branches ?? []).slice(0, branchesPerTarget)) {
+  // A merged branch's work is already in the commits below, so only open branches are listed.
+  const branches = (found?.branches ?? []).filter(branch => !branch.merged);
+  for (const branch of branches.slice(0, branchesPerTarget)) {
     lines.push(`  - branch ${safe(branch.name)} (${safe(branch.commit.slice(0, 7))}, ${safe(branch.committedAt.slice(0, 10))}${branch.merged ? ", merged" : ""})`);
   }
-  const moreBranches = Math.max(0, (found?.branches.length ?? 0) - branchesPerTarget);
+  const moreBranches = Math.max(0, branches.length - branchesPerTarget);
   if (moreBranches) lines.push(`  - ${moreBranches} more ${moreBranches === 1 ? "branch" : "branches"}`);
   for (const entry of tests.slice(0, keepTests)) lines.push(`  - ${entry.kind ?? "test"}: ${safe(entry.file)}:${entry.line}  ${safe(entry.name)}`);
   if (moreTests) lines.push(`  - ${moreTests} more tagged ${moreTests === 1 ? "test" : "tests"}`);
   // Git is the fresher record of the commits, so evidence replaces the history file's changes when it has some.
   if (found?.commits.length) {
-    for (const commit of found.commits.slice(0, changesPerTarget)) {
+    // Commits that change only the map or plans, such as estimates and renumbering, are planning, not work in flight.
+    const work = found.commits.filter(commit => commit.changes !== "plans");
+    const planning = found.commits.length - work.length;
+    for (const commit of work.slice(0, changesPerTarget)) {
       const label = commit.pullRequest ? `pull request #${commit.pullRequest}` : "commit";
       lines.push(`  - ${label} ${safe(commit.commit.slice(0, 7))} on ${safe(commit.committedAt.slice(0, 10))}  ${safe(commit.subject)}`);
     }
-    const more = (found.moreCommits ?? 0) + Math.max(0, found.commits.length - changesPerTarget);
+    const more = (found.moreCommits ?? 0) + Math.max(0, work.length - changesPerTarget);
     if (more) lines.push(`  - ${more} more ${more === 1 ? "commit" : "commits"}`);
+    if (planning) lines.push(`  - ${planning} ${planning === 1 ? "commit changes" : "commits change"} only the map or plans${work.length || found.moreCommits ? "" : ", so no code has landed yet"}`);
   } else {
     const changes = story.changes ?? [];
     for (const change of changes.slice(0, changesPerTarget)) {
@@ -616,7 +633,7 @@ function render(view: InternalView, parts: BriefParts, options: ResolvedOptions)
     return { brief: `${text.join("\n")}\n`, sections };
   };
 
-  let keepBuilt = parts.built.length;
+  let keepBuilt = Math.min(parts.built.length, parts.builtLimit ?? Infinity);
   let keepNotYet = parts.notYet.length;
   let written = write(keepBuilt, keepNotYet);
   // Cut the neighbour lists, longest first, until the brief fits. The targets are never cut.
