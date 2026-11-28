@@ -527,8 +527,8 @@ releases:
         expected: None, with the claim rules checked by a model-based test on every CI run
         solves: Two agents building the same story when they claim it at the same moment
         draft: true
-  - id: v0-8-0
-    title: "0.8.0: Agent briefs"
+  - id: v0-7-10
+    title: "0.7.10: Agent briefs"
     summary: Agents and scripts print a brief for a story, release or activity with story-map brief.
     notes: |
       Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting a local agent from the preview (ESM-127) was cut: Open in Claude Code (ESM-144) and Copy brief (ESM-124) already cover it.
@@ -2123,7 +2123,7 @@ stories:
   - id: ESM-126
     title: Write agent briefs from the command line
     activity: plan
-    release: v0-8-0
+    release: v0-7-10
     status: planned
     estimate: 3
     priority: must
@@ -2141,7 +2141,7 @@ stories:
   - id: ESM-127
     title: Start Claude Code or Codex on a brief from the local preview
     activity: plan
-    release: v0-8-0
+    release: v0-7-10
     status: cut
     statusReason: ESM-144 already starts Claude Code on the brief in the repository, and ESM-124 lets you copy the brief into a local claude or codex session. What is left, a local or Codex launch, is not worth 5 points or the open terminal spike in Decision B.
     estimate: 5
