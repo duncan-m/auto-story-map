@@ -87,3 +87,5 @@ Testing the real preview in Chrome changed three things from the first draft:
 - `enhanceStoryMapHeadings` brings the top of the grid back into the window after a permalink, which scrolls the page as well as the grid.
 
 The row also stays full size while one of its persona avatars has focus, so shrinking never drops focus.
+
+ESM-192 later took the grid out of its box, so the page is the only thing that scrolls. A host that sets `--esm-board-height` keeps the box. See [Scroll the board with the page](page-scroll-board.md).
