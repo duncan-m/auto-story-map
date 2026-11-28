@@ -447,7 +447,10 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
       // Cut stories have left the release, so they add nothing, as in release progress.
       if (story.status === "cut") continue;
       let totals = estimates.get(story.release);
-      if (!totals) estimates.set(story.release, totals = { total: 0, merged: 0, left: 0, unestimated: 0, estimated: 0 });
+      if (!totals) {
+        totals = { total: 0, merged: 0, left: 0, unestimated: 0, estimated: 0 };
+        estimates.set(story.release, totals);
+      }
       if (story.estimate === undefined) {
         totals.unestimated++;
         continue;
@@ -470,7 +473,10 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
     for (const story of map.stories) {
       for (const id of new Set(story.jobs ?? [])) {
         let counts = jobCounts.get(id);
-        if (!counts) jobCounts.set(id, counts = Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>);
+        if (!counts) {
+          counts = Object.fromEntries(storyStatuses.map(status => [status, 0])) as Record<StoryStatus, number>;
+          jobCounts.set(id, counts);
+        }
         counts[story.status]++;
       }
       if (!isActiveStatus(story.status)) continue;

@@ -599,6 +599,7 @@ mcp
 help
   Prints this text, or just the section for <command>.`;
 
+// biome-ignore lint/suspicious/noExplicitAny: each command has its own options type, and Command is invariant in it, so no narrower type holds them all.
 const commands: Record<string, Command<any>> = { init, upgrade, validate, diff, "pr-check": prCheck, history, tests, export: exportMap, story, stories, releases, actions, evidence, brief, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */

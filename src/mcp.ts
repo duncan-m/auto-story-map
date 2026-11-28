@@ -138,7 +138,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("list_stories", {
     title: "List stories",
-    description: "Lists stories with the board's filters, as story-map stories --format json does. As on the board, blocked and cut stories are hidden unless status chooses them. Use query to find an existing story before adding one. " + untrusted,
+    description: `Lists stories with the board's filters, as story-map stories --format json does. As on the board, blocked and cut stories are hidden unless status chooses them. Use query to find an existing story before adding one. ${untrusted}`,
     inputSchema: {
       map: mapField,
       history: historyField,
@@ -184,7 +184,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("get_story", {
     title: "Get stories",
-    description: "Returns stories in full, as story-map story --format json does: status, release, activity, estimate, personas, jobs, readiness, summary, notes and sources, with history and tagged tests when their files are given. Read a story's sources to find its plan before changing it. An unknown ID is listed under missing, with close matches. " + untrusted,
+    description: `Returns stories in full, as story-map story --format json does: status, release, activity, estimate, personas, jobs, readiness, summary, notes and sources, with history and tagged tests when their files are given. Read a story's sources to find its plan before changing it. An unknown ID is listed under missing, with close matches. ${untrusted}`,
     inputSchema: { ids: idList.min(1).describe("Story IDs, such as ESM-116."), map: mapField, history: historyField, testsIndex: testsIndexField },
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, run("stories", async args => {
@@ -195,7 +195,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("list_releases", {
     title: "List releases",
-    description: "Lists releases, or the ones named, with story counts by status, estimates, notes and expected impact, as story-map releases --format json does. Impact items an agent drafted have draft: true. " + untrusted,
+    description: `Lists releases, or the ones named, with story counts by status, estimates, notes and expected impact, as story-map releases --format json does. Impact items an agent drafted have draft: true. ${untrusted}`,
     inputSchema: { ids: idList.optional().describe("Release IDs. Defaults to every release."), map: mapField, history: historyField, testsIndex: testsIndexField },
     annotations: { readOnlyHint: true, openWorldHint: false },
   }, run("releases", async args => {
@@ -227,7 +227,7 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
 
   server.registerTool("get_evidence", {
     title: "Get evidence",
-    description: "Reports what has already happened on each story, or every active story, and suggests a status without changing anything, as story-map evidence --format json does: branches, commits on the default branch, Markdown mentions, tagged tests and broken sources. It reads the checkout only, unless claims is set. " + untrusted,
+    description: `Reports what has already happened on each story, or every active story, and suggests a status without changing anything, as story-map evidence --format json does: branches, commits on the default branch, Markdown mentions, tagged tests and broken sources. It reads the checkout only, unless claims is set. ${untrusted}`,
     inputSchema: {
       ids: idList.optional().describe("Story IDs. Defaults to every active story."),
       map: mapField,

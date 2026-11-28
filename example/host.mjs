@@ -65,7 +65,7 @@ export function makeStoryMapResponse(target, document, viewer, options = {}) {
       ),
     ),
   );
-  return new Response("<!doctype html>" + renderToStaticMarkup(page), {
+  return new Response(`<!doctype html>${renderToStaticMarkup(page)}`, {
     status,
     headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
   });

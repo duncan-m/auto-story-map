@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>Auto Story Map</title>
   <!-- The demo's tab icon: a story map's backbone and card columns. -->
   <rect fill="#5046d5" width="32" height="32" rx="7"/>
   <rect fill="#fff" x="5" y="5" width="22" height="5" rx="1.5"/>

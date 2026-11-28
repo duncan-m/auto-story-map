@@ -41,7 +41,9 @@ async function check(t, plans, source = map()) {
   const result = await checkStoryMap(source, { root, plans: ["docs/plans"] });
   const found = {};
   for (const issue of result.issues.filter(issue => issue.rule.startsWith("plan-status-"))) {
-    (found[issue.file.replace("docs/plans/", "")] ??= []).push(issue);
+    const name = issue.file.replace("docs/plans/", "");
+    found[name] ??= [];
+    found[name].push(issue);
   }
   return { found, result, root };
 }

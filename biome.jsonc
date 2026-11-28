@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  // The only place the linted file list is held. npm run lint passes no paths.
+  "files": {
+    "includes": ["src/**", "test/**", "scripts/**", "example/**", "!test/fixtures"]
+  },
+  // Lint only: no file is reformatted and imports are not sorted.
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "complexity": {
+        // A refactor signal for ESM-185, not a gate.
+        "noExcessiveCognitiveComplexity": "warn"
+      },
+      "style": {
+        // Off for now: 191 uses in src/, each after a check tsc cannot follow. Replacing them is a follow-up, not a lint fix.
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        // Off: the code strips control characters from untrusted text on purpose, and the tests check that none reach the terminal.
+        "noControlCharactersInRegex": "off",
+        // Off: board lists are rendered once from map data with no per-item state, and item text can repeat, so the index is the stable key.
+        "noArrayIndexKey": "off"
+      },
+      "a11y": {
+        // Off: the board's ARIA table, group and search roles are styled by styles.css and hosts' CSS, so swapping elements would break host styles.
+        "useSemanticElements": "off",
+        // Off: it treats ARIA table rows and headers as interactive, but the board's table is read-only.
+        "useFocusableInteractive": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      // TypeScript strict infers an unannotated let from its assignments and reports any implicit any itself.
+      "includes": ["src/**/*.ts", "src/**/*.tsx"],
+      "linter": { "rules": { "suspicious": { "noImplicitAnyLet": "off" } } }
+    },
+    {
+      // Test regexes copy the CLI's output, column spacing included, so literal spaces read better than {2}.
+      "includes": ["test/**"],
+      "linter": { "rules": { "complexity": { "noAdjacentSpacesInRegex": "off" } } }
+    }
+  ]
+}

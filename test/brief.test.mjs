@@ -342,7 +342,7 @@ test("ESM-124: board.js shows Copy brief, copies the brief and says what it copi
     contains: node => node === pre,
     querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
     querySelectorAll: selector => selector === "button[data-esm-copy-brief]" ? [button] : [],
-    addEventListener: (type, handler) => { click = handler; },
+    addEventListener: (_type, handler) => { click = handler; },
   };
   let clipboard = { writeText: async text => { written.push(text); } };
   const globals = {
@@ -520,7 +520,7 @@ test("ESM-125: board.js shows the long-brief links and copies the brief as the c
     contains: node => node === pre,
     querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
     querySelectorAll: selector => selector === "a[data-esm-brief-copy]" ? [link] : [],
-    addEventListener: (type, handler) => { click = handler; },
+    addEventListener: (_type, handler) => { click = handler; },
   };
   fakeGlobals(t, {
     Element: FakeElement,
@@ -561,7 +561,7 @@ test("ESM-125: the Share menu closes after a choice and its button says Copied w
   const board = {
     dataset: {},
     querySelector: selector => selector === "[data-esm-copy-status]" ? status : null,
-    addEventListener: (type, handler) => { click = handler; },
+    addEventListener: (_type, handler) => { click = handler; },
   };
   const written = [];
   fakeGlobals(t, {

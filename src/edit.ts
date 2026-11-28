@@ -160,7 +160,7 @@ function renderItem(value: unknown, indent: number) {
 }
 function indentLines(yaml: string, indent: number) {
   const pad = " ".repeat(indent);
-  return yaml.replace(/\n$/, "").split("\n").map(line => (line ? pad + line : line)).join("\n") + "\n";
+  return `${yaml.replace(/\n$/, "").split("\n").map(line => (line ? pad + line : line)).join("\n")}\n`;
 }
 const ensureNewline = (source: string, at: number) => (at > 0 && source[at - 1] !== "\n" ? "\n" : "");
 
@@ -755,7 +755,7 @@ export async function proposeDraftConfirmation(source: string, target: StoryMapD
   } else if ("allJobsOf" in target) {
     const personaIndex = personas.findIndex(persona => persona.id === target.allJobsOf);
     if (personaIndex === -1) unknownPersona(target.allJobsOf, intended.personas ?? [], undefined, "persona");
-    personas[personaIndex].jobs?.forEach((_, jobIndex) => confirmJob(personaIndex, jobIndex));
+    for (const jobIndex of personas[personaIndex].jobs?.keys() ?? []) confirmJob(personaIndex, jobIndex);
   } else {
     const jobOwner = personas.findIndex(persona => persona.jobs?.some(job => job.id === target.id));
     const personaIndex = personas.findIndex(persona => persona.id === target.id);
