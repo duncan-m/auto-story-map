@@ -41,6 +41,7 @@ import {
 import { StoryMapBoard } from "auto-story-map/react";
 import { escapeRegExp } from "../dist/references.js";
 import { makeStoryMapResponse } from "../example/host.mjs";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 // The builder estimates sample map: test data with stable IDs, separate from this product’s own map.
 const sample = await readFile(new URL("./fixtures/builder-estimates.yaml", import.meta.url), "utf8");
@@ -355,7 +356,7 @@ test("many unknown fields are located in linear time", () => {
   const unknown = error.issues.filter(issue => issue.message === "Unknown field. Remove it, or correct its spelling.");
   assert.equal(unknown.length, count);
   assert.equal(unknown.at(-1).line, count + 1);
-  assert.ok(performance.now() - started < 3000);
+  assertFasterThan(started, 3000);
 });
 
 test("unknown fields below many unknown top-level fields are located in linear time", () => {
@@ -375,7 +376,7 @@ test("unknown fields below many unknown top-level fields are located in linear t
   assert.equal(nested.length, count);
   assert.deepEqual(nested.at(-1).path, ["stories", 0, `field${count - 1}`]);
   assert.equal(nested.at(-1).line, 2 * count + 3);
-  assert.ok(performance.now() - started < 3000);
+  assertFasterThan(started, 3000);
 });
 
 test("the CLI prints file positions and GitHub annotations", async t => {
@@ -743,7 +744,7 @@ test("Markdown anchors stay linear for headings with unclosed markup", async () 
   const started = performance.now();
   for (const text of ["<", "[", "[a](", "![a]", "`"]) markdownAnchors(`# ${text.repeat(size / text.length)}`);
   markdownAnchors(`# a${" ".repeat(size)}x\n${"<a ".repeat(size / 3)}`);
-  assert.ok(performance.now() - started < 1000, "anchor extraction took too long");
+  assertFasterThan(started, 1000, "anchor extraction took too long");
 });
 
 test("source checks skip heading anchors in oversized Markdown files", async t => {
@@ -2616,7 +2617,7 @@ test("groups story history newest first in linear time, keeping equal timestamps
   const many = Array.from({ length: 100_000 }, (_, i) => event("planned", new Date(Date.UTC(2026, 0, 1) + i * 1000).toISOString(), "b000000"));
   const started = performance.now();
   const view = getStoryMapForViewer(map, engineer, { history: { ...history, events: many } });
-  assert.ok(performance.now() - started < 2000);
+  assertFasterThan(started, 2000);
   assert.equal(view.stories.find(s => s.id === "BUILDER-101").history.length, 100_000);
 });
 
@@ -3328,7 +3329,7 @@ test("ESM-801: finds tests tagged with story IDs without running them", async t 
   const hostile = 'test.each(' .repeat(20_000) + "test(`".repeat(20_000) + '/"'.repeat(20_000);
   const started = performance.now();
   scanTestCalls(hostile);
-  assert.ok(performance.now() - started < 2000, "scans hostile text quickly");
+  assertFasterThan(started, 2000, "scans hostile text quickly");
 });
 
 test("ESM-801: story-map tests writes an index the board can parse", async t => {
@@ -3582,7 +3583,7 @@ test("ESM-119: a tagged describe block links every test inside it", async t => {
   await writeFile(join(root, "deep.test.js"), deep);
   const started = performance.now();
   const nested = await findStoryTests(loaded, root, { paths: ["deep.test.js"] });
-  assert.ok(performance.now() - started < 2000, "reads deep nesting quickly");
+  assertFasterThan(started, 2000, "reads deep nesting quickly");
   assert.equal(nested.tests.at(-1).inheritedIds.length, 20);
 });
 
