@@ -2471,6 +2471,29 @@ stories:
     summary: validate --plans checks that a plan's UI mockup section links an HTML file and embeds a PNG that both exist, and that a story lists the section in its sources.
     sources:
       - docs/plans/rules-as-checks.md#4-check-plan-mockups
+  - id: ESM-208
+    title: Combine shipped stories into one Released lane
+    activity: explore
+    release: v0-7-7
+    status: merged
+    tokens: 31297907
+    estimatedCostUsd: 10.06
+    jobs:
+      - ground-work-in-customer-needs
+      - reconstruct-current-product
+    summary: |-
+      A board switch moves every shipped story into one Released lane, under its activity, so viewers can see all that is live for a persona in one place.
+      With many shipped releases, one persona's live stories are spread across lane after lane.
+      Done when: the switch shows one Released lane and leaves unshipped stories in their own lanes,
+      it works with the persona and status filters, and the board remembers it after a reload.
+      Not included: the customer view and the exports.
+    notes: Builds on ESM-412, which collapses one release lane at a time, and ESM-903, which filters the board by persona. Releases left with no unshipped stories drop out of view while the switch is on.
+    sources:
+      - docs/plans/released-lane.md#1-combine-shipped-stories-into-one-released-lane
+      - docs/plans/released-lane.md#ui-mockup
+      - docs/story-map.md#show-shipped-stories-in-one-lane
+      - docs/ENGINEERING-OVERVIEW.md#filter-toolbar
+      - test/released-lane.test.mjs
   - id: ESM-165
     title: Model-test concurrent story claims
     activity: review

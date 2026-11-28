@@ -2652,6 +2652,51 @@ function ReleaseCollapse({ releaseId, title }: { releaseId: string; title: strin
   );
 }
 
+/**
+ * The Released lane's collapse value and anchor. Release IDs cannot hold a colon, so the value
+ * never matches a real release, and the anchor does not start with a release lane's `esm-release-`.
+ */
+const releasedLaneValue = ":released";
+const releasedLaneAnchor = "esm-released";
+
+/**
+ * The release lanes to draw. A filter hides the lanes it empties. With shipped stories in the
+ * Released lane, a release whose stories all moved there is hidden too, and a release that has
+ * no stories at all stays, as it does without the Released lane.
+ */
+function laneReleases<Release extends { id: string }>(
+  releases: readonly Release[],
+  placed: readonly InternalStoryCard[],
+  laneCounts: ReadonlyMap<string, number>,
+  filtering: boolean,
+  combineShipped: boolean,
+): readonly Release[] {
+  if (!combineShipped) return filtering ? releases.filter(release => laneCounts.has(release.id)) : releases;
+  const withStories = new Set(placed.map(story => story.release));
+  return releases.filter(release => laneCounts.has(release.id) || (!filtering && !withStories.has(release.id)));
+}
+
+/** The Released lane's story count and summary, or nothing when no shipped story is shown. */
+function releasedLane(stories: readonly InternalStoryCard[]) {
+  if (!stories.length) return undefined;
+  const releases = new Set(stories.map(story => story.release)).size;
+  return { count: stories.length, summary: `Shipped stories from ${plural(releases, "release")}.` };
+}
+
+/**
+ * The Shipped as Released switch: a checkbox in the filter form with the switch role, so it
+ * submits with Apply without JavaScript, and board.js applies it as soon as it changes.
+ */
+function ReleasedSwitch({ on, hintId }: { on: boolean; hintId: string }) {
+  return (
+    <label className="esm-released-switch">
+      Shipped as Released
+      {/* biome-ignore lint/a11y/useAriaPropsForRole: a native checkbox gives the switch its checked state, and a fixed aria-checked would go stale when it flips. HTML-ARIA says not to set it on a checkbox. */}
+      <input type="checkbox" role="switch" name="released" value="1" defaultChecked={on} aria-describedby={hintId} />
+    </label>
+  );
+}
+
 /** Adds a query parameter to a URL that may be relative, keeping any fragment. */
 function withParam(href: string, name: string, value: string) {
   const hash = href.indexOf("#");
@@ -2731,12 +2776,13 @@ function isFiltering(filter: StoryMapView["filter"]) {
   return !!(filter && (filter.query || narrowsStatus || filter.changedWithinDays || filter.persona?.length || filter.job?.length || filter.activity?.length));
 }
 
-/** The host's parameters and the search, status and “changed in” filters, for links that change only the persona or job. */
+/** The host's parameters, the search, status and “changed in” filters and Shipped as Released, for links that change only the persona or job. */
 function filterParams(filter: NonNullable<StoryMapView["filter"]>, preservedParams?: Readonly<Record<string, string>>) {
   const params = new URLSearchParams(preservedParams ?? {});
   if (filter.query) params.set("q", filter.query);
   for (const status of filter.status ?? []) params.append("status", status);
   if (filter.changedWithinDays) params.set("changed", `${filter.changedWithinDays}d`);
+  if (filter.released) params.set("released", "1");
   return params;
 }
 
@@ -2887,6 +2933,7 @@ function FilterToolbar({ filter, shown, preservedParams, showChanged, internal, 
               {changedWithinChoices.map(([days, label]) => <option key={days} value={`${days}d`}>{label}</option>)}
             </select>
           )}
+          {internal && <ReleasedSwitch on={!!filter.released} hintId={hintId} />}
           <button type="submit" className="esm-button esm-apply">Apply</button>
           {exportHref && <ExportMenu href={exportHref} />}
         </form>
@@ -2974,16 +3021,22 @@ export function StoryMapBoard({
     }
   }
 
+  // With Shipped as Released on, shipped stories leave their release's lane for one Released lane.
+  // Each story keeps its release, so its panel, permalink and brief do not change.
+  const combineShipped = internal && map.filter?.released === true;
+  const laneOf = (story: InternalStoryCard) => combineShipped && story.status === "shipped" ? releasedLaneValue : story.release;
   const cells = new Map<string, InternalStoryCard[]>();
   const releaseCounts = new Map<string, number>();
   for (const story of placed) {
-    const key = `${story.release}:${story.activity}`;
+    const lane = laneOf(story);
+    const key = `${lane}:${story.activity}`;
     const cell = cells.get(key);
     if (cell) cell.push(story);
     else cells.set(key, [story]);
-    releaseCounts.set(story.release, (releaseCounts.get(story.release) ?? 0) + 1);
+    releaseCounts.set(lane, (releaseCounts.get(lane) ?? 0) + 1);
   }
-  const releases = filtering ? map.releases.filter(release => releaseCounts.has(release.id)) : map.releases;
+  const releases = laneReleases(map.releases, placed, releaseCounts, filtering, combineShipped);
+  const released = combineShipped ? releasedLane(placed.filter(story => laneOf(story) === releasedLaneValue)) : undefined;
 
   // Without filterStoryMapView, the board hides blocked and cut stories itself and offers a
   // checkbox to show them. CSS does the hiding, so it works without JavaScript and without
@@ -2991,12 +3044,12 @@ export function StoryMapBoard({
   const inactive = { blocked: 0, cut: 0 };
   const activeCounts = new Map<string, number>();
   for (const story of placed) {
-    if (isActiveStatus(story.status)) activeCounts.set(story.release, (activeCounts.get(story.release) ?? 0) + 1);
+    if (isActiveStatus(story.status)) activeCounts.set(laneOf(story), (activeCounts.get(laneOf(story)) ?? 0) + 1);
     else inactive[story.status as keyof typeof inactive]++;
   }
   const hideInactive = !map.filter && (inactive.blocked > 0 || inactive.cut > 0);
   const toggleId = `${baseId}-show-inactive`;
-  const showGrid = releases.length > 0 && (placed.length > 0 || (internal && !filtering));
+  const showGrid = (releases.length > 0 || !!released) && (placed.length > 0 || (internal && !filtering));
   // The Personas tab needs the host to read the board's parameters, and is for internal viewers.
   // A map without personas still gets it, showing how to add them.
   const personaList = [...lookup.personas.values()];
@@ -3026,6 +3079,43 @@ export function StoryMapBoard({
   const linkedStory = !otherTab && linkedStoryId ? placed.find(story => story.id === linkedStoryId) : undefined;
   const linkedReleaseIndex = !otherTab && internalReleases && showGrid && linkedReleaseId ? releases.findIndex(release => release.id === linkedReleaseId) : -1;
   const openPanel = linkedStory ? panelIds.get(linkedStory) : linkedReleaseIndex >= 0 ? `${baseId}-release-${linkedReleaseIndex}` : undefined;
+  // The cards in one lane, a cell for each activity.
+  const laneCells = (lane: string) => map.activities.map(activity => {
+    const stories = cells.get(`${lane}:${activity.id}`) ?? [];
+    return (
+      <div
+        className="esm-cell"
+        role="cell"
+        data-empty={stories.length ? undefined : ""}
+        data-inactive-only={stories.length && stories.every(story => !isActiveStatus(story.status)) ? "" : undefined}
+        key={activity.id}
+      >
+        <span className="esm-cell-label" aria-hidden="true">{activity.title}</span>
+        {stories.map(story => (
+          <button
+            type="button"
+            className="esm-card"
+            id={storyMapAnchorId({ story: story.id })}
+            aria-haspopup="dialog"
+            data-inactive={isActiveStatus(story.status) ? undefined : ""}
+            key={story.id}
+            {...popoverTarget(panelIdOf(story))}
+          >
+            {internal && <CardHead story={story} personas={labelsFor(story.personas, lookup)} />}
+            <span className="esm-card-title">{story.title}</span>
+            <span className="esm-card-meta">
+              <Status status={story.status} />
+              {internal && <DependencyCount story={story} outstanding />}
+              {internal && <CardTests story={story} />}
+              {internal && (story.stalled && story.inProgressSince
+                ? <StalledLabel since={story.inProgressSince} settings={settings} />
+                : story.lastChangedAt && <ChangedAt at={story.lastChangedAt} settings={settings} />)}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  });
 
   return (
     <section className="esm-board" data-theme={theme} data-hide-inactive={hideInactive ? "" : undefined} data-esm-open={openPanel} aria-labelledby={headingId}>
@@ -3108,8 +3198,24 @@ export function StoryMapBoard({
                   </div>
                 ))}
               </div>
+              {released && (
+                <div className="esm-row esm-lane esm-released-lane" role="row" id={releasedLaneAnchor} data-lane={0}>
+                  <div className="esm-release" role="rowheader">
+                    <div className="esm-release-heading">
+                      <ReleaseCollapse releaseId={releasedLaneValue} title="Released" />
+                      <span className="esm-release-name">
+                        <span className="esm-release-dot" aria-hidden="true" />
+                        Released
+                      </span>
+                    </div>
+                    <span className="esm-release-summary">{released.summary}</span>
+                    <span className="esm-release-count">{storyCount(released.count)}</span>
+                  </div>
+                  {laneCells(releasedLaneValue)}
+                </div>
+              )}
               {releases.map((release, laneIndex) => (
-                <div className="esm-row esm-lane" role="row" id={storyMapAnchorId({ release: release.id })} data-lane={laneIndex % 3} key={release.id}>
+                <div className="esm-row esm-lane" role="row" id={storyMapAnchorId({ release: release.id })} data-lane={(laneIndex + (released ? 1 : 0)) % 3} key={release.id}>
                   <div className="esm-release" role="rowheader">
                     <div className="esm-release-heading">
                       <ReleaseCollapse releaseId={release.id} title={release.title} />
@@ -3128,42 +3234,7 @@ export function StoryMapBoard({
                     </> : <span className="esm-release-count">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>}
                     {estimateLine(release.id)}
                   </div>
-                  {map.activities.map(activity => {
-                    const stories = cells.get(`${release.id}:${activity.id}`) ?? [];
-                    return (
-                      <div
-                        className="esm-cell"
-                        role="cell"
-                        data-empty={stories.length ? undefined : ""}
-                        data-inactive-only={stories.length && stories.every(story => !isActiveStatus(story.status)) ? "" : undefined}
-                        key={activity.id}
-                      >
-                        <span className="esm-cell-label" aria-hidden="true">{activity.title}</span>
-                        {stories.map(story => (
-                          <button
-                            type="button"
-                            className="esm-card"
-                            id={storyMapAnchorId({ story: story.id })}
-                            aria-haspopup="dialog"
-                            data-inactive={isActiveStatus(story.status) ? undefined : ""}
-                            key={story.id}
-                            {...popoverTarget(panelIdOf(story))}
-                          >
-                            {internal && <CardHead story={story} personas={labelsFor(story.personas, lookup)} />}
-                            <span className="esm-card-title">{story.title}</span>
-                            <span className="esm-card-meta">
-                              <Status status={story.status} />
-                              {internal && <DependencyCount story={story} outstanding />}
-                              {internal && <CardTests story={story} />}
-                              {internal && (story.stalled && story.inProgressSince
-                                ? <StalledLabel since={story.inProgressSince} settings={settings} />
-                                : story.lastChangedAt && <ChangedAt at={story.lastChangedAt} settings={settings} />)}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    );
-                  })}
+                  {laneCells(release.id)}
                 </div>
               ))}
             </div>

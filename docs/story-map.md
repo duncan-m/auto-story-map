@@ -911,6 +911,12 @@ When the host uses [search and filters](#integrate-with-a-product) and the map h
 
 Customers never see internal personas or jobs, so internal persona IDs and their `job` parameters change nothing. They can filter by the personas [shared with them](#share-personas-with-customers).
 
+### Show shipped stories in one lane
+
+On a map with many shipped releases, one persona's live stories are spread across lane after lane. Internal boards with [search and filters](#integrate-with-a-product) have a **Shipped as Released** switch in the toolbar, off by default. Turn it on to move every shipped story into one **Released** lane at the top of the board, under its own activity, through `?released=1`. Stories that have not shipped stay in their release lanes, and a release whose stories have all moved drops out of view. A release with no stories at all stays, as it does with the switch off.
+
+It changes only the layout. Each story keeps its release, which its panel, permalink and brief still show. The Released lane says how many releases its stories come from, has no release panel, and collapses like any other lane. A release's own panel still lists all its stories, shipped ones included. The switch works with the other filters: with the persona filter, the lane holds that persona's shipped stories, and without **Shipped** in the status filter it is empty and not shown. Links to the Personas and Actions tabs keep it, and **Clear filters** turns it off. Without JavaScript, turn it on and press **Apply**. With `board.js`, it applies as soon as it changes. Customers do not get the switch, and exports are unchanged.
+
 ### Open a persona
 
 On internal boards, a persona panel shows the persona's summary and their **Jobs to be done**. Open it from a persona's avatar under an activity, or from the **For** row of a story panel. Avatars on cards do not open it, because the card itself opens the story.

@@ -72,8 +72,10 @@ export function enhanceStoryMapFilters(root: ParentNode = document) {
     form.dataset.esmAuto = "";
     const hint = form.querySelector<HTMLElement>("[data-esm-filter-hint]");
     if (hint) hint.textContent = "The board updates as soon as you choose an option. Status and persona choices apply when you close their list.";
+    // Selects and the Shipped as Released switch apply at once. Checkboxes in a menu wait for it to close.
     form.addEventListener("change", event => {
-      if (event.target instanceof HTMLSelectElement) submit(form, event.target);
+      const target = event.target;
+      if (target instanceof HTMLSelectElement || (target instanceof HTMLInputElement && target.name === "released")) submit(form, target);
     });
     // The Apply button is hidden, so submit the search explicitly rather than
     // relying on the browser's implicit submission.
