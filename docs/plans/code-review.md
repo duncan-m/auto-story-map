@@ -147,10 +147,10 @@ The cheap checks come first because every later PR in the pilot benefits from th
 
 This plan's own answers, as a worked example of item 6:
 
-- **Where it runs.** Inside the existing tools: CI workflows, `npm` scripts, and the `validate` and `pr-check` commands. No new service, worker or package. Biome and c8 are devDependencies, so hosts never install them.
+- **Where it runs.** Inside the existing tools: CI workflows, `npm` scripts, and the `validate` and `pr-check` commands. No new service, worker or package. Biome, and any coverage tool item 2 needs, such as c8, are devDependencies, so hosts never install them.
 - **Data and contracts.** Upstream, `pr-check` reads the PR description, which gains a **Review** section and an **Architecture** line, and `validate --plans` reads plans, which gain a section. Downstream, the new issues use ESM-159's rule IDs and appear in the text, GitHub and JSON formats without a format version change. `settings.architectureDecisions` is a new optional map setting. Item 9 changes `templates/AGENTS.md`, the skill files and `known-versions.json`, which hosts receive.
 - **Boundaries.** Items 1 to 3 and 10 touch only this repository's tooling and code. Items 4 to 8 change this repository's docs, the template for PRs and the two commands. No board change, and no change to the map format beyond the setting.
-- **Reversibility.** Items 1 to 3 revert by removing a config file or a line. The checks in items 5 and 7 are a warning and a notice, so they never block a host's PR. Item 9 is the hard one to undo: rule text copied into a host's `AGENTS.md` stays there. That is why it is last, after the pilot, and offered through the upgrade review rather than written by `init`.
+- **Reversibility.** Items 1 to 3 revert by removing a config file or a line. The check in item 5 is a warning, and the check in item 7 is a notice, which never fails. Item 7 only blocks a PR for a host that has both set `settings.architectureDecisions: required` and runs `validate --strict`, and removing the setting undoes it. Item 9 is the hard one to undo: rule text copied into a host's `AGENTS.md` stays there. That is why it is last, after the pilot. Existing hosts get it only through the upgrade review, when a person accepts it, and new installs get it from `init`.
 
 Consequential decision: offering the review step to hosts (item 9). Consumers: every host that upgrades, through its `AGENTS.md` and settings. Alternative considered: ship it straight away with item 5. Agreed by: not yet, see [decision B](#decisions-to-make). Revisit if the pilot finds that reviews before ready catch little that CodeQL and the tests would not.
 
@@ -160,7 +160,7 @@ Consequential decision: offering the review step to hosts (item 9). Consumers: e
 
 - **Biome** would probably not have caught it. Its recommended rules check patterns, not whether an escape is complete.
 - **CodeQL** caught it, but only after the push.
-- **`/code-review` on the PR before ready**, together with question 3 in item 4 (which saved input could break), would probably have caught it, by asking what a crafted heading or title would do.
+- **`/code-review` on the PR before ready**, with item 4's questions, would probably have caught it. Question 3 asks which input could break the change, and question 5's escaping check asks whether every metacharacter, backslash included, is escaped.
 - **Item 10** removes this kind of bug for regular-expression escaping, because there is one tested helper to call.
 
 ## Pilot
