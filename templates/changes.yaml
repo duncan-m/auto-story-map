@@ -30,8 +30,10 @@ releases:
     agents:
       - Agents review each pull request's diff against its story before they mark it ready, and record the review and its cost in the pull request description.
       - Agents answer four questions about the architecture of bigger work, in the plan or the pull request, and leave a hard-to-undo decision for a person to agree. Taking this rule sets settings.architectureDecisions to required, so open plans without the answers get warnings.
+      - Agents write each story's summary for people who don't know the code, saying what changes and for whom, why now, when it is done and what it leaves out, in short lines.
     guide:
       - The guide explains how to review a change before it is ready and record what it cost, how to record architecture decisions, when to review the architecture, and how validate checks a plan's architecture section.
+      - The guide explains how to write a story's title and summary so anyone on the team can read them at a glance.
   "0.7.9":
     agents:
       - The rules on drafts, estimates and recording tokens say that CI now checks them.

@@ -532,7 +532,10 @@
 .esm-card:target { outline: 2px solid var(--esm-accent); outline-offset: 2px; }
 .esm-lane:target > .esm-release { box-shadow: inset 3px 0 0 var(--esm-accent); }
 .esm-lane:target .esm-release-name { color: var(--esm-accent-ink); }
-.esm-detail-summary { margin: 14px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
+.esm-detail-summary { margin: 14px 0 0; font-size: .9375rem; line-height: 1.5; overflow-wrap: anywhere; }
+.esm-detail-summary-line { display: block; }
+.esm-detail-summary-line + .esm-detail-summary-line { margin-top: 6px; }
+.esm-detail-summary + .esm-detail-context { margin-top: 24px; }
 .esm-detail-context { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 16px 0 0; font-size: .875rem; }
 .esm-detail-context dt { color: var(--esm-muted); font-weight: 650; }
 .esm-detail-context dd { margin: 0; overflow-wrap: anywhere; }
@@ -629,6 +632,8 @@ button.esm-dependency-link:hover .esm-dependency-title { text-decoration: underl
 .esm-card-tags .esm-priority { margin: 0; }
 .esm-card-tags .esm-priority:last-child { margin-right: -2px; }
 .esm-persona-row { display: flex; flex-wrap: wrap; gap: 6px; }
+/* The For row's chips sit apart from the Jobs and other rows under them. */
+.esm-detail-context .esm-persona-row { margin-bottom: 8px; }
 .esm-persona-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 3px 11px 3px 3px; border: 1px solid var(--esm-line); border-radius: 999px; background: var(--esm-paper); color: var(--esm-ink); font-size: .8125rem; font-weight: 600; }
 .esm-persona-chip .esm-avatar { box-shadow: none; }
 button.esm-persona-chip { cursor: pointer; font-family: inherit; line-height: inherit; }

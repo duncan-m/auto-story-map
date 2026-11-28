@@ -284,7 +284,7 @@ In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the sam
 These steps work from 0.7.8 or later, which has the [upgrade review](#review-the-set-up-after-an-upgrade). Existing maps stay valid.
 
 1. From your host repo, run `npm install auto-story-map@0.7.11` and commit the dependency and lockfile changes together.
-2. Run `npx --no-install story-map upgrade`. It offers two new rules in the `AGENTS.md` section, `review-before-ready` and `architecture-decisions`, or `skill-review-before-ready` and `skill-architecture-decisions` when the rules are in the skill from `init --skill`, and the guide's new sections, [Review a change before it is ready](#review-a-change-before-it-is-ready) and [Record architecture decisions](#record-architecture-decisions). Simple mode adds the new rules even to an edited section, and keeps your own wording. In advanced mode, take the `agents` part.
+2. Run `npx --no-install story-map upgrade`. It offers three new rules in the `AGENTS.md` section, `review-before-ready`, `architecture-decisions` and `write-story-summaries`, or `skill-review-before-ready` and `skill-architecture-decisions` when the rules are in the skill from `init --skill`, and the guide's new sections, [Review a change before it is ready](#review-a-change-before-it-is-ready), [Record architecture decisions](#record-architecture-decisions) and [Write a story summary](#write-a-story-summary). With `init --skill`, the new summary rule is in the skill. Simple mode adds the new rules even to an edited section, and keeps your own wording. In advanced mode, take the `agents` part.
 3. When the run adds the `architecture-decisions` rule and the map has no `settings.architectureDecisions`, it records `required`, so an open plan without a `## Architecture decisions` section gets a warning, which fails `validate --strict`. Before you merge the upgrade, add the section to each open plan, or keep the problems as notices with `npx --no-install story-map settings --architecture-decisions recommended --write`. `story-map diff` lists the setting under **Needs a person**, so a person agrees it. Hosts that keep the rule out see only [notices](#check-the-architecture-section-in-plans).
 4. `story-map plan` now scaffolds a `## Architecture decisions` section, with a hint for each question to replace.
 5. If your repository has a pull request template, add a **Review** section and an **Architecture** line to it, as in [Review a change before it is ready](#review-a-change-before-it-is-ready).
@@ -356,11 +356,39 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 | Work that stopped or was dropped | Set `status` to `blocked` or `cut` and explain why in `statusReason`. See [Blocked and cut stories](#blocked-and-cut-stories). |
 | How big a story is | Set its `estimate` in story points, once the team has agreed it. See [Estimate effort](#estimate-effort). |
 | What must land first | List the stories it depends on in its `dependsOn`. See [Record dependencies](#record-dependencies). |
+| What a story does for people | Its `title` and `summary`, in plain words. See [Write a story summary](#write-a-story-summary). |
 | Who a story is for | List the jobs to be done it serves in its `jobs`, or a persona in its `personas`. Add or reword personas and jobs in the map's `personas`. See [Personas and jobs to be done](#personas-and-jobs-to-be-done). |
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
 
 The [status history](#show-status-history) works out who last edited each story from Git, so `updatedBy` is optional. Set it to a display name only when the commit author is not the person to credit, such as an edit made on someone else’s behalf. An edit that sets `updatedBy` is credited to that name.
+
+### Write a story summary
+
+A story's `title` and `summary` are what most people read, in the story panel, in agent briefs and in `story-map story`. Write them for a teammate who doesn't know the code, such as a product manager, not for the person building it. The plan, linked from `sources`, holds how it is built.
+
+The title says what someone can do, or what changes, in plain words: "Check for missing values instead of assuming they are there", not "Turn on noNonNullAssertion".
+
+The summary answers four questions, in this order. Leave out a part that has nothing to say.
+
+1. **What changes, and for whom.** One sentence from the reader's side, without code names.
+2. **Why now.** The problem, or the evidence for it, so a reader can judge the story's priority without opening the plan.
+3. **Done when.** Two or three things someone can check. A reviewer starts from these, as [Review a change before it is ready](#review-a-change-before-it-is-ready) asks, and a [brief](#write-a-brief-for-an-agent) gives them to the agent.
+4. **Not included.** Anything a reader might expect that the story leaves out, so the work doesn't grow while it is built.
+
+Start a new line at least every 180 characters, and for each new long sentence, so the summary reads at a glance in the YAML, on the board and in the CLI. In YAML, write it as a block, with `summary: |` and the lines indented under it. The story panel and `story-map story` keep the line breaks. `story-map add --summary` and `edit --summary` take a value with line breaks, such as `$'First line.\nSecond line.'` in bash or zsh, and write the block for you.
+
+A summary has at most 500 characters, so keep the detail in the plan. Leave out what the map already holds, such as the status, release, estimate and personas. Customer-facing wording goes in `customer.summary`, written for that audience and approved separately.
+
+```yaml
+- id: BUILDER-102
+  title: Look up prices in the material catalogue
+  summary: |
+    Builders pick materials from the supplier catalogue when they price a quote, so each price is current without retyping it.
+    Builders retype prices from supplier sites today, and quotes go out with prices weeks out of date.
+    Done when: a quote line can take a catalogue item and its price, and shows the date the price was fetched.
+    Not included: ordering materials from the catalogue.
+```
 
 ### Change a story from the board
 

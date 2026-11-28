@@ -900,7 +900,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
           </span>
         </p>
       )}
-      {story.summary && <p className="esm-detail-summary">{story.summary}</p>}
+      {story.summary && <DetailSummary text={story.summary} />}
       <dl className="esm-detail-context">
         {personas.length > 0 && <>
           <dt>For</dt>
@@ -1336,6 +1336,17 @@ function releaseProgress(counts: Record<StoryStatus, number>) {
   return `${parts.filter(Boolean).join(", ")}.`;
 }
 
+/**
+ * A panel's summary. Each line of a summary written over several lines, as
+ * Write a story summary asks, is its own block with a little space above it,
+ * and a one-line summary is plain text as before.
+ */
+function DetailSummary({ text }: { text: string }) {
+  const lines = text.split("\n").map(line => line.trim()).filter(Boolean);
+  if (lines.length < 2) return <p className="esm-detail-summary">{text}</p>;
+  return <p className="esm-detail-summary">{lines.map((line, index) => <span className="esm-detail-summary-line" key={index}>{line}</span>)}</p>;
+}
+
 function paragraphs(text: string) {
   return text.split(/\n[ \t]*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
 }
@@ -1380,7 +1391,7 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
           <CloseButton panelId={panelId} />
         </div>
       </div>
-      {release.summary && <p className="esm-detail-summary">{release.summary}</p>}
+      {release.summary && <DetailSummary text={release.summary} />}
       {actions && <ItemActions groups={actions.groups} type="release" id={release.id} panelId={panelId} links={actions.links} tabHref={actions.tabHref} />}
       {release.notes && (
         <section className="esm-detail-section" aria-labelledby={`${panelId}-notes`}>
@@ -1522,7 +1533,7 @@ function PersonaDetail({ persona, panelId, filter, preservedParams, openHref }: 
         </div>
         <CloseButton panelId={panelId} />
       </div>
-      {persona.summary && <p className="esm-detail-summary">{persona.summary}</p>}
+      {persona.summary && <DetailSummary text={persona.summary} />}
       {openHref
         ? <>
           {core

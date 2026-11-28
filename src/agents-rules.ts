@@ -38,6 +38,7 @@ export const agentsRules = {
   "write-delivery-plans": { form: "full", title: "Write a delivery plan", openings: ["When `settings.plans` names a folder"] },
   "link-mockups": { form: "full", title: "Link mockups and designs", openings: ["When a plan has a mockup"] },
   "architecture-decisions": { form: "full", title: "Record architecture decisions", openings: ["Record the architecture decisions"] },
+  "write-story-summaries": { form: "full", title: "Write story summaries for people", openings: ["Write each story's title and summary"] },
   "update-map-in-pr": { form: "full", title: "Update the map in the same PR", openings: ["When a change affects a user journey"] },
   "audience-and-status": { form: "full", title: "Audience and delivery status", openings: ["Keep new stories internal by default"] },
   "release-notes-and-impact": { form: "full", title: "Release notes and impact", openings: ["Record each release’s notes"] },
