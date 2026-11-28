@@ -2400,7 +2400,7 @@ stories:
     jobs:
       - pick-up-work
       - plan-and-build
-    summary: Add each target's prerequisites and readiness to the handoff brief, put waiting and at-risk targets in its open decisions, and list a release brief's targets in suggested order.
+    summary: Add each target's prerequisites and readiness to the handoff brief, put waiting and at-risk targets in its open decisions, and list a release brief's targets in suggested order. Also print personas and jobs once, list related stories as context, say plainly when there is nothing to build, and narrow the hint for stories left out.
     sources:
       - docs/plans/visual-dependency-map.md#3-list-prerequisites-in-agent-briefs
   - id: ESM-161

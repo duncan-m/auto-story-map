@@ -233,6 +233,10 @@ The deployed board is read-only. Every change to the map, including release note
 
 You can’t edit the map in the deployed app. The map ships with each deployment, so an edit saved from the board would only appear after a merge and redeploy, and could overwrite newer changes on the default branch. Editing in the app would need the map stored on a separate hosted service instead of in the product repo. That isn’t part of this library. While you run the app on your own machine, the Personas tab can [edit personas][edit-personas] and save them to your checkout, ready for a PR.
 
+## Related projects
+
+[Story map on a Presto][presto] shows the next stories you can build on a [Pimoroni Presto](https://learn.pimoroni.com/article/getting-started-with-presto) touchscreen, and starts a Claude Code session to build one with a tap.
+
 ## Changes and releases
 
 See [the changelog][changelog] for what changed in each version and [the release steps][releasing] for publishing a new one. To work on the library itself, start with [the engineering overview][overview].
@@ -256,6 +260,7 @@ You use the software at your own risk and are responsible for reviewing, testing
 The [GNU Affero General Public License, version 3][license], in particular its sections 15 (Disclaimer of Warranty) and 16 (Limitation of Liability), governs your use of this software. Where this summary and the licence differ, the licence applies.
 
 [source]: https://github.com/duncan-m/auto-story-map
+[presto]: https://github.com/duncan-m/auto-story-map-presto
 [example-map]: https://github.com/duncan-m/auto-story-map/blob/main/product/story-map.yaml
 [guide]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md
 [first-run]: https://github.com/duncan-m/auto-story-map/blob/main/docs/story-map.md#populate-the-first-map
