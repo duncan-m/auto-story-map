@@ -2617,7 +2617,9 @@ stories:
     title: Run CodeQL's quality queries
     activity: review
     release: v0-7-11
-    status: planned
+    status: merged
+    tokens: 4479167
+    estimatedCostUsd: 1.81
     jobs:
       - plan-and-build
     personas:
