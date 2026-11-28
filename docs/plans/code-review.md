@@ -1,6 +1,6 @@
 # Plan: code review, architecture decisions and review points
 
-Status: merged. The work is ESM-176 to ESM-179 and ESM-182 to ESM-187 in the **0.7.11: Code review and architecture checks** release of the map. None has an agreed estimate yet.
+Status: in progress. The work is ESM-176 to ESM-179 and ESM-182 to ESM-187 in the **0.7.11: Code review and architecture checks** release of the map, all merged, with three follow-ups from a review of the repository against this plan: ESM-205 and ESM-206, merged, and ESM-207, planned. None has an agreed estimate yet.
 
 Agents write almost every change in this repository, and nobody else reads most of them before they merge. Of the last 30 merged PRs, none had an independent review. CodeQL is the only reviewer, and it runs after the push: it found escaping or sanitising problems in #162, #169, #178 and #179, and ReDoS in #169 and #186. One of those alerts, in `fileSlug` in `src/export-response.ts`, shipped to hosts in 0.7.6 and is being fixed as ESM-175. Nothing asks whether a change kept the promise of its story, which saved input it could break, or whether it made an architecture decision that nobody recorded. The plans in `docs/plans/` say what to build, but none of the 5 open ones says where it runs, who consumes it, or how to undo it.
 
@@ -41,7 +41,7 @@ From a check against `main` at `575aa60`:
 Repository only.
 
 - Biome is a devDependency at an exact version.
-- `biome.json` turns on the recommended rules and turns the formatter and assist off, so no file is reformatted. `noExcessiveCognitiveComplexity` is a warning.
+- `biome.json` turns on the recommended rules and turns the formatter and assist off, so no file is reformatted. `noExcessiveCognitiveComplexity` is a warning. A test keeps the number of those warnings at or under a ceiling that only comes down, so new code can't add them unnoticed (ESM-206).
 - It covers `src/`, `test/`, `scripts/` and `example/`.
 - `npm run lint` runs `biome ci`, and CI runs the same script with `--reporter=github`, so findings appear on the PR diff.
 - Measure the baseline when this is built. Fix the findings, or turn a rule off in `biome.json` with a reason. No bulk ignore comments.
@@ -93,7 +93,7 @@ Repository first. A `## Architecture decisions` section in a plan answers four q
 
 Routine work answers in one line with a real reason, such as "Inside the CLI, no new consumers: it adds a flag to an existing command." A consequential decision records each affected consumer and the consequence for it, the alternative considered, who agreed it, and what would justify revisiting it. A person agrees it before its stories go `in-progress`.
 
-Work without a plan puts an **Architecture** line in the PR description, which `pr-check` reads. Agreed decisions move into the engineering overview's [Runtime and architecture](../ENGINEERING-OVERVIEW.md#runtime-and-architecture) section, so the overview stays the one place to look.
+Work without a plan puts an **Architecture** line in the PR description, which `pr-check` reads (ESM-205). Agreed decisions move into the engineering overview's [Runtime and architecture](../ENGINEERING-OVERVIEW.md#runtime-and-architecture) section, so the overview stays the one place to look.
 
 ## 7. Check the architecture section in plans
 
@@ -270,6 +270,9 @@ These are proposals. Each is easy to change during review.
 | ESM-185: Say when to review the architecture and refactor | 0.7.11 | not agreed |
 | ESM-186: Offer the review step and architecture decisions to hosts | 0.7.11 | not agreed |
 | ESM-187: Share one regular-expression escape helper | 0.7.11 | not agreed |
+| ESM-205: Check the Architecture line in pull requests | 0.7.11 | not agreed |
+| ESM-206: Keep complexity warnings from growing | 0.7.11 | not agreed |
+| ESM-207: Turn the lint rule for non-null assertions back on | 0.7.11 | not agreed |
 | **Total** | | **not agreed** |
 
 None of these has an agreed estimate, so the team should size them in review. ESM-186 is the largest: templates, the skill, the scaffold, the upgrade review and host tests. ESM-178 and ESM-187 are the smallest. ESM-186 could move to a later release if the pilot runs long, since nothing else depends on it.

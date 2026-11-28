@@ -18,7 +18,7 @@ import {
   workflowCommands,
 } from "auto-story-map";
 // Not a package export: the Review section reader stays internal until ESM-186 offers the check to hosts.
-import { reviewSection } from "../dist/pr-check.js";
+import { architectureLineProblem, reviewSection } from "../dist/pr-check.js";
 import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
@@ -209,6 +209,63 @@ test("ESM-182: without --body-file or --draft, the Review section is not checked
 test("ESM-182: the missing-review rule links to the pr-check section of the guide", () => {
   assert.ok(prCheckRules.includes("missing-review"));
   assert.match(storyMapRuleHelp("missing-review"), /#check-a-pull-request-in-ci$/);
+});
+
+const required = document => { document.settings.architectureDecisions = "required"; };
+const architectureBody = line => `## What changes\n\nDone.\n\n${line}\n\n## Review\n\n${filledReview}\n`;
+
+test("ESM-205: a ready pull request in a map that requires architecture decisions gets a warning without an Architecture line", () => {
+  const missing = check(required, { body: architectureBody(""), draft: false });
+  assert.equal(missing.checkedArchitecture, true);
+  assert.deepEqual(missing.issues.map(issue => [issue.severity, issue.rule, issue.path]), [["warning", "missing-architecture", ["settings", "architectureDecisions"]]]);
+  assert.match(missing.issues[0].message, /its description has no Architecture line/);
+  assert.equal(missing.passed, true);
+  assert.equal(check(required, { body: architectureBody(""), draft: false, strict: true }).passed, false);
+  assert.match(check(required, { body: architectureBody("Architecture: <!-- hint -->"), draft: false }).issues[0].message, /Architecture line in its description is empty/);
+  assert.match(check(required, { body: architectureBody("**Architecture:** None:"), draft: false }).issues[0].message, /None: without a reason/);
+});
+
+test("ESM-205: an answered Architecture line passes, including a reason that wraps or a pointer to the plan", () => {
+  for (const line of [
+    "Architecture: None: keeps the existing design because it adds a flag to an existing command.",
+    "- **Architecture:** None: keeps the existing design\nbecause it adds a warning to `pr-check`.",
+    "Architecture: See the plan's [Architecture decisions](docs/plans/x.md#architecture-decisions) section.",
+  ]) {
+    assert.equal(architectureLineProblem(architectureBody(line)), undefined, line);
+    assert.deepEqual(check(required, { body: architectureBody(line), draft: false, strict: true }).issues, [], line);
+  }
+  // A reason only inside an HTML comment, or a line only inside a code fence, does not count.
+  assert.equal(architectureLineProblem("Architecture: None: <!-- because it is small -->"), "none-without-reason");
+  assert.equal(architectureLineProblem("```\nArchitecture: None: keeps it because it is small.\n```\n"), "missing");
+  // A reason that wraps ends at the paragraph: the next section's text is not part of it.
+  assert.equal(architectureLineProblem("Architecture: None:\n\nbecause it is small."), "none-without-reason");
+});
+
+test("ESM-205: this repository's pull request template leaves the Architecture line empty", async () => {
+  assert.equal(architectureLineProblem(await templateBody()), "empty");
+});
+
+test("ESM-205: drafts, unknown drafts and maps that only recommend architecture decisions are not checked", () => {
+  const recommended = check(() => {}, { body: architectureBody(""), draft: false });
+  assert.equal(recommended.checkedArchitecture, false);
+  assert.deepEqual(recommended.issues, []);
+  for (const options of [{ body: architectureBody(""), draft: true }, { body: architectureBody("") }, { draft: false }]) {
+    const result = check(required, options);
+    assert.equal(result.checkedArchitecture, false);
+    assert.deepEqual(result.issues.filter(issue => issue.rule === "missing-architecture"), []);
+  }
+  assert.ok(prCheckRules.includes("missing-architecture"));
+  assert.match(storyMapRuleHelp("missing-architecture"), /#check-a-pull-request-in-ci$/);
+});
+
+test("ESM-205: the Architecture line reader is linear on long lines and many labels", () => {
+  const long = `Architecture: None:${" x".repeat(50_000)}`;
+  const many = "- Architecture:\n".repeat(20_000);
+  const started = performance.now();
+  assert.equal(architectureLineProblem(long), "none-without-reason");
+  assert.equal(architectureLineProblem(many), "empty");
+  assert.equal(architectureLineProblem("<!--".repeat(20_000)), "missing");
+  assertFasterThan(started, 250, "Architecture line reader");
 });
 
 test("ESM-163: story-map pr-check reads the commits and body, and reports in text, github and json", async t => {
