@@ -2423,6 +2423,8 @@ stories:
     activity: explore
     release: v0-7-7
     status: merged
+    tokens: 31297907
+    estimatedCostUsd: 10.06
     jobs:
       - ground-work-in-customer-needs
       - reconstruct-current-product
