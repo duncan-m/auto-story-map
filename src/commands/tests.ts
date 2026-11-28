@@ -39,9 +39,10 @@ export default defineCommand({
       const more = unknownIds.length > 3 ? ` and ${unknownIds.length - 3} more` : "";
       console.error(`warning: left out tags for stories that are not in the map: ${shown}${more}. Run story-map validate --tests to see where they are.`);
     }
-    if (!await writeOutput(`${JSON.stringify(index, null, 2)}\n`, options.out)) return;
+    // Written to standard output, the index is the whole output, so there is no summary.
+    if (!await writeOutput(`${JSON.stringify(index, null, 2)}\n`, options.out) || !options.out) return;
     const stories = new Set(index.tests.flatMap(test => test.storyIds)).size;
     const omitted = (index.omitted ?? []).reduce((sum, entry) => sum + entry.count, 0);
-    console.error(`${escapeText(options.out!)}: ${index.tests.length} ${index.tests.length === 1 ? "test" : "tests"} for ${stories} ${stories === 1 ? "story" : "stories"}${omitted ? ` (${omitted} more not listed)` : ""}`);
+    console.error(`${escapeText(options.out)}: ${index.tests.length} ${index.tests.length === 1 ? "test" : "tests"} for ${stories} ${stories === 1 ? "story" : "stories"}${omitted ? ` (${omitted} more not listed)` : ""}`);
   },
 });

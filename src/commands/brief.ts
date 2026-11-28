@@ -58,7 +58,7 @@ export default defineCommand({
     const scopes = [ids.length > 0, release !== undefined, activity !== undefined].filter(Boolean).length;
     if (scopes !== 1) throw new ArgumentError("brief needs story IDs, --release <ID> or --activity <ID>, and only one of them.");
     if (!options.evidence && options.claims) throw new ArgumentError("--claims reads claims with the evidence, so it cannot be used with --no-evidence.");
-    const target: StoryMapBriefTarget = release !== undefined ? { release } : activity !== undefined ? { activity } : ids.length === 1 ? { story: ids[0]! } : { stories: ids };
+    const target: StoryMapBriefTarget = release !== undefined ? { release } : activity !== undefined ? { activity } : ids.length === 1 ? { story: ids[0] } : { stories: ids };
     return { ...options, target };
   },
 

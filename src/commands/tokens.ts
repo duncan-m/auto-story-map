@@ -178,18 +178,16 @@ export default defineCommand({
 /** Reads a prices file: model IDs to `{ input, output, cacheRead }` and the optional cache-write prices, in US dollars per million tokens. */
 function parsePrices(value: unknown): TokenPrices {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("expected an object of model IDs to prices");
-  const rate = (model: string, key: string, raw: unknown, optional: boolean) => {
-    if (raw === undefined && optional) return undefined;
+  const rate = (model: string, key: string, raw: unknown): number => {
     if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) throw new Error(`${model}.${key} must be a price in US dollars per million tokens`);
     return raw;
   };
   const prices: Record<string, TokenPrice> = {};
   for (const [model, raw] of Object.entries(value as Record<string, Record<string, unknown>>)) {
     if (!raw || typeof raw !== "object") throw new Error(`${model} must be an object with input, output and cacheRead`);
-    const price: TokenPrice = { input: rate(model, "input", raw.input, false)!, output: rate(model, "output", raw.output, false)!, cacheRead: rate(model, "cacheRead", raw.cacheRead, false)! };
+    const price: TokenPrice = { input: rate(model, "input", raw.input), output: rate(model, "output", raw.output), cacheRead: rate(model, "cacheRead", raw.cacheRead) };
     for (const key of ["cacheWrite5m", "cacheWrite1h"] as const) {
-      const found = rate(model, key, raw[key], true);
-      if (found !== undefined) price[key] = found;
+      if (raw[key] !== undefined) price[key] = rate(model, key, raw[key]);
     }
     prices[model] = price;
   }
