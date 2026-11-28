@@ -2631,21 +2631,24 @@ stories:
     title: Review against the story first, then the repo checklist
     activity: review
     release: v0-7-11
-    status: planned
+    status: merged
+    tokens: 2326418
+    estimatedCostUsd: 1
     jobs:
       - plan-and-build
       - pick-up-work
     personas:
       - agent
       - founder
-    summary: A Review a code change section in the engineering overview asks what the story promised, what shows it works, what could break and whether an architecture decision went unrecorded, before the repo checks.
+    summary: A Review a code change section in the engineering overview asks what the story promised, what shows it works and what could break, before the repo checks. The question about unrecorded architecture decisions comes with ESM-183.
     sources:
       - docs/plans/code-review.md#4-review-against-the-story-first-then-the-repo-checklist
+      - docs/ENGINEERING-OVERVIEW.md#review-a-code-change
   - id: ESM-182
     title: Review each PR's diff before it is ready, and pilot the step
     activity: review
     release: v0-7-11
-    status: planned
+    status: in-progress
     jobs:
       - plan-and-build
       - pick-up-work
@@ -2655,6 +2658,7 @@ stories:
     summary: Each PR's diff is reviewed with /code-review or by a person before it is ready, recorded in a Review section that pr-check reads, over a ten-PR pilot.
     sources:
       - docs/plans/code-review.md#5-review-each-prs-diff-before-it-is-ready-and-pilot-the-step
+      - AGENTS.md#code-standards
   - id: ESM-183
     title: Record architecture decisions in plans and PRs
     activity: review
