@@ -567,7 +567,7 @@ Review a change against its story before the repository's own checks. Whether yo
 4. **Then the repository's own checks.** The [security boundaries to preserve](#security-boundaries-to-preserve), the steps in [Making common changes](#making-common-changes), and:
    - a regenerated `story-map.schema.json` when the schema changes,
    - a changelog entry, and upgrade notes in the guide for a breaking change,
-   - both `AGENTS.md` files, the root one and `templates/AGENTS.md`, when the guidance changes,
+   - both `AGENTS.md` files, the root one and `templates/AGENTS.md`, when the guidance changes, unless it is for this repository only, as the review step is until ESM-186,
    - one change per PR that can be reverted on its own.
 
 A question about architecture decisions the change made without recording them comes later, with ESM-183, as the [code review plan](plans/code-review.md#4-review-against-the-story-first-then-the-repo-checklist) says. Until then the review asks these four.
