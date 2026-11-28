@@ -7,6 +7,8 @@ such as "ESM-601: Limit author names in the history file".
 
 <!-- What this PR does and why, in a few sentences. Link the plan section. -->
 
+Architecture: <!-- For work with no plan, following docs/ENGINEERING-OVERVIEW.md#record-architecture-decisions: "None: keeps the existing design because …" with a real reason, or the decision with each affected consumer, the alternative considered, who agreed it and what would justify revisiting it. For work with a plan, "See the plan's Architecture decisions section". -->
+
 ## Stories
 
 <!-- Story IDs this PR delivers or changes, such as ESM-601. Flag any planned or in-progress story without an estimate, and any unclear release or status. -->
