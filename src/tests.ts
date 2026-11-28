@@ -1,5 +1,6 @@
-import { readFile, realpath, stat } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { extname, relative, sep } from "node:path";
+import { readTextFileWithin } from "./read-text.js";
 import { fitHistoryText } from "./history.js";
 import {
   outsideLinkIssue,
@@ -416,14 +417,15 @@ export async function findStoryTests(loaded: LoadedStoryMap, root: string, { pat
     for (const file of files) {
       if (read.has(file)) continue;
       read.add(file);
-      if ((await stat(file)).size > maxTestFileBytes) {
+      const source = await readTextFileWithin(file, maxTestFileBytes);
+      if (source === undefined) {
         issues.push({ severity: "warning", path: [], file: shown(file), message: `Larger than ${maxTestFileBytes / 1024 / 1024} MB, so its tests were not read. Split the file to have its tests counted.`, rule: "test-file-too-large" });
         continue;
       }
       if (!pattern) continue;
       // Each call's IDs: its own, then those of the groups around it, innermost first.
       const idsOf: string[][] = [];
-      for (const call of scanTestCalls(await readFile(file, "utf8"))) {
+      for (const call of scanTestCalls(source)) {
         const own = [...new Set(Array.from(call.literal.matchAll(pattern), match => match[0]))];
         // Capped like the index, so deeply nested tagged blocks stay quick to read.
         const inheritedIds = call.parent === undefined ? [] : idsOf[call.parent].filter(id => !own.includes(id)).slice(0, testStoryIdsMaxItems);

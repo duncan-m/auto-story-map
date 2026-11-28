@@ -19,7 +19,7 @@ import { isDeepStrictEqual } from "node:util";
 import fc from "fast-check";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Document, isMap, isSeq, LineCounter, parseDocument } from "yaml";
+import { Document, LineCounter, parseDocument } from "yaml";
 import {
   createStoryMapEditServer,
   diffStoryMaps,

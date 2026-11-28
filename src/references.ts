@@ -307,13 +307,16 @@ export async function repositoryFiles(realRoot: string, path: string, filter: Fi
   return [...new Set(files)].sort();
 }
 
+/** Text escaped so a regular expression matches it literally. Escapes every metacharacter, backslash included. */
+export const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const markdownFilter: FileFilter = { include: (_, name) => markdownExtensions.has(extname(name).toLowerCase()) };
 
 /** The map's story ID prefixes, such as BUILDER in BUILDER-102, escaped for a regular expression. */
 function storyIdPrefixes(loaded: Pick<LoadedStoryMap, "map">): string | undefined {
   const prefixes = new Set(loaded.map.stories.flatMap(story => /^([A-Za-z][A-Za-z0-9]*)-\d+$/.exec(story.id)?.[1] ?? []));
   if (!prefixes.size) return undefined;
-  return `(?:${[...prefixes].map(prefix => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`;
+  return `(?:${[...prefixes].map(escapeRegExp).join("|")})`;
 }
 
 /**

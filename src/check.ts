@@ -1,5 +1,6 @@
-import { readFile, realpath, stat } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { readTextFileWithin } from "./read-text.js";
 import { checkPlanMockups } from "./plan-mockups.js";
 import { checkPlanStatusLines } from "./plan-status.js";
 import { findSetupBehind, setupBehindMessage } from "./setup-behind.js";
@@ -76,7 +77,8 @@ export async function storyMapRuleLinker(root: string): Promise<StoryMapRuleLink
   let anchors: Set<string> | undefined;
   try {
     const path = join(root, storyMapGuidePath);
-    if ((await stat(path)).size <= maxMarkdownBytes) anchors = markdownAnchors(await readFile(path, "utf8"));
+    const source = await readTextFileWithin(path, maxMarkdownBytes);
+    if (source !== undefined) anchors = markdownAnchors(source);
   } catch {
     // No copy of the guide, so link to the package's.
   }
