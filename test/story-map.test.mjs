@@ -3879,26 +3879,32 @@ test("ESM-192: the page scrolls the grid, unless the host gives it a height", as
   const block = css.slice(start, css.indexOf("\n}", start));
   assert.match(block, /\.esm-scroll \{ position: relative; overflow: visible; isolation: isolate; \}/, "no scroll box of its own");
   assert.match(block, /\.esm-frame:has\(> \.esm-scroll:not\(\[data-esm-scroll-box\]\)\) \{ min-width: min-content; \}/, "a wide grid scrolls the page");
-  assert.match(block, /\.esm-scroll:not\(\[data-esm-scroll-box\]\) :is\(\.esm-lane, \.esm-cell \*\) \{ scroll-margin: calc\(var\(--esm-activities-height/, "targets clear the headings");
+  assert.match(block, /\.esm-scroll:not\(\[data-esm-scroll-box\]\) :is\(\.esm-lane, \.esm-card, \.esm-card :is\(a, button, summary, \[tabindex\]\)\) \{ scroll-margin: calc\(var\(--esm-activities-height/, "targets clear the headings");
   assert.match(block, /\.esm-scroll\[data-esm-scroll-box\] \{ max-height: var\(--esm-board-height\); overflow: auto; scroll-padding:/, "opt-in box");
   assert.doesNotMatch(css, /var\(--esm-board-height,/, "no default height");
 });
 
+const headingGlobals = new WeakMap();
+
 /** Runs enhanceStoryMapHeadings on a fake grid, scrolled by the page or, with a board height, in its own box. */
 async function headingsHarness(t, boardHeight = "") {
-  const saved = Object.fromEntries(["document", "window", "getComputedStyle"].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
+  // Save the real globals once per test, so a second harness in the same test restores them, not the first one's fakes.
+  if (!headingGlobals.has(t)) {
+    const saved = Object.fromEntries(["document", "window", "getComputedStyle"].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
+    headingGlobals.set(t, saved);
+    t.after(() => {
+      for (const [name, descriptor] of Object.entries(saved)) {
+        if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+        else delete globalThis[name];
+      }
+    });
+  }
   const page = { readyState: "complete", activeElement: null, querySelectorAll: () => [] };
   const windowListeners = [];
   const define = (name, value) => Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
   define("document", page);
   define("window", { addEventListener: (type, handler) => type === "scroll" && windowListeners.push(handler) });
   define("getComputedStyle", () => ({ getPropertyValue: name => (name === "--esm-board-height" ? boardHeight : "") }));
-  t.after(() => {
-    for (const [name, descriptor] of Object.entries(saved)) {
-      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
-      else delete globalThis[name];
-    }
-  });
   const attributes = new Set();
   const styles = new Map();
   const boxListeners = [];
@@ -3971,6 +3977,11 @@ test("ESM-192: board.js follows the page scroll, and a box only when the host se
   assert.equal(boxed.boxListeners.length, 1);
   assert.equal(boxed.scroll(110), true);
   assert.equal(boxed.scroll(0), false);
+});
+
+test("ESM-192: the board.js heading tests put the real globals back", () => {
+  assert.equal(typeof getComputedStyle, "undefined");
+  assert.equal(typeof window, "undefined");
 });
 
 test("ESM-912: detail panels slide in from the right as a full-height sheet", async () => {

@@ -349,10 +349,10 @@
 @media screen and (min-width: 651px) and (min-height: 480px) {
   /* Positioned, so it also holds the absolutely placed hidden labels, which would otherwise make the page taller. */
   .esm-scroll { position: relative; overflow: visible; isolation: isolate; }
-  /* Only around the map, so the Actions table keeps its own sideways scroll. */
+  /* Only around the map, so the Actions table keeps its own sideways scroll. Without :has(), a wide grid spills past the frame's edge. */
   .esm-frame:has(> .esm-scroll:not([data-esm-scroll-box])) { min-width: min-content; }
   /* Permalink targets and focused cards stop clear of the headings. */
-  .esm-scroll:not([data-esm-scroll-box]) :is(.esm-lane, .esm-cell *) { scroll-margin: calc(var(--esm-activities-height, 13rem) + 8px) 8px 8px calc(var(--esm-labels-width, 11.4rem) + 8px); }
+  .esm-scroll:not([data-esm-scroll-box]) :is(.esm-lane, .esm-card, .esm-card :is(a, button, summary, [tabindex])) { scroll-margin: calc(var(--esm-activities-height, 13rem) + 8px) 8px 8px calc(var(--esm-labels-width, 11.4rem) + 8px); }
   .esm-scroll[data-esm-scroll-box] { max-height: var(--esm-board-height); overflow: auto; scroll-padding: calc(var(--esm-activities-height, 13rem) + 8px) 8px 8px calc(var(--esm-labels-width, 11.4rem) + 8px); }
   .esm-activities { position: sticky; top: 0; z-index: 2; margin: -12px -12px -10px; padding: 12px 12px 10px; background: var(--esm-canvas); }
   .esm-corner { position: sticky; left: 0; z-index: 1; display: flex; align-items: center; align-self: stretch; padding-left: 11px; background: var(--esm-canvas); }
