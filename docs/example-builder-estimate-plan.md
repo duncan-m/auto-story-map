@@ -47,6 +47,13 @@ The estimate screen from BUILDER-101, with the catalogue lookup on a line (BUILD
 
 The mockup is [`example-builder-estimate-mockup.html`](example-builder-estimate-mockup.html), using the board's colour tokens from `styles.css`. To regenerate the image, open it in a browser at 840 by 386 pixels and take a screenshot, or run Chrome headless with `--window-size=840,386 --screenshot`.
 
+## Architecture decisions
+
+- **Where it runs.** Inside the existing estimates app: the estimate screen and its server. No new service. The catalogue is read through the app's existing catalogue client.
+- **Data and contracts.** Upstream, it reads the material catalogue. Downstream, an estimate line gains its looked-up price and a hand-entered marker, and a submitted estimate is what FINANCE-201 reads from the review queue.
+- **Boundaries.** Only builders on the project can submit its estimate, and a submitted estimate's prices cannot be changed afterwards.
+- **Reversibility.** The lookup can be turned off and lines priced by hand again. The stored price and marker on each line stay in saved estimates, so removing them later needs a migration.
+
 ## Decisions to make
 
 | Question | Proposal |

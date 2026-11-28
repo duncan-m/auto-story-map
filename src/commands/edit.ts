@@ -241,12 +241,13 @@ export const releaseImpact = defineCommand({
   },
 });
 
-/** Records the person's answers to the product choices: delivery plans in `settings.plans`, the story ID policy in `settings.storyIds`, and the upgrade review's mode in `settings.upgrade`. */
+/** Records the person's answers to the product choices: delivery plans in `settings.plans`, the story ID policy in `settings.storyIds`, the upgrade review's mode in `settings.upgrade`, and how validate treats plans' architecture sections in `settings.architectureDecisions`. */
 export const settings = defineCommand({
   parse(rest: string[]) {
     let plans: string | false | undefined;
     let storyIds: string | undefined;
     let upgrade: string | undefined;
+    let architectureDecisions: string | undefined;
     const positional: string[] = [];
     const common = parseEditArgs(rest, (name, value) => {
       if (name === "--plans") {
@@ -258,17 +259,21 @@ export const settings = defineCommand({
       } else if (name === "--upgrade") {
         upgrade = value();
         if (upgrade !== "simple" && upgrade !== "advanced") throw new ArgumentError("--upgrade must be simple or advanced");
+      } else if (name === "--architecture-decisions") {
+        architectureDecisions = value();
+        if (architectureDecisions !== "recommended" && architectureDecisions !== "required") throw new ArgumentError("--architecture-decisions must be recommended or required");
       } else return false;
       return true;
     }, positional);
     if (!common || positional.length) return null;
-    if (plans === undefined && storyIds === undefined && upgrade === undefined) {
-      throw new ArgumentError("--plans, --story-ids or --upgrade is required: --plans with a folder, such as docs/plans, or off, --story-ids with next or lowest-free, and --upgrade with simple or advanced");
+    if (plans === undefined && storyIds === undefined && upgrade === undefined && architectureDecisions === undefined) {
+      throw new ArgumentError("--plans, --story-ids, --upgrade or --architecture-decisions is required: --plans with a folder, such as docs/plans, or off, --story-ids with next or lowest-free, --upgrade with simple or advanced, and --architecture-decisions with recommended or required");
     }
     const operations = [
       ...(plans === undefined ? [] : [{ op: "plans", plans }]),
       ...(storyIds === undefined ? [] : [{ op: "story-ids", storyIds }]),
       ...(upgrade === undefined ? [] : [{ op: "upgrade-mode", upgrade }]),
+      ...(architectureDecisions === undefined ? [] : [{ op: "architecture-decisions", architectureDecisions }]),
     ] as StoryMapEditOperation[];
     return { ...common, operations };
   },

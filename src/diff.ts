@@ -173,6 +173,8 @@ export interface StoryMapDiff {
   storyIds?: Change<"next" | "lowest-free">;
   /** How `story-map upgrade` reviews the set-up: simple, advanced, or undefined when nobody has chosen. */
   upgrade?: Change<"simple" | "advanced" | undefined>;
+  /** How `validate --plans` treats a plan's architecture section, including the default of recommended when the map does not set it. */
+  architectureDecisions?: Change<"recommended" | "required">;
   /**
    * Changes that `AGENTS.md` leaves to people, such as a confirmed draft or a new estimate,
    * each with its rule. They also appear in the lists above. Empty for most changes.
@@ -418,6 +420,9 @@ export function diffStoryMaps(before: StoryMapDocument | null, after: StoryMapDo
     plans: before && before.settings?.plans !== after.settings?.plans ? { from: before.settings?.plans, to: after.settings?.plans } : undefined,
     storyIds: before && (before.settings?.storyIds ?? "next") !== (after.settings?.storyIds ?? "next") ? { from: before.settings?.storyIds ?? "next", to: after.settings?.storyIds ?? "next" } : undefined,
     upgrade: before && before.settings?.upgrade !== after.settings?.upgrade ? { from: before.settings?.upgrade, to: after.settings?.upgrade } : undefined,
+    architectureDecisions: before && (before.settings?.architectureDecisions ?? "recommended") !== (after.settings?.architectureDecisions ?? "recommended")
+      ? { from: before.settings?.architectureDecisions ?? "recommended", to: after.settings?.architectureDecisions ?? "recommended" }
+      : undefined,
   };
   return { ...diff, needsPerson: needsPersonChanges(before, after, diff) };
 }
@@ -429,7 +434,7 @@ export function hasStoryMapChanges(diff: StoryMapDiff) {
     || diff.stories.added.length || diff.stories.removed.length || diff.stories.updated.length
     || groups(diff.activities) || groups(diff.releases) || groups(diff.personas) || Object.values(diff.jobs).some(list => list.length)
     || Object.values(diff.personaContexts).some(list => list.length)
-    || diff.releaseDetails.length || diff.stalledAfterWeeks || diff.plans || diff.storyIds || diff.upgrade || diff.needsPerson.length);
+    || diff.releaseDetails.length || diff.stalledAfterWeeks || diff.plans || diff.storyIds || diff.upgrade || diff.architectureDecisions || diff.needsPerson.length);
 }
 
 /**
@@ -610,6 +615,10 @@ export function formatStoryMapDiff(diff: StoryMapDiff): string {
   if (diff.upgrade) {
     const mode = (value: "simple" | "advanced" | undefined) => value === undefined ? "not chosen" : `${value} mode`;
     settings.push(`- Upgrade review: ${mode(diff.upgrade.to)} (was ${mode(diff.upgrade.from)}).`);
+  }
+  if (diff.architectureDecisions) {
+    const level = (value: "recommended" | "required") => value === "required" ? "required, so a gap in an open plan is a warning" : "recommended, so a gap in an open plan is a notice";
+    settings.push(`- Architecture decisions in plans: ${level(diff.architectureDecisions.to)} (was ${diff.architectureDecisions.from}).`);
   }
   if (settings.length) lines.push("### Settings", "", ...settings, "");
 

@@ -10,6 +10,7 @@ customer:
 settings:
   plans: docs/plans
   storyIds: lowest-free
+  architectureDecisions: required
 # Drafted with ESM-901 from the README, the guide and the stories below. Every job is a draft until a person confirms it.
 personas:
   - id: founder
@@ -2686,7 +2687,9 @@ stories:
     title: Check the architecture section in plans
     activity: review
     release: v0-7-11
-    status: planned
+    status: merged
+    tokens: 10425579
+    estimatedCostUsd: 4.04
     jobs:
       - plan-and-build
       - resolve-material-uncertainty

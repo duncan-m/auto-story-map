@@ -84,6 +84,14 @@
             "lowest-free"
           ]
         },
+        "architectureDecisions": {
+          "description": "How `validate --plans` treats an open plan whose Architecture decisions section is missing, empty, still holds the scaffold's hints, or answers None: with no reason. recommended, the default, reports it as a notice, which never fails. required reports it as a warning, which fails with --strict. See Check the architecture section in plans in docs/story-map.md.",
+          "type": "string",
+          "enum": [
+            "recommended",
+            "required"
+          ]
+        },
         "upgrade": {
           "description": "How `story-map upgrade` reviews the set-up. simple shows what changes for the team and applies the recommended changes, keeping the host's own edits. advanced also shows each part's diff, to accept or keep one at a time. Leave it out until a person has chosen, and the review asks. --mode overrides it for one run. Set it with `story-map settings --upgrade`. See Choose simple or advanced mode in docs/story-map.md.",
           "type": "string",
