@@ -48,7 +48,8 @@ test("ESM-191: both AGENTS.md files have the rule, and hosts are told what it ch
 
 test("ESM-191: the story panel keeps a summary's line breaks", async () => {
   const css = await read("styles.css");
-  assert.match(css, /\.esm-detail-summary \{[^}]*white-space: pre-line;/);
+  assert.match(css, /\.esm-detail-summary-line \{ display: block; \}/);
+  assert.match(css, /\.esm-detail-summary-line \+ \.esm-detail-summary-line \{ margin-top: 6px; \}/);
   const map = parseStoryMap([
     "version: 1",
     "id: quotes",
@@ -66,5 +67,5 @@ test("ESM-191: the story panel keeps a summary's line breaks", async () => {
     "      Done when: a quote shows each price's date.",
   ].join("\n"));
   const html = renderToStaticMarkup(createElement(StoryMapBoard, { map: getStoryMapForViewer(map, { roles: ["engineer"] }) }));
-  assert.match(html, /class="esm-detail-summary">Builders price a quote from current prices\.\nDone when: a quote shows each price&#x27;s date\.</);
+  assert.match(html, /<p class="esm-detail-summary"><span class="esm-detail-summary-line">Builders price a quote from current prices\.<\/span><span class="esm-detail-summary-line">Done when: a quote shows each price&#x27;s date\.<\/span><\/p>/);
 });
