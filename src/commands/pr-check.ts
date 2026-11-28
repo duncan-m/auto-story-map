@@ -131,5 +131,6 @@ function summary(result: PrCheckResult) {
     result.checkedBody ? (result.merged.length ? `checked Tokens used for ${result.merged.join(", ")}` : "no stories marked merged") : "Tokens used not checked without --body-file",
   ];
   if (result.checkedReview) parts.push("checked the Review section");
+  if (result.checkedArchitecture) parts.push("checked the Architecture line");
   return `pr-check: ${result.passed ? "passed" : "failed"} (${parts.join("; ")})`;
 }

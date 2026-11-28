@@ -1,11 +1,12 @@
 import { needsPersonLabels, type StoryMapDiff } from "./diff.js";
 import type { NeedsPersonChange } from "./needs-person.js";
+import { becauseReason, noneAnswer } from "./plan-architecture.js";
 import { escapeRegExp } from "./references.js";
 import type { StoryMapRuleId } from "./rules.js";
 import type { StoryMapDocument, StoryMapIssue } from "./schema.js";
 
 /** The rules only `pr-check` reports, beside the ones `story-map diff` lists under Needs a person. */
-export const prCheckRules = ["missing-tokens-used", "missing-review"] as const satisfies readonly StoryMapRuleId[];
+export const prCheckRules = ["missing-tokens-used", "missing-review", "missing-architecture"] as const satisfies readonly StoryMapRuleId[];
 
 /**
  * Names in a commit's author or `Co-Authored-By` trailers that mark it as
@@ -40,7 +41,8 @@ export interface PrCheckOptions {
   /**
    * Whether the pull request is a draft. A pull request known to be ready for
    * review, with `draft: false` and a body, needs a Review section that records
-   * a review. When absent, the Review section is not checked.
+   * a review, and, when the map sets `settings.architectureDecisions: required`,
+   * an Architecture line. When absent, neither is checked.
    */
   draft?: boolean;
   /** Fail on warnings too, as `validate --strict` does. */
@@ -72,6 +74,8 @@ export interface PrCheckResult {
   checkedBody: boolean;
   /** Whether the body was checked for a Review section, because the pull request is ready for review. */
   checkedReview: boolean;
+  /** Whether the body was checked for an Architecture line, because the pull request is ready and the map requires architecture decisions. */
+  checkedArchitecture: boolean;
   issues: PrCheckIssue[];
 }
 
@@ -133,6 +137,74 @@ function descriptionSection(body: string, heading: RegExp): string | undefined {
     return heading !== null && heading[1].length <= level;
   });
   return (end === -1 ? rest : rest.slice(0, end)).join("\n").trim();
+}
+
+/** What is wrong with a description's Architecture line, or undefined when it answers. */
+export type ArchitectureLineProblem = "missing" | "empty" | "none-without-reason";
+
+/** A line that starts the answer, such as `Architecture: …`, `- **Architecture:** …` or `> *Architecture:* …`. */
+const architectureLabel = /^ {0,3}(?:>[ \t]*)?(?:[-*+][ \t]+)?(?:\*\*|__|\*|_)?architecture(?:\*\*|__|\*|_)?[ \t]*:(?:\*\*|__|\*|_)?(.*)$/i;
+
+/**
+ * Reads the description's Architecture line, outside HTML comments and code
+ * fences, and says what is wrong with it: there is none, it is empty, as the
+ * template leaves it, or it answers `None:` with no reason after `because`.
+ * The answer runs on to the end of its paragraph or list item, so a reason
+ * that wraps onto the next line counts. Only the first Architecture line counts.
+ */
+export function architectureLineProblem(body: string): ArchitectureLineProblem | undefined {
+  const lines = body.replace(/\r\n?/g, "\n").replace(/<!--[\s\S]*?(-->|$)/g, "").split("\n");
+  const index = firstArchitectureLine(lines);
+  if (index === -1) return "missing";
+  const text = architectureAnswer(lines, index);
+  if (!text) return "empty";
+  return noneAnswer.test(text) && !becauseReason.test(text) ? "none-without-reason" : undefined;
+}
+
+/** The index of the first Architecture line outside code fences, or -1. */
+function firstArchitectureLine(lines: readonly string[]): number {
+  // The fence that is open, such as "```" or "~~~~", which only a line starting with as many of the same character closes.
+  let open = "";
+  return lines.findIndex(line => {
+    const marker = fence.exec(line)?.[1];
+    if (marker && !open) open = marker;
+    else if (marker && marker[0] === open[0] && marker.length >= open.length) open = "";
+    else if (!open) return architectureLabel.test(line);
+    return false;
+  });
+}
+
+const fence = /^ {0,3}(`{3,}|~{3,})/;
+
+/** The paragraph or list item ends at a blank line, a heading, a fence or the next list item. */
+const answerEnd = /^ {0,3}(#{1,6}[ \t]|```|~~~|[-*+][ \t]|\d{1,9}[.)][ \t])/;
+
+/** The answer after the label at `index`, to the end of its paragraph or list item, with inline code blanked. */
+function architectureAnswer(lines: readonly string[], index: number): string {
+  const answer = [architectureLabel.exec(lines[index])![1]];
+  for (const line of lines.slice(index + 1)) {
+    if (!line.trim() || answerEnd.test(line)) break;
+    answer.push(line);
+  }
+  return answer.join(" ").replace(/`[^`]*`/g, "code").trim();
+}
+
+const architectureReasons: Record<ArchitectureLineProblem, string> = {
+  missing: "its description has no Architecture line",
+  empty: "the Architecture line in its description is empty",
+  "none-without-reason": "the Architecture line answers None: without a reason after because",
+};
+
+/** The `missing-architecture` warning for a ready pull request's body, or undefined when its Architecture line answers. */
+function architectureIssue(body: string): PrCheckIssue | undefined {
+  const problem = architectureLineProblem(body);
+  if (!problem) return undefined;
+  return {
+    severity: "warning",
+    path: ["settings", "architectureDecisions"],
+    rule: "missing-architecture",
+    message: `This pull request is ready for review, but ${architectureReasons[problem]}. Answer the four architecture questions there, or point to the plan's Architecture decisions section. Routine work answers "None: keeps the existing design because …" with a real reason.`,
+  };
 }
 
 const idPattern = (id: string) => new RegExp(`(^|[^A-Za-z0-9-])${escapeRegExp(id)}(?![A-Za-z0-9]|-[0-9])`, "i");
@@ -231,6 +303,11 @@ export function checkPullRequest(options: PrCheckOptions): PrCheckResult {
     }
   }
 
+  // Only a ready pull request in a map that requires architecture decisions is checked, so hosts that have not adopted them see nothing.
+  const checkedArchitecture = checkedReview && after.settings?.architectureDecisions === "required";
+  const architecture = checkedArchitecture ? architectureIssue(options.body!) : undefined;
+  if (architecture) issues.push(architecture);
+
   return {
     passed: !issues.some(issue => issue.severity === "error" || (options.strict && issue.severity === "warning")),
     agentCommits,
@@ -239,6 +316,7 @@ export function checkPullRequest(options: PrCheckOptions): PrCheckResult {
     merged,
     checkedBody,
     checkedReview,
+    checkedArchitecture,
     issues,
   };
 }

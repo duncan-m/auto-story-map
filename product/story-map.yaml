@@ -544,7 +544,7 @@ releases:
     title: "0.7.11: Code review and architecture checks"
     summary: Each PR is reviewed against its story before it is ready, lint, coverage and CodeQL quality queries run in CI, and plans record their architecture decisions, with points for reviewing the architecture and refactoring.
     notes: |
-      Planning proposal only. Of the last 30 merged PRs none had an independent review, and CodeQL found escaping, sanitising or ReDoS problems in 5 of them after the push. ESM-187, ESM-178, ESM-176 and ESM-177 come first, alongside the story-first review (ESM-179) and a ten-PR pilot of the review step (ESM-182), then architecture decisions in plans (ESM-183), their check (ESM-184) and review points (ESM-185), and last offering both to hosts (ESM-186) once the pilot is done.
+      Each PR is now reviewed against its story before it is ready (ESM-179, ESM-182). Before this, none of the last 30 merged PRs had an independent review. In a ten-PR pilot, review fixed problems before ready in 9, so hosts are offered the step through the upgrade review (ESM-186). CI lints with Biome (ESM-176), has a coverage floor (ESM-177) and runs CodeQL's quality queries (ESM-178), and the code shares one escape helper (ESM-187). Plans and PRs record architecture decisions (ESM-183), checked by validate (ESM-184) and pr-check (ESM-188), with review points in the guide (ESM-185). A test stops complexity warnings growing (ESM-189). ESM-190 is still planned.
 
       Plan: docs/plans/code-review.md
     impact:
@@ -2748,3 +2748,38 @@ stories:
     summary: One escapeRegExp exported from src replaces the five copies, with a property test that escaped text matches itself literally.
     sources:
       - docs/plans/code-review.md#10-share-one-regular-expression-escape-helper
+  - id: ESM-188
+    title: Check the Architecture line in pull requests
+    activity: review
+    release: v0-7-11
+    status: merged
+    tokens: 8142115
+    estimatedCostUsd: 2.85
+    jobs:
+      - plan-and-build
+      - resolve-material-uncertainty
+    summary: "When a map requires architecture decisions, pr-check warns about a ready pull request whose description has no Architecture line, an empty one, or a None: answer with no reason."
+    sources:
+      - docs/plans/code-review.md#6-record-architecture-decisions-in-plans-and-prs
+  - id: ESM-189
+    title: Keep complexity warnings from growing
+    activity: review
+    release: v0-7-11
+    status: merged
+    jobs:
+      - plan-and-build
+    summary: A test fails when Biome reports more cognitive-complexity warnings than the agreed ceiling, so new code can't add them unnoticed while warnings still don't fail npm run lint.
+    sources:
+      - docs/plans/code-review.md#1-lint-the-code-with-biome-in-ci
+      - biome.jsonc
+  - id: ESM-190
+    title: Check for missing values instead of assuming they are there
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+    summary: In about 190 places the code tells TypeScript to assume a value is always there, without checking. If that assumption is ever wrong, the CLI or the board fails with a confusing error instead of a clear one. Replace each with a real check, then turn back on the lint rule that stops new ones.
+    sources:
+      - docs/plans/code-review.md#1-lint-the-code-with-biome-in-ci
+      - biome.jsonc
