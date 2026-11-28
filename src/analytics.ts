@@ -37,6 +37,8 @@ export interface AnalyticsTotals {
   spendUsd: number;
   /** How many of them have `estimatedCostUsd` recorded. */
   spendRecorded: number;
+  /** How many of them have `tokens` or `estimatedCostUsd` but not both, so the two coverages differ. */
+  spendDiffers: number;
 }
 
 /** One period of the Analytics tab. */
@@ -101,7 +103,7 @@ function shiftPeriod(start: number, period: AnalyticsPeriod, count: number) {
 }
 
 function emptyTotals(): AnalyticsTotals {
-  return { stories: 0, storyIds: [], points: 0, estimated: 0, tokens: 0, tokensRecorded: 0, spendUsd: 0, spendRecorded: 0 };
+  return { stories: 0, storyIds: [], points: 0, estimated: 0, tokens: 0, tokensRecorded: 0, spendUsd: 0, spendRecorded: 0, spendDiffers: 0 };
 }
 
 function addStory(totals: AnalyticsTotals, story: InternalStoryCard) {
@@ -119,6 +121,7 @@ function addStory(totals: AnalyticsTotals, story: InternalStoryCard) {
     totals.spendUsd += story.estimatedCostUsd;
     totals.spendRecorded++;
   }
+  if ((story.tokens === undefined) !== (story.estimatedCostUsd === undefined)) totals.spendDiffers++;
 }
 
 /** The statuses that count as complete for a milestone. */

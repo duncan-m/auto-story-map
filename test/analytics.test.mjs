@@ -153,6 +153,29 @@ test("ESM-174: missing estimates and tokens are counted as coverage, never as ze
   assert.match(html, /<dt>Points<\/dt><dd>3<small>1 of 3 stories estimated<\/small><\/dd>/);
 });
 
+test("ESM-174: the spend column shows its own coverage when other stories have spend than have tokens", () => {
+  // As many stories have tokens as have spend, but not the same ones.
+  const map = mapOf([
+    ["S-1", "merged", { tokens: 500 }],
+    ["S-2", "merged", { estimatedCostUsd: 0.2 }],
+    ["S-3", "merged", { tokens: 100, estimatedCostUsd: 0.1 }],
+  ]);
+  const history = historyOf([["S-1", "planned"], ["S-2", "planned"], ["S-3", "planned"]], [
+    ["S-1", "planned", "merged", "2026-11-26T08:00:00.000Z"],
+    ["S-2", "planned", "merged", "2026-11-26T09:00:00.000Z"],
+    ["S-3", "planned", "merged", "2026-11-26T10:00:00.000Z"],
+  ]);
+  const totals = day(analytics(map, history), "2026-11-26");
+  assert.deepEqual([totals.tokensRecorded, totals.spendRecorded, totals.spendDiffers], [2, 2, 2]);
+  const html = renderToStaticMarkup(createElement(StoryMapBoard, {
+    map: getStoryMapPage(map, engineer, { history, searchParams: new URLSearchParams("view=analytics"), now }),
+    now,
+    timeZone: "UTC",
+  }));
+  const row = html.match(/<tr[^>]*><th scope="row">Thu 26 Nov<\/th>(.*?)<\/tr>/)?.[1];
+  assert.match(row, /<td>\$0\.30<span class="esm-analytics-cov">2 of 3 recorded<\/span><\/td>/);
+});
+
 test("ESM-174: shows the last 8 UTC days, 8 Monday weeks or 6 months, keeping empty periods", () => {
   const map = mapOf([["S-1", "merged"], ["S-2", "merged"], ["S-3", "merged"]]);
   const history = historyOf([["S-1", "planned"], ["S-2", "planned"], ["S-3", "planned"]], [
@@ -235,7 +258,7 @@ test("ESM-174: the internal board shows the Analytics tab, its options as a form
   assert.match(html, /<select class="esm-select" name="period" aria-label="Period"[^>]*><option value="day">Day<\/option><option value="week" selected="">Week<\/option>/);
   assert.match(html, /<option value="spend" selected="">Chart spend<\/option>/);
   assert.match(html, /<span class="esm-toolbar-count">last 8 weeks<\/span>/);
-  assert.match(html, /History known from 1 Nov 2026, from a shallow clone, so earlier changes are missing, up to 27 Nov 2026, 10:00\./);
+  assert.match(html, /History known from 1 Nov 2026, from a shallow clone, so earlier changes are missing, up to 27 Nov 2026, 10:00 UTC\./);
   assert.match(html, /values today, not when it was completed/);
   assert.match(html, /<caption class="esm-visually-hidden" id="[^"]+">Stories, points, tokens and spend merged or shipped each week, last 8 weeks<\/caption>/);
   assert.match(html, /<div class="esm-analytics-scroll" role="region" tabindex="0" aria-labelledby="[^"]+-analytics-caption">/);

@@ -1950,7 +1950,12 @@ function analyticsFormats(locale: string) {
   const fullDay = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
   const shortMonth = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
   const longMonth = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" });
+  // The history's dates are in UTC too, so they agree with the rows.
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
+  const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
   return {
+    date: (at: string) => date.format(new Date(at)),
+    dateTime: (at: string) => dateTime.format(new Date(at)),
     points: (value: number) => points.format(value),
     tokens: (value: number) => tokens.format(value),
     spend: (value: number) => spend.format(value),
@@ -2110,13 +2115,13 @@ function AnalyticsPage({ map, filter, preservedParams, settings, baseId }: {
   const highest = Math.max(0, ...values.map(value => value ?? 0));
   const milestoneText = completed === "merged" ? "merged or shipped" : "shipped";
   const known = analytics.knownFrom
-    ? `History known from ${formatDate(analytics.knownFrom, settings, false)}${analytics.complete ? "" : ", from a shallow clone, so earlier changes are missing"}, up to ${formatDate(analytics.generatedAt, settings)}. `
+    ? `History known from ${formats.date(analytics.knownFrom)}${analytics.complete ? "" : ", from a shallow clone, so earlier changes are missing"}, up to ${formats.dateTime(analytics.generatedAt)} UTC. `
     : "The history has no changes yet. ";
   const undated = analytics.undated
-    ? ` ${plural(analytics.undated, "story", "stories")} ${milestoneText} before the history starts, or after it was made, ${analytics.undated === 1 ? "is" : "are"} not counted.`
+    ? ` ${plural(analytics.undated, "story", "stories")} ${milestoneText} ${analytics.undated === 1 ? "is" : "are"} not counted, because the history does not say when: ${analytics.undated === 1 ? "it was" : "they were"} complete before it starts, or became complete after it was made or in a version it could not read.`
     : "";
   // The spend column only counts its own coverage when it differs from the tokens column beside it.
-  const spendCoverage = (item: AnalyticsTotals) => item.spendRecorded !== item.tokensRecorded;
+  const spendCoverage = (item: AnalyticsTotals) => item.spendDiffers > 0;
   const partial = (recorded: number) => totals.stories > 0 && recorded < totals.stories;
   const row = (item: AnalyticsTotals) => (
     <>
