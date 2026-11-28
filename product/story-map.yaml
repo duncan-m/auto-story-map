@@ -2684,8 +2684,8 @@ stories:
     activity: review
     release: v0-7-11
     status: merged
-    tokens: 10029494
-    estimatedCostUsd: 3.93
+    tokens: 10425579
+    estimatedCostUsd: 4.04
     jobs:
       - plan-and-build
       - resolve-material-uncertainty
