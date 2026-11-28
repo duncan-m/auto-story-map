@@ -2180,8 +2180,8 @@ stories:
     activity: track
     release: v0-7-7
     status: merged
-    tokens: 31991583
-    estimatedCostUsd: 11.22
+    tokens: 37977477
+    estimatedCostUsd: 13.15
     jobs:
       - get-oriented
       - agree-first-release-plan
