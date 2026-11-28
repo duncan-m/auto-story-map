@@ -2127,8 +2127,8 @@ stories:
     status: merged
     estimate: 3
     priority: must
-    tokens: 4772207
-    estimatedCostUsd: 2.63
+    tokens: 5477880
+    estimatedCostUsd: 2.85
     dependsOn:
       - ESM-105
       - ESM-116
