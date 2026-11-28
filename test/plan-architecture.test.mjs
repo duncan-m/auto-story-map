@@ -104,6 +104,7 @@ test("ESM-184: reports a section that still holds the scaffold's hints", async t
   const { root } = await repository(t, {
     "scaffold.md": plan("proposed", planArchitectureHints.map(hint => `- ${hint}`).join("\n")),
     "half.md": plan("proposed", `- **Where it runs.** Inside the CLI.\n- ${planArchitectureHints[3]}`),
+    "quoted.md": plan("proposed", `${answered}\n\nThe scaffold writes:\n\n\`\`\`markdown\n${planArchitectureHints[0]}\n\`\`\``),
   });
   const issues = await architectureIssues(root);
   assert.deepEqual(issues.map(issue => issue.file), ["plans/half.md", "plans/scaffold.md"]);
@@ -119,9 +120,14 @@ test("ESM-184: reports a None: answer with no reason after because, at its line"
     "bold-reason.md": plan("proposed", "**None:** keeps the existing design because it only rewords docs."),
     "words.md": plan("proposed", "- **Boundaries.** None of the security boundaries; it reads only the plan files."),
     "code.md": plan("proposed", "Where it runs: inside `None: x` and the CLI.\n\n```\nNone: no change.\n```"),
+    "wrapped.md": plan("proposed", "None: keeps the existing design\nbecause it adds a flag to `validate`."),
+    "code-reason.md": plan("proposed", "None: keeps the existing design because `validate` gains a flag."),
+    "comment.md": plan("proposed", "- **Where it runs.** Inside the CLI.\n<!-- None: decide\nlater -->"),
+    "lower.md": plan("proposed", "none: no change."),
+    "next-item.md": plan("proposed", "- None: no change.\n- because of nothing"),
   });
   const issues = await architectureIssues(root);
-  assert.deepEqual(issues.map(issue => [issue.file, issue.line]), [["plans/bold.md", 11], ["plans/no-change.md", 11], ["plans/trailing.md", 11]]);
+  assert.deepEqual(issues.map(issue => [issue.file, issue.line]), [["plans/bold.md", 11], ["plans/lower.md", 11], ["plans/next-item.md", 11], ["plans/no-change.md", 11], ["plans/trailing.md", 11]]);
   assert.ok(issues.every(issue => /`None:` answer gives no reason/.test(issue.message)));
 });
 
@@ -252,7 +258,7 @@ test("ESM-184: this repository requires the section, and every open plan has one
 
 test("ESM-184: stays fast on a crafted section", async () => {
   const { planArchitectureProblems } = await import("../dist/plan-architecture.js");
-  const crafted = `## Architecture decisions\n\n${"None*_".repeat(50_000)}\n${"because ".repeat(50_000)}\n${"_*".repeat(100_000)}None:\n`;
+  const crafted = `## Architecture decisions\n\n${"None*_".repeat(50_000)}\n${"because ".repeat(50_000)}\n${"_*".repeat(100_000)}None:\n${"<!--".repeat(100_000)}\n${"None: x\n".repeat(50_000)}`;
   const started = performance.now();
   const problems = planArchitectureProblems(crafted);
   assert.ok(performance.now() - started < 1000, "linear in the section's length");

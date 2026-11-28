@@ -23,10 +23,10 @@ export const planArchitectureHints = [
 const openStatuses: ReadonlySet<PlanStatusWord> = new Set(["proposed", "planned", "in progress"]);
 
 /** `None:` as the routine answer starts, optionally in bold, and not the end of another word. */
-const noneAnswer = /(?<![\p{L}\p{N}])None[*_]*\s*:/u;
+const noneAnswer = /(?<![\p{L}\p{N}])None[*_]*\s*:/iu;
 
 /** A reason after `because`: at least one word. */
-const becauseReason = /\bbecause\s+[*_]*[\p{L}\p{N}`]/iu;
+const becauseReason = /\bbecause\s+[*_]*[\p{L}\p{N}]/iu;
 
 /** What is wrong with a plan's architecture section, or undefined when it is fine. */
 export type PlanArchitectureProblem =
@@ -48,26 +48,55 @@ export function planArchitectureProblems(markdown: string): PlanArchitectureProb
   const next = headings.slice(index + 1).find(other => other.level <= heading.level);
   const lines = markdown.split(/\r?\n/);
   const end = next ? next.line - 1 : lines.length;
-  const body = lines.slice(heading.line, end);
-  const text = body.join("\n");
+  const prose = withoutFences(lines.slice(heading.line, end));
+  const text = prose.join("\n");
 
   if (planArchitectureHints.some(hint => text.includes(hint))) return [{ kind: "placeholder", line: heading.line }];
-  if (!text.replace(/<!--[\s\S]*?-->/g, "").trim()) return [{ kind: "empty", line: heading.line }];
+  const answers = withoutComments(text).split("\n").map(line => line.replace(/`[^`]*`/g, "code"));
+  if (!answers.join("").trim()) return [{ kind: "empty", line: heading.line }];
 
+  // A `None:` answer's reason may wrap onto the following lines of its paragraph or list item.
   const problems: PlanArchitectureProblem[] = [];
+  answers.forEach((line, offset) => {
+    const none = noneAnswer.exec(line);
+    if (!none) return;
+    let answer = line.slice(none.index);
+    for (const following of answers.slice(offset + 1)) {
+      if (!following.trim() || /^\s*(?:[-*+]|\d+[.)])\s/.test(following) || noneAnswer.test(following)) break;
+      answer += ` ${following}`;
+    }
+    if (!becauseReason.test(answer)) problems.push({ kind: "none-without-reason", line: heading.line + 1 + offset });
+  });
+  return problems;
+}
+
+/** The lines with fenced code blanked, so the line numbers stay the same. */
+function withoutFences(lines: readonly string[]): string[] {
   let fence: string | undefined;
-  body.forEach((line, offset) => {
+  return lines.map(line => {
     const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1];
     if (marker) {
       if (!fence) fence = marker[0];
       else if (marker[0] === fence) fence = undefined;
-      return;
+      return "";
     }
-    if (fence) return;
-    const none = noneAnswer.exec(line.replace(/`[^`]*`/g, code => " ".repeat(code.length)));
-    if (none && !becauseReason.test(line.slice(none.index))) problems.push({ kind: "none-without-reason", line: heading.line + 1 + offset });
+    return fence ? "" : line;
   });
-  return problems;
+}
+
+/** The text with each HTML comment blanked, keeping its line breaks. An unclosed comment runs to the end. Linear in the text's length. */
+function withoutComments(text: string): string {
+  let result = "";
+  let at = 0;
+  for (;;) {
+    const open = text.indexOf("<!--", at);
+    if (open < 0) return result + text.slice(at);
+    const close = text.indexOf("-->", open + 4);
+    const stop = close < 0 ? text.length : close + 3;
+    result += text.slice(at, open) + text.slice(open, stop).replace(/[^\n]/g, "");
+    if (close < 0) return result;
+    at = stop;
+  }
 }
 
 const messages: Record<PlanArchitectureProblem["kind"], string> = {
