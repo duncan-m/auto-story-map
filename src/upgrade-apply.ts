@@ -166,9 +166,9 @@ const renderBlocks = (blocks: readonly AgentsSectionBlock[]) => `${blocks.map(re
  * section, so it stays where they put it.
  */
 export function mergeAgentsSection(hostBody: string, target: string, rules: readonly AgentsRuleReview[]): string {
-  const byId = new Map(rules.filter(rule => rule.id).map(rule => [rule.id!, rule]));
+  const byId = new Map(rules.flatMap(rule => (rule.id ? [[rule.id, rule] as const] : [])));
   const templateBlocks = agentsSectionBlocks(target);
-  const templateIds = new Set(templateBlocks.filter(block => block.id).map(block => block.id!));
+  const templateIds = new Set(templateBlocks.flatMap(block => (block.id ? [block.id] : [])));
   const templateHeadings = new Set(templateBlocks.filter(block => block.kind === "heading").map(block => block.text));
 
   // This version's blocks, with the host's text where it is kept.
@@ -180,8 +180,9 @@ export function mergeAgentsSection(hostBody: string, target: string, rules: read
     }
     const rule = block.id ? byId.get(block.id) : undefined;
     if (rule?.state === "removed") continue;
-    const kept = rule && rule.text !== undefined && rule.recommendation !== "replace" && rule.recommendation !== "add";
-    out.push({ block: kept ? { ...block, text: rule.text! } : block, anchor: block.id && `rule:${block.id}` });
+    const text = rule?.text;
+    const kept = text !== undefined && rule?.recommendation !== "replace" && rule?.recommendation !== "add";
+    out.push({ block: kept ? { ...block, text } : block, anchor: block.id && `rule:${block.id}` });
   }
 
   // The host's blocks this version does not have, each placed after the block it follows in the host's section.
@@ -214,7 +215,9 @@ export function mergeAgentsSection(hostBody: string, target: string, rules: read
 /** The indentation of the line `index` is on, and where that line starts. */
 function lineAt(text: string, index: number) {
   const start = text.lastIndexOf("\n", index - 1) + 1;
-  return { start, indent: /^[ \t]*/.exec(text.slice(start))![0] };
+  let end = start;
+  while (text[end] === " " || text[end] === "\t") end++;
+  return { start, indent: text.slice(start, end) };
 }
 
 /**
@@ -272,12 +275,15 @@ export function addWorkflowSteps(host: string, template: string, keys: readonly 
   const list = lists.find(runsValidate) ?? lists[0];
   if (!list) return undefined;
   const steps = templateSteps(template);
-  const added = keys.map(key => steps.get(key));
-  if (added.some(step => !step)) return undefined;
+  const added = keys.flatMap(key => {
+    const step = steps.get(key);
+    return step ? [step] : [];
+  });
+  if (added.length !== keys.length) return undefined;
 
   const items = list.items as { range?: [number, number, number] }[];
-  const first = items[0].range;
-  const last = items.at(-1)!.range;
+  const first = items.at(0)?.range;
+  const last = items.at(-1)?.range;
   if (!first || !last) return undefined;
   const { indent } = lineAt(host, first[0]);
   let at = host.indexOf("\n", last[1] - 1);
@@ -285,7 +291,7 @@ export function addWorkflowSteps(host: string, template: string, keys: readonly 
   const newline = host.includes("\r\n") ? "\r\n" : "\n";
   const lead = at === host.length && !host.endsWith("\n") ? newline : "";
   const text = [...new Set(added)]
-    .map(step => step!.text.split("\n").map(line => (line.startsWith(step!.indent) ? indent + line.slice(step!.indent.length) : line)).join("\n"))
+    .map(step => step.text.split("\n").map(line => (line.startsWith(step.indent) ? indent + line.slice(step.indent.length) : line)).join("\n"))
     .join("")
     .replace(/\n/g, newline);
   const result = host.slice(0, at) + lead + text + host.slice(at);
@@ -447,9 +453,15 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
       continue;
     }
 
+    // Every state from here on reads the host's copy, so a copy that has gone since the survey is kept as it is.
+    if (hostText === undefined) {
+      keep(part, `kept: ${part.path} could not be read`);
+      continue;
+    }
+
     // Replace: an unedited part in simple mode, or any part the person accepted in advanced mode.
     if (take || part.recommendation === "replace") {
-      const after = setupPart === "agents" ? replaceAgentsSection(hostText!, stamped("agents")) : stamped(setupPart);
+      const after = setupPart === "agents" ? replaceAgentsSection(hostText, stamped("agents")) : stamped(setupPart);
       if (after === undefined) {
         keep(part, "kept: the story map section's markers could not be read");
         continue;
@@ -461,16 +473,26 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
     }
 
     // Simple mode, edited parts: merge only what the host did not change.
-    if (setupPart === "agents" && part.recommendation === "review" && part.rules?.some(appliesRule)) {
-      const body = mergeAgentsSection(setupBody("agents", hostText!)!, templates.agents, part.rules);
-      const toReview = part.rules.filter(rule => rule.recommendation === "review").length;
+    const { rules } = part;
+    if (setupPart === "agents" && part.recommendation === "review" && rules?.some(appliesRule)) {
+      const hostBody = setupBody("agents", hostText);
       // With reworded rules still to review, the marker stays, so the review and the reminder still offer them.
-      const marker = /<!-- auto-story-map:start[^>]*-->/.exec(hostText!)![0];
+      const marker = /<!-- auto-story-map:start[^>]*-->/.exec(hostText)?.[0];
+      if (hostBody === undefined || marker === undefined) {
+        keep(part, "kept: the story map section's markers could not be read");
+        continue;
+      }
+      const body = mergeAgentsSection(hostBody, templates.agents, rules);
+      const toReview = rules.filter(rule => rule.recommendation === "review").length;
       const section = toReview
         ? `${marker}\n${body}<!-- auto-story-map:end -->`
         : stampSetupFile("agents", `<!-- auto-story-map:start -->\n${body}<!-- auto-story-map:end -->\n`, storyMapVersion, setupBodyHash(templates.agents));
-      const after = replaceAgentsSection(hostText!, section)!;
-      const count = (recommendation: string) => part.rules!.filter(rule => rule.recommendation === recommendation).length;
+      const after = replaceAgentsSection(hostText, section);
+      if (after === undefined) {
+        keep(part, "kept: the story map section's markers could not be read");
+        continue;
+      }
+      const count = (recommendation: string) => rules.filter(rule => rule.recommendation === recommendation).length;
       const words = [
         count("replace") && `update ${plural(count("replace"), "rule", "rules")}`,
         count("add") && `add ${plural(count("add"), "new rule", "new rules")}`,
@@ -483,7 +505,8 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
       continue;
     }
     if (setupPart === "workflow" && part.additions?.length) {
-      const merged = addWorkflowSteps(setupBody("workflow", hostText!)!, templates.workflow, part.additions);
+      const hostBody = setupBody("workflow", hostText);
+      const merged = hostBody === undefined ? undefined : addWorkflowSteps(hostBody, templates.workflow, part.additions);
       if (merged === undefined) {
         keep(part, `kept: add the ${part.additions.join(", ")} ${part.additions.length === 1 ? "step" : "steps"} by hand`);
         continue;
@@ -506,8 +529,8 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
     && architectureDecisionsSetting(mapText) === undefined;
   // The setting is recorded only in a map that is valid already, so a map with problems never stops the rest of the upgrade.
   const architectureOperation = { op: "architecture-decisions", architectureDecisions: "required" } as StoryMapEditOperation;
-  const recordsArchitecture = adoptsArchitecture
-    && (await proposeStoryMapEdit(mapText!, [architectureOperation], { check: { root } }).then(edit => edit.valid, () => false));
+  const recordsArchitecture = adoptsArchitecture && mapText !== undefined
+    && (await proposeStoryMapEdit(mapText, [architectureOperation], { check: { root } }).then(edit => edit.valid, () => false));
   if (adoptsArchitecture) {
     changes.push({
       part: "agents",

@@ -5,6 +5,7 @@ import { agentsRuleByOpening, agentsRuleHash, agentsRules, agentsSectionBlocks, 
 import { unifiedDiff } from "./edit.js";
 import { skillFile, skillPath, testFolder, workflowWithTests } from "./init.js";
 import { compareVersions, loadKnownSetupVersions, readSetupFileVersion, setupBody, setupBodyHash, type KnownSetupVersions, type SetupFileVersion, type SetupPart } from "./setup-versions.js";
+import { present } from "./present.js";
 import { loadSetupChanges, upgradeOverview, type SetupChanges, type UpgradeOverview } from "./upgrade-overview.js";
 import { storyMapVersion } from "./version.js";
 
@@ -257,10 +258,11 @@ interface FileCompare {
 function compareFile({ part, path, text, target, current, known }: FileCompare): UpgradePart {
   const base = { part, kind: "file" as const, title: titles[part], path };
   const version = text === undefined ? undefined : readSetupFileVersion(part, text, known);
-  if (!version) {
+  if (text === undefined || !version) {
     return { ...base, state: "not-added", change: `add ${nouns[part]}`, recommendation: "add" };
   }
-  const body = setupBody(part, text!)!;
+  // A version is only read from a part whose markers were found, so the part has a body.
+  const body = present(setupBody(part, text), `the body of ${path}`);
   const from = version.from ? { from: version.from } : {};
   if (current.includes(body)) {
     return { ...base, state: "current", ...from, change: "none", recommendation: "keep", version };
@@ -506,9 +508,10 @@ export async function upgradeReport(options: UpgradeReportOptions = {}): Promise
   const [agentsTarget, guide, workflowTarget, skill] = [targets.agents, targets.guide, targets.workflow, targets.skill];
 
   const agents = compareFile({ part: "agents", path: "AGENTS.md", text: agentsText, target: agentsTarget, current: agentsBodies, known });
-  if (agents.version && ["outdated", "edited", "edited-outdated"].includes(agents.state)) {
+  const agentsBody = agentsText === undefined ? undefined : setupBody("agents", agentsText);
+  if (agents.version && agentsBody !== undefined && ["outdated", "edited", "edited-outdated"].includes(agents.state)) {
     agents.rules = reviewAgentsRules({
-      body: setupBody("agents", agentsText!)!,
+      body: agentsBody,
       target: agentsTarget,
       form: usesSkill ? "skill" : "full",
       version: agents.version,
