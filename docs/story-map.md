@@ -1160,6 +1160,7 @@ npx --no-install story-map stories --query "export" --status all
 - `story-map story <ID> [...]` prints stories in full: status, reason, release, activity, estimate, the personas it is for, the jobs it serves with their statements, a `[core job]` mark on a persona's core job and a `[draft]` mark on drafts, summary, notes and sources, with history and tests when their files are given. An ID that is not in the map exits 1 and suggests close matches, such as `ESM-742` for `esm-742`.
 - `story-map stories` lists stories one per line, with ID, status, release and title. It takes the board's filters: `--status`, repeated or comma-separated, with `stalled` and `all`; `--release`, `--activity`, `--persona` and `--job`, repeated or comma-separated; `--query`; `--readiness ready`, `waiting` or `at-risk`, repeated or comma-separated, for planned and in-progress stories in those [readiness](#see-which-stories-are-ready-to-start) states; and `--changed-within 1`, `7`, `14` or `30` days. As on the board, blocked and cut stories are hidden unless `--status` chooses them, and the count of hidden stories is printed on stderr. `stalled` and `--changed-within` need `--history`. An unknown release, activity, persona or job ID exits 1. `--persona` keeps stories for any chosen persona, from their jobs or their own `personas`, and `--job` the stories that serve any chosen job, as on the board's [persona filter](#filter-by-persona).
 - `story-map releases [<release ID> ...]` lists releases with their story counts by status, estimates, notes and expected impact. Impact items an agent drafted are marked `[draft]`.
+- `story-map brief` prints a handoff brief for stories, a release or an activity. See [Write a brief from the command line](#write-a-brief-from-the-command-line).
 - `story-map help <command>` prints just that command's options.
 
 The JSON has `format` set to `"auto-story-map.stories"` or `"auto-story-map.releases"` and `version: 1`. Stories have the same shape as in the [JSON export](#export-as-json-for-agents), so an agent sees one shape everywhere. `story` lists IDs it could not find under `missing`, with their `suggestions`, and `stories` adds the `filter` it applied, with `total` and the `hidden` counts.
@@ -1301,10 +1302,11 @@ Other clients take the same command, `npx --no-install story-map mcp`, in their 
 | `list_stories`, `get_story`, `list_releases` | `story-map stories`, `story` and `releases` |
 | `validate_map` | `story-map validate --format json` |
 | `get_evidence` | `story-map evidence` |
+| `get_brief` | `story-map brief`, with `ids`, `release` or `activity` |
 | `propose_edit` | `story-map edit --from`, as a dry run unless the call sets `write` |
 | `claim_story` | `story-map claim` |
 
-It keeps the CLI's safeguards. `propose_edit` refuses what `edit` refuses, such as customer copy without `customer: true` and `cut` without a reason, writes only a valid map, and adds impact items as drafts. It offers no persona or job edits, which a person makes on the [Personas tab](#edit-personas-on-the-local-preview), so it cannot delete a job or add one that is not a draft. There is no tool for `story-map confirm`, because only a person confirms drafts. Every path a tool is given must stay inside the repository root, `--root` or the current directory, and the map defaults to `product/story-map.yaml` or `--map`. It reads the map on every call and has no network listener. Only `claim_story`, and `get_evidence` with `claims`, reach the remote, as the commands do. `--read-only` leaves out `propose_edit` and `claim_story`.
+It keeps the CLI's safeguards. `propose_edit` refuses what `edit` refuses, such as customer copy without `customer: true` and `cut` without a reason, writes only a valid map, and adds impact items as drafts. It offers no persona or job edits, which a person makes on the [Personas tab](#edit-personas-on-the-local-preview), so it cannot delete a job or add one that is not a draft. There is no tool for `story-map confirm`, because only a person confirms drafts. Every path a tool is given must stay inside the repository root, `--root` or the current directory, and the map defaults to `product/story-map.yaml` or `--map`. It reads the map on every call and has no network listener. Only `claim_story`, and `get_evidence` and `get_brief` with `claims`, reach the remote, as the commands do. `--read-only` leaves out `propose_edit` and `claim_story`.
 
 Results are untrusted data, as for the commands: map text, branch names and commit subjects come from whoever can push. A refused call returns an error result with the same JSON the command prints. In code, `createStoryMapMcpServer({ root, map, readOnly })` from `auto-story-map/mcp` returns the server, to connect to another transport.
 
@@ -1507,7 +1509,7 @@ The brief has tagged sections:
 - `<rules>`: follow `AGENTS.md`, set the story to `in-progress` with `story-map edit` before the first code change, the branch to create, and the story ID to put in commits, the PR title and test names. A release brief asks for each story to be set to `in-progress` when work on it starts, not all at once. The branch is `feat/<ID>-<first words of the title>`, such as `feat/esm-111-show-edit-command`, at most 50 characters. `storyMapBriefBranch` gives the same name.
 - `<target>`: each story to build, with its status, release, activity, estimate, summary, plan, other sources, personas and jobs, and the `story-map story` command for the rest. The plan is the first Markdown link with a `#heading` in its `sources`, as for the [Engineering overview link](#link-an-engineering-overview). A release brief targets its planned and in-progress stories, by activity from left to right, then in map order.
 - `<context>`: the `readFirst` documents, the merged and shipped stories nearby to reuse, and the planned stories nearby not to build yet. For a story, these are up to five of the most recently changed delivered stories in its activity, and the planned stories in its activity in the same release or later. For a release, they are the delivered stories in it and in the release before, and the planned stories in the release after.
-- `<in_flight>`: the tests tagged with each target and the pull requests and commits that name it, when the view has a [tests index](#link-tests-to-stories) and [history](#link-pull-requests-and-commits-to-stories). Left out when there is none.
+- `<in_flight>`: the tests tagged with each target and the pull requests and commits that name it, when the view has a [tests index](#link-tests-to-stories) and [history](#link-pull-requests-and-commits-to-stories). Pass `evidence`, the stories from [`gatherStoryEvidence`](#look-up-the-evidence-for-a-story), to add each target's claim, branches, commits on the default branch, tagged tests and broken sources, as [`story-map brief`](#write-a-brief-from-the-command-line) does. The brief never reads Git itself. Left out when there is none.
 - `<open_decisions>`: draft jobs, a target with no estimate or no plan, a target that is not planned or in progress, and blocked stories in the same release with their reason.
 - `<done_when>`: the plan is met with tagged tests, validation and the tests pass, and the PR has the `story-map diff` summary.
 
@@ -1516,6 +1518,27 @@ Pass `mapPath` when the map is not `product/story-map.yaml`, `validateCommand` a
 - **Internal only.** A brief carries internal notes, estimates and draft jobs, so it throws a `TypeError` for a customer view, and for a filtered view, because it lists the stories around its target. Pass the view from `getStoryMapForViewer`. An unknown story or release throws a `RangeError`.
 - **Safe text.** Text from the map is written on one line, with `&`, `<` and `>` escaped, so a title or summary cannot close a section, add one or start a line that reads as a rule.
 - **Short.** A story brief stays under 4 KB and a release brief under 16 KB. Past that, the lists of stories to reuse and not to build are cut down, with a line that says how many were left out. The targets are never cut.
+
+`storyMapBrief` also takes `{ stories: [...] }`, for several stories with the stories around each of them, and `{ activity }`, for an activity's planned and in-progress stories, earliest release first, with its delivered stories to reuse. Both stay under 16 KB, as a release brief does. `full: true` adds each target's notes, its personas' context, its job statements and every tagged test, for agents that cannot run commands. `storyMapBriefDetails` takes the same request and returns the brief with its parts: the scope, the target story IDs, the branch and each section's lines.
+
+### Write a brief from the command line
+
+`story-map brief` prints the same brief as the board's **Copy brief**, for agents and scripts, and adds the scopes too long for a panel:
+
+```bash
+npx story-map brief ESM-111
+npx story-map brief ESM-111 ESM-112
+npx story-map brief --release v0-7-6
+npx story-map brief --activity explore --full
+```
+
+- **In flight from Git.** The `<in_flight>` section adds what [`story-map evidence`](#look-up-the-evidence-for-a-story) finds for each target: branches that name it, commits on the default branch, tagged tests found in the checkout and broken sources. Add `--claims` to include claims, which reads the remote. `--no-evidence` leaves Git out, so the brief has only what the map, `--history` and `--tests-index` give, as on the board. Outside a Git checkout, the brief notes that branches and commits were not read.
+- `--full` adds notes, persona context, job statements and every tagged test, as `full: true` does.
+- `--read-first <path>` names a document to read first, such as `docs/ENGINEERING-OVERVIEW.md`. Repeat it for several.
+- `--format json` prints the brief with its scope, targets, branch and each section's lines, as `storyMapBriefDetails` returns them. The MCP server's [`get_brief`](#serve-the-map-over-mcp) tool returns the same JSON.
+- It never changes the map. An ID that is not in the map exits 1.
+
+Paste the brief into an agent, or start one on it, such as `claude "$(npx story-map brief ESM-111)"`.
 
 ### Copy a brief from the board
 

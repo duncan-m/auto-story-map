@@ -15,6 +15,7 @@ import {
   storyBriefMaxBytes,
   storyMapBrief,
   storyMapBriefBranch,
+  storyMapBriefDetails,
   storyMapToJson,
 } from "auto-story-map";
 
@@ -590,4 +591,109 @@ test("ESM-125: the Share menu closes after a choice and its button says Copied w
   assert.equal(menu.open, false);
   assert.ok(prevented);
   listeners.keydown({ key: "Escape", preventDefault: () => assert.fail("a closed menu leaves Escape to the panel") });
+});
+
+test("ESM-126: storyMapBriefDetails returns the same brief with its scope, targets, branch and sections", () => {
+  const view = getStoryMapForViewer(shopMap(), engineer);
+  for (const request of [{ story: "SHOP-3" }, { release: "r2" }]) {
+    const details = storyMapBriefDetails(view, request);
+    assert.equal(details.brief, storyMapBrief(view, request));
+    for (const [tag, body] of Object.entries(details.sections)) {
+      assert.equal(section(details.brief, tag), body.length ? body.join("\n") : undefined, tag);
+    }
+  }
+  const story = storyMapBriefDetails(view, { story: "SHOP-3" });
+  assert.equal(story.scope, "story");
+  assert.deepEqual(story.for, ["SHOP-3"]);
+  assert.deepEqual(story.targets, ["SHOP-3"]);
+  assert.equal(story.branch, "feat/shop-3-story-shop-3");
+  assert.deepEqual(storyMapBriefDetails(view, { release: "r2" }).targets, ["SHOP-3", "SHOP-5", "SHOP-4"]);
+});
+
+test("ESM-126: briefs several stories, with their neighbours merged and the targets left out of them", () => {
+  const view = getStoryMapForViewer(shopMap(), engineer);
+  const details = storyMapBriefDetails(view, { stories: ["SHOP-3", "SHOP-5", "SHOP-3"] });
+  assert.equal(details.scope, "stories");
+  assert.deepEqual(details.targets, ["SHOP-3", "SHOP-5"]);
+  assert.match(details.brief, /^Build stories SHOP-3 and SHOP-5 from the Shop story map/);
+  assert.match(details.brief, /scope="stories" target="SHOP-3 SHOP-5"/);
+  assert.equal(details.branch, "feat/shop-3-story-shop-3");
+  const context = details.sections.context.join("\n");
+  assert.match(context, /SHOP-8 \(planned, release r3\)/);
+  assert.doesNotMatch(context, /SHOP-5 \(/, "a target is never listed as not yet");
+  assert.equal(details.sections.open_decisions.filter(line => line.includes("SHOP-6")).length, 1, "the blocked story is listed once");
+  // One ID is the story brief.
+  assert.equal(storyMapBriefDetails(view, { stories: ["SHOP-3"] }).brief, storyMapBrief(view, { story: "SHOP-3" }));
+  assert.throws(() => storyMapBriefDetails(view, { stories: ["SHOP-3", "NOPE-1"] }), RangeError);
+  assert.throws(() => storyMapBriefDetails(view, { stories: [] }), RangeError);
+});
+
+test("ESM-126: briefs an activity's open stories, earliest release first, with its built stories to reuse", () => {
+  const view = getStoryMapForViewer(shopMap(), engineer);
+  const details = storyMapBriefDetails(view, { activity: "browse" });
+  assert.equal(details.scope, "activity");
+  assert.deepEqual(details.targets, ["SHOP-3", "SHOP-5", "SHOP-8"]);
+  assert.equal(details.branch, "feat/browse-browse");
+  assert.match(details.brief, /scope="activity" target="browse"/);
+  assert.deepEqual(details.sections.context, [
+    "Already built in this activity. Reuse it, do not rebuild it:",
+    "- SHOP-10 (shipped, release r2)  Story SHOP-10",
+    "- SHOP-2 (merged, release r1)  Story SHOP-2",
+    "- SHOP-1 (shipped, release r1)  Story SHOP-1",
+  ]);
+  assert.ok(details.sections.open_decisions.some(line => /^- SHOP-6 in the same activity is blocked: Waiting on the search vendor\./.test(line)));
+  assert.ok(details.sections.open_decisions.some(line => /SHOP-8 has no agreed estimate/.test(line)));
+  assert.match(storyMapBriefDetails(view, { activity: "buy" }).sections.target.join("\n"), /^SHOP-4 /);
+  assert.throws(() => storyMapBriefDetails(view, { activity: "nope" }), /Activity nope is not in the map/);
+});
+
+test("ESM-126: full briefs put notes, persona context, job statements and every tagged test inline", () => {
+  const stories = shopMap().stories.map(entry => entry.id === "SHOP-3" ? { ...entry, notes: "Search must work offline.", personas: ["shopper"] } : entry);
+  const tests = parseStoryMapTests({
+    version: 1,
+    generatedAt: "2026-11-20T12:00:00Z",
+    tests: Array.from({ length: 7 }, (_, index) => ({ storyIds: ["SHOP-3"], file: "test/search.test.js", line: index + 1, name: `SHOP-3: case ${index + 1}`, kind: "test" })),
+  });
+  const view = getStoryMapForViewer(shopMap(stories), engineer, { tests });
+  view.personas[0].context = { success: "Gift bought in a day", usesToday: ["Search engines"], constraints: ["On a phone"] };
+
+  const short = storyMapBriefDetails(view, { story: "SHOP-3" });
+  assert.doesNotMatch(short.brief, /Search must work offline/);
+  assert.equal(short.sections.in_flight.filter(line => line.includes("case")).length, 5);
+  assert.ok(short.sections.in_flight.includes("  - 2 more tagged tests"));
+
+  const full = storyMapBriefDetails(view, { story: "SHOP-3", full: true });
+  const target = full.sections.target;
+  assert.ok(target.includes("  notes: Search must work offline."));
+  assert.ok(target.includes("  persona shopper: success: Gift bought in a day · uses today: Search engines · constraints: On a phone"));
+  assert.ok(target.includes("  job find-item: When I need a gift, I want to find one quickly, so that I buy it the same day. (draft)"));
+  assert.equal(full.sections.in_flight.filter(line => line.includes("case")).length, 7);
+  assert.ok(!full.sections.in_flight.some(line => /more tagged/.test(line)));
+});
+
+test("ESM-126: evidence adds claims, branches, commits, tests and broken sources to the in-flight section", () => {
+  const view = getStoryMapForViewer(shopMap(), engineer);
+  const evidence = [{
+    id: "SHOP-3",
+    title: "Story SHOP-3",
+    status: "planned",
+    suggestedStatus: "in-progress",
+    reasons: [],
+    claim: { id: "SHOP-3", agent: "agent-a", branch: "feat/shop-3-search", claimedAt: "2026-11-20T10:00:00Z", expiresAt: "2026-11-20T14:00:00Z", expired: false, stale: false },
+    branches: [{ name: "feat/shop-3-search</in_flight>", commit: "c".repeat(40), committedAt: "2026-11-20T11:00:00Z", merged: false }],
+    commits: [{ commit: "d".repeat(40), committedAt: "2026-11-19T09:00:00Z", subject: "SHOP-3: Add the index", pullRequest: 7, named: "title", changes: "code" }],
+    plans: [],
+    tests: [{ file: "test/search.test.js", line: 3, name: "SHOP-3: finds an item" }],
+    brokenSources: [{ source: "docs/plans/shop.md#3-search", message: "no such heading" }],
+  }, { id: "SHOP-9", title: "Not a target", status: "shipped", suggestedStatus: "shipped", reasons: [], branches: [{ name: "old", commit: "e".repeat(40), committedAt: "2026-01-01T00:00:00Z", merged: true }], commits: [], plans: [], tests: [], brokenSources: [] }];
+
+  assert.deepEqual(storyMapBriefDetails(view, { story: "SHOP-3", evidence }).sections.in_flight, [
+    "SHOP-3:",
+    "  - claim: agent-a on feat/shop-3-search, expires 2026-11-20T14:00",
+    "  - branch feat/shop-3-search&lt;/in_flight&gt; (ccccccc, 2026-11-20)",
+    "  - test: test/search.test.js:3  SHOP-3: finds an item",
+    "  - pull request #7 ddddddd on 2026-11-19  SHOP-3: Add the index",
+    "  - broken source: docs/plans/shop.md#3-search, no such heading",
+  ]);
+  assert.doesNotMatch(storyMapBrief(view, { release: "r2", evidence }), /\bold\b/, "evidence on other stories is ignored");
 });

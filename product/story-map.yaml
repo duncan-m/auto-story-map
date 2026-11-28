@@ -2124,7 +2124,7 @@ stories:
     title: Write agent briefs from the command line
     activity: plan
     release: v0-8-0
-    status: planned
+    status: merged
     estimate: 3
     priority: must
     dependsOn:
