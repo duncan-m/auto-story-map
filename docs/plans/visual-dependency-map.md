@@ -133,6 +133,17 @@ Let the viewer choose a release or focus on a story, with direct neighbours by d
 - Large sets show truncation and expansion without hiding a blocking link.
 - Tests named `ESM-141:` cover deep chains, filters, missing and obsolete selections and mixed releases.
 
+## Architecture decisions
+
+Following [Record architecture decisions](../ENGINEERING-OVERVIEW.md#record-architecture-decisions). ESM-139 has shipped, and ESM-140 to ESM-143 are planned.
+
+- **Where it runs.** Inside the existing package: a pure projection of the validated map, shown in the story and release panels, the CLI, the JSON export, the brief and a new internal board tab. The graph is server-rendered SVG with a layered layout written here, and pan and zoom are added by `board.js`. No service, data store or new dependency.
+- **Data and contracts.** Upstream, it reads only the `dependsOn` links from ESM-129, and the YAML schema does not change. Downstream: the JSON export carries `readiness` (shipped in ESM-139); `story-map releases <ID> --format json` gains the steps and risks (ESM-142); the brief's `<target>` and `<open_decisions>` gain prerequisites (ESM-143), which agents read; and the board gains `view=dependencies` with `release`, `story` and `depth`.
+- **Boundaries.** [Project, then filter, then render](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve) and the customer allow-list: customer viewers get no dependency data, including in JSON or client-side payloads. **Permalinks reveal nothing new**: a stale or internal story or release ID says so without revealing anything. **React escapes all text**: the SVG's labels are rendered as text, never as markup.
+- **Reversibility.** Easy. Everything is worked out from the links each time and nothing is saved, so the tab, the CLI output and the brief lines can each be removed in a release, with a changelog note for the JSON fields.
+
+None: keeps the existing design because it adds computed views over links the map already has, with no new store, service or schema change. If ESM-140's benchmark calls for a layout library such as Dagre or ELK, that adds a dependency every host installs, and becomes a consequential decision for a person to agree before the story continues.
+
 ## Delivery sequence
 
 **0.7.6:** ESM-139. The story panel and CLI show readiness, with no new tab.

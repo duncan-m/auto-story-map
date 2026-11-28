@@ -72,7 +72,7 @@ A **Review a code change** section in the [engineering overview](../ENGINEERING-
 
 A serious defect gets a regression test the first time it is found. A lower-impact problem that recurs gets a lint rule, a test or an API change the second time, as [item 10](#10-share-one-regular-expression-escape-helper) does for escaping.
 
-Until item 6 lands, the review asks questions 1 to 3 and 5 only.
+Item 6 (ESM-183) added question 4, so the review now asks all five.
 
 ## 5. Review each PR's diff before it is ready, and pilot the step
 
