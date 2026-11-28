@@ -7,10 +7,12 @@ All notable changes to `auto-story-map` are recorded here. The project follows [
 0.7.11 helps host teams plan work and keep their set-up current, checks the map's rules in CI, and asks for a review and the architecture decisions before each pull request is ready. It brings together 0.7.7 to 0.7.10, which were not published on their own.
 
 - **Plan the work:** The guide, an example and `story-map plan` show host teams how to write a delivery plan, once a person says they want plans.
-- **Keep the set-up current:** `story-map upgrade` shows which parts of your set-up are behind the package, says what changes in plain words, and applies the changes while keeping your own edits.
+- **Upgrade your set-up without losing your edits:** `story-map upgrade` shows which of your set-up files are behind the installed package: the `AGENTS.md` section, the guide and the CI workflow. It starts with a short, plain summary of what changes for your team. Simple mode applies every update and keeps any rule or file you've edited. Advanced mode shows each change first and lets you take or skip it.
 - **Check the map's rules:** Each problem `validate` reports names its rule and links to the fix, plans are checked against the map, and CI fails an agent's pull request that makes a change only a person should make.
 - **Review before ready:** Agents review each pull request against its story, and record the review and the architecture decisions, before it is ready.
 - **Brief an agent from the terminal:** `story-map brief` prints the same brief as the board's **Copy brief**.
+- **Count the tokens for one step:** `story-map tokens --since <time> --until <time>` counts only the tokens used in that window, such as a pull request's review. That lets you record what the review cost separately from the story's total.
+- **Fill gaps in story numbers:** Set `storyIds: lowest-free` in the map's `settings`, and `story-map add` gives a new story the lowest unused number instead of the next one after the highest. A map with ESM-101, ESM-102 and ESM-104 gets ESM-103 next. Cut stories keep their numbers, and no existing story is renumbered.
 - **See delivery totals:** An **Analytics** tab shows the stories, points, tokens and spend completed each day, week or month.
 - **See everything released in one lane:** A toolbar switch moves every shipped story into one **Released** lane.
 - **Change a story from its panel:** The status, reason and release pickers move into an **Actions** menu beside **Share**.
