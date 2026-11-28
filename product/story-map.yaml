@@ -2809,6 +2809,8 @@ stories:
     activity: explore
     release: v0-7-11
     status: merged
+    tokens: 19799996
+    estimatedCostUsd: 7.01
     jobs:
       - get-oriented
     summary: |-
