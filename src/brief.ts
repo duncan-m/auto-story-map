@@ -1,6 +1,7 @@
+import type { StoryEvidence } from "./evidence.js";
+import { jobStatement } from "./personas.js";
 import { isActiveStatus } from "./status.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, StoryMapLabel, StoryMapView } from "./view.js";
-import type { StoryMapPermalinkTarget } from "./permalink.js";
 
 /** A document the brief asks the agent to read before it changes anything. */
 export interface StoryMapBriefDocument {
@@ -21,10 +22,54 @@ export interface StoryMapBriefOptions {
   testCommand?: string;
   /** The branch the pull request goes into, for the `story-map diff` summary. Defaults to `main`. */
   baseBranch?: string;
+  /**
+   * Puts each target's notes, persona context and every tagged test in the brief,
+   * for agents that cannot run commands to fetch them. Defaults to false.
+   */
+  full?: boolean;
+  /**
+   * What `gatherStoryEvidence` found for the targets, such as branches, commits,
+   * claims and broken sources, for the brief's in-flight section. The brief never
+   * reads Git itself. Stories that are not targets are ignored.
+   */
+  evidence?: readonly StoryEvidence[];
 }
 
-/** What to brief, a story or a release by its ID, and how. */
-export type StoryMapBriefRequest = StoryMapPermalinkTarget & StoryMapBriefOptions;
+/**
+ * What a brief covers: one story, several stories, a release's open stories, or an
+ * activity's open stories, each by its ID.
+ */
+export type StoryMapBriefTarget = { story: string } | { stories: readonly string[] } | { release: string } | { activity: string };
+
+/** What to brief and how. */
+export type StoryMapBriefRequest = StoryMapBriefTarget & StoryMapBriefOptions;
+
+/** The brief's tagged sections, each as its lines without the tags. A section with no lines is left out of the brief. */
+export interface StoryMapBriefSections {
+  rules: string[];
+  target: string[];
+  context: string[];
+  in_flight: string[];
+  open_decisions: string[];
+  done_when: string[];
+}
+
+/** A brief with its parts, as `story-map brief --format json` prints it. */
+export interface StoryMapBriefResult {
+  scope: "story" | "stories" | "release" | "activity";
+  /** The story, release or activity IDs the brief was asked for. */
+  for: string[];
+  /** The stories the agent is asked to build, in the brief's order. */
+  targets: string[];
+  /** The branch the brief names. */
+  branch: string;
+  /** The line before the brief's tagged sections. */
+  intro: string;
+  /** Each section's lines, with text from the map escaped as in the brief. */
+  sections: StoryMapBriefSections;
+  /** The whole brief as Markdown, the same text `storyMapBrief` returns. */
+  brief: string;
+}
 
 /** Most bytes in a story brief before its "Already built" and "Not yet" lists are cut down. */
 export const storyBriefMaxBytes = 4 * 1024;
@@ -36,6 +81,7 @@ export const briefBranchMaxLength = 50;
 export const briefBuiltNearbyMaxItems = 5;
 
 const testsPerTarget = 5;
+const branchesPerTarget = 3;
 const changesPerTarget = 3;
 
 // Words left out of branch names, so they keep the words that say what the work is.
@@ -54,7 +100,9 @@ export function storyMapBriefBranch(id: string, title: string): string {
   const slugWords = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   let branch = `feat/${slugWords(id).join("-") || "work"}`.slice(0, briefBranchMaxLength);
   while (branch.endsWith("-")) branch = branch.slice(0, -1);
-  const words = slugWords(title.replace(/^\s*v?\d+(?:\.\d+)*\s*:\s*/i, "")).filter(word => !branchStopWords.has(word));
+  // Words the ID already has, such as "plan" for activity plan "Plan the map", are skipped too.
+  const idWords = new Set(slugWords(id));
+  const words = slugWords(title.replace(/^\s*v?\d+(?:\.\d+)*\s*:\s*/i, "")).filter(word => !branchStopWords.has(word) && !idWords.has(word));
   for (const word of words.slice(0, branchWords)) {
     if (branch.length + 1 + word.length > briefBranchMaxLength) break;
     branch += `-${word}`;
@@ -69,6 +117,12 @@ export function storyMapBriefBranch(id: string, title: string): string {
  */
 function safe(text: string | undefined): string {
   return (text ?? "").replace(/\s+/g, " ").trim().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Map text as a sentence, with a full stop added when it has no closing punctuation, so sentences can be joined with a space. */
+function sentence(text: string): string {
+  const clean = safe(text);
+  return /[.!?]$/.test(clean) ? clean : `${clean}.`;
 }
 
 function attribute(text: string): string {
@@ -104,6 +158,9 @@ interface Neighbour {
 }
 
 interface BriefParts {
+  scope: StoryMapBriefResult["scope"];
+  for: string[];
+  branch: string;
   intro: string;
   attributes: string;
   rules: string[];
@@ -114,6 +171,8 @@ interface BriefParts {
   decisions: string[];
   doneWhen: string[];
   maxBytes: number;
+  /** Most "Already built" stories to list before the size limit applies. Defaults to all. */
+  builtLimit?: number;
 }
 
 function storyLine(entry: Neighbour) {
@@ -143,6 +202,17 @@ function list(entries: readonly Neighbour[], keep: number) {
  * in the view.
  */
 export function storyMapBrief(view: StoryMapView, request: StoryMapBriefRequest): string {
+  return storyMapBriefDetails(view, request).brief;
+}
+
+/**
+ * Writes the same brief as `storyMapBrief`, with its parts: the scope, the target
+ * story IDs, the branch and each section's lines. `story-map brief --format json`
+ * prints it. Pass `{ stories: [...] }` for several stories, or `{ activity }` for an
+ * activity's planned and in-progress stories, as well as the scopes `storyMapBrief`
+ * takes. Throws as `storyMapBrief` does.
+ */
+export function storyMapBriefDetails(view: StoryMapView, request: StoryMapBriefRequest): StoryMapBriefResult {
   if (view.audience !== "internal") {
     throw new TypeError("Only the internal view has briefs. A brief carries internal notes, estimates and draft jobs.");
   }
@@ -156,12 +226,26 @@ export function storyMapBrief(view: StoryMapView, request: StoryMapBriefRequest)
     validateCommand: request.validateCommand ?? `npx story-map validate ${mapPath}`,
     testCommand: request.testCommand ?? "npm test",
     baseBranch: request.baseBranch ?? "main",
+    full: request.full ?? false,
+    evidence: new Map((request.evidence ?? []).map(found => [found.id, found])),
   };
-  const parts = "story" in request ? storyParts(view, request.story, options) : releaseParts(view, request.release, options);
-  return render(view, parts, options);
+  const parts = "story" in request ? storyParts(view, request.story, options)
+    : "stories" in request ? storiesParts(view, request.stories, options)
+      : "release" in request ? releaseParts(view, request.release, options)
+        : activityParts(view, request.activity, options);
+  const { brief, sections } = render(view, parts, options);
+  return { scope: parts.scope, for: parts.for, targets: parts.targets.map(story => story.id), branch: parts.branch, intro: parts.intro, sections, brief };
 }
 
-type ResolvedOptions = Required<Omit<StoryMapBriefOptions, "readFirst">> & Pick<StoryMapBriefOptions, "readFirst">;
+interface ResolvedOptions {
+  mapPath: string;
+  readFirst?: readonly StoryMapBriefDocument[];
+  validateCommand: string;
+  testCommand: string;
+  baseBranch: string;
+  full: boolean;
+  evidence: ReadonlyMap<string, StoryEvidence>;
+}
 
 function releaseIndexes(view: InternalView) {
   return new Map(view.releases.map((release, index) => [release.id, index]));
@@ -216,6 +300,9 @@ function storyParts(view: InternalView, id: string, options: ResolvedOptions): B
 
   const plan = planSource(story.sources);
   return {
+    scope: "story",
+    for: [story.id],
+    branch,
     intro: `Build story ${story.id} from the ${safe(view.title)} story map in this repository. Read the files linked below before you change anything.`,
     attributes: `map="${attribute(options.mapPath)}" scope="story" target="${attribute(story.id)}"`,
     rules,
@@ -257,20 +344,16 @@ function releaseParts(view: InternalView, id: string, options: ResolvedOptions):
 
   const example = targets[0]?.id ?? "<ID>";
   const branch = storyMapBriefBranch(release.id, release.title);
-  const rules = [
-    "Follow AGENTS.md. It covers the story map, branch, commit, PR and test-naming rules.",
-    `When you start work on a story, run \`npx story-map edit <ID> --status in-progress --write\` for that story and commit the change with your work. Do not mark them all at once.`,
-    `Branch: \`${branch}\`. Name the story IDs in every commit, and start the PR title with the story ID when it covers one story, such as "${example}: ".`,
-    `Start each new test's name with the ID of the story it covers, such as "${example}: ".`,
-    "Build only the target stories. Stories under \"Not yet\" are out of scope.",
-    "Do not set or change an estimate. Ask before you remove `draft` from anything.",
-  ];
+  const rules = manyRules(branch, example);
 
   const decisions = targetDecisions(view, targets);
   decisions.push(...blockedInRelease(view, release.id, new Set()));
   if (!targets.length) decisions.unshift(`Release ${release.id} has no planned or in-progress stories. Check with a person before you start work on it.`);
 
   return {
+    scope: "release",
+    for: [release.id],
+    branch,
     intro: `Build release ${release.id} (${safe(release.title)}) from the ${safe(view.title)} story map in this repository. Read the files linked below before you change anything.`,
     attributes: `map="${attribute(options.mapPath)}" scope="release" target="${attribute(release.id)}"`,
     rules,
@@ -279,12 +362,115 @@ function releaseParts(view: InternalView, id: string, options: ResolvedOptions):
     builtLabel: "Already built. Reuse it, do not rebuild it:",
     notYet,
     decisions,
-    doneWhen: [
-      "Every point in each target's linked plan section is met, with tests named after the story they cover.",
-      `${code(options.validateCommand)} and ${code(options.testCommand)} pass.`,
-      `The PR description includes the \`npx story-map diff origin/${safe(options.baseBranch).replace(/`/g, "")}\` summary.`,
-    ],
+    doneWhen: manyDoneWhen(options),
     maxBytes: releaseBriefMaxBytes,
+  };
+}
+
+/** The rules for a brief with several target stories, from a list, a release or an activity. */
+function manyRules(branch: string, example: string) {
+  return [
+    "Follow AGENTS.md. It covers the story map, branch, commit, PR and test-naming rules.",
+    `When you start work on a story, run \`npx story-map edit <ID> --status in-progress --write\` for that story and commit the change with your work. Do not mark them all at once.`,
+    `Branch: \`${branch}\`. Name the story IDs in every commit, and start the PR title with the story ID when it covers one story, such as "${example}: ".`,
+    `Start each new test's name with the ID of the story it covers, such as "${example}: ".`,
+    "Build only the target stories. Stories under \"Not yet\" are out of scope.",
+    "Do not set or change an estimate. Ask before you remove `draft` from anything.",
+  ];
+}
+
+function manyDoneWhen(options: ResolvedOptions) {
+  return [
+    "Every point in each target's linked plan section is met, with tests named after the story they cover.",
+    `${code(options.validateCommand)} and ${code(options.testCommand)} pass.`,
+    `The PR description includes the \`npx story-map diff origin/${safe(options.baseBranch).replace(/`/g, "")}\` summary.`,
+  ];
+}
+
+function storiesParts(view: InternalView, ids: readonly string[], options: ResolvedOptions): BriefParts {
+  const unique = [...new Set(ids)];
+  if (!unique.length) throw new RangeError("Name at least one story to brief.");
+  if (unique.length === 1) return storyParts(view, unique[0]!, options);
+  const targets = unique.map(id => {
+    const found = view.stories.find(candidate => candidate.id === id);
+    if (!found) throw new RangeError(`Story ${id} is not in the map.`);
+    return found;
+  });
+  const chosen = new Set(unique);
+  const seen = new Set<string>();
+  const built: Neighbour[] = [];
+  const notYet: Neighbour[] = [];
+  for (const story of targets) {
+    const nearby = storyNeighbours(view, story);
+    for (const candidate of nearby.built) {
+      if (chosen.has(candidate.id) || seen.has(candidate.id)) continue;
+      seen.add(candidate.id);
+      built.push({ story: candidate, where: "" });
+    }
+    for (const candidate of nearby.notYet) {
+      if (chosen.has(candidate.id) || seen.has(candidate.id)) continue;
+      seen.add(candidate.id);
+      notYet.push({ story: candidate, where: `release ${candidate.release}` });
+    }
+  }
+  const first = targets[0]!;
+  const branch = storyMapBriefBranch(first.id, first.title);
+  const decisions = targetDecisions(view, targets);
+  for (const story of [...targets].reverse()) {
+    if (story.status !== "planned" && story.status !== "in-progress") {
+      decisions.unshift(`${story.id} is ${story.status}${story.statusReason ? `: ${safe(story.statusReason)}` : ""}. Check with a person before you start work on it.`);
+    }
+  }
+  for (const release of new Set(targets.map(story => story.release))) decisions.push(...blockedInRelease(view, release, chosen));
+  return {
+    scope: "stories",
+    for: unique,
+    branch,
+    intro: `Build stories ${joinWords(unique.map(safe))} from the ${safe(view.title)} story map in this repository. Read the files linked below before you change anything.`,
+    attributes: `map="${attribute(options.mapPath)}" scope="stories" target="${attribute(unique.join(" "))}"`,
+    rules: manyRules(branch, first.id),
+    targets,
+    built,
+    builtLabel: "Already built in these activities. Reuse it, do not rebuild it:",
+    notYet,
+    decisions,
+    doneWhen: manyDoneWhen(options),
+    maxBytes: releaseBriefMaxBytes,
+  };
+}
+
+function activityParts(view: InternalView, id: string, options: ResolvedOptions): BriefParts {
+  const activity = view.activities.find(candidate => candidate.id === id);
+  if (!activity) throw new RangeError(`Activity ${id} is not in the map.`);
+  const releaseOrder = releaseIndexes(view);
+  const stories = view.stories.map((story, position) => ({ story, position }))
+    .filter(({ story }) => story.activity === activity.id);
+  const targets = stories.filter(({ story }) => story.status === "planned" || story.status === "in-progress")
+    .sort((a, b) => (releaseOrder.get(a.story.release) ?? 0) - (releaseOrder.get(b.story.release) ?? 0) || a.position - b.position)
+    .map(({ story }) => story);
+  const built = stories.filter(({ story }) => isBuilt(story))
+    .sort((a, b) => changedAt(b.story) - changedAt(a.story) || b.position - a.position)
+    .map(({ story }) => ({ story, where: `release ${story.release}` }));
+  const branch = storyMapBriefBranch(activity.id, activity.title);
+  const decisions = targetDecisions(view, targets);
+  decisions.push(...stories.filter(({ story }) => story.status === "blocked")
+    .map(({ story }) => `${story.id} in the same activity is blocked${story.statusReason ? `: ${safe(story.statusReason)}` : ""}. Do not build it, and do not depend on it.`));
+  if (!targets.length) decisions.unshift(`Activity ${activity.id} has no planned or in-progress stories. Check with a person before you start work on it.`);
+  return {
+    scope: "activity",
+    for: [activity.id],
+    branch,
+    intro: `Build the open stories in activity ${activity.id} (${safe(activity.title)}) from the ${safe(view.title)} story map in this repository, earliest release first. Read the files linked below before you change anything.`,
+    attributes: `map="${attribute(options.mapPath)}" scope="activity" target="${attribute(activity.id)}"`,
+    rules: manyRules(branch, targets[0]?.id ?? "<ID>"),
+    targets,
+    built,
+    builtLabel: "Already built in this activity. Reuse it, do not rebuild it:",
+    notYet: [],
+    decisions,
+    doneWhen: manyDoneWhen(options),
+    maxBytes: releaseBriefMaxBytes,
+    builtLimit: briefBuiltNearbyMaxItems,
   };
 }
 
@@ -321,7 +507,7 @@ function joinWords(words: readonly string[]) {
   return words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
 }
 
-function targetLines(view: InternalView, story: InternalStoryCard): string[] {
+function targetLines(view: InternalView, story: InternalStoryCard, full: boolean): string[] {
   const releases = new Map<string, InternalReleaseLabel>(view.releases.map(release => [release.id, release]));
   const activities = new Map<string, StoryMapLabel>(view.activities.map(activity => [activity.id, activity]));
   const personas = new Map((view.personas ?? []).map(persona => [persona.id, persona]));
@@ -336,6 +522,7 @@ function targetLines(view: InternalView, story: InternalStoryCard): string[] {
   ];
   const lines = [`${story.id}  ${safe(story.title)}`, `  ${facts.join(" · ")}`];
   if (story.summary) lines.push(`  summary: ${safe(story.summary)}`);
+  if (full && story.notes) lines.push(`  notes: ${safe(story.notes)}`);
   const plan = planSource(story.sources);
   if (plan) lines.push(`  plan: ${safe(plan)}`);
   const others = (story.sources ?? []).filter(source => source !== plan);
@@ -345,37 +532,86 @@ function targetLines(view: InternalView, story: InternalStoryCard): string[] {
   if (who.length || jobText.length) {
     lines.push(`  ${[who.length ? `for: ${who.join(", ")}` : "", jobText.length ? `jobs: ${jobText.join(", ")}` : ""].filter(Boolean).join(" · ")}`);
   }
+  if (full) {
+    for (const id of story.personas ?? []) {
+      const context = personas.get(id)?.context;
+      if (!context) continue;
+      const facts = [
+        context.success ? `success: ${safe(context.success)}` : "",
+        context.usesToday?.length ? `uses today: ${context.usesToday.map(safe).join(", ")}` : "",
+        context.constraints?.length ? `constraints: ${context.constraints.map(sentence).join(" ")}` : "",
+      ].filter(Boolean);
+      if (facts.length) lines.push(`  persona ${safe(id)}: ${facts.join(" · ")}`);
+    }
+    for (const id of story.jobs ?? []) {
+      const found = jobs.get(id);
+      if (found) lines.push(`  job ${safe(id)}: ${safe(jobStatement(found.job))}${found.job.draft ? " (draft)" : ""}`);
+    }
+  }
   lines.push(`  details: npx story-map story ${story.id}`);
   return lines;
 }
 
-function inFlightLines(story: InternalStoryCard): string[] {
-  const tests = story.tests ?? [];
-  const changes = story.changes ?? [];
-  const moreTests = (story.moreTests ?? []).reduce((sum, entry) => sum + entry.count, 0) + Math.max(0, tests.length - testsPerTarget);
-  const moreChanges = (story.moreChanges ?? 0) + Math.max(0, changes.length - changesPerTarget);
-  if (!tests.length && !changes.length && !moreTests && !moreChanges) return [];
-  const lines = [`${story.id}:`];
-  for (const entry of tests.slice(0, testsPerTarget)) lines.push(`  - ${entry.kind}: ${safe(entry.file)}:${entry.line}  ${safe(entry.name)}`);
-  if (moreTests) lines.push(`  - ${moreTests} more tagged ${moreTests === 1 ? "test" : "tests"}`);
-  for (const change of changes.slice(0, changesPerTarget)) {
-    const label = change.pullRequest ? `pull request #${change.pullRequest}` : "commit";
-    lines.push(`  - ${label} ${safe(change.commit.slice(0, 7))} on ${safe(change.at.slice(0, 10))}${change.title ? `  ${safe(change.title)}` : ""}`);
+function inFlightLines(story: InternalStoryCard, options: ResolvedOptions): string[] {
+  const found = options.evidence.get(story.id);
+  // The tests index is the board's list. Without one, the tests evidence found in the checkout stand in.
+  const tests: { kind?: string; file: string; line: number; name: string }[] = story.tests?.length ? story.tests : found?.tests ?? [];
+  const keepTests = options.full ? Infinity : testsPerTarget;
+  const moreTests = (story.tests?.length ? (story.moreTests ?? []).reduce((sum, entry) => sum + entry.count, 0) : found?.moreTests ?? 0)
+    + Math.max(0, tests.length - keepTests);
+  const lines: string[] = [];
+  if (found?.claim) {
+    const claim = found.claim;
+    lines.push(claim.problem
+      ? `  - claim: unreadable, ${safe(claim.problem)}`
+      : `  - claim: ${safe(claim.agent)}${claim.branch ? ` on ${safe(claim.branch)}` : ""}, ${claim.expired ? "expired" : "expires"} ${safe(claim.expiresAt.slice(0, 16))}${claim.stale ? ", stale" : ""}`);
   }
-  if (moreChanges) lines.push(`  - ${moreChanges} more ${moreChanges === 1 ? "change" : "changes"}`);
-  return lines;
+  // A merged branch's work is already in the commits below, so only open branches are listed.
+  const branches = (found?.branches ?? []).filter(branch => !branch.merged);
+  for (const branch of branches.slice(0, branchesPerTarget)) {
+    lines.push(`  - branch ${safe(branch.name)} (${safe(branch.commit.slice(0, 7))}, ${safe(branch.committedAt.slice(0, 10))}${branch.merged ? ", merged" : ""})`);
+  }
+  const moreBranches = Math.max(0, branches.length - branchesPerTarget);
+  if (moreBranches) lines.push(`  - ${moreBranches} more ${moreBranches === 1 ? "branch" : "branches"}`);
+  for (const entry of tests.slice(0, keepTests)) lines.push(`  - ${entry.kind ?? "test"}: ${safe(entry.file)}:${entry.line}  ${safe(entry.name)}`);
+  if (moreTests) lines.push(`  - ${moreTests} more tagged ${moreTests === 1 ? "test" : "tests"}`);
+  // Git is the fresher record of the commits, so evidence replaces the history file's changes when it has some.
+  if (found?.commits.length) {
+    // Commits that change only the map or plans, such as estimates and renumbering, are planning, not work in flight.
+    const work = found.commits.filter(commit => commit.changes !== "plans");
+    const planning = found.commits.length - work.length;
+    for (const commit of work.slice(0, changesPerTarget)) {
+      const label = commit.pullRequest ? `pull request #${commit.pullRequest}` : "commit";
+      lines.push(`  - ${label} ${safe(commit.commit.slice(0, 7))} on ${safe(commit.committedAt.slice(0, 10))}  ${safe(commit.subject)}`);
+    }
+    const more = (found.moreCommits ?? 0) + Math.max(0, work.length - changesPerTarget);
+    if (more) lines.push(`  - ${more} more ${more === 1 ? "commit" : "commits"}`);
+    if (planning) lines.push(`  - ${planning} ${planning === 1 ? "commit changes" : "commits change"} only the map or plans${work.length || found.moreCommits ? "" : ", so no code has landed yet"}`);
+  } else {
+    const changes = story.changes ?? [];
+    for (const change of changes.slice(0, changesPerTarget)) {
+      const label = change.pullRequest ? `pull request #${change.pullRequest}` : "commit";
+      lines.push(`  - ${label} ${safe(change.commit.slice(0, 7))} on ${safe(change.at.slice(0, 10))}${change.title ? `  ${safe(change.title)}` : ""}`);
+    }
+    const moreChanges = (story.moreChanges ?? 0) + Math.max(0, changes.length - changesPerTarget);
+    if (moreChanges) lines.push(`  - ${moreChanges} more ${moreChanges === 1 ? "change" : "changes"}`);
+  }
+  for (const source of found?.brokenSources ?? []) lines.push(`  - broken source: ${safe(source.source)}, ${safe(source.message)}`);
+  return lines.length ? [`${story.id}:`, ...lines] : [];
 }
 
 const bytes = (text: string) => new TextEncoder().encode(text).length;
 
-function render(view: InternalView, parts: BriefParts, options: ResolvedOptions): string {
+function render(view: InternalView, parts: BriefParts, options: ResolvedOptions): { brief: string; sections: StoryMapBriefSections } {
   const write = (keepBuilt: number, keepNotYet: number) => {
-    const sections: string[] = [parts.intro, "", `<brief ${parts.attributes}>`, ""];
-    const section = (tag: string, lines: readonly string[]) => {
-      if (lines.length) sections.push(`<${tag}>`, ...lines, `</${tag}>`, "");
+    const text: string[] = [parts.intro, "", `<brief ${parts.attributes}>`, ""];
+    const sections = {} as StoryMapBriefSections;
+    const section = (tag: keyof StoryMapBriefSections, lines: string[]) => {
+      sections[tag] = lines;
+      if (lines.length) text.push(`<${tag}>`, ...lines, `</${tag}>`, "");
     };
     section("rules", parts.rules.map(rule => `- ${rule}`));
-    section("target", parts.targets.flatMap((story, index) => [...(index ? [""] : []), ...targetLines(view, story)]));
+    section("target", parts.targets.flatMap((story, index) => [...(index ? [""] : []), ...targetLines(view, story, options.full)]));
 
     const context: string[] = [];
     if (options.readFirst?.length) {
@@ -390,19 +626,19 @@ function render(view: InternalView, parts: BriefParts, options: ResolvedOptions)
       context.push("Not yet. Do not build these:", ...list(parts.notYet, keepNotYet));
     }
     section("context", context);
-    section("in_flight", parts.targets.flatMap(inFlightLines));
+    section("in_flight", parts.targets.flatMap(story => inFlightLines(story, options)));
     section("open_decisions", parts.decisions.map(decision => `- ${decision}`));
     section("done_when", parts.doneWhen.map(line => `- ${line}`));
-    sections.push("</brief>");
-    return `${sections.join("\n")}\n`;
+    text.push("</brief>");
+    return { brief: `${text.join("\n")}\n`, sections };
   };
 
-  let keepBuilt = parts.built.length;
+  let keepBuilt = Math.min(parts.built.length, parts.builtLimit ?? Infinity);
   let keepNotYet = parts.notYet.length;
-  let brief = write(keepBuilt, keepNotYet);
+  let written = write(keepBuilt, keepNotYet);
   // Cut the neighbour lists, longest first, until the brief fits. The targets are never cut.
   // Work out the cut from each line's size first, so a long brief is rendered a few times, not once per line.
-  let over = bytes(brief) - parts.maxBytes;
+  let over = bytes(written.brief) - parts.maxBytes;
   if (over > 0) {
     const size = (entry: Neighbour | undefined) => entry ? bytes(storyLine(entry)) + 1 : 0;
     const moreLine = bytes(list(parts.built.length ? parts.built : parts.notYet, 0)[0] ?? "") + 1;
@@ -414,13 +650,13 @@ function render(view: InternalView, parts: BriefParts, options: ResolvedOptions)
       if (cutNotYet) keepNotYet--;
       else keepBuilt--;
     }
-    brief = write(keepBuilt, keepNotYet);
+    written = write(keepBuilt, keepNotYet);
   }
   // The "more not listed" lines can differ in length from the estimate, so check the result.
-  while (bytes(brief) > parts.maxBytes && (keepBuilt > 0 || keepNotYet > 0)) {
+  while (bytes(written.brief) > parts.maxBytes && (keepBuilt > 0 || keepNotYet > 0)) {
     if (keepNotYet >= keepBuilt) keepNotYet--;
     else keepBuilt--;
-    brief = write(keepBuilt, keepNotYet);
+    written = write(keepBuilt, keepNotYet);
   }
-  return brief;
+  return written;
 }

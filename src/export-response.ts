@@ -22,8 +22,15 @@ export interface StoryMapExportResponse {
 }
 
 /** Letters, digits, dots, hyphens and underscores only, so the name is safe in a header. */
-function fileSlug(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^[-.]+|-+$/g, "").slice(0, 80);
+export function fileSlug(value: string) {
+  const slug = value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+  // Trim leading hyphens and dots and trailing hyphens with a scan from each
+  // end, which stays linear on long runs of hyphens (ESM-175).
+  let start = 0;
+  while (start < slug.length && (slug[start] === "-" || slug[start] === ".")) start++;
+  let end = slug.length;
+  while (end > start && slug[end - 1] === "-") end--;
+  return slug.slice(start, end).slice(0, 80);
 }
 
 /**

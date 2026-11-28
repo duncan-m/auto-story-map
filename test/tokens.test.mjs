@@ -9,6 +9,8 @@ import { branchNamesStory, countStoryTokens, diffStoryMaps, getStoryMapForViewer
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const ownMap = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
+// A story in this repository's map with no tokens or cost recorded yet, so each edit shows as "none → …".
+const untracked = parseStoryMap(ownMap).stories.find(story => story.tokens === undefined && story.estimatedCostUsd === undefined).id;
 
 /** One assistant log line as Claude Code writes it, one per content block. */
 function response({ id, session = "s1", branch, model, speed, input = 0, output = 0, cacheWrite = 0, cacheWrite1h, cacheRead = 0, at = "2026-11-20T10:00:00.000Z" }) {
@@ -113,22 +115,22 @@ test("ESM-145: story-map tokens prints the count, the PR section and JSON, and f
 });
 
 test("ESM-145: edit --tokens records the count, shown in the internal view and the diff but never to customers", async t => {
-  const result = await proposeStoryMapEdit(ownMap, [{ op: "tokens", id: "ESM-126", tokens: 1_843_920 }]);
+  const result = await proposeStoryMapEdit(ownMap, [{ op: "tokens", id: untracked, tokens: 1_843_920 }]);
   assert.equal(result.valid, true);
   assert.match(result.lineDiff, /\n\+ {4}tokens: 1843920\n/);
   assert.match(result.summary, /Tokens used: none → 1,843,920/);
   const map = parseStoryMap(result.source);
-  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === "ESM-126").tokens, 1_843_920);
+  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === untracked).tokens, 1_843_920);
   const customer = getStoryMapForViewer(map, { id: "c", roles: [] });
   assert.notEqual(customer.audience, "internal");
   assert.equal(JSON.stringify(customer).includes("1843920"), false);
   assert.deepEqual(diffStoryMaps(map, map).stories.updated, []);
   assert.doesNotMatch(formatStoryMapDiff(diffStoryMaps(parseStoryMap(ownMap), map)), /Customer-facing/);
 
-  await assert.rejects(proposeStoryMapEdit(ownMap, [{ op: "tokens", id: "ESM-126", tokens: -1 }]), /tokens/);
+  await assert.rejects(proposeStoryMapEdit(ownMap, [{ op: "tokens", id: untracked, tokens: -1 }]), /tokens/);
   const { run } = await scratch(t, {});
-  assert.equal(run("edit", "ESM-126", "--tokens", "1,843,920").status, 0);
-  const bad = run("edit", "ESM-126", "--tokens", "lots");
+  assert.equal(run("edit", untracked, "--tokens", "1,843,920").status, 0);
+  const bad = run("edit", untracked, "--tokens", "lots");
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /--tokens must be a whole number/);
 });
@@ -182,16 +184,16 @@ test("ESM-145: story-map tokens prints the cost and --prices replaces the built-
 });
 
 test("ESM-145: edit --estimated-cost records dollars to the cent, internal only", async t => {
-  const result = await proposeStoryMapEdit(ownMap, [{ op: "estimated-cost", id: "ESM-126", usd: 14.274 }]);
+  const result = await proposeStoryMapEdit(ownMap, [{ op: "estimated-cost", id: untracked, usd: 14.274 }]);
   assert.equal(result.valid, true);
   assert.match(result.lineDiff, /\n\+ {4}estimatedCostUsd: 14\.27\n/);
   assert.match(result.summary, /Estimated cost: none → \$14\.27/);
   const map = parseStoryMap(result.source);
-  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === "ESM-126").estimatedCostUsd, 14.27);
+  assert.equal(getStoryMapForViewer(map, { id: "e", roles: ["engineer"] }).stories.find(story => story.id === untracked).estimatedCostUsd, 14.27);
   assert.equal(JSON.stringify(getStoryMapForViewer(map, { id: "c", roles: [] })).includes("14.27"), false);
   const { run } = await scratch(t, {});
-  assert.equal(run("edit", "ESM-126", "--estimated-cost", "$1,204.50").status, 0);
-  const bad = run("edit", "ESM-126", "--estimated-cost", "about ten");
+  assert.equal(run("edit", untracked, "--estimated-cost", "$1,204.50").status, 0);
+  const bad = run("edit", untracked, "--estimated-cost", "about ten");
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /--estimated-cost must be an amount in US dollars/);
 });
