@@ -610,7 +610,7 @@ A person agrees a consequential decision before its stories go `in-progress`. Un
 - **Work with no plan** puts an **Architecture** line in the PR description, from the [pull request template](../.github/pull_request_template.md), with the same one-line answer or the consequential decision.
 - **Agreed decisions** move into [Agreed architecture decisions](#agreed-architecture-decisions), under Runtime and architecture, once the work merges. There are no separate decision records, so the overview stays the one place to look.
 
-Question 4 in [Review a code change](#review-a-code-change) checks for a decision that was made but not recorded.
+Question 4 in [Review a code change](#review-a-code-change) checks for a decision that was made but not recorded. `npm run validate` checks that every open plan has the section and that each `None:` answer gives a reason, as [`plan-architecture-section`](story-map.md#check-the-architecture-section-in-plans). This repository sets `settings.architectureDecisions: required`, so a gap is a warning here, and a notice in hosts that leave it out.
 
 ## Making common changes
 

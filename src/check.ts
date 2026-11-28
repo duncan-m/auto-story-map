@@ -1,6 +1,7 @@
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { readTextFileWithin } from "./read-text.js";
+import { checkPlanArchitecture } from "./plan-architecture.js";
 import { checkPlanMockups } from "./plan-mockups.js";
 import { checkPlanStatusLines } from "./plan-status.js";
 import { findSetupBehind, setupBehindMessage } from "./setup-behind.js";
@@ -134,6 +135,7 @@ export async function checkStoryMap(source: string, options: StoryMapCheckOption
   if (planPaths.length) found.push(...await checkPlanReferences(loaded, root, planPaths));
   if (planPaths.length) found.push(...await checkPlanStatusLines(loaded, root, planPaths));
   if (planPaths.length) found.push(...await checkPlanMockups(loaded, root, planPaths));
+  if (planPaths.length) found.push(...await checkPlanArchitecture(loaded, root, planPaths));
   if (chosen === undefined) found.push(await plansNotice(root));
   const behind = await findSetupBehind(root);
   if (behind.length) found.push({ severity: "notice", rule: "setup-behind", path: [], message: setupBehindMessage(behind) });

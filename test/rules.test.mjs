@@ -138,7 +138,7 @@ test("ESM-159: every validate issue has a rule and a help link to a heading that
   }
   const sources = edited(map => { map.stories[0].sources = Object.values(fileCases); map.stories[0].status = "shipped"; });
   await check(sources, { checkSources: true, plans: ["plans", "nothing"], tests: ["test", "missing"] });
-  for (const rule of [...Object.keys(fileCases), "plans-not-found", "unknown-plan-story", "plan-status-words", "plan-status-behind", "plan-status-release", "mockup-without-html", "mockup-without-image", "missing-mockup-file", "unlinked-mockup", "tests-not-found", "unknown-test-story", "test-file-too-large"]) {
+  for (const rule of [...Object.keys(fileCases), "plans-not-found", "unknown-plan-story", "plan-status-words", "plan-status-behind", "plan-status-release", "plan-architecture-section", "mockup-without-html", "mockup-without-image", "missing-mockup-file", "unlinked-mockup", "tests-not-found", "unknown-test-story", "test-file-too-large"]) {
     assert.ok(seen.has(rule), `the file checks report ${rule}`);
   }
   // A missing map is reported by the command, not by checkStoryMap.

@@ -46,7 +46,7 @@ const usage = `Usage:
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
   story-map release-impact <release ID> --metric <text> --expected <text> [--solves <text>] [common edit options]
-  story-map settings [--plans <folder>|off] [--story-ids next|lowest-free] [--upgrade simple|advanced] [common edit options]
+  story-map settings [--plans <folder>|off] [--story-ids next|lowest-free] [--upgrade simple|advanced] [--architecture-decisions recommended|required] [common edit options]
   story-map plan [--map <path>] [--release <ID>] [<ID> ...]
   story-map confirm [--format text|json] [--map <path>] [--write] <job ID> | <persona ID> | <release ID> --impact <n> | --all-in <persona ID>
   story-map preview [--port <n>] [--history <file>] [--tests-index <file>] [--source-base-url <url>] [--read-only] [<map.yaml>]
@@ -483,7 +483,8 @@ edit
                      remove-source, add-job, remove-job, add-persona,
                      remove-persona, add-dependency, remove-dependency,
                      customer-title, customer-summary, add,
-                     release-impact, plans, story-ids and upgrade-mode.
+                     release-impact, plans, story-ids, upgrade-mode and
+                     architecture-decisions.
 
   Common edit options:
   --write            Save the change, only when the edited map is valid.
@@ -517,8 +518,9 @@ release-impact
 
 settings
   Records the person's answer to whether to use delivery plans, in the map's
-  settings.plans, to the story ID policy, in settings.storyIds, or to which
-  mode story-map upgrade runs in, in settings.upgrade. Only
+  settings.plans, to the story ID policy, in settings.storyIds, to which
+  mode story-map upgrade runs in, in settings.upgrade, or to how validate
+  treats plans' architecture sections, in settings.architectureDecisions. Only
   record an answer they gave: "not now" changes nothing, so the question is
   asked again. A dry run unless --write is given. Takes the common edit
   options in story-map help edit.
@@ -535,6 +537,12 @@ settings
                      How story-map upgrade reviews the set-up: apply the
                      recommended changes, or show each part's diff to accept
                      or keep.
+  --architecture-decisions recommended|required
+                     How validate --plans reports an open plan whose
+                     Architecture decisions section is missing, empty, still
+                     holds the scaffold's hints or answers None: with no
+                     reason: as a notice, which never fails, or as a
+                     warning, which fails with --strict.
 
 plan
   Prints a delivery plan skeleton for the stories given, in the structure

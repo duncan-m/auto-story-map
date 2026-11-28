@@ -42,6 +42,7 @@ export const storyMapRules = {
   "mockup-without-image": { section: "link-mockups-and-designs", summary: "A plan's UI mockup section embeds no PNG." },
   "missing-mockup-file": { section: "link-mockups-and-designs", summary: "A mockup HTML or PNG file that a plan links does not exist." },
   "unlinked-mockup": { section: "link-mockups-and-designs", summary: "No story lists a plan's UI mockup section in its sources." },
+  "plan-architecture-section": { section: "check-the-architecture-section-in-plans", summary: "An open plan's Architecture decisions section is missing, empty, still holds the scaffold's hints, or answers None: with no reason." },
   "tests-not-found": { section: "link-tests-to-stories", summary: "A `--tests` path has no test files." },
   "unknown-test-story": { section: "link-tests-to-stories", summary: "A test name has a story ID that is not in the map." },
   "test-file-too-large": { section: "link-tests-to-stories", summary: "A test file is too large to read." },

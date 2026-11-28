@@ -53,6 +53,8 @@ export const storyMapEditOperationSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("story-ids"), storyIds: z.enum(["next", "lowest-free"]) }).strict(),
   // Records the person's answer to whether story-map upgrade runs in simple or advanced mode.
   z.object({ op: z.literal("upgrade-mode"), upgrade: z.enum(["simple", "advanced"]) }).strict(),
+  // Records the person's answer to whether validate warns, not only notes, a gap in a plan's architecture section.
+  z.object({ op: z.literal("architecture-decisions"), architectureDecisions: z.enum(["recommended", "required"]) }).strict(),
   // Persona edits reword what is there. IDs, order, customer copy and draft are left alone.
   z.object({ op: z.literal("set-persona"), persona: text, title: text.optional(), summary: z.string().trim().optional() }).strict(),
   z.object({
@@ -132,7 +134,7 @@ const storyKeyOrder = ["id", "title", "activity", "release", "status", "statusRe
 const releaseKeyOrder = ["id", "title", "summary", "notes", "impact", "customer"];
 const personaKeyOrder = ["id", "title", "summary", "context", "jobs", "customer"];
 const mapKeyOrder = ["version", "id", "title", "summary", "visibility", "customer", "settings", "personas", "activities", "releases", "stories"];
-const settingsKeyOrder = ["stalledAfterWeeks", "plans", "storyIds", "upgrade"];
+const settingsKeyOrder = ["stalledAfterWeeks", "plans", "storyIds", "upgrade", "architectureDecisions"];
 const contextKeyOrder = ["success", "usesToday", "constraints", "draft"];
 const jobKeyOrder = ["id", "situation", "motivation", "outcome", "draft", "steps"];
 
@@ -517,10 +519,11 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
       return;
     }
 
-    if (operation.op === "plans" || operation.op === "story-ids" || operation.op === "upgrade-mode") {
-      const [key, value] = operation.op === "plans"
-        ? ["plans", operation.plans] as const
-        : operation.op === "story-ids" ? ["storyIds", operation.storyIds] as const : ["upgrade", operation.upgrade] as const;
+    if (operation.op === "plans" || operation.op === "story-ids" || operation.op === "upgrade-mode" || operation.op === "architecture-decisions") {
+      const [key, value] = operation.op === "plans" ? ["plans", operation.plans] as const
+        : operation.op === "story-ids" ? ["storyIds", operation.storyIds] as const
+        : operation.op === "upgrade-mode" ? ["upgrade", operation.upgrade] as const
+        : ["architectureDecisions", operation.architectureDecisions] as const;
       const settings = intended.settings as Raw | undefined;
       if (settings?.[key] === value) return;
       if (settings) {

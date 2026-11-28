@@ -430,6 +430,39 @@ Status: in progress. The work is BUILDER-102 and BUILDER-103 in the **Builder wo
 
 Files without a `Status:` line, such as notes and retros, are skipped, and fenced code is ignored. These are warnings, so a stale plan never blocks an unrelated change unless you pass `--strict`. The plan `story-map plan` prints passes the check.
 
+### Check the architecture section in plans
+
+An open plan, one whose [status line](#check-plan-status-lines) starts with `proposed`, `planned` or `in progress`, records its architecture decisions in a `## Architecture decisions` section. It answers four questions: where the work runs, who consumes it upstream and downstream, which security boundaries it touches, and how to undo it, including for hosts that have already upgraded. Routine work answers in one line with a real reason:
+
+```markdown
+## Architecture decisions
+
+None: keeps the existing design because it adds a flag to an existing command, with no new consumer.
+```
+
+`validate --plans <folder>`, and `validate --check-sources` once `settings.plans` names a folder, report an open plan as `plan-architecture-section` when:
+
+- it has no `## Architecture decisions` section, reported at its status line,
+- the section is empty, or holds only HTML comments,
+- the section still holds one of the scaffold's placeholder hints, such as `<!-- Where it runs: … -->`, or
+- a `None:` answer gives no reason after `because`, such as “None: no change.”
+
+Plans with no status line, and merged, shipped, blocked and cut plans, are skipped, and fenced code is ignored. A host with `settings.plans: false` sees nothing, since `--check-sources` then reads no plans.
+
+Each problem is a **notice** by default, like the [delivery plans question](#choose-whether-to-use-delivery-plans), so it never fails validation, even with `--strict`, and a host that upgrades sees it without its CI failing. A team that wants every open plan to answer the questions sets `settings.architectureDecisions` to `required`, and each problem becomes a **warning**, which fails with `--strict`:
+
+```sh
+npx --no-install story-map settings --architecture-decisions required --write
+```
+
+```yaml
+settings:
+  plans: docs/plans
+  architectureDecisions: required   # or recommended, the default
+```
+
+`story-map diff` lists the change under **Settings**, and under **Needs a person**, since a person chooses it. Set it back to `recommended`, or remove it, to return to notices.
+
 ## Example
 
 When price catalogue lookup is agreed for the builder workflow, put the story under the estimate activity and the builder release. Its YAML can look like this:
@@ -1017,6 +1050,7 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `mockup-without-image` | error | A plan's UI mockup section embeds no PNG. | [Link mockups and designs](#link-mockups-and-designs) |
 | `missing-mockup-file` | error | A mockup HTML or PNG file that a plan links does not exist. | [Link mockups and designs](#link-mockups-and-designs) |
 | `unlinked-mockup` | error | No story lists a plan's UI mockup section in its sources. | [Link mockups and designs](#link-mockups-and-designs) |
+| `plan-architecture-section` | notice, or warning when required | An open plan's Architecture decisions section is missing, empty, still holds the scaffold's hints, or answers None: with no reason. | [Check the architecture section in plans](#check-the-architecture-section-in-plans) |
 | `tests-not-found` | error | A `--tests` path has no test files. | [Link tests to stories](#link-tests-to-stories) |
 | `unknown-test-story` | error | A test name has a story ID that is not in the map. | [Link tests to stories](#link-tests-to-stories) |
 | `test-file-too-large` | warning | A test file is too large to read. | [Link tests to stories](#link-tests-to-stories) |
@@ -1225,7 +1259,7 @@ npx --no-install story-map release-impact v0-7-5 --metric "Agents starting the s
 npx --no-install story-map settings --plans docs/plans
 ```
 
-`settings --plans <folder>` or `--plans off` records whether this product uses [delivery plans](#choose-whether-to-use-delivery-plans), in `settings.plans`, and `settings --story-ids next` or `--story-ids lowest-free` records how `add` numbers new stories, in `settings.storyIds`. Record only an answer a person gave.
+`settings --plans <folder>` or `--plans off` records whether this product uses [delivery plans](#choose-whether-to-use-delivery-plans), in `settings.plans`, `settings --story-ids next` or `--story-ids lowest-free` records how `add` numbers new stories, in `settings.storyIds`, and `settings --architecture-decisions required` or `recommended` records whether `validate` warns about an open plan's [architecture section](#check-the-architecture-section-in-plans), in `settings.architectureDecisions`. Record only an answer a person gave.
 
 - **Dry run first.** Each command prints the line diff of the YAML, the [`story-map diff`](#review-a-map-change) summary for the PR, and any errors, plus any warnings the edit introduces. Nothing is saved until you add `--write`, and only a valid map is saved. Check the dry run before you write.
 - **Only the change moves.** Comments, key order and every line outside the changed fields stay exactly as they were. An edit that cannot be made that way, such as one that changes a value another story shares through a YAML alias, is refused.
