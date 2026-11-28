@@ -41,7 +41,7 @@ test("ESM-148: the guide has a Write a delivery plan section with the question a
   // The first-run hand-off and the upgrade steps ask too.
   const firstRun = guide.slice(guide.indexOf("## Populate the first map"), guide.indexOf("### Survey a repository"));
   assert.match(firstRun, /ask the person whether to use \[delivery plans\]\(#choose-whether-to-use-delivery-plans\)/);
-  assert.match(guide, /## Upgrade to 0\.7\.7\n[\s\S]*?Ask the person the question in \[Choose whether to use delivery plans\]/);
+  assert.match(guide, /## Upgrade to 0\.7\.11\n[\s\S]*?Ask the person the question in \[Choose whether to use delivery plans\]/);
 });
 
 test("ESM-153: validate asks for the delivery plans choice as a notice that never fails, even with strict", async t => {

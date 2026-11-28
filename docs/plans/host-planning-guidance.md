@@ -1,6 +1,6 @@
 # Plan: offer the planning approach to host products
 
-Status: merged. The work is ESM-148, ESM-153, ESM-150, ESM-149, ESM-151 and ESM-152 in the **0.7.7: Delivery plans and test tags** release of the map, built as proposed below with the decisions in [Decisions made](#decisions-made). None has an agreed estimate yet.
+Status: shipped. The work is ESM-148, ESM-153, ESM-150, ESM-149, ESM-151 and ESM-152 in the **0.7.7: Delivery plans and test tags** release of the map, built as proposed below with the decisions in [Decisions made](#decisions-made). None has an agreed estimate yet.
 
 Hosts that install auto-story-map get the map mechanics: the format, the validator, the board and the commands. They do not get the way this repository plans the work that goes into the map. That lives in this repository's own `AGENTS.md` and, mostly, as habits the plans in `docs/plans/` share: a status line, numbered items in build order, the stories the work builds on, a UI mockup, decisions, Not now and an effort table. None of it is in [the guide](../story-map.md), the host [`AGENTS.md` template](../../templates/AGENTS.md) leaves out the UI mockup and builds-on rules, and `docs/plans/` is not in the package.
 

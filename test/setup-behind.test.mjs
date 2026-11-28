@@ -115,7 +115,7 @@ test("ESM-172: an older part whose template has not changed since, even if edite
   assert.deepEqual(await notices(await host(t, { "docs/story-map.md": newer })), []);
 });
 
-test("ESM-172: unmarked parts from before 0.7.8 count only when they match a known template that has changed", async t => {
+test("ESM-172: unmarked parts from before 0.7.11 count only when they match a known template that has changed", async t => {
   const old = "# Using the story map\n\nAn old guide.\n";
   const current = await currentSetupTemplateHashes();
   const known = { agents: {}, guide: { [setupBodyHash(old)]: ["0.7.0", "0.7.1"] }, workflow: {} };

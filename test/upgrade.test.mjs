@@ -117,7 +117,7 @@ test("ESM-167: an unedited part from an earlier version is outdated, and an edit
   assert.match(parts.guide.change, /since an unknown version/);
 });
 
-test("ESM-167: unmarked parts from before 0.7.8 are recognised through the known templates", async t => {
+test("ESM-167: unmarked parts from before 0.7.11 are recognised through the known templates", async t => {
   const agents = await packaged("templates/AGENTS.md");
   const oldAgents = agents.replace("## Story map\n", "## Story map\n\nAn older rule.\n");
   const known = knownSetupVersionsFrom([{ part: "agents", version: "0.7.5", text: oldAgents }]);

@@ -470,11 +470,11 @@ releases:
     title: "0.7.7: Delivery plans and test tags"
     summary: Hosts learn to write delivery plans from the guide, an example and a plan skeleton, with the rules in AGENTS.md and the story map skill, and a tag on a describe block covers every test inside it.
     notes: |
-      The skill, the MCP server and the survey (ESM-116 to ESM-118) moved to 0.7.6. ESM-152 adds the planning rules to the skill from ESM-117.
+      The skill, MCP server and survey (ESM-116 to ESM-118) moved to 0.7.6. ESM-152 adds the planning rules to the skill.
 
-      First, ESM-180 and ESM-159 to ESM-161 from Rules as checks, the plan checks that help build every later release.
+      First, ESM-180 and ESM-159 to ESM-161, the plan checks that help build every later release. ESM-174, the Analytics tab spike, moved here from 0.8.3, where the full metrics stay.
 
-      ESM-174, the Analytics tab spike, moved here from 0.8.3 to land early. The full delivery metrics stay in 0.8.3.
+      Also: an Actions menu in the story panel (ESM-181) and one Released lane (ESM-208). Published to npm in 0.7.11.
 
       Plan: docs/plans/0.8.0-agents-and-adoption.md
       Plan for host planning guidance (ESM-148 to ESM-153): docs/plans/host-planning-guidance.md
@@ -499,7 +499,9 @@ releases:
     title: "0.7.8: Upgrade review"
     summary: On install and upgrade, story-map upgrade reports each part of a host's set-up, explains what changes in plain words, and applies the parts the person accepts, in a simple or an advanced mode.
     notes: |
-      Planning proposal only. Today init never changes a part once it exists, so hosts keep the set-up they first installed. The review replaces the outdated-section report and decision C in the host planning guidance plan (ESM-150), and asks the delivery plans question from ESM-153 among its choices. It comes straight after 0.7.7, because existing hosts only get 0.7.7's AGENTS.md and guide changes through it. The Rules as checks changes in 0.7.9, such as pr-check, add their own parts to it. ESM-173 uses the rule IDs from ESM-159 in 0.7.7.
+      Before this, init never changed a part once it existed, so hosts kept the set-up they first installed. The review replaces the outdated-section report and decision C in the host planning guidance plan (ESM-150), and asks the delivery plans question from ESM-153 among its choices. It comes straight after 0.7.7, because existing hosts only get 0.7.7's AGENTS.md and guide changes through it. The Rules as checks changes in 0.7.9, such as pr-check, add their own parts to it. ESM-173 uses the rule IDs from ESM-159 in 0.7.7.
+
+      Published to npm in 0.7.11.
 
       Plan: docs/plans/upgrade-review.md
     impact:
@@ -515,7 +517,9 @@ releases:
     title: "0.7.9: Rules in CI and claim checks"
     summary: story-map diff shows the map changes only a person should make, CI fails an agent's PR that makes one without a person's approval, and property and model-based tests check the audience filter, the edit safeguards and concurrent claims.
     notes: |
-      Planning proposal only. The rest of Rules as checks, after ESM-180 and ESM-159 to ESM-161 in 0.7.7. ESM-162 to ESM-164 guard the draft confirmation and local editing from 0.7.6, and the upgrade review from 0.7.8 offers pr-check (ESM-163) to existing hosts. ESM-162 shares diff code with ESM-114 in 0.8.2. ESM-165 matters most once several agents regularly work on one map at the same time.
+      The rest of Rules as checks, after ESM-180 and ESM-159 to ESM-161 in 0.7.7. ESM-162 to ESM-164 guard the draft confirmation and local editing from 0.7.6, and the upgrade review from 0.7.8 offers pr-check (ESM-163) to existing hosts. ESM-162 shares diff code with ESM-114 in 0.8.2. ESM-165 matters most once several agents regularly work on one map at the same time.
+
+      Published to npm in 0.7.11.
 
       Plan: docs/plans/rules-as-checks.md
     impact:
@@ -537,6 +541,8 @@ releases:
     notes: |
       Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting a local agent from the preview (ESM-127) was cut: Open in Claude Code (ESM-144) and Copy brief (ESM-124) already cover it.
 
+      Published to npm in 0.7.11.
+
       Plan: docs/plans/agent-briefs.md
     impact:
       - metric: Steps to start a local agent on a story
@@ -547,7 +553,11 @@ releases:
     title: "0.7.11: Code review and architecture checks"
     summary: Each PR is reviewed against its story before it is ready, lint, coverage and CodeQL quality queries run in CI, and plans record their architecture decisions, with points for reviewing the architecture and refactoring.
     notes: |
-      Each PR is now reviewed against its story before it is ready (ESM-179, ESM-182). Before this, none of the last 30 merged PRs had an independent review. In a ten-PR pilot, review fixed problems before ready in 9, so hosts are offered the step through the upgrade review (ESM-186). CI lints with Biome (ESM-176), has a coverage floor (ESM-177) and runs CodeQL's quality queries (ESM-178), and the code shares one escape helper (ESM-187). Plans and PRs record architecture decisions (ESM-183), checked by validate (ESM-184) and pr-check (ESM-188), with review points in the guide (ESM-185). A test stops complexity warnings growing (ESM-189). ESM-190 is still planned.
+      Each PR is now reviewed against its story before it is ready (ESM-179, ESM-182). Before, none of the last 30 merged PRs had one. In a ten-PR pilot, review fixed problems in 9, so hosts are offered the step (ESM-186). CI lints with Biome (ESM-176), has a coverage floor (ESM-177) and runs CodeQL quality queries (ESM-178), and the code shares one escape helper (ESM-187). Plans and PRs record architecture decisions (ESM-183), checked by validate (ESM-184) and pr-check (ESM-188), with review points in the guide (ESM-185). A test caps complexity warnings (ESM-189), and the code checks for missing values (ESM-190).
+
+      Also: summaries read at a glance (ESM-191), and the board scrolls with the page (ESM-192).
+
+      Published to npm with 0.7.7 to 0.7.10.
 
       Plan: docs/plans/code-review.md
     impact:
@@ -1107,7 +1117,7 @@ stories:
     title: Show the map changes only a person should make
     activity: review
     release: v0-7-9
-    status: merged
+    status: shipped
     tokens: 4193614
     estimatedCostUsd: 2.18
     jobs:
@@ -1124,7 +1134,7 @@ stories:
     title: Check pull requests for map rules in CI
     activity: review
     release: v0-7-9
-    status: merged
+    status: shipped
     tokens: 7161516
     estimatedCostUsd: 3.15
     dependsOn:
@@ -1142,7 +1152,7 @@ stories:
     title: Property-test the audience filter and edit safeguards
     activity: review
     release: v0-7-9
-    status: merged
+    status: shipped
     tokens: 6660801
     estimatedCostUsd: 3.02
     jobs:
@@ -2003,7 +2013,7 @@ stories:
     title: Tag a describe block for all its tests
     activity: explore
     release: v0-7-7
-    status: merged
+    status: shipped
     estimate: 3
     priority: should
     tokens: 3058360
@@ -2017,7 +2027,7 @@ stories:
     title: Show hosts how to write a delivery plan
     activity: plan
     release: v0-7-7
-    status: merged
+    status: shipped
     priority: must
     tokens: 3641823
     estimatedCostUsd: 1.24
@@ -2035,7 +2045,7 @@ stories:
     title: Ship an example delivery plan that follows the guide
     activity: plan
     release: v0-7-7
-    status: merged
+    status: shipped
     priority: could
     tokens: 3641823
     estimatedCostUsd: 1.24
@@ -2052,7 +2062,7 @@ stories:
     title: Tell host agents how to plan work in AGENTS.md
     activity: set-up
     release: v0-7-7
-    status: merged
+    status: shipped
     priority: should
     tokens: 3641823
     estimatedCostUsd: 1.24
@@ -2069,7 +2079,7 @@ stories:
     title: Scaffold a delivery plan from the map
     activity: plan
     release: v0-7-7
-    status: merged
+    status: shipped
     priority: should
     tokens: 3641823
     estimatedCostUsd: 1.24
@@ -2087,7 +2097,7 @@ stories:
     title: Carry the planning rules in the story map skill
     activity: set-up
     release: v0-7-7
-    status: merged
+    status: shipped
     priority: should
     tokens: 3641823
     estimatedCostUsd: 1.24
@@ -2103,7 +2113,7 @@ stories:
     title: Ask each host whether to use delivery plans
     activity: set-up
     release: v0-7-7
-    status: merged
+    status: shipped
     priority: must
     tokens: 3641822
     estimatedCostUsd: 1.23
@@ -2120,7 +2130,7 @@ stories:
     title: Choose the lowest free story ID in add
     activity: plan
     release: v0-7-7
-    status: merged
+    status: shipped
     tokens: 3166733
     estimatedCostUsd: 1.45
     jobs:
@@ -2134,7 +2144,7 @@ stories:
     title: Give each validation issue a rule and a link to the guide
     activity: review
     release: v0-7-7
-    status: merged
+    status: shipped
     tokens: 26329848
     estimatedCostUsd: 11.88
     jobs:
@@ -2148,7 +2158,7 @@ stories:
     title: Warn when a plan's status line disagrees with the map
     activity: review
     release: v0-7-7
-    status: merged
+    status: shipped
     tokens: 5035570
     estimatedCostUsd: 2.45
     jobs:
@@ -2165,7 +2175,7 @@ stories:
     title: Change a story from an Actions menu in its panel
     activity: explore
     release: v0-7-7
-    status: merged
+    status: shipped
     tokens: 23163837
     estimatedCostUsd: 8.23
     dependsOn:
@@ -2183,7 +2193,7 @@ stories:
     title: Write agent briefs from the command line
     activity: plan
     release: v0-7-10
-    status: merged
+    status: shipped
     estimate: 3
     priority: must
     tokens: 10429732
@@ -2222,7 +2232,7 @@ stories:
     title: Spike delivery totals in an Analytics tab
     activity: track
     release: v0-7-7
-    status: merged
+    status: shipped
     tokens: 37977477
     estimatedCostUsd: 13.15
     jobs:
@@ -2461,7 +2471,7 @@ stories:
     title: Check plan mockups and their links
     activity: review
     release: v0-7-7
-    status: merged
+    status: shipped
     tokens: 3013457
     estimatedCostUsd: 1.6
     jobs:
@@ -2475,7 +2485,7 @@ stories:
     title: Combine shipped stories into one Released lane
     activity: explore
     release: v0-7-7
-    status: merged
+    status: shipped
     tokens: 31297907
     estimatedCostUsd: 10.06
     jobs:
@@ -2498,7 +2508,7 @@ stories:
     title: Model-test concurrent story claims
     activity: review
     release: v0-7-9
-    status: merged
+    status: shipped
     tokens: 4903562
     estimatedCostUsd: 2.48
     jobs:
@@ -2512,7 +2522,7 @@ stories:
     title: Keep export file names fast on crafted titles
     activity: explore
     release: v0-7-9
-    status: merged
+    status: shipped
     tokens: 1549576
     estimatedCostUsd: 0.88
     jobs:
@@ -2527,7 +2537,7 @@ stories:
     title: Record the version each set-up part was installed from
     activity: set-up
     release: v0-7-8
-    status: merged
+    status: shipped
     tokens: 4993512
     estimatedCostUsd: 2.55
     jobs:
@@ -2542,7 +2552,7 @@ stories:
     title: Report the state of each set-up part with story-map upgrade
     activity: set-up
     release: v0-7-8
-    status: merged
+    status: shipped
     tokens: 3233087
     estimatedCostUsd: 1.9
     dependsOn:
@@ -2561,7 +2571,7 @@ stories:
     title: Explain set-up changes in plain words
     activity: set-up
     release: v0-7-8
-    status: merged
+    status: shipped
     tokens: 4075650
     estimatedCostUsd: 2.35
     dependsOn:
@@ -2579,7 +2589,7 @@ stories:
     title: Apply the recommended set-up changes in simple mode
     activity: set-up
     release: v0-7-8
-    status: merged
+    status: shipped
     tokens: 9500544
     estimatedCostUsd: 4.62
     dependsOn:
@@ -2599,7 +2609,7 @@ stories:
     title: Ask once for simple or advanced upgrade mode
     activity: set-up
     release: v0-7-8
-    status: merged
+    status: shipped
     tokens: 4207537
     estimatedCostUsd: 2.32
     dependsOn:
@@ -2616,7 +2626,7 @@ stories:
     title: Choose the set-up parts at install
     activity: set-up
     release: v0-7-8
-    status: merged
+    status: shipped
     tokens: 9267514
     estimatedCostUsd: 5.11
     dependsOn:
@@ -2634,7 +2644,7 @@ stories:
     title: Remind hosts whose set-up falls behind the package
     activity: set-up
     release: v0-7-8
-    status: merged
+    status: shipped
     tokens: 2814037
     estimatedCostUsd: 1.69
     dependsOn:
@@ -2652,7 +2662,7 @@ stories:
     title: Review edited AGENTS.md rules one at a time
     activity: set-up
     release: v0-7-8
-    status: merged
+    status: shipped
     tokens: 5596697
     estimatedCostUsd: 3.09
     dependsOn:
@@ -2670,7 +2680,7 @@ stories:
     title: Lint the code with Biome in CI
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 3771288
     estimatedCostUsd: 1.75
     jobs:
@@ -2684,7 +2694,7 @@ stories:
     title: Measure test coverage with a floor
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 15773230
     estimatedCostUsd: 5.43
     jobs:
@@ -2698,7 +2708,7 @@ stories:
     title: Run CodeQL's quality queries
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 4479167
     estimatedCostUsd: 1.81
     jobs:
@@ -2712,7 +2722,7 @@ stories:
     title: Review against the story first, then the repo checklist
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 2326418
     estimatedCostUsd: 1
     jobs:
@@ -2729,7 +2739,7 @@ stories:
     title: Review each PR's diff before it is ready, and pilot the step
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 7735144
     estimatedCostUsd: 2.96
     jobs:
@@ -2747,7 +2757,7 @@ stories:
     title: Record architecture decisions in plans and PRs
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 4207322
     estimatedCostUsd: 2.19
     jobs:
@@ -2763,7 +2773,7 @@ stories:
     title: Check the architecture section in plans
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 10425579
     estimatedCostUsd: 4.04
     jobs:
@@ -2779,7 +2789,7 @@ stories:
     title: Say when to review the architecture and refactor
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 5670689
     estimatedCostUsd: 2.34
     jobs:
@@ -2795,7 +2805,7 @@ stories:
     title: Offer the review step and architecture decisions to hosts
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 34555173
     estimatedCostUsd: 12.85
     jobs:
@@ -2814,7 +2824,7 @@ stories:
     title: Share one regular-expression escape helper
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 3041863
     estimatedCostUsd: 1.34
     jobs:
@@ -2828,7 +2838,7 @@ stories:
     title: Check the Architecture line in pull requests
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 8142115
     estimatedCostUsd: 2.85
     jobs:
@@ -2841,7 +2851,7 @@ stories:
     title: Keep complexity warnings from growing
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     jobs:
       - plan-and-build
     summary: A test fails when Biome reports more cognitive-complexity warnings than the agreed ceiling, so new code can't add them unnoticed while warnings still don't fail npm run lint.
@@ -2852,7 +2862,7 @@ stories:
     title: Check for missing values instead of assuming they are there
     activity: review
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 16578886
     estimatedCostUsd: 6.16
     jobs:
@@ -2869,7 +2879,7 @@ stories:
     title: Write story summaries people can read at a glance
     activity: plan
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 8371310
     estimatedCostUsd: 2.47
     jobs:
@@ -2886,7 +2896,7 @@ stories:
     title: Scroll the board with the page, not in a box of its own
     activity: explore
     release: v0-7-11
-    status: merged
+    status: shipped
     tokens: 19799996
     estimatedCostUsd: 7.01
     jobs:

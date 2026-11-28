@@ -12,7 +12,7 @@ export interface AgentsRuleInfo {
   /**
    * The opening words of the rule in every release that shipped it, before
    * rules carried IDs. They name the rules in those releases' templates, so
-   * hosts set up before 0.7.8 can be compared rule by rule.
+   * hosts set up before 0.7.11 can be compared rule by rule.
    */
   openings: string[];
   /** The validation rule that checks the same thing, when there is one, under the same ID. */

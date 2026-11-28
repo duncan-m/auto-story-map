@@ -34,7 +34,7 @@ export type KnownSetupVersions = Record<SetupPart, Record<string, string[]>> & {
 /** What a host's copy of a part says about where it came from. */
 export interface SetupFileVersion {
   part: SetupPart;
-  /** The version recorded in the file's marker or first line, if any. Files from before 0.7.8 have none. */
+  /** The version recorded in the file's marker or first line, if any. Files from before 0.7.11 have none. */
   recordedVersion?: string;
   /** The template hash recorded with it, such as `sha256:…`, if any. */
   recordedHash?: string;

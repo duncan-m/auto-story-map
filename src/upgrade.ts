@@ -319,7 +319,7 @@ const ruleTitle = (id: string) => (isAgentsRuleId(id) ? agentsRules[id].title : 
  * Compares the host's `AGENTS.md` section with this version's, rule by rule.
  *
  * Each host paragraph is matched to a rule by its marker. A paragraph with no
- * marker, as in sections set up before 0.7.8, is matched by its text, against
+ * marker, as in sections set up before 0.7.11, is matched by its text, against
  * this version's rules and the known rules of earlier releases, and then by
  * its opening words. A rule whose text is an earlier release's is unedited.
  * Whether this version changed a rule since the host's version, or had it
