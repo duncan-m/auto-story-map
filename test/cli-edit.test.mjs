@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import fc from "fast-check";
 import { diffStoryMaps, formatStoryMapDiff, nextStoryId, parseStoryMap, proposeStoryMapEdit, StoryMapEditError } from "auto-story-map";
 import { escapeRegExp } from "../dist/references.js";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const ownMap = await readFile(new URL("../product/story-map.yaml", import.meta.url), "utf8");
@@ -92,7 +93,7 @@ test("ESM-744: add gives the next ID in sequence across the map, and never reuse
   assert.equal(nextStoryId([{ id: "7", release: "a" }, { id: "A9B-12", release: "a" }, { id: "x", release: "a" }], "a"), "8", "IDs without a prefix and without digits are handled");
   const started = performance.now();
   assert.throws(() => nextStoryId([{ id: `${"9".repeat(50000)}x`, release: "a" }], "a"), StoryMapEditError);
-  assert.ok(performance.now() - started < 200, "an ID of many digits with no trailing number is split in linear time");
+  assertFasterThan(started, 200, "an ID of many digits with no trailing number is split in linear time");
 
   const result = await proposeStoryMapEdit(sequentialMap, [{ op: "add", title: "Check claims in CI", activity: "review", release: "v0-7-5" }]);
   assert.deepEqual(result.addedIds, [next]);

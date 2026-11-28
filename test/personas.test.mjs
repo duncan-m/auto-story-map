@@ -31,6 +31,7 @@ import {
   StoryMapValidationError,
 } from "auto-story-map";
 import { StoryMapBoard } from "auto-story-map/react";
+import { assertFasterThan } from "./fixtures/timing.mjs";
 
 const fixture = await readFile(new URL("./fixtures/builder-estimates.yaml", import.meta.url), "utf8");
 const plain = parseStoryMap(fixture);
@@ -103,7 +104,7 @@ test("ESM-901: accepts personas, jobs and story tags, and resolves each story's 
   const marks = "!".repeat(200_000);
   const started = performance.now();
   assert.equal(jobStatement({ situation: "a", motivation: "b", outcome: `${marks}x` }), `When a, I want b, so that ${marks}x.`);
-  assert.ok(performance.now() - started < 200, "linear in the outcome's length");
+  assertFasterThan(started, 200, "linear in the outcome's length");
 });
 
 test("ESM-901: rejects duplicate, unknown and repeated persona and job IDs", () => {
