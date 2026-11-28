@@ -2419,6 +2419,21 @@ stories:
     summary: A model-based fast-check test runs random, interleaved claims, renewals, take-overs, releases and expiries by several agents against a Git remote and a --store folder, and checks each step against a simple model, so each story has at most one live claim.
     sources:
       - docs/plans/rules-as-checks.md#8-model-test-concurrent-claims
+  - id: ESM-175
+    title: Keep export file names fast on crafted titles
+    activity: explore
+    release: v0-7-9
+    status: merged
+    tokens: 1549576
+    estimatedCostUsd: 0.88
+    jobs:
+      - share-roadmap
+    personas:
+      - founder
+    summary: Export file names from long runs of hyphens in a map title or filename are built in linear time, so a crafted title cannot slow the export route.
+    sources:
+      - src/export-response.ts
+      - docs/plans/export-to-external-tools.md#4-download-the-export-from-the-board
   - id: ESM-166
     title: Record the version each set-up part was installed from
     activity: set-up
