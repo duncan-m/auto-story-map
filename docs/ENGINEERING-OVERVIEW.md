@@ -557,6 +557,23 @@ Coding agents and their sandboxes often create a branch with a generated name fo
 
 Branches follow the work, not the map, so there is no rule of one branch or pull request per story. Small, related stories that change the same area can share a branch and a pull request, as ESM-606 and ESM-607 did. A large story can be split across several. Keep each pull request to one change that can be reviewed and reverted on its own, update the map for every story it touches, and name those stories in its description.
 
+## Review a code change
+
+Review a change against its story before the repository's own checks. Whether you are the author's agent running `/code-review` or a person reading the diff, ask these questions in this order:
+
+1. **What behaviour did the story promise?** Read its summary, its plan section and the other `sources`, with `story-map story <ID>`. A diff that is correct but does something else has not delivered the story.
+2. **What evidence shows it works?** Tests named with the story ID, as in [Link tests to stories](story-map.md#link-tests-to-stories), a run of the command, or a screenshot of the board. A claim in the PR description is not evidence.
+3. **Which existing caller or saved input could break?** Maps that hosts already have, including old formats that `migrateStoryMap` reads, host `AGENTS.md` files that people have edited, consumers of the CLI's JSON output, the [MCP server](story-map.md#serve-the-map-over-mcp)'s tools, the CI annotations from `--format github`, and every caller of a changed function. Check what happens to input the change did not expect, such as text with regular-expression or HTML metacharacters.
+4. **Then the repository's own checks.** The [security boundaries to preserve](#security-boundaries-to-preserve), the steps in [Making common changes](#making-common-changes), and:
+   - a regenerated `story-map.schema.json` when the schema changes,
+   - a changelog entry, and upgrade notes in the guide for a breaking change,
+   - both `AGENTS.md` files, the root one and `templates/AGENTS.md`, when the guidance changes,
+   - one change per PR that can be reverted on its own.
+
+A question about architecture decisions the change made without recording them comes later, with ESM-183, as the [code review plan](plans/code-review.md#4-review-against-the-story-first-then-the-repo-checklist) says. Until then the review asks these four.
+
+Turn what reviews find into checks. A serious defect, such as a security boundary crossed or saved input lost, gets a regression test the first time it is found. A lower-impact problem that comes back gets a lint rule, a test or an API change the second time, so the next review does not have to find it again. The shared `escapeRegExp` helper (ESM-187) is the first example.
+
 ## Making common changes
 
 ### Add a field to the map

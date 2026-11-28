@@ -169,8 +169,13 @@ Ten PRs run the review step from item 5 before ready. Each row records the revie
 
 | # | PR | Story | Reviewed before ready | Findings fixed | Findings declined | Defects found later | Time and tokens | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Not yet open | ESM-175: Keep export file names fast on crafted titles | | | | | | in progress |
-| 2 to 10 | | | | | | | | |
+| 1 | #190 | ESM-175: Keep export file names fast on crafted titles | Yes: `/code-review`, medium, at `65e9ca3` | None | 2: the slug can still end in a hyphen or dot after the 80-character cut (pre-existing, and the fix had to keep the output the same), and the 100 ms timing limit could flake (nit, with a margin of about 250 times) | None so far | Not recorded separately: the PR's token count was taken before the review | merged |
+| 2 | Not yet open | ESM-187: Share one regular-expression escape helper | | | | | | in progress |
+| 3 | #192 | ESM-178: Run CodeQL's quality queries | Not yet: draft | | | | | in progress |
+| 4 | This PR | ESM-179, ESM-182: Review each PR against its story before it is ready | | | | | | in progress |
+| 5 to 10 | | | | | | | | |
+
+From row 2 on, a PR records its review in the template's **Review** section, and its time and tokens when the tool reports them. "Defects found later" counts problems in the PR's own change found after it was marked ready: by CodeQL, CI, a person or a later story.
 
 After the tenth PR, the team decides whether the step is worth its cost, and so whether item 9 goes ahead.
 

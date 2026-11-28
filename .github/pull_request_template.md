@@ -26,3 +26,13 @@ such as "ESM-601: Limit author names in the history file".
 ## Tests
 
 <!-- What you ran, such as npm run validate and npm test. -->
+
+## Review
+
+<!-- Record the review of this diff before marking the PR ready, following docs/ENGINEERING-OVERVIEW.md#review-a-code-change. A person's review of the same diff also counts. If no review could be run, say so and keep the PR as a draft. -->
+
+- Target: <!-- such as /code-review 190, or origin/main...HEAD before the PR existed -->
+- Commit reviewed: <!-- the SHA at HEAD when the review ran -->
+- Level: <!-- such as medium, or "person" for a person's review -->
+- Findings fixed: <!-- each finding and the commit that fixed it, or "None" -->
+- Findings declined: <!-- each finding and why it was not fixed, or "None" -->
