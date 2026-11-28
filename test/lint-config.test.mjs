@@ -56,7 +56,7 @@ test("ESM-176: every biome-ignore comment gives its reason", async () => {
  * so this ceiling stops new code adding them unnoticed. Lower it when a change removes some.
  * Raise it only when a change can't reasonably split a function, and say why in the PR.
  */
-const complexityCeiling = 141;
+const complexityCeiling = 140;
 
 test("ESM-189: Biome reports no more complexity warnings than the ceiling, and no other warnings", () => {
   const biome = join(root, "node_modules", "@biomejs", "biome", "bin", "biome");

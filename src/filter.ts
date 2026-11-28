@@ -42,6 +42,11 @@ export interface StoryMapFilters {
   story?: string;
   /** A release ID from a permalink. The board opens its panel, or scrolls to its lane for customers. Ignored unless the release is in the view. */
   release?: string;
+  /**
+   * Shows every shipped story in one Released lane at the top of the board, instead of in its
+   * release's lane. It changes the layout only, not which stories are kept. Internal views only.
+   */
+  released?: boolean;
 }
 
 /** The pages of an internal board: the story map, the Personas tab or the Actions tab. */
@@ -79,7 +84,7 @@ function readStatuses(value: unknown): StoryStatusFilter[] {
  * status or `stalled`, and `status=all` chooses every status. `persona`, `job`
  * and `activity` repeat, once for each ID. `view=personas` opens the Personas
  * tab and `view=actions` the Actions tab, which reads `action-kind`, `action-item-type`, `action-release`,
- * `action-item` and `needs-person=1`. Unknown values are ignored.
+ * `action-item` and `needs-person=1`. `released=1` puts shipped stories in one Released lane. Unknown values are ignored.
  */
 export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
   const query = params.get("q")?.trim().slice(0, maxQueryLength) || undefined;
@@ -116,6 +121,7 @@ export function readStoryMapFilters(params: URLSearchParams): StoryMapFilters {
     ...(Object.keys(actions).length ? { actions } : {}),
     ...(story ? { story } : {}),
     ...(release ? { release } : {}),
+    ...(params.get("released") === "1" ? { released: true } : {}),
   };
 }
 
@@ -223,6 +229,7 @@ export function filterStoryMapView<View extends StoryMapView>(
       ...(Object.keys(actionFilter).length ? { actions: actionFilter } : {}),
       ...(linkedStory ? { story: linkedStory } : {}),
       ...(linkedRelease ? { release: linkedRelease } : {}),
+      ...(internal && filters.released === true ? { released: true as const } : {}),
       total: view.stories.length,
       ...(hidden.blocked || hidden.cut ? { hidden } : {}),
     },
