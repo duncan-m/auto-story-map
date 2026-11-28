@@ -180,7 +180,7 @@ Consequential decision, a **proposal** for a person to agree before ESM-130 and 
 - **Consumers:** hosts that build the history file or write maps, the board, and any host code that parses either file.
 - **Alternatives considered:** for the history file, adding the changes to `events`, not chosen because `parseStoryMapHistory` accepts only `added` and `status` events, so an older board would reject the file; and a separate precomputed metrics file, deferred until a real limit needs one.
 - **Agreed by:** not yet. The team agreed the estimates, but the plan does not record agreement of the format changes.
-- **Revisit if** calculating in the board proves too slow for a large history, which is when the plan says to add a precomputed file.
+- **Revisit if** an older board rejects history files with the new list, if teams rarely set `baselineDate`, or if calculating in the board proves too slow for a large history, which is when the plan says to add a precomputed file.
 
 ## Decisions to settle before implementation
 
