@@ -537,6 +537,8 @@ Tests that need Git create temporary repositories and clean them up. They need `
 
 The smoke test is the only check of what actually ships. A file that works in the repository but is missing from `files` in `package.json` fails here.
 
+`codeql.yml` runs CodeQL on every PR, on pushes to `main` and weekly. It runs the `security-and-quality` suite, so as well as security problems it reports code-quality ones such as unused variables, useless assignments and comparisons that are always true (ESM-178). Fix an alert in the PR that raises it when the fix is small. A person dismisses the rest in GitHub's Security tab with a reason: false positive, won't fix or used in tests.
+
 Actions are pinned to commit SHAs with the version in a comment. `templates/story-map-ci.yml` uses the same pins; update both together.
 
 ## Releasing
