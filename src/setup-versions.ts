@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { agentsRuleForm, agentsRuleHash, templateRules, type AgentsRuleForm, type KnownAgentsRules } from "./agents-rules.js";
+import { present } from "./present.js";
 
 /**
  * The parts of a host's set-up that `story-map init` writes from a template
@@ -228,11 +229,14 @@ export function knownSetupVersionsFrom(templates: Iterable<ReleasedSetupTemplate
       add(known.rules[id], agentsRuleHash(rule), version);
     }
   }
+  // Each hash is added with a version, so its list is never empty.
+  const earliest = (versions: string[]) => present(versions.at(0), "the versions of a known hash");
+  const latest = (versions: string[]) => present(versions.at(-1), "the versions of a known hash");
   const sorted = (hashes: Record<string, string[]>) =>
     Object.fromEntries(
       Object.entries(hashes)
         .map(([hash, versions]) => [hash, versions.sort(compareVersions)] as const)
-        .sort(([hashA, a], [hashB, b]) => compareVersions(a[0]!, b[0]!) || compareVersions(a.at(-1)!, b.at(-1)!) || (hashA < hashB ? -1 : 1)),
+        .sort(([hashA, a], [hashB, b]) => compareVersions(earliest(a), earliest(b)) || compareVersions(latest(a), latest(b)) || (hashA < hashB ? -1 : 1)),
     );
   for (const part of setupParts) known[part] = sorted(known[part]);
   known.rules = Object.fromEntries(Object.keys(known.rules).sort().map(id => [id, sorted(known.rules[id])]));

@@ -4,6 +4,7 @@ import { becauseReason, noneAnswer } from "./plan-architecture.js";
 import { escapeRegExp } from "./references.js";
 import type { StoryMapRuleId } from "./rules.js";
 import type { StoryMapDocument, StoryMapIssue } from "./schema.js";
+import { present } from "./present.js";
 
 /** The rules only `pr-check` reports, beside the ones `story-map diff` lists under Needs a person. */
 export const prCheckRules = ["missing-tokens-used", "missing-review", "missing-architecture"] as const satisfies readonly StoryMapRuleId[];
@@ -130,7 +131,8 @@ function descriptionSection(body: string, heading: RegExp): string | undefined {
   const lines = body.replace(/\r\n?/g, "\n").replace(/<!--[\s\S]*?(-->|$)/g, "").split("\n");
   const start = lines.findIndex(line => heading.test(line));
   if (start === -1) return undefined;
-  const level = /^ *(#+)/.exec(lines[start])![1].length;
+  // Each heading pattern matches a Markdown heading, so the line starts with #.
+  const level = present(/^ *(#+)/.exec(lines[start]), "the level of a description heading")[1].length;
   const rest = lines.slice(start + 1);
   const end = rest.findIndex(line => {
     const heading = /^ {0,3}(#{1,6})[ \t]/.exec(line);
@@ -181,7 +183,8 @@ const answerEnd = /^ {0,3}(#{1,6}[ \t]|```|~~~|[-*+][ \t]|\d{1,9}[.)][ \t])/;
 
 /** The answer after the label at `index`, to the end of its paragraph or list item, with inline code blanked. */
 function architectureAnswer(lines: readonly string[], index: number): string {
-  const answer = [architectureLabel.exec(lines[index])![1]];
+  // The caller found the label on this line.
+  const answer = [present(architectureLabel.exec(lines[index]), "the Architecture label")[1]];
   for (const line of lines.slice(index + 1)) {
     if (!line.trim() || answerEnd.test(line)) break;
     answer.push(line);
@@ -268,9 +271,10 @@ export function checkPullRequest(options: PrCheckOptions): PrCheckResult {
     ...diff.stories.added.filter(story => story.status === "merged").map(story => story.id),
     ...diff.stories.updated.filter(story => story.status?.to === "merged").map(story => story.id),
   ];
-  const checkedBody = options.body !== undefined;
+  const { body } = options;
+  const checkedBody = body !== undefined;
   if (checkedBody && merged.length) {
-    const section = tokensUsedSection(options.body!);
+    const section = tokensUsedSection(body);
     const index = (id: string) => after.stories.findIndex(story => story.id === id);
     const missing = (id: string, why: string) => issues.push({ severity: "error", path: ["stories", index(id)], itemId: id, rule: "missing-tokens-used", message: why });
     if (section === undefined) {
@@ -291,7 +295,7 @@ export function checkPullRequest(options: PrCheckOptions): PrCheckResult {
   // Only a pull request known to be ready is checked, so a draft, or a host whose CI does not pass draft, is never warned.
   const checkedReview = checkedBody && options.draft === false;
   if (checkedReview) {
-    const section = reviewSection(options.body!);
+    const section = reviewSection(body);
     const why = section === undefined ? "its description has no Review section" : !section ? "the Review section in its description is empty" : undefined;
     if (why) {
       issues.push({
@@ -305,7 +309,7 @@ export function checkPullRequest(options: PrCheckOptions): PrCheckResult {
 
   // Only a ready pull request in a map that requires architecture decisions is checked, so hosts that have not adopted them see nothing.
   const checkedArchitecture = checkedReview && after.settings?.architectureDecisions === "required";
-  const architecture = checkedArchitecture ? architectureIssue(options.body!) : undefined;
+  const architecture = checkedArchitecture ? architectureIssue(body) : undefined;
   if (architecture) issues.push(architecture);
 
   return {

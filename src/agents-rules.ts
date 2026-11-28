@@ -96,7 +96,8 @@ export function agentsSectionBlocks(body: string): AgentsSectionBlock[] {
         pendingId = marker[1];
         lines.shift();
       } else if (lines[0].startsWith("#")) {
-        blocks.push({ kind: "heading", text: lines.shift()!.trim() });
+        blocks.push({ kind: "heading", text: lines[0].trim() });
+        lines.shift();
       } else {
         break;
       }

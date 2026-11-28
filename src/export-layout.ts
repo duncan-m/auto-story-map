@@ -1,5 +1,6 @@
 import type { StoryMapExport } from "./export.js";
 import { storyStatusLabels } from "./status.js";
+import { present } from "./present.js";
 
 /**
  * Lays out an export as a board: activity headers across the top, a lane per
@@ -249,7 +250,7 @@ export function layoutStoryMapExport(model: StoryMapExport): ExportLayout {
           h: cardHeight,
           text: [
             { text: story.estimate === undefined ? story.id : `${story.id} · ${story.estimate} ${story.estimate === 1 ? "pt" : "pts"}`, size: cardIdSize, color: exportColors.muted },
-            { text: titles.get(story.id)!, size: cardTitleSize, color: exportColors.text },
+            { text: present(titles.get(story.id), `the fitted title of ${story.id}`), size: cardTitleSize, color: exportColors.text },
           ],
           fill: exportColors.card,
           line: exportColors.cardLine,

@@ -51,7 +51,8 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
   const releaseTitle = (id: string) => view.releases.find(release => release.id === id)?.title ?? id;
   const title = "release" in request
     ? releaseTitle(request.release)
-    : targets.length === 1 ? targets[0]!.title : releaseIds.length === 1 ? releaseTitle(releaseIds[0]!) : targets[0]!.title;
+    // pickTargets refuses a request with no stories, so there is a first target.
+    : targets.length === 1 ? targets[0].title : releaseIds.length === 1 ? releaseTitle(releaseIds[0]) : targets[0].title;
 
   const ids = targets.map(story => story.id);
   const releases = releaseIds.map(id => `**${line(releaseTitle(id))}**`);
@@ -64,8 +65,9 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
   const link = (story: InternalStoryCard) => {
     const source = planSource(story.sources);
     if (!source) return `**${story.id}**, ${line(story.title)}`;
+    // planSource only returns a source with a #heading, so it has a file and a fragment.
     const [file, fragment] = source.split("#", 2);
-    const target = /^[a-z][a-z0-9+.-]*:/i.test(file!) ? file! : posix.relative(folder, file!) || posix.basename(file!);
+    const target = /^[a-z][a-z0-9+.-]*:/i.test(file) ? file : posix.relative(folder, file) || posix.basename(file);
     return `**${story.id}**, [${line(story.title)}](${target}#${fragment})`;
   };
   const taken = new Set(ids);

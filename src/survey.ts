@@ -259,7 +259,8 @@ function suggestReleases(tags: SurveyTag[], versions: SurveyChangelogVersion[]):
   const keyOf = (version: string) => version.toLowerCase().replace(/^v/, "");
   for (const changelog of versions) {
     const unreleased = /^\[?unreleased/i.test(changelog.heading);
-    const version = unreleased ? "Unreleased" : changelogHeading.exec(changelog.heading)![1];
+    const version = unreleased ? "Unreleased" : changelogHeading.exec(changelog.heading)?.[1];
+    if (version === undefined) continue;
     const key = keyOf(version);
     if (byKey.has(key)) continue;
     byKey.set(key, { version, suggestedId: suggestedReleaseId(version), ...(changelog.date ? { date: changelog.date } : {}), ...(unreleased ? { unreleased } : {}), changelog });

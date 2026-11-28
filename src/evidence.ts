@@ -10,6 +10,7 @@ import { loadStoryMap, type LoadedStoryMap } from "./schema.js";
 import { isActiveStatus, type StoryStatus } from "./status.js";
 import { findStoryTests } from "./tests.js";
 import { getStoryMapForViewer, type StoryMapView } from "./view.js";
+import { present } from "./present.js";
 
 const run = promisify(execFile);
 
@@ -353,7 +354,8 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
   const { map } = loaded;
   const shippedTags = options.shippedTags;
   if (shippedTags !== undefined && !shippedTags.trim()) throw new StoryEvidenceError("--shipped-tags needs a tag pattern, such as 'v*'.");
-  const known = new Set(map.stories.map(story => story.id));
+  const byId = new Map(map.stories.map(story => [story.id, story]));
+  const known = new Set(byId.keys());
   const lookup = idLookup(known);
   const missing: MissingStory[] = [];
   const wanted = options.ids?.length ? [...new Set(options.ids)] : map.stories.filter(story => isActiveStatus(story.status)).map(story => story.id);
@@ -448,7 +450,8 @@ export async function gatherStoryEvidence(source: string | LoadedStoryMap, optio
   }
 
   const stories = targets.map(id => {
-    const story = map.stories.find(item => item.id === id)!;
+    // Each target is a known ID.
+    const story = present(byId.get(id), `story ${id}`);
     const storyBranches = branches.get(id) ?? [];
     const [storyCommits, moreCommits] = capped(commits.get(id) ?? []);
     const lines = new Map(mentions.mentions.filter(mention => mention.id === id).map(({ file, line, text }) => [`${file}:${line}`, { file, line, text: fit(text) }]));

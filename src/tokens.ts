@@ -250,7 +250,7 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
     row.total += total;
     if (price) {
       const cost = responseCost(response.counts, price, response.fast);
-      row.usd! += cost;
+      row.usd = (row.usd ?? 0) + cost;
       usd += cost;
     } else {
       result.cost.unpricedTokens += total;

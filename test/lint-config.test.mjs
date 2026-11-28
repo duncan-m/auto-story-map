@@ -36,6 +36,12 @@ test("ESM-176: every rule turned off in biome.jsonc has a comment giving its rea
   }
 });
 
+test("ESM-190: an unchecked non-null assertion fails lint, and the two accessibility rules stay off", () => {
+  assert.match(config, /"noNonNullAssertion":\s*"error"/);
+  assert.match(config, /"useSemanticElements":\s*"off"/);
+  assert.match(config, /"useFocusableInteractive":\s*"off"/);
+});
+
 test("ESM-176: every biome-ignore comment gives its reason", async () => {
   const missing = [];
   for (const folder of ["src", "test", "scripts", "example"]) {
