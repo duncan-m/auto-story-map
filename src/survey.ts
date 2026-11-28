@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import { readdir, realpath, stat } from "node:fs/promises";
 import { basename, extname, relative, resolve, sep } from "node:path";
-import { readTextFileWithin } from "./read-text.js";
 import { promisify } from "node:util";
+import { readTextFileWithin } from "./read-text.js";
 import {
   markdownHeadings,
   maxMarkdownBytes,

@@ -2,7 +2,8 @@ import { open } from "node:fs/promises";
 
 /**
  * Reads a UTF-8 file, or returns undefined when it is larger than `maxBytes`. The size is checked
- * on the open file, so the file cannot be replaced between the check and the read (ESM-178).
+ * on the open file, so a file swapped in after the check is never read (ESM-178). A file that grows
+ * after the check is still read in full.
  */
 export async function readTextFileWithin(path: string, maxBytes: number): Promise<string | undefined> {
   const handle = await open(path, "r");
