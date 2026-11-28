@@ -61,6 +61,7 @@ const complexityCeiling = 141;
 test("ESM-206: Biome reports no more complexity warnings than the ceiling, and no other warnings", () => {
   const biome = join(root, "node_modules", "@biomejs", "biome", "bin", "biome");
   const run = spawnSync(process.execPath, [biome, "lint", "--reporter=json", "--max-diagnostics=none"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  assert.ok(!run.error && run.stdout.trim(), `Biome did not run: ${run.error?.message ?? run.stderr}`);
   const report = JSON.parse(run.stdout);
   const warnings = report.diagnostics.filter(diagnostic => diagnostic.severity === "warning");
   const other = warnings.filter(diagnostic => diagnostic.category !== "lint/complexity/noExcessiveCognitiveComplexity");

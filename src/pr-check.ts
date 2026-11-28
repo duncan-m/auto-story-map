@@ -142,8 +142,8 @@ function descriptionSection(body: string, heading: RegExp): string | undefined {
 /** What is wrong with a description's Architecture line, or undefined when it answers. */
 export type ArchitectureLineProblem = "missing" | "empty" | "none-without-reason";
 
-/** A line that starts the answer, such as `Architecture: …` or `- **Architecture:** …`. */
-const architectureLabel = /^ {0,3}(?:[-*+][ \t]+)?(?:\*\*|__)?architecture(?:\*\*|__)?[ \t]*:(?:\*\*|__)?(.*)$/i;
+/** A line that starts the answer, such as `Architecture: …`, `- **Architecture:** …` or `> *Architecture:* …`. */
+const architectureLabel = /^ {0,3}(?:>[ \t]*)?(?:[-*+][ \t]+)?(?:\*\*|__|\*|_)?architecture(?:\*\*|__|\*|_)?[ \t]*:(?:\*\*|__|\*|_)?(.*)$/i;
 
 /**
  * Reads the description's Architecture line, outside HTML comments and code
@@ -163,14 +163,18 @@ export function architectureLineProblem(body: string): ArchitectureLineProblem |
 
 /** The index of the first Architecture line outside code fences, or -1. */
 function firstArchitectureLine(lines: readonly string[]): number {
-  let fenced = false;
+  // The fence that is open, such as "```" or "~~~~", which only a line starting with as many of the same character closes.
+  let open = "";
   return lines.findIndex(line => {
-    if (fence.test(line)) fenced = !fenced;
-    return !fenced && architectureLabel.test(line);
+    const marker = fence.exec(line)?.[1];
+    if (marker && !open) open = marker;
+    else if (marker && marker[0] === open[0] && marker.length >= open.length) open = "";
+    else if (!open) return architectureLabel.test(line);
+    return false;
   });
 }
 
-const fence = /^ {0,3}(```|~~~)/;
+const fence = /^ {0,3}(`{3,}|~{3,})/;
 
 /** The paragraph or list item ends at a blank line, a heading, a fence or the next list item. */
 const answerEnd = /^ {0,3}(#{1,6}[ \t]|```|~~~|[-*+][ \t]|\d{1,9}[.)][ \t])/;

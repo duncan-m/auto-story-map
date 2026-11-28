@@ -237,6 +237,10 @@ test("ESM-205: an answered Architecture line passes, including a reason that wra
   // A reason only inside an HTML comment, or a line only inside a code fence, does not count.
   assert.equal(architectureLineProblem("Architecture: None: <!-- because it is small -->"), "none-without-reason");
   assert.equal(architectureLineProblem("```\nArchitecture: None: keeps it because it is small.\n```\n"), "missing");
+  // A fence closes only on its own character, and quoted or italic labels count.
+  assert.equal(architectureLineProblem("```\n~~~\nArchitecture: None: keeps it because it is small.\n```\n"), "missing");
+  assert.equal(architectureLineProblem("~~~\nx\n~~~\nArchitecture: None: keeps it because it is small.\n"), undefined);
+  assert.equal(architectureLineProblem("> *Architecture:* None: keeps it because it is small."), undefined);
   // A reason that wraps ends at the paragraph: the next section's text is not part of it.
   assert.equal(architectureLineProblem("Architecture: None:\n\nbecause it is small."), "none-without-reason");
 });
