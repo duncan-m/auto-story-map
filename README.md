@@ -177,11 +177,12 @@ npx story-map stories --query "export" --status all
 npx story-map story ESM-741
 npx story-map releases
 npx story-map evidence ESM-105
+npx story-map brief ESM-126
 npx story-map claim ESM-106 --agent audit-bot
 npx story-map validate --format json product/story-map.yaml
 ```
 
-`stories` takes the board's filters, `evidence` reports the branches, merged commits, plans, tests and broken sources that mention a story and suggests a status, `claim` tells a second agent that someone is already on a story, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
+`stories` takes the board's filters, `evidence` reports the branches, merged commits, plans, tests and broken sources that mention a story and suggests a status, `brief` prints a handoff prompt for an agent, the same as the board's Copy brief, `claim` tells a second agent that someone is already on a story, and `story-map help <command>` lists each command's options. See [Read the map from the command line](docs/story-map.md#read-the-map-from-the-command-line).
 
 Change it the same way. Each edit is a dry run that prints the YAML diff, the PR summary and any problems it causes, until you add `--write`. Comments and untouched lines stay exactly as they were:
 

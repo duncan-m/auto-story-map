@@ -38,8 +38,8 @@ export type {
 export { changedWithinOptions, filterStoryMapView, readStoryMapFilters } from "./filter.js";
 export type { ChangedWithinDays, FilterOptions, StoryMapFilters, StoryMapPage } from "./filter.js";
 export { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
-export { briefBranchMaxLength, briefBuiltNearbyMaxItems, releaseBriefMaxBytes, storyBriefMaxBytes, storyMapBrief, storyMapBriefBranch } from "./brief.js";
-export type { StoryMapBriefDocument, StoryMapBriefOptions, StoryMapBriefRequest } from "./brief.js";
+export { briefBranchMaxLength, briefBuiltNearbyMaxItems, releaseBriefMaxBytes, storyBriefMaxBytes, storyMapBrief, storyMapBriefBranch, storyMapBriefDetails } from "./brief.js";
+export type { StoryMapBriefDocument, StoryMapBriefOptions, StoryMapBriefRequest, StoryMapBriefResult, StoryMapBriefSections, StoryMapBriefTarget } from "./brief.js";
 export type { StoryMapPermalinkTarget } from "./permalink.js";
 export { parseStoryMapHistory, storyMapHistorySchema } from "./history.js";
 export type { SkippedStoryMapVersion, StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory, StoryMoreChanges } from "./history.js";

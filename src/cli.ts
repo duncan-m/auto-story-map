@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import actions from "./commands/actions.js";
+import brief from "./commands/brief.js";
 import { claim, claims, unclaim } from "./commands/claim.js";
 import confirm from "./commands/confirm.js";
 import diff from "./commands/diff.js";
@@ -35,6 +36,7 @@ const usage = `Usage:
   story-map releases [--format text|json] [--map <path>] [--history <file>] [--tests-index <file>] [<release ID> ...]
   story-map actions [--format text|json] [--map <path>] [--kind <kind>] [--item-type <type>] [--release <ID>] [--needs-person] [--tests <path> | --tests-index <file>] [--root <path>]
   story-map evidence [--format text|json] [--map <path>] [--root <path>] [--default-branch <name>] [--plans <path>] [--tests <path>] [--history <file>] [--shipped-tags <pattern>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [<ID> ...]
+  story-map brief [--format text|json] [--map <path>] [--full] [--read-first <path>] [--history <file>] [--tests-index <file>] [--root <path>] [--default-branch <name>] [--claims] [--claims-remote <name>] [--claims-store <dir>] [--no-evidence] <ID> [...] | --release <ID> | --activity <ID>
   story-map survey [--format text|json] [--root <path>] [--tags <pattern>] [--changelog <file>] [--docs <path>] [--plans <path>]
   story-map claim [--format text|json] [--map <path>] [--remote <name>] [--store <dir>] --agent <name> [--ttl <duration>] [--branch <name>] [--renew | --take-over] <ID>
   story-map claims [--format text|json] [--remote <name>] [--store <dir>]
@@ -320,6 +322,38 @@ evidence
   --claims-remote <name>, --claims-store <dir>
                      Read claims from this remote or claim store instead.
 
+brief
+  Prints a handoff brief for a coding agent, the same brief as the board's
+  Copy brief: rules, the target stories, what is already built nearby, what
+  not to build yet, work in flight, open decisions and when the work is done.
+  Name one or more stories, or brief a release's or an activity's planned and
+  in-progress stories. The in-flight section adds what story-map evidence
+  finds for each target: branches, commits on the default branch, tagged
+  tests and broken sources, and claims with --claims. It never changes the
+  map. An ID that is not in the map exits 1.
+
+  --release <ID>     Brief the release's open stories, in board order.
+  --activity <ID>    Brief the activity's open stories, earliest release first.
+  --full             Include each target's notes, persona context, job
+                     statements and every tagged test, for agents that
+                     cannot run commands.
+  --format json      Print the brief and each of its sections as JSON.
+  --map <path>       Map to read. Defaults to product/story-map.yaml.
+  --read-first <path>
+                     A document the agent reads first, such as
+                     docs/ENGINEERING-OVERVIEW.md. Repeat for several.
+  --history <file>, --tests-index <file>
+                     History and tests index, as for story.
+  --root <path>      Repository root for the evidence. Defaults to the
+                     current directory.
+  --default-branch <name>
+                     Branch to read merged commits from, as for evidence.
+  --claims           Also read claims from origin, which needs the network.
+  --claims-remote <name>, --claims-store <dir>
+                     Read claims from this remote or claim store instead.
+  --no-evidence      Leave Git out, and list only what the map, history and
+                     tests index know, as the board does.
+
 survey
   Collects the facts an agent needs to draft a first map for a repository
   that already has history, without changing anything and without a map:
@@ -565,7 +599,7 @@ mcp
 help
   Prints this text, or just the section for <command>.`;
 
-const commands: Record<string, Command<any>> = { init, upgrade, validate, diff, "pr-check": prCheck, history, tests, export: exportMap, story, stories, releases, actions, evidence, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
+const commands: Record<string, Command<any>> = { init, upgrade, validate, diff, "pr-check": prCheck, history, tests, export: exportMap, story, stories, releases, actions, evidence, brief, survey, claim, claims, unclaim, tokens, preview, mcp, edit, add, "release-impact": releaseImpact, settings, plan, confirm };
 
 /** The usage line and section for one command, or null for an unknown one. */
 function commandUsage(name: string): string | null {
