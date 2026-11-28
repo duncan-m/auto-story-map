@@ -527,6 +527,18 @@ releases:
         expected: None, with the claim rules checked by a model-based test on every CI run
         solves: Two agents building the same story when they claim it at the same moment
         draft: true
+  - id: v0-7-11
+    title: "0.7.11: Code review and architecture checks"
+    summary: Each PR is reviewed against its story before it is ready, lint, coverage and CodeQL quality queries run in CI, and plans record their architecture decisions, with points for reviewing the architecture and refactoring.
+    notes: |
+      Planning proposal only. Of the last 30 merged PRs none had an independent review, and CodeQL found escaping, sanitising or ReDoS problems in 5 of them after the push. ESM-187, ESM-178, ESM-176 and ESM-177 come first, alongside the story-first review (ESM-179) and a ten-PR pilot of the review step (ESM-182), then architecture decisions in plans (ESM-183), their check (ESM-184) and review points (ESM-185), and last offering both to hosts (ESM-186) once the pilot is done. Placed after 0.7.9 because 0.7.10 (Agent briefs) is still an open PR; move it after 0.7.10 once that merges.
+
+      Plan: docs/plans/code-review.md
+    impact:
+      - metric: Defects found after a PR is marked ready, such as CodeQL alerts after the push
+        expected: Fewer than the 5 in the last 30 merged PRs, with each PR reviewed against its story before it is ready
+        solves: Escaping, sanitising and ReDoS problems that only CodeQL catches, after the push
+        draft: true
   - id: v0-8-0
     title: "0.8.0: Agent briefs"
     summary: Agents and scripts print a brief for a story, release or activity with story-map brief.
@@ -2577,3 +2589,136 @@ stories:
     sources:
       - docs/plans/upgrade-review.md#8-review-edited-rules-one-at-a-time
       - docs/story-map.md#review-the-agentsmd-section-rule-by-rule
+  - id: ESM-176
+    title: Lint the code with Biome in CI
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+    personas:
+      - founder
+    summary: npm run lint runs Biome's recommended rules on src, test, scripts and example, and CI runs it with GitHub annotations.
+    sources:
+      - docs/plans/code-review.md#1-lint-the-code-with-biome-in-ci
+  - id: ESM-177
+    title: Measure test coverage with a floor
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+    personas:
+      - founder
+    summary: CI measures coverage of src with source maps, leaving out example and the generated version, and fails below a floor set from the baseline that only goes up.
+    sources:
+      - docs/plans/code-review.md#2-measure-test-coverage-with-a-floor
+  - id: ESM-178
+    title: Run CodeQL's quality queries
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+    personas:
+      - founder
+    summary: CodeQL runs the security-and-quality queries, and the new alerts are triaged.
+    sources:
+      - docs/plans/code-review.md#3-run-codeqls-quality-queries
+  - id: ESM-179
+    title: Review against the story first, then the repo checklist
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+      - pick-up-work
+    personas:
+      - agent
+      - founder
+    summary: A Review a code change section in the engineering overview asks what the story promised, what shows it works, what could break and whether an architecture decision went unrecorded, before the repo checks.
+    sources:
+      - docs/plans/code-review.md#4-review-against-the-story-first-then-the-repo-checklist
+  - id: ESM-182
+    title: Review each PR's diff before it is ready, and pilot the step
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+      - pick-up-work
+    personas:
+      - agent
+      - founder
+    summary: Each PR's diff is reviewed with /code-review or by a person before it is ready, recorded in a Review section that pr-check reads, over a ten-PR pilot.
+    sources:
+      - docs/plans/code-review.md#5-review-each-prs-diff-before-it-is-ready-and-pilot-the-step
+  - id: ESM-183
+    title: Record architecture decisions in plans and PRs
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+      - resolve-material-uncertainty
+    personas:
+      - agent
+      - founder
+    summary: Plans answer where the work runs, its consumers upstream and downstream, its boundaries and its reversibility in an Architecture decisions section, and work without a plan puts an Architecture line in the PR.
+    sources:
+      - docs/plans/code-review.md#6-record-architecture-decisions-in-plans-and-prs
+  - id: ESM-184
+    title: Check the architecture section in plans
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+      - resolve-material-uncertainty
+    personas:
+      - agent
+      - founder
+    summary: "validate --plans reports open plans with a missing, empty or placeholder Architecture decisions section, as a notice, or a warning with settings.architectureDecisions: required."
+    sources:
+      - docs/plans/code-review.md#7-check-the-architecture-section-in-plans
+  - id: ESM-185
+    title: Say when to review the architecture and refactor
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+      - resolve-material-uncertainty
+    personas:
+      - agent
+      - founder
+    summary: The guide names four points to review the architecture, and says a refactor story needs evidence of its cost from Git and review history, starting with src/react.tsx.
+    sources:
+      - docs/plans/code-review.md#8-say-when-to-review-the-architecture-and-refactor
+  - id: ESM-186
+    title: Offer the review step and architecture decisions to hosts
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+      - keep-setup-current
+      - pick-up-work
+    personas:
+      - agent
+      - founder
+    summary: The host templates, guide, plan scaffold and upgrade review offer the review step and architecture decisions to hosts, after the pilot.
+    sources:
+      - docs/plans/code-review.md#9-offer-the-review-step-and-architecture-decisions-to-hosts
+  - id: ESM-187
+    title: Share one regular-expression escape helper
+    activity: review
+    release: v0-7-11
+    status: planned
+    jobs:
+      - plan-and-build
+    personas:
+      - founder
+    summary: One escapeRegExp exported from src replaces the five copies, with a property test that escaped text matches itself literally.
+    sources:
+      - docs/plans/code-review.md#10-share-one-regular-expression-escape-helper
