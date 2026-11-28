@@ -313,8 +313,10 @@ function dependencyCycleIssues(stories: Item[]): CrossReferenceIssue[] {
   const edges = (storyIndex: number) => {
     const story = stories[storyIndex];
     const listed = Array.isArray(story.dependsOn) ? story.dependsOn as unknown[] : [];
-    return listed.flatMap((ref, refIndex) => typeof ref === "string" && ref !== story.id && index.has(ref) && listed.indexOf(ref) === refIndex
-      ? [{ to: index.get(ref)!, refIndex }] : []);
+    return listed.flatMap((ref, refIndex) => {
+      const to = typeof ref === "string" && ref !== story.id ? index.get(ref) : undefined;
+      return to !== undefined && listed.indexOf(ref) === refIndex ? [{ to, refIndex }] : [];
+    });
   };
   const issues: CrossReferenceIssue[] = [];
   // 0: not visited, 1: on the current path, 2: done.
@@ -330,7 +332,8 @@ function dependencyCycleIssues(stories: Item[]): CrossReferenceIssue[] {
       const depth = path.length - 1;
       const edge = children[depth][next[depth]++];
       if (!edge) {
-        state[path.pop()!] = 2;
+        state[path[depth]] = 2;
+        path.pop();
         next.pop();
         children.pop();
         continue;

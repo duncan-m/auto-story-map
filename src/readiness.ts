@@ -1,5 +1,6 @@
 import type { StoryMapDocument, StoryStatus } from "./schema.js";
 import { isDeliveredStatus } from "./status.js";
+import { present } from "./present.js";
 
 /** Readiness states, in the order the CLI lists them. */
 export const storyReadinessStates = ["ready", "waiting", "at-risk"] as const;
@@ -62,9 +63,11 @@ export function storyMapReadiness(map: StoryMapDocument): Map<string, StoryDepen
     story.id,
     [...new Set(story.dependsOn ?? [])].filter(id => id !== story.id && byId.has(id)),
   ]));
+  // Every story has an entry, and prerequisites are only IDs of stories in the map.
+  const directOf = (id: string) => present(direct.get(id), `the prerequisites of ${id}`);
   const result = new Map<string, StoryDependencyProjection>();
   for (const story of map.stories) {
-    const prerequisites = direct.get(story.id)!;
+    const prerequisites = directOf(story.id);
     // Breadth first, so the nearest prerequisites come first. `seen` also guards against a cycle in an unvalidated map.
     const chain: string[] = [];
     const seen = new Set([story.id]);
@@ -74,7 +77,7 @@ export function storyMapReadiness(map: StoryMapDocument): Map<string, StoryDepen
         if (seen.has(id)) continue;
         seen.add(id);
         chain.push(id);
-        next.push(...direct.get(id)!);
+        next.push(...directOf(id));
       }
       queue = next;
     }
@@ -89,7 +92,7 @@ export function storyMapReadiness(map: StoryMapDocument): Map<string, StoryDepen
   function readinessOf(story: StoryMapDocument["stories"][number], prerequisites: string[]): StoryReadiness {
     const order = releaseOrder.get(story.release) ?? 0;
     const blocking = prerequisites.flatMap((id): StoryReadinessPrerequisite[] => {
-      const prerequisite = byId.get(id)!;
+      const prerequisite = present(byId.get(id), `prerequisite ${id}`);
       if (isDeliveredStatus(prerequisite.status)) return [];
       const risk: StoryReadinessRisk | undefined = prerequisite.status === "cut" || prerequisite.status === "blocked"
         ? prerequisite.status

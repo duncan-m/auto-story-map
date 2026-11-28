@@ -17,6 +17,7 @@ import {
 } from "./history.js";
 import { storyIdPattern } from "./references.js";
 import { formatStoryMapIssue, loadHistoricalStoryMap, StoryMapValidationError, type StoryMapDocument } from "./schema.js";
+import { present } from "./present.js";
 
 const run = promisify(execFile);
 
@@ -157,8 +158,7 @@ async function findStoryChanges(cwd: string, ref: string, map: StoryMapDocument,
   for (const commit of chain) {
     const branchCommits: Commit[] = [];
     const stack = commit.parents.slice(1);
-    while (stack.length) {
-      const sha = stack.pop()!;
+    for (let sha = stack.pop(); sha !== undefined; sha = stack.pop()) {
       const branchCommit = commits.get(sha);
       if (!branchCommit || seen.has(sha)) continue;
       seen.add(sha);
@@ -185,7 +185,7 @@ async function findStoryChanges(cwd: string, ref: string, map: StoryMapDocument,
     const title = fitHistoryText(changeTitle(commit), historyChangeTextMaxLength);
     const branchName = fitHistoryText(branch, historyChangeTextMaxLength);
     found.push({
-      storyIds: [...stories].sort((a, b) => ids.get(a)! - ids.get(b)!),
+      storyIds: [...stories].sort((a, b) => present(ids.get(a), `the position of ${a}`) - present(ids.get(b), `the position of ${b}`)),
       ...(commit.pullRequest ? { pullRequest: commit.pullRequest } : {}),
       ...(title ? { title } : {}),
       ...(branchName ? { branch: branchName } : {}),
@@ -213,7 +213,10 @@ async function findStoryChanges(cwd: string, ref: string, map: StoryMapDocument,
     });
     if (kept.length) changes.push({ ...change, storyIds: kept });
   }
-  const moreChanges = map.stories.flatMap(story => more.has(story.id) ? [{ storyId: story.id, count: more.get(story.id)! }] : []);
+  const moreChanges = map.stories.flatMap(story => {
+    const count = more.get(story.id);
+    return count ? [{ storyId: story.id, count }] : [];
+  });
   return { changes, moreChanges };
 }
 

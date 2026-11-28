@@ -141,8 +141,9 @@ export function filterStoryMapView<View extends StoryMapView>(
   const isDefault = requested.length === defaults.length && defaults.every(choice => requested.includes(choice));
   const status = requested.length && !isDefault ? requested : undefined;
   const chosen = new Set<StoryStatusFilter>(status ?? defaults);
-  const changedWithinDays = internal && view.history && changedWithinOptions.includes(filters.changedWithinDays!)
-    ? filters.changedWithinDays
+  const requestedDays = filters.changedWithinDays;
+  const changedWithinDays = internal && view.history && requestedDays !== undefined && changedWithinOptions.includes(requestedDays)
+    ? requestedDays
     : undefined;
   const since = changedWithinDays ? (options.now ?? new Date()).getTime() - changedWithinDays * dayMs : undefined;
 
