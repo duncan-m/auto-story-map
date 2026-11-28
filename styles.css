@@ -532,7 +532,7 @@
 .esm-card:target { outline: 2px solid var(--esm-accent); outline-offset: 2px; }
 .esm-lane:target > .esm-release { box-shadow: inset 3px 0 0 var(--esm-accent); }
 .esm-lane:target .esm-release-name { color: var(--esm-accent-ink); }
-.esm-detail-summary { margin: 14px 0 0; line-height: 1.5; overflow-wrap: anywhere; }
+.esm-detail-summary { margin: 14px 0 0; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line; }
 .esm-detail-context { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 16px 0 0; font-size: .875rem; }
 .esm-detail-context dt { color: var(--esm-muted); font-weight: 650; }
 .esm-detail-context dd { margin: 0; overflow-wrap: anywhere; }

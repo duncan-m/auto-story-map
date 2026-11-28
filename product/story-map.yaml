@@ -2779,7 +2779,26 @@ stories:
     status: planned
     jobs:
       - plan-and-build
-    summary: In about 190 places the code tells TypeScript to assume a value is always there, without checking. If that assumption is ever wrong, the CLI or the board fails with a confusing error instead of a clear one. Replace each with a real check, then turn back on the lint rule that stops new ones.
+    summary: |-
+      When a map or a command's input lacks something the code expected, people see a clear message saying what is missing, not a confusing crash.
+      About 190 places in the code assume a value is there without checking. Each could fail on unusual input.
+      Done when: none of these assumptions is left, the lint rule that blocks new ones is on, and valid maps behave as before.
+      Not included: the two accessibility lint rules, which are off for lasting reasons.
     sources:
       - docs/plans/code-review.md#1-lint-the-code-with-biome-in-ci
       - biome.jsonc
+  - id: ESM-191
+    title: Write story summaries people can read at a glance
+    activity: plan
+    release: v0-7-11
+    status: merged
+    jobs:
+      - update-the-map
+      - plan-and-build
+    summary: |-
+      People reading a story see what changes and for whom, why now, when it is done and what it leaves out, in short lines.
+      Agents write summaries in implementation terms today, because neither the guide nor AGENTS.md says how to write one.
+      Done when: the guide shows the four parts and where to break lines, both AGENTS.md files point to it, and the board keeps the line breaks.
+      Not included: a check that reports long lines.
+    sources:
+      - docs/story-map.md#write-a-story-summary
