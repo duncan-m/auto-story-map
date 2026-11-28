@@ -403,7 +403,7 @@ Each decision in more detail follows: what it means in plain English, what chang
 
 | Release | What changes for a host product |
 | --- | --- |
-| 0.9.0 | Nothing on a deployed board. The local preview gains the tray and its save. |
+| 0.9.0 | The local preview gains the tray and its save. On a deployed board, the story panel's Actions menu adds to the tray, which copies a patch, and nothing saves. |
 | 0.9.1 | One option to turn proposals on, and one read-only proposal route if decision 2 chooses option B. No secrets and no writes. |
 | Icebox | A GitHub App, its secrets and a route that writes to the repository, only if decisions 3 to 5 are agreed. |
 
@@ -425,6 +425,7 @@ Implementation should use focused PRs per story, include the story IDs in test n
 | Does Bring forward move the whole chain of unfinished prerequisites, or only the direct one? | The whole chain that would still be later, listed before it is added. |
 | Where is a hosted proposal's diff worked out? | Decide after measuring `board.js` with the edit engine (see Architecture decisions). |
 | Is ESM-216, renumbering titles, a could-have? | Yes, and it can move to a later release without affecting the rest. |
+| Should ESM-218 add a **Copy slice link** that opens a proposal on one release, as a stopgap for comments (decision 3)? | Yes, as one more acceptance item on ESM-218. |
 | Should the tray remember pending edits across reloads? | Yes, in the browser only, with a note when the map has changed since. |
 
 ## Not now
