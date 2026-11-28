@@ -13,11 +13,12 @@ import {
   isStoryMapRuleId,
   parseStoryMap,
   prCheckRules,
-  reviewSection,
   storyMapRuleHelp,
   tokensUsedSection,
   workflowCommands,
 } from "auto-story-map";
+// Not a package export: the Review section reader stays internal until ESM-186 offers the check to hosts.
+import { reviewSection } from "../dist/pr-check.js";
 
 const cli = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const template = path => fileURLToPath(new URL(`../templates/${path}`, import.meta.url));

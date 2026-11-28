@@ -215,6 +215,17 @@ Estimate: 5 points, agreed. It depends on ESM-112 in 0.7.6.
 
 The brief uses evidence where it can, in its `<in_flight>` section, and never repeats evidence's Git reads. The handoff serves the Coding Agent's `pick-up-work` job. Evidence serves the audit and the Product Manager's `validate-inherited-map` job.
 
+## Architecture decisions
+
+Following [Record architecture decisions](../ENGINEERING-OVERVIEW.md#record-architecture-decisions). ESM-123 to ESM-125 and ESM-144 have shipped, ESM-126 has merged and ESM-127 was cut, so these answers record what was built.
+
+- **Where it runs.** Inside the existing package: `storyMapBrief` in `src/brief.ts`, the board's panels, `board.js` and the CLI's `brief` command. No service, worker or bridge package. The [Not now](#not-now) list says why a localhost bridge was not built.
+- **Data and contracts.** Upstream, the brief reads the internal projection, the tests index, the changes in the history file and, on the command line, `story-map evidence`. Downstream, `storyMapBrief` is a new export from the root entry point, the brief's tagged sections are a format agents read, the board gains the `webAgents` prop and the Share menu, and `brief --format json` is a new CLI output. The Open links send the brief to Anthropic or OpenAI.
+- **Boundaries.** [Exports are internal only](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve): the brief refuses a customer view, like the exports. Map text is escaped so it cannot close or add a brief section. Sending a brief to a web agent takes internal map content outside the host, so it is off until the host turns it on with `webAgents`. ESM-127's launch endpoint, which would have started a process from the preview, was cut, so no boundary for running commands was added.
+- **Reversibility.** The panel section and the Share menu can be removed in a release. `storyMapBrief`, the `webAgents` prop and the brief format are public, so removing them is a breaking change for hosts and agents that use them. The Open links depend on `claude.ai` and `chatgpt.com` parameters that are not documented, and they degrade to an empty chat if those change.
+
+Consequential decision, recorded after the build: letting a host send briefs to web agents run by other companies (ESM-125, ESM-144). Consumers: hosts that turn on `webAgents`, and their viewers, whose internal map content goes to Anthropic or OpenAI. Alternative considered: a localhost bridge that starts an agent, not built for the reasons in [Not now](#not-now). Agreed by: the plan records the agreed estimates but not who agreed the decision itself, so this is a **proposal** for a person to confirm before it moves to the engineering overview. Revisit if the undocumented parameters stop working, or a host needs a web agent that is not on the fixed list.
+
 ## Decisions to make
 
 These are proposals. Each is easy to change during review.

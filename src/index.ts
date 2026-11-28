@@ -55,7 +55,7 @@ export { storyMapCommit, storyMapRepositoryUrl, storyMapVersion } from "./versio
 export { diffStoryMaps, formatStoryMapDiff, hasStoryMapChanges, needsPersonLabels } from "./diff.js";
 export { needsPersonChanges, needsPersonRules } from "./needs-person.js";
 export type { NeedsPersonChange, NeedsPersonItemType, NeedsPersonRule } from "./needs-person.js";
-export { checkPullRequest, commitAgent, knownAgentNames, prCheckRules, reviewSection, tokensUsedSection } from "./pr-check.js";
+export { checkPullRequest, commitAgent, knownAgentNames, prCheckRules, tokensUsedSection } from "./pr-check.js";
 export type { PrCheckAgentCommit, PrCheckCommit, PrCheckIssue, PrCheckOptions, PrCheckResult } from "./pr-check.js";
 export type { CoreJobChange, CustomerStoryChange, GroupChanges, InactiveStoryChange, JobChanges, JobDiffRef, JobStepsChange, PersonaContextChanges, ReleaseDetailChange, StoryAddition, StoryDiffRef, StoryMapDiff, StoryUpdate } from "./diff.js";
 export { storyMapToVsdx, vsdxContentType } from "./export-vsdx.js";

@@ -61,6 +61,22 @@ The internal board gets a **Version** picker in the toolbar: "Current" and then 
 
 This item needs items 1 and 2: it shows the same read through the same projection.
 
+## Architecture decisions
+
+Following [Record architecture decisions](../ENGINEERING-OVERVIEW.md#record-architecture-decisions):
+
+- **Where it runs.** Inside the existing CLI and board. Git stays the only store of versions, so there is no new service, data store or package. The Git read moves into a shared `readStoryMapAt`, which `diff` keeps using, and `versions` reuses the walk in `src/history-git.ts`.
+- **Data and contracts.** Upstream, it reads the map from Git at any ref, leniently, as `diff` and `history` do. Downstream: the read commands gain `--at`, which adds to their output without changing it; `story-map versions` is a new command with text and JSON output; `diff` takes an optional second ref; the history file gains an optional `snapshots` list; and the board gains a Version picker and `?version`. Boards and hosts that parse the history file are the consumers that change, and an older board must still read a file built with `--snapshots named`. That needs checking against `parseStoryMapHistory` when ESM-115 is built.
+- **Boundaries.** [Project, then filter, then render](../ENGINEERING-OVERVIEW.md#security-boundaries-to-preserve): a snapshot goes through the same projection, and the customer view ignores `?version`. **History contains names**: snapshots can carry `updatedBy`, so they stay in the internal history file, outside static assets. **Git arguments are not shell input**: `--at` takes refs, so refs starting with `-` are rejected. **Bounded input**: at most 30 snapshots. **Permalinks reveal nothing new**: an unknown `?version` gives the current board.
+- **Reversibility.** Items 1 and 2 are new flags and a new command, removed in a release with a changelog note. Item 3 is the harder one: hosts that build their history file with `--snapshots named` keep files with snapshots in them, so the parser has to accept the field from then on. `--snapshots none` is the default, so a host that never turns it on is unaffected.
+
+Consequential decision, a **proposal** for a person to agree before ESM-115 goes `in-progress`: store named versions' maps in the history file as `snapshots`.
+
+- **Consumers:** hosts that build the history file, which grows by up to 30 maps when they turn it on; the board, which reads snapshots to show an earlier version; and any host code that parses the history file.
+- **Alternative considered:** reading the old map from Git when the board is viewed. Not chosen, because the board renders on the host's server and may have no Git checkout, as the history file already assumes.
+- **Agreed by:** not yet.
+- **Revisit if** history files with snapshots become too large to load per request, or hosts want every version on the board rather than named ones.
+
 ## Decisions to make
 
 - **Which versions the board offers.** Proposed: named versions only, because a list of every commit is noise for most viewers and makes the history file large. Every version stays available from the CLI.

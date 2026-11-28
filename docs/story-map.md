@@ -1148,7 +1148,7 @@ Check out with `fetch-depth: 0`, as for the diff summary, and add `edited`, `lab
 
 This is a guardrail for agents that follow their own attribution rules, not a security boundary: an agent can leave out the trailer, and a person still reviews the pull request. What it removes is the need to read the YAML diff for these changes.
 
-In code, `checkPullRequest({ diff, after, commits, botNames, approved, body, draft, strict })` returns the result, `commitAgent(commit, botNames)` says which agent wrote a commit, `tokensUsedSection(body)` and `reviewSection(body)` return each section's text, and `prCheckRules` lists the rules only `pr-check` reports.
+In code, `checkPullRequest({ diff, after, commits, botNames, approved, body, draft, strict })` returns the result, `commitAgent(commit, botNames)` says which agent wrote a commit, `tokensUsedSection(body)` returns the section's text, and `prCheckRules` lists the rules only `pr-check` reports.
 ## Read the map from the command line
 
 Read the map with `story-map story`, `stories` and `releases` instead of opening the YAML file. They print text for people, or JSON with `--format json` for agents and scripts. Reads are always the internal view, because whoever runs them has the file. Each takes `--map <path>`, which defaults to `product/story-map.yaml`, and the files from [`story-map history`](#show-status-history) and [`story-map tests`](#link-tests-to-stories) as `--history <file>` and `--tests-index <file>`, for dates, changes and tagged tests.
