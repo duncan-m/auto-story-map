@@ -586,10 +586,14 @@ Review a change against its story before the repository's own checks. Whether yo
 5. **Then the repository's own checks.** The [security boundaries to preserve](#security-boundaries-to-preserve), the steps in [Making common changes](#making-common-changes), and:
    - a regenerated `story-map.schema.json` when the schema changes,
    - a changelog entry, and upgrade notes in the guide for a breaking change,
-   - both `AGENTS.md` files, the root one and `templates/AGENTS.md`, when the guidance changes, unless it is for this repository only, as the review step is until ESM-186,
+   - both `AGENTS.md` files, the root one and `templates/AGENTS.md`, when the guidance changes, unless it is for this repository only, such as the commands that run this repository's own checks,
    - one change per PR that can be reverted on its own.
 
-Record the review in the pull request's **Review** section, as the root `AGENTS.md` says. The `Map rules` workflow, `.github/workflows/pr-check.yml`, runs [`pr-check`](story-map.md#check-a-pull-request-in-ci) with `--draft` set from the pull request, and again when it is marked ready or converted to a draft. A ready pull request whose Review section is missing, empty or only the template's labels and comments gets a `missing-review` warning on the PR (ESM-182). It is a warning, not an error, while the [pilot](plans/code-review.md#pilot) shows how often a section is empty for a good reason. A draft is never warned.
+Record the review in the pull request's **Review** section, as the root `AGENTS.md` says, with the review's own tokens and cost from `story-map tokens <ID> --since <time>`, counted from when the review started, apart from the story's. Each pull request's Review section is the record of its review: to look across reviews, read the merged pull requests' descriptions, such as with `gh pr list --state merged --json number,body`, rather than keeping a shared table that every pull request edits. The [pilot](plans/code-review.md#pilot-result) kept one, and it conflicted on every merge.
+
+The `Map rules` workflow, `.github/workflows/pr-check.yml`, runs [`pr-check`](story-map.md#check-a-pull-request-in-ci) with `--draft` set from the pull request, and again when it is marked ready or converted to a draft. A ready pull request whose Review section is missing, empty or only the template's labels and comments gets a `missing-review` warning on the PR (ESM-182). It is a warning, not an error, so a section left empty for a good reason never blocks a merge. A draft is never warned.
+
+**Review does not replace CI.** A diff review won't find timing or concurrency problems, such as #198's `npm pack` test racing the other test files on Node 20 by rebuilding `dist/` mid-run, which review missed and CI caught. The tests, coverage, CodeQL and OSV stay the backstop for what review misses.
 
 Turn what reviews find into checks. A serious defect, such as a security boundary crossed or saved input lost, gets a regression test the first time it is found. A lower-impact problem that comes back gets a lint rule, a test or an API change the second time, so the next review does not have to find it again. The shared `escapeRegExp` helper (ESM-187) is the first example.
 
@@ -648,7 +652,7 @@ Adding an optional field is the only change that needs nothing else. Any change 
 
 Keep the guide's headings stable. The README, `AGENTS.md`, `templates/AGENTS.md` and hosts' own docs link to anchors such as `#populate-the-first-map` and `#upgrade-to-030`.
 
-The root `AGENTS.md` instructs agents working in this repository. `templates/AGENTS.md` is what hosts receive. They are similar but separate, so update both when the guidance changes.
+The root `AGENTS.md` instructs agents working in this repository. `templates/AGENTS.md` is what hosts receive. They are similar but separate, so update both when the guidance changes. The review step and architecture decisions reach hosts as the `review-before-ready` and `architecture-decisions` rules, with the short `skill-review-before-ready` and `skill-architecture-decisions` in `templates/AGENTS-skill.md` (ESM-186). A new rule needs an entry in `agentsRules` in `src/agents-rules.ts`, a line under the next release in `templates/changes.yaml`, and the guide section it links to.
 
 ### Change board markup or class names
 

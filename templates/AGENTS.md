@@ -25,6 +25,9 @@ When `settings.plans` names a folder, write a delivery plan there for work bigge
 <!-- rule: link-mockups -->
 When a plan has a mockup, screenshot or design, add its link to the `sources` of each story it shows, after the story’s plan section, and name it in the release `notes` when it covers the release. See [Link mockups and designs](docs/story-map.md#link-mockups-and-designs). Read a story’s `sources` to find its plan, mockups and other material before changing it.
 
+<!-- rule: architecture-decisions -->
+Record the architecture decisions of work bigger than a small fix, following [Record architecture decisions](docs/story-map.md#record-architecture-decisions). Answer the four architecture questions: where the work runs, who consumes it upstream and downstream, which security boundaries it touches, and how to undo it. Put the answers in the plan's `## Architecture decisions` section when the work has a plan, or on an **Architecture** line in the PR description when it has none. Routine work answers in one line with a real reason, such as “None: keeps the existing design because it adds a flag to an existing command.” A consequential decision, such as a new service, a data store, a field in a saved format, a public export, a breaking contract change or a changed security boundary, needs a person's agreement before its stories go `in-progress`. Write it as a proposal until then, and never write that a person agreed a decision they did not.
+
 ### Maintain the map
 
 <!-- rule: update-map-in-pr -->
@@ -61,4 +64,7 @@ Name each branch for the work it holds and include the story ID, such as `fix/bi
 
 <!-- rule: pr-diff-summary -->
 In the PR description, include the summary from `npx --no-install story-map diff origin/<base branch>`, and call out anything under **Customer-facing changes**.
+
+<!-- rule: review-before-ready -->
+Review each pull request's diff before you mark it ready, following [Review a change before it is ready](docs/story-map.md#review-a-change-before-it-is-ready), starting from what the story promised. Give the review an explicit target, the PR number or `origin/<base branch>...HEAD` before the PR exists, so it covers every commit: in Claude Code, run `/code-review <PR number>`. Fix the findings that are real, and review again after any material change. Record the review in the PR description's **Review** section: the target, the commit reviewed, the findings fixed and declined with a reason for each, and the review's own tokens and cost, apart from the story's. A person's review of the same diff also counts. If you cannot run a review, leave the PR as a draft and say so. The review does not replace CI, which still runs every test and check.
 <!-- auto-story-map:end -->

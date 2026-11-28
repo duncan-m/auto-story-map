@@ -67,7 +67,8 @@ test("ESM-167: a fresh init is current, and recorded choices are reported as cho
   const root = await host(t);
   assert.equal(run(root, "init", "--dir", root).status, 0);
   const map = await read(root, "product/story-map.yaml");
-  await write(root, { "product/story-map.yaml": map.replace(/^stories:/m, "settings:\n  plans: docs/plans\n  storyIds: lowest-free\nstories:") });
+  // The starter map already has settings, from ESM-186's architectureDecisions.
+  await write(root, { "product/story-map.yaml": map.replace("settings:\n", "settings:\n  plans: docs/plans\n  storyIds: lowest-free\n") });
 
   const parts = byPart(await upgradeReport({ root }));
   for (const id of ["agents", "guide", "workflow"]) {

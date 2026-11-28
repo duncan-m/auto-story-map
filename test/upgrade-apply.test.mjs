@@ -11,6 +11,7 @@ import {
   findSetupBehind,
   knownSetupVersionsFrom,
   mergeAgentsSection,
+  parseStoryMap,
   readSetupFileVersion,
   replaceAgentsSection,
   setupBody,
@@ -31,7 +32,8 @@ const version = storyMapVersion.replaceAll(".", "\\.");
 const run = (root, ...args) => spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8" });
 const read = (root, path) => readFile(join(root, path), "utf8");
 const byPart = report => Object.fromEntries(report.parts.map(part => [part.part, part]));
-const byChange = result => Object.fromEntries(result.changes.map(change => [change.part, change]));
+// ESM-186's settings change shares the agents part's ID, so it is left out here.
+const byChange = result => Object.fromEntries(result.changes.filter(change => !change.setting).map(change => [change.part, change]));
 const marker = id => `<!-- rule: ${id} -->\n`;
 const replaceRule = (text, id, replacement) => text.replace(new RegExp(`${marker(id)}[^\\n]+\\n`), replacement);
 const ruleText = (text, id) => new RegExp(`${marker(id)}([^\\n]+)\\n`).exec(text)[1];
@@ -83,9 +85,11 @@ test("ESM-169: simple mode upgrades a host set up from 0.7.5, and a second run c
   // Without a terminal, --write applies the files and lists the choices instead of guessing them.
   const applied = run(root, "upgrade", "--mode", "simple", "--write");
   assert.equal(applied.status, 0, applied.stderr);
-  assert.match(applied.stdout, /^Wrote AGENTS\.md, docs\/story-map\.md, \.github\/workflows\/story-map\.yml\. /m);
+  assert.match(applied.stdout, /^Wrote AGENTS\.md, docs\/story-map\.md, \.github\/workflows\/story-map\.yml, product\/story-map\.yaml\. /m);
   assert.match(applied.stdout, /^To ask the person, and record only their answer:$/m);
-  assert.equal(await read(root, "product/story-map.yaml"), before["product/story-map.yaml"][0], "no choice is recorded without an answer");
+  // Taking the new AGENTS.md section takes its architecture-decisions rule, which turns on its check (ESM-186). No choice is recorded.
+  const recorded = parseStoryMap(await read(root, "product/story-map.yaml")).settings;
+  assert.deepEqual(recorded, { architectureDecisions: "required" }, "no choice is recorded without an answer");
 
   // Each replaced file carries this version's marker, and matches this version's template.
   assert.equal(await read(root, "docs/story-map.md"), stampSetupFile("guide", await packaged("docs/story-map.md"), storyMapVersion));

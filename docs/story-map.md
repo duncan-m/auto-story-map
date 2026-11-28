@@ -279,6 +279,17 @@ Each file it replaces or adds records this version in its [marker](#what-the-set
 
 In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and [`init`](#choose-the-parts-at-install) build on it: in advanced mode, an empty `parts` keeps every part, as when the person takes none.
 
+## Upgrade to 0.7.11
+
+These steps work from 0.7.8 or later, which has the [upgrade review](#review-the-set-up-after-an-upgrade). Existing maps stay valid.
+
+1. From your host repo, run `npm install auto-story-map@0.7.11` and commit the dependency and lockfile changes together.
+2. Run `npx --no-install story-map upgrade`. It offers two new rules in the `AGENTS.md` section, `review-before-ready` and `architecture-decisions`, or `skill-review-before-ready` and `skill-architecture-decisions` when the rules are in the skill from `init --skill`, and the guide's new sections, [Review a change before it is ready](#review-a-change-before-it-is-ready) and [Record architecture decisions](#record-architecture-decisions). Simple mode adds the new rules even to an edited section, and keeps your own wording. In advanced mode, take the `agents` part.
+3. When the run adds the `architecture-decisions` rule and the map has no `settings.architectureDecisions`, it records `required`, so an open plan without a `## Architecture decisions` section gets a warning, which fails `validate --strict`. Before you merge the upgrade, add the section to each open plan, or keep the problems as notices with `npx --no-install story-map settings --architecture-decisions recommended --write`. `story-map diff` lists the setting under **Needs a person**, so a person agrees it. Hosts that keep the rule out see only [notices](#check-the-architecture-section-in-plans).
+4. `story-map plan` now scaffolds a `## Architecture decisions` section, with a hint for each question to replace.
+5. If your repository has a pull request template, add a **Review** section and an **Architecture** line to it, as in [Review a change before it is ready](#review-a-change-before-it-is-ready).
+6. Run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
+
 ## Upgrade to 0.7.7
 
 These steps work from 0.7.0 or later. Existing maps stay valid.
@@ -399,15 +410,37 @@ Follow this structure, so every plan reads the same and the map can link to its 
 3. **Numbered items in build order**, each a `## 1. Title` heading with its story ID beside it in the list at the top. Each story's `sources` link to its own item, and the heading gives that link a stable `#heading` target that `--check-sources` checks.
 4. **What it builds on**: the merged or shipped stories the work reuses, and the planned stories it overlaps, each with a link to its plan. Find them with `story-map stories --query <text> --status all` and `story-map story <ID>`. Reviewers then see what is new, and agents see what not to rebuild.
 5. **`## UI mockup`**, when the work adds or changes UI: an HTML mockup built on the product's real styles and markup, filled with stories from the map rather than placeholder text, a PNG of it embedded in the plan, and how to regenerate the image. Link it from each story it shows, as [Link mockups and designs](#link-mockups-and-designs) says. When there is no UI change, say so in a line.
-6. **`## Decisions to make`**: a table of open questions, each with a proposal, so a reviewer can agree or change it in one line.
-7. **`## Not now`**: what was considered and left out, and why, so nobody proposes it again without knowing.
-8. **`## Effort and release fit`**: a table of each story with its points, or “not agreed” when the team has not sized it, a total, and a sentence on which stories could move to another release. Never write an estimate the team has not agreed: see [Estimate effort](#estimate-effort).
+6. **`## Architecture decisions`**: where the work runs, who consumes it upstream and downstream, which security boundaries it touches and how to undo it, as [Record architecture decisions](#record-architecture-decisions) explains. Routine work answers in one line, with a real reason, and [`validate`](#check-the-architecture-section-in-plans) reports an open plan that leaves the section out or keeps the scaffold's hints.
+7. **`## Decisions to make`**: a table of open questions, each with a proposal, so a reviewer can agree or change it in one line.
+8. **`## Not now`**: what was considered and left out, and why, so nobody proposes it again without knowing.
+9. **`## Effort and release fit`**: a table of each story with its points, or “not agreed” when the team has not sized it, a total, and a sentence on which stories could move to another release. Never write an estimate the team has not agreed: see [Estimate effort](#estimate-effort).
 
 Once the plan is agreed, update the map in the same PR: find or add each story, put its plan section first in its `sources`, name the plan in the release `notes` when it covers the release, and run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
 
+### Record architecture decisions
+
+Work bigger than a small fix records its architecture decisions, so a reviewer can see where it runs, who it affects and how to undo it before the code is written, and a person can agree the hard-to-undo ones in time. Answer four questions:
+
+1. **Where it runs.** Inside the existing app, CLI or CI workflow, or as its own service, worker or package.
+2. **Data and contracts.** Who consumes it upstream and downstream, and what changes for each: saved data and its format, APIs and their clients, files other tools read and output that scripts parse.
+3. **Boundaries.** Which security boundaries it touches, such as who can see or change what, and which it stays out of.
+4. **Reversibility.** How to undo it, including for people and systems that already depend on it.
+
+**Routine work** answers in one line, with a real reason: “None: keeps the existing design because it adds a flag to an existing command, with no new consumer.” “None: no change” is not a reason.
+
+**A consequential decision** adds a service, worker or package, a data store or a field in a saved format, or a public export or API, makes a breaking change to an existing contract, or changes a security boundary. Record each affected consumer and the consequence for it, the alternative considered and why it was not chosen, who agreed it, or “not yet”, and what would justify revisiting it. A person agrees it before its stories go `in-progress`. Until then, an agent writes it as a proposal, marked as one, and never writes that a person agreed a decision they did not.
+
+**Where the answers go.** When the work has a plan, in the plan's `## Architecture decisions` section, which [`story-map plan`](#scaffold-a-plan) scaffolds and [`validate` checks](#check-the-architecture-section-in-plans). When it has none, or the product sets `settings.plans: false`, on an **Architecture** line in the pull request description:
+
+```markdown
+Architecture: None: keeps the existing design because it fixes the wording of an error message.
+```
+
+Question 4 in [Review a change before it is ready](#review-a-change-before-it-is-ready) checks for a decision a change made without recording it. The example plan in the package, `node_modules/auto-story-map/docs/example-builder-estimate-plan.md`, has a filled-in section.
+
 ### Scaffold a plan
 
-`story-map plan` prints a plan skeleton for the stories given, in the order given, with the parts above filled in from the map: the status line, a numbered item for each story with its summary to rewrite, the stories it builds on and overlaps, chosen as a [brief](#write-a-brief-for-an-agent) chooses them, empty UI mockup, Decisions to make and Not now sections, and an effort table with the agreed estimates:
+`story-map plan` prints a plan skeleton for the stories given, in the order given, with the parts above filled in from the map: the status line, a numbered item for each story with its summary to rewrite, the stories it builds on and overlaps, chosen as a [brief](#write-a-brief-for-an-agent) chooses them, empty UI mockup, Architecture decisions, Decisions to make and Not now sections, and an effort table with the agreed estimates. The Architecture decisions section holds a hint for each of the [four questions](#record-architecture-decisions), such as `<!-- Where it runs: … -->`, which [`validate`](#check-the-architecture-section-in-plans) reports until you replace it with an answer:
 
 ```sh
 npx --no-install story-map plan BUILDER-102 BUILDER-103 > docs/plans/builder-workflow.md
@@ -467,7 +500,7 @@ settings:
 
 Review the architecture at four points, so a design decision is looked at when it is made rather than found later in the code:
 
-1. **Planning.** When a plan records its architecture decisions, it says where the work runs, who consumes it upstream and downstream, which security boundaries it touches and how to undo it. Routine work answers in a line, with a real reason. A consequential decision, such as a new service, a data store, a field in a saved format, a public export, a breaking contract change or a changed boundary, needs a person's agreement before its stories go `in-progress`.
+1. **Planning.** When a plan records its [architecture decisions](#record-architecture-decisions), it says where the work runs, who consumes it upstream and downstream, which security boundaries it touches and how to undo it. Routine work answers in a line, with a real reason. A consequential decision, such as a new service, a data store, a field in a saved format, a public export, a breaking contract change or a changed boundary, needs a person's agreement before its stories go `in-progress`.
 2. **Review.** When you review a change, ask whether it made an architecture decision that wasn't recorded. A boundary or consumer the plan didn't name sends the work back to the plan, to record the decision there. Work with no plan records it in the pull request description. A consequential decision found in review goes to a person before the pull request is ready.
 3. **Release planning.** Before a minor release's plan is agreed, look at the signals below for the modules and contracts its stories share. This is the point to decide whether a refactor story belongs in the release, rather than in the middle of a feature.
 4. **On a schedule.** A scheduled audit of the map against the code is planned as [ESM-109](https://github.com/duncan-m/auto-story-map/blob/main/docs/plans/0.4.0-enhancements.md#7-scheduled-map-audit).
@@ -1210,6 +1243,50 @@ Check out with `fetch-depth: 0`, as for the diff summary, and add `edited`, `lab
 This is a guardrail for agents that follow their own attribution rules, not a security boundary: an agent can leave out the trailer, and a person still reviews the pull request. What it removes is the need to read the YAML diff for these changes.
 
 In code, `checkPullRequest({ diff, after, commits, botNames, approved, body, draft, strict })` returns the result, `commitAgent(commit, botNames)` says which agent wrote a commit, `tokensUsedSection(body)` returns the section's text, and `prCheckRules` lists the rules only `pr-check` reports.
+
+## Review a change before it is ready
+
+Agents write most changes, and often nobody else reads one before it merges. Review each pull request's diff before you mark it ready, so a problem is found while the work is still open. The `review-before-ready` rule in the `AGENTS.md` section asks agents to do it, and a person's review of the same diff counts too.
+
+**Give the review an explicit target**: the pull request by number once a draft exists, such as `/code-review 190` in Claude Code, or `origin/<base branch>...HEAD` before that. A review with no target can compare against the branch's upstream rather than the base branch, and miss commits already pushed. Other agents and review tools take a target too: give them the pull request or the range.
+
+**Start from the story**, then the product's own checks. Ask in this order:
+
+1. **What behaviour did the story promise?** Read its summary, its plan section and the other `sources`, with `story-map story <ID>`. A diff that is correct but does something else has not delivered the story.
+2. **What evidence shows it works?** Tests named with the story ID, as in [Link tests to stories](#link-tests-to-stories), a run of the command, or a screenshot. A claim in the pull request description is not evidence.
+3. **Which existing caller or saved input could break?** Saved data and files people already have, other services and scripts that read the output, and every caller of a changed function. Check what happens to input the change did not expect, such as text with HTML or regular-expression metacharacters.
+4. **Did it make an architecture decision that wasn't recorded?** Compare the diff with the four questions in [Record architecture decisions](#record-architecture-decisions). A boundary or consumer the plan or the **Architecture** line doesn't name goes back there, and a consequential decision goes to a person before the pull request is ready.
+5. **Then the product's own checks**, such as its security boundaries, its conventions and anything its engineering overview asks reviewers to look at.
+
+Fix the findings that are real, and review again after any material change, such as a fix with new code. A commit that only records tokens or edits the description needs no second review.
+
+**Record the review in the pull request description**, in a **Review** section:
+
+```markdown
+## Review
+
+- Target: /code-review 190
+- Commit reviewed: 65e9ca3
+- Level: medium
+- Findings fixed: the slug could end in a hyphen after the cut, fixed in 4f2c1d0
+- Findings declined: the 100 ms limit could flake, but has a margin of about 250 times
+- Review cost: **1,204,331 tokens**, estimated $0.52 at API list prices as of 2026-11-03, on BUILDER-102 from 2026-11-20 10:42 to 2026-11-20 11:05 UTC, in 1 Claude Code session.
+```
+
+For a person's review, write `person` as the level. If no review could be run, leave the pull request as a draft and say so in the section. With `--body-file` and `--draft false`, [`story-map pr-check`](#check-a-pull-request-in-ci) warns when a ready pull request has no Review section, or only the template's labels.
+
+**Record the review's own cost**, apart from the story's, so the team can tell whether review pays for itself. Note the time before the review starts, such as with `date -u +%Y-%m-%dT%H:%M:%SZ`, and afterwards count what was used since then. In Claude Code:
+
+```sh
+npx --no-install story-map tokens BUILDER-102 --since 2026-11-20T10:42:00Z
+npx --no-install story-map tokens BUILDER-102 --since 2026-11-20T10:42:00Z --until 2026-11-20T11:05:00Z
+```
+
+With `--format markdown`, it prints the **Review cost** line as above, to put in place of the template's. `--since` counts from that time on, so it includes fixing the findings. Add `--until`, the time the review finished, to count the review alone, and say which in the section. Other agents record what their own tool reports, such as the counts before and after the review. When you cannot count it, say so instead of guessing. The story's **Tokens used** section still counts everything, the review included.
+
+**Collect the results from the pull requests.** Each pull request's Review section is the record, so there is no shared table to keep up to date, and no file that every pull request edits and conflicts on. To see how reviews went across a release, read the merged pull requests' descriptions, such as with `gh pr list --state merged --limit 30 --json number,title,body`, and compare their Review sections.
+
+**Review does not replace CI.** A review reads the diff. It won't find timing or concurrency problems, such as two test files racing to rebuild a shared folder, or a dependency a scanner flags after the push. Keep the tests, `story-map validate` and your other checks running on every pull request: they are the backstop for what review misses.
 ## Read the map from the command line
 
 Read the map with `story-map story`, `stories` and `releases` instead of opening the YAML file. They print text for people, or JSON with `--format json` for agents and scripts. Reads are always the internal view, because whoever runs them has the file. Each takes `--map <path>`, which defaults to `product/story-map.yaml`, and the files from [`story-map history`](#show-status-history) and [`story-map tests`](#link-tests-to-stories) as `--history <file>` and `--tests-index <file>`, for dates, changes and tagged tests.

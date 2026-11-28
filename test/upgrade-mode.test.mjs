@@ -159,5 +159,6 @@ test("ESM-170: the advanced walk-through offers each part that would change, and
   const taken = await walkThroughUpgrade(report, answering(offered.map((_, index) => (index === 0 ? "y" : "n"))).ask, () => {});
   assert.deepEqual(taken, [offered[0].part]);
   const result = await applyUpgrade({ root, mode: "advanced", parts: taken });
-  assert.deepEqual(result.changes.filter(change => !["keep", "ask"].includes(change.action)).map(change => change.part), taken);
+  // Taking the AGENTS.md section also records ESM-186's settings.architectureDecisions, under the same part.
+  assert.deepEqual([...new Set(result.changes.filter(change => !["keep", "ask"].includes(change.action)).map(change => change.part))], taken);
 });

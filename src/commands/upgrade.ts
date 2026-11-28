@@ -332,6 +332,10 @@ const changeWords: Record<UpgradeApplyResult["changes"][number]["action"], strin
   keep: "keep",
 };
 
+/** Why the review records `settings.architectureDecisions`, and what it does, in a sentence or two. */
+const architectureNote = (result: UpgradeApplyResult) =>
+  `${result.written ? "Recorded" : "Records"} required in settings.architectureDecisions, since the AGENTS.md section now asks for architecture decisions. Open plans without an Architecture decisions section get warnings, which fail validate --strict.`;
+
 /** What applying the review changes, as people read it at a terminal: the overview, the changes, then the questions. */
 export function upgradeApplyText(result: UpgradeApplyResult, diff = false): string {
   const shown = result.changes.filter(change => change.action !== "keep" && change.action !== "ask");
@@ -350,6 +354,9 @@ export function upgradeApplyText(result: UpgradeApplyResult, diff = false): stri
     lines.push("Nothing to change.");
   }
   if (result.modeRecorded) lines.push("", `${result.written ? "Recorded" : "Records"} ${result.modeRecorded} mode in settings.upgrade, so the review does not ask again.`);
+  if (result.architectureDecisionsRecorded) lines.push("", `${architectureNote(result)} To keep them as notices, run story-map settings --architecture-decisions recommended --write.`);
+  const notRecorded = result.changes.find(change => change.setting && change.action === "keep");
+  if (notRecorded) lines.push("", `Architecture decisions: ${escapeText(notRecorded.change)}.`);
   if (result.questions.length) {
     lines.push("", "To ask the person, and record only their answer:", "");
     for (const question of result.questions) lines.push(`- ${question.question} Answer with ${question.option}. See ${question.link}`);
@@ -374,6 +381,7 @@ export function upgradeApplyMarkdown(result: UpgradeApplyResult): string {
     lines.push("", `### ${result.written ? "Changed" : "Changes"}`, "", "| Part | Action | Change |", "| --- | --- | --- |", ...shown.map(change => `| ${cell(change.title)} | ${cell(changeWords[change.action])} | ${cell(change.change)} |`));
   }
   if (result.modeRecorded) lines.push("", `${result.written ? "Recorded" : "Records"} ${result.modeRecorded} mode in \`settings.upgrade\`.`);
+  if (result.architectureDecisionsRecorded) lines.push("", `${inline(architectureNote(result))} To keep them as notices, run \`story-map settings --architecture-decisions recommended --write\`.`);
   if (result.questions.length) {
     lines.push("", "### To ask the person", "", ...result.questions.map(question => `- ${inline(question.question)} See ${inline(question.link)}`));
   }

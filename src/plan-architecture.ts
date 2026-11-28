@@ -13,10 +13,10 @@ export const planArchitectureHeading = "Architecture decisions";
  * that still holds any of them, so the two must use the same text.
  */
 export const planArchitectureHints = [
-  "<!-- Where it runs: inside the existing package, CLI, board or CI workflow, or as its own service, worker or package. -->",
+  "<!-- Where it runs: inside the existing app, CLI or CI workflow, or as its own service, worker or package. -->",
   "<!-- Data and contracts: who consumes it upstream and downstream, and what changes for each. -->",
   "<!-- Boundaries: which security boundaries it touches, and which it stays out of. -->",
-  "<!-- Reversibility: how to undo it, including for hosts that have already upgraded. -->",
+  "<!-- Reversibility: how to undo it, including for people and systems that already depend on it. -->",
 ] as const;
 
 /** The plan statuses that mean the work is still open, so its decisions still matter. */
