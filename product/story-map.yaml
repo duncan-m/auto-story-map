@@ -2424,6 +2424,8 @@ stories:
     activity: explore
     release: v0-7-9
     status: merged
+    tokens: 1549576
+    estimatedCostUsd: 0.88
     jobs:
       - share-roadmap
     personas:
