@@ -3862,53 +3862,83 @@ test("ESM-157: the sticky release heading holds only the toggle and name", () =>
   }
 });
 
-test("ESM-157: the grid scrolls in a box only on screens with room for sticky headings", async () => {
+test("ESM-157: the headings stick only on screens with room for them", async () => {
   const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
   const start = css.indexOf("@media screen and (min-width: 651px) and (min-height: 480px) {");
   assert.ok(start > 0);
   const block = css.slice(start, css.indexOf("\n}", start));
-  assert.match(block, /\.esm-scroll \{ position: relative; max-height: var\(--esm-board-height, calc\(100dvh - 7\.5rem\)\); overflow: auto;/);
   for (const name of ["activities", "corner", "release", "release-heading"]) {
     assert.match(block, new RegExp(`\\.esm-${name} \\{ position: sticky; [^}]*background:`), `${name} sticks and is opaque`);
   }
-  assert.doesNotMatch(css.slice(0, start), /max-height: var\(--esm-board-height/);
+  assert.doesNotMatch(css.slice(0, start), /position: sticky/);
 });
 
-test("ESM-157: board.js shrinks the activity row once its descriptions scroll past", async t => {
-  const saved = Object.getOwnPropertyDescriptor(globalThis, "document");
+test("ESM-192: the page scrolls the grid, unless the host gives it a height", async () => {
+  const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+  const start = css.indexOf("@media screen and (min-width: 651px) and (min-height: 480px) {");
+  const block = css.slice(start, css.indexOf("\n}", start));
+  assert.match(block, /\.esm-scroll \{ position: relative; overflow: visible; isolation: isolate; \}/, "no scroll box of its own");
+  assert.match(block, /\.esm-frame:has\(> \.esm-scroll:not\(\[data-esm-scroll-box\]\)\) \{ min-width: min-content; \}/, "a wide grid scrolls the page");
+  assert.match(block, /\.esm-scroll:not\(\[data-esm-scroll-box\]\) :is\(\.esm-lane, \.esm-cell \*\) \{ scroll-margin: calc\(var\(--esm-activities-height/, "targets clear the headings");
+  assert.match(block, /\.esm-scroll\[data-esm-scroll-box\] \{ max-height: var\(--esm-board-height\); overflow: auto; scroll-padding:/, "opt-in box");
+  assert.doesNotMatch(css, /var\(--esm-board-height,/, "no default height");
+});
+
+/** Runs enhanceStoryMapHeadings on a fake grid, scrolled by the page or, with a board height, in its own box. */
+async function headingsHarness(t, boardHeight = "") {
+  const saved = Object.fromEntries(["document", "window", "getComputedStyle"].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
   const page = { readyState: "complete", activeElement: null, querySelectorAll: () => [] };
-  Object.defineProperty(globalThis, "document", { value: page, configurable: true, writable: true });
+  const windowListeners = [];
+  const define = (name, value) => Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
+  define("document", page);
+  define("window", { addEventListener: (type, handler) => type === "scroll" && windowListeners.push(handler) });
+  define("getComputedStyle", () => ({ getPropertyValue: name => (name === "--esm-board-height" ? boardHeight : "") }));
   t.after(() => {
-    if (saved) Object.defineProperty(globalThis, "document", saved);
-    else delete globalThis.document;
+    for (const [name, descriptor] of Object.entries(saved)) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
   });
   const attributes = new Set();
   const styles = new Map();
-  const listeners = [];
+  const boxListeners = [];
   const avatar = {};
   const row = {
-    getBoundingClientRect: () => ({ height: attributes.has("data-esm-stuck") ? 90 : 200 }),
+    getBoundingClientRect: () => ({ height: attributes.has("data-esm-stuck") ? 90 : 200, top: 0 }),
     contains: element => element === avatar,
     addEventListener() {},
     querySelector: () => null,
   };
   const corner = { getBoundingClientRect: () => ({ width: 180 }) };
+  let pageTop = 0;
   const box = {
     scrollTop: 0,
     style: { setProperty: (name, value) => styles.set(name, value) },
-    querySelector: selector => selector === ".esm-activities" ? row : corner,
+    getBoundingClientRect: () => ({ top: -pageTop }),
+    querySelector: selector => (selector === ".esm-activities" ? row : selector === ".esm-corner" ? corner : null),
     hasAttribute: name => attributes.has(name),
     setAttribute: name => attributes.add(name),
     removeAttribute: name => attributes.delete(name),
-    toggleAttribute: (name, on) => on ? attributes.add(name) : attributes.delete(name),
-    addEventListener: (_type, handler) => listeners.push(handler),
+    toggleAttribute: (name, on) => (on ? attributes.add(name) : attributes.delete(name)),
+    addEventListener: (type, handler) => type === "scroll" && boxListeners.push(handler),
   };
-  const scroll = top => { box.scrollTop = top; listeners[0](); return attributes.has("data-esm-stuck"); };
+  const listeners = boardHeight && boardHeight !== "none" ? boxListeners : windowListeners;
+  const scroll = top => {
+    if (listeners === boxListeners) box.scrollTop = top;
+    else pageTop = top;
+    for (const listener of listeners) listener();
+    return attributes.has("data-esm-stuck");
+  };
   const { enhanceStoryMapHeadings } = await import("auto-story-map/board.js");
   const root = { querySelectorAll: () => [box] };
   enhanceStoryMapHeadings(root);
   enhanceStoryMapHeadings(root);
-  assert.equal(listeners.length, 1, "enhancing twice adds one listener");
+  return { attributes, styles, boxListeners, windowListeners, scroll, page, avatar, enhanceStoryMapHeadings };
+}
+
+test("ESM-157: board.js shrinks the activity row once its descriptions scroll past", async t => {
+  const { attributes, styles, windowListeners, scroll, page, avatar, enhanceStoryMapHeadings } = await headingsHarness(t);
+  assert.equal(windowListeners.length, 1, "enhancing twice adds one listener");
   assert.equal(attributes.size, 0, "full size at the top");
   assert.equal(styles.get("--esm-activities-height"), "200px");
   assert.equal(styles.get("--esm-activities-saved"), "110px");
@@ -3923,6 +3953,24 @@ test("ESM-157: board.js shrinks the activity row once its descriptions scroll pa
 
   // A page without a grid, such as the Personas tab, is left alone.
   enhanceStoryMapHeadings({ querySelectorAll: () => [] });
+});
+
+test("ESM-192: board.js follows the page scroll, and a box only when the host sets a height", async t => {
+  const paged = await headingsHarness(t);
+  assert.equal(paged.boxListeners.length, 0);
+  assert.equal(paged.windowListeners.length, 1);
+  assert.equal(paged.attributes.has("data-esm-scroll-box"), false);
+
+  const none = await headingsHarness(t, "none");
+  assert.equal(none.attributes.has("data-esm-scroll-box"), false, "none keeps the page scroll");
+  assert.equal(none.windowListeners.length, 1);
+
+  const boxed = await headingsHarness(t, "calc(100dvh - 12rem)");
+  assert.equal(boxed.attributes.has("data-esm-scroll-box"), true);
+  assert.equal(boxed.windowListeners.length, 0, "only the box's scroll counts");
+  assert.equal(boxed.boxListeners.length, 1);
+  assert.equal(boxed.scroll(110), true);
+  assert.equal(boxed.scroll(0), false);
 });
 
 test("ESM-912: detail panels slide in from the right as a full-height sheet", async () => {

@@ -154,10 +154,18 @@ export function enhanceStoryMapReleases(root: ParentNode = document) {
 
 const enhancedGrids = new WeakSet<Element>();
 
+/** True when the host gives the grid a height of its own with `--esm-board-height`, rather than leaving it out or setting `none`. */
+function hasBoardHeight(box: HTMLElement) {
+  if (typeof getComputedStyle === "undefined") return false;
+  const height = getComputedStyle(box).getPropertyValue("--esm-board-height").trim();
+  return height !== "" && height !== "none";
+}
+
 /**
  * Keeps the grid's headings in view. Measures the activity row and release column for CSS,
  * and sets `data-esm-stuck`, which shrinks the row to its titles, once the grid has scrolled
- * by the height that saves. Safe to call more than once.
+ * by the height that saves. The page scrolls the grid, unless the host sets `--esm-board-height`
+ * to a length, which gets `data-esm-scroll-box` and a scroll box of that height. Safe to call more than once.
  */
 export function enhanceStoryMapHeadings(root: ParentNode = document) {
   for (const box of root.querySelectorAll<HTMLElement>(".esm-scroll")) {
@@ -165,41 +173,57 @@ export function enhanceStoryMapHeadings(root: ParentNode = document) {
     const corner = box.querySelector<HTMLElement>(".esm-corner");
     if (!row || !corner || enhancedGrids.has(box)) continue;
     enhancedGrids.add(box);
-    const set = (name: string, pixels: number) => box.style.setProperty(name, `${pixels}px`);
-    let saved = 0;
-    const update = () => {
-      // Shrinking hides the persona avatars, so wait while one of them has focus.
-      const stuck = saved > 0 && box.scrollTop >= saved && !row.contains(document.activeElement);
-      if (box.hasAttribute("data-esm-stuck") !== stuck) box.toggleAttribute("data-esm-stuck", stuck);
-      set("--esm-activities-height", row.getBoundingClientRect().height);
-    };
-    const measure = () => {
-      box.removeAttribute("data-esm-stuck");
-      const full = row.getBoundingClientRect().height;
-      box.setAttribute("data-esm-stuck", "");
-      saved = full - row.getBoundingClientRect().height;
-      set("--esm-activities-saved", saved);
-      set("--esm-labels-width", corner.getBoundingClientRect().width);
-      update();
-    };
-    measure();
-    box.addEventListener("scroll", update, { passive: true });
-    row.addEventListener("focusout", () => requestAnimationFrame(update));
-    // Following a permalink scrolls the page as well as the grid, which can push the headings off the window.
-    const reveal = () => {
-      if (box.querySelector(":target") && row.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start" });
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("load", () => requestAnimationFrame(reveal));
-      window.addEventListener("hashchange", () => requestAnimationFrame(reveal));
-    }
-    if (typeof ResizeObserver === "undefined") continue;
-    // The row's height changes as it shrinks, so watch the box and a title, for new widths and text sizes.
-    const observer = new ResizeObserver(measure);
-    observer.observe(box);
-    const title = row.querySelector(".esm-activity-title");
-    if (title) observer.observe(title);
+    enhanceGridHeadings(box, row, corner);
   }
+}
+
+/** Measures one grid's headings, follows its scroll, in its own box or with the page, and watches its size. */
+function enhanceGridHeadings(box: HTMLElement, row: HTMLElement, corner: HTMLElement) {
+  const set = (name: string, pixels: number) => box.style.setProperty(name, `${pixels}px`);
+  const boxed = hasBoardHeight(box);
+  if (boxed) box.setAttribute("data-esm-scroll-box", "");
+  // How far the grid has scrolled under its headings: in its own box, or with the page.
+  const scrolled = () => (boxed ? box.scrollTop : -box.getBoundingClientRect().top);
+  let saved = 0;
+  const update = () => {
+    // Shrinking hides the persona avatars, so wait while one of them has focus.
+    const stuck = saved > 0 && scrolled() >= saved && !row.contains(document.activeElement);
+    if (box.hasAttribute("data-esm-stuck") !== stuck) box.toggleAttribute("data-esm-stuck", stuck);
+    set("--esm-activities-height", row.getBoundingClientRect().height);
+  };
+  const measure = () => {
+    box.removeAttribute("data-esm-stuck");
+    const full = row.getBoundingClientRect().height;
+    box.setAttribute("data-esm-stuck", "");
+    saved = full - row.getBoundingClientRect().height;
+    set("--esm-activities-saved", saved);
+    set("--esm-labels-width", corner.getBoundingClientRect().width);
+    update();
+  };
+  measure();
+  if (boxed) {
+    box.addEventListener("scroll", update, { passive: true });
+    revealGridAfterPermalink(box, row);
+  } else if (typeof window !== "undefined") {
+    window.addEventListener("scroll", update, { passive: true });
+  }
+  row.addEventListener("focusout", () => requestAnimationFrame(update));
+  if (typeof ResizeObserver === "undefined") return;
+  // The row's height changes as it shrinks, so watch the box and a title, for new widths and text sizes.
+  const observer = new ResizeObserver(measure);
+  observer.observe(box);
+  const title = row.querySelector(".esm-activity-title");
+  if (title) observer.observe(title);
+}
+
+/** Following a permalink scrolls the page as well as a boxed grid, which can push the headings off the window. */
+function revealGridAfterPermalink(box: HTMLElement, row: HTMLElement) {
+  if (typeof window === "undefined") return;
+  const reveal = () => {
+    if (box.querySelector(":target") && row.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start" });
+  };
+  window.addEventListener("load", () => requestAnimationFrame(reveal));
+  window.addEventListener("hashchange", () => requestAnimationFrame(reveal));
 }
 
 const enhancedMenus = new WeakSet<Element>();

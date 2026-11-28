@@ -2804,3 +2804,18 @@ stories:
       Not included: a check that reports long lines.
     sources:
       - docs/story-map.md#write-a-story-summary
+  - id: ESM-192
+    title: Scroll the board with the page, not in a box of its own
+    activity: explore
+    release: v0-7-11
+    status: merged
+    jobs:
+      - get-oriented
+    summary: |-
+      People reading the board scroll only the page, with the activity titles at the top of the window and the release column on the left.
+      Today the grid scrolls in a box inside a page that also scrolls, so the mouse wheel switches between them part-way down.
+      Done when: the preview and example pages have one scroll bar each way, and the headings still stick.
+      Not included: keeping the title and toolbar in view when the board scrolls sideways.
+    sources:
+      - docs/plans/page-scroll-board.md#change
+      - docs/plans/page-scroll-board.md#ui-mockup
