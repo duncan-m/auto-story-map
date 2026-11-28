@@ -113,7 +113,6 @@ export function defaultClaudeLogs(env: NodeJS.ProcessEnv = process.env): string 
   return join(env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects");
 }
 
-
 /** True when the branch name contains the story ID as a whole word, such as `feat/esm-145-tokens` for ESM-145, but not ESM-1450. */
 export function branchNamesStory(branch: string, id: string): boolean {
   return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(id)}(?![a-z0-9])`, "i").test(branch);

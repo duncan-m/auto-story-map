@@ -1,6 +1,6 @@
 // Property tests for escapeRegExp in src/references.ts.
 //
-// ESM-187 replaced five hand-written copies with one helper. fast-check
+// ESM-187 replaced seven hand-written copies with one helper. fast-check
 // generates text dense in regular-expression metacharacters, backslash
 // included, and checks the escaped pattern matches that text and nothing else.
 //
@@ -25,12 +25,32 @@ const text = fc.string({ unit, maxLength: 12 });
 
 const literal = s => new RegExp(`^${escapeRegExp(s)}$`);
 
+// Strings one edit away from s: a character replaced, inserted or removed.
+// A missing escape shows up here, as when "a.b" would also match "axb".
+const nearMiss = text.chain(s =>
+  fc.tuple(fc.nat({ max: s.length }), unit, fc.constantFrom("replace", "insert", "remove")).map(([at, c, edit]) => {
+    const chars = [...s];
+    if (edit === "insert") chars.splice(at, 0, c);
+    else if (at < chars.length) chars.splice(at, 1, ...(edit === "replace" ? [c] : []));
+    return { s, other: chars.join("") };
+  }),
+);
+
 test("ESM-187: escaped text matches itself and nothing else", () => {
   fc.assert(
     fc.property(text, fc.array(text, { maxLength: 8 }), (s, others) => {
       const pattern = literal(s);
       assert.ok(pattern.test(s), `matches ${JSON.stringify(s)}`);
       for (const other of others) assert.equal(pattern.test(other), other === s, `${JSON.stringify(s)} against ${JSON.stringify(other)}`);
+    }),
+    { numRuns },
+  );
+});
+
+test("ESM-187: escaped text does not match a string one edit away", () => {
+  fc.assert(
+    fc.property(nearMiss, ({ s, other }) => {
+      assert.equal(literal(s).test(other), other === s, `${JSON.stringify(s)} against ${JSON.stringify(other)}`);
     }),
     { numRuns },
   );
