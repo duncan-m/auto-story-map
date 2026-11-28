@@ -632,6 +632,8 @@ button.esm-dependency-link:hover .esm-dependency-title { text-decoration: underl
 .esm-card-tags .esm-priority { margin: 0; }
 .esm-card-tags .esm-priority:last-child { margin-right: -2px; }
 .esm-persona-row { display: flex; flex-wrap: wrap; gap: 6px; }
+/* The For row's chips sit apart from the Jobs and other rows under them. */
+.esm-detail-context .esm-persona-row { margin-bottom: 8px; }
 .esm-persona-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 3px 11px 3px 3px; border: 1px solid var(--esm-line); border-radius: 999px; background: var(--esm-paper); color: var(--esm-ink); font-size: .8125rem; font-weight: 600; }
 .esm-persona-chip .esm-avatar { box-shadow: none; }
 button.esm-persona-chip { cursor: pointer; font-family: inherit; line-height: inherit; }
