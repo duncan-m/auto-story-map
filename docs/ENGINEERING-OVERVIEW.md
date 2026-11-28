@@ -621,6 +621,10 @@ A person agrees a consequential decision before its stories go `in-progress`. Un
 
 Question 4 in [Review a code change](#review-a-code-change) checks for a decision that was made but not recorded.
 
+### When to review the architecture here
+
+This repository follows [When to review the architecture](story-map.md#when-to-review-the-architecture): at planning, in review, at release planning and in the scheduled audit (ESM-109). Its signals come from Biome's `noExcessiveCognitiveComplexity` warnings (ESM-176), the coverage report and its floor (ESM-177), and `git log`, such as `git log --format='%s%n%b' <oldest>..HEAD -- <file> | grep -oE 'ESM-[0-9]+' | sort -u` for the stories that changed a file since `<oldest>`, the last of `git rev-list -300 HEAD`, and `git merge-tree --write-tree` on a merge's two parents for the conflicts it had. Size alone does not justify a refactor story. The first assessment, of `src/react.tsx`, is in [the code review plan](plans/code-review.md#8-say-when-to-review-the-architecture-and-refactor).
+
 ## Making common changes
 
 ### Add a field to the map
