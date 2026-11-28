@@ -230,6 +230,8 @@ export interface StoryMapFilterState {
   story?: string;
   /** The release a permalink opened, when it is in the view. */
   release?: string;
+  /** True when the board shows every shipped story in one Released lane. Internal views only. */
+  released?: true;
   /** Number of stories in the view before filtering. */
   total: number;
   /** Blocked and cut stories that match the other filters but are hidden by the default status filter. */
