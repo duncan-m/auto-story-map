@@ -2400,7 +2400,7 @@ stories:
     jobs:
       - pick-up-work
       - plan-and-build
-    summary: Add each target's prerequisites and readiness to the handoff brief, put waiting and at-risk targets in its open decisions, and list a release brief's targets in suggested order.
+    summary: Add each target's prerequisites and readiness to the handoff brief, put waiting and at-risk targets in its open decisions, and list a release brief's targets in suggested order. Also print personas and jobs once, list related stories as context, say plainly when there is nothing to build, and narrow the hint for stories left out.
     sources:
       - docs/plans/visual-dependency-map.md#3-list-prerequisites-in-agent-briefs
   - id: ESM-161
@@ -2650,7 +2650,9 @@ stories:
     title: Review each PR's diff before it is ready, and pilot the step
     activity: review
     release: v0-7-11
-    status: in-progress
+    status: merged
+    tokens: 7735144
+    estimatedCostUsd: 2.96
     jobs:
       - plan-and-build
       - pick-up-work
@@ -2661,11 +2663,14 @@ stories:
     sources:
       - docs/plans/code-review.md#5-review-each-prs-diff-before-it-is-ready-and-pilot-the-step
       - AGENTS.md#code-standards
+      - docs/story-map.md#check-a-pull-request-in-ci
   - id: ESM-183
     title: Record architecture decisions in plans and PRs
     activity: review
     release: v0-7-11
-    status: planned
+    status: merged
+    tokens: 4207322
+    estimatedCostUsd: 2.19
     jobs:
       - plan-and-build
       - resolve-material-uncertainty

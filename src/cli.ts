@@ -27,7 +27,7 @@ const usage = `Usage:
   story-map upgrade [--format text|markdown|json] [--diff] [--root <path>] [--map <path>] [--mode simple|advanced] [--apply <parts>] [--plans <folder>|off] [--story-ids next|lowest-free] [--write]
   story-map validate [--format text|github|json] [--strict] [--check-sources] [--plans <path>] [--tests <path>] <map.yaml> [...]
   story-map diff [--format markdown|json] [--map <path>] <base-ref>
-  story-map pr-check [--format text|github|json] [--map <path>] [--head <ref>] [--bot-names <names>] [--approved] [--body-file <file>|-] <base-ref>
+  story-map pr-check [--format text|github|json] [--map <path>] [--head <ref>] [--bot-names <names>] [--approved] [--body-file <file>|-] [--draft true|false] [--strict] <base-ref>
   story-map history [--map <path>] [--ref <ref>] [--out <file>] [--bot-names <names>] [--allow-shallow]
   story-map tests [--tests <path>] [--root <path>] [--out <file>] [<map.yaml>]
   story-map export --format vsdx|csv|json [--output <file>] [--history <file>] [--tests-index <file>] [--collapsed <release IDs>] [--max-stories <n>] [<map.yaml>]
@@ -162,7 +162,9 @@ pr-check
   Co-Authored-By trailer names a known agent, such as Claude or Codex. With
   --body-file, each story the pull request marks merged needs a Tokens used
   section in the description that names it, or says why there is no count.
-  It is a guardrail for agents that follow their attribution rules, not a
+  With --body-file and --draft false, a pull request that is ready for review
+  gets a warning when its description has no Review section that records a
+  review. It is a guardrail for agents that follow their attribution rules, not a
   security boundary.
 
   --format text      Print file:line:column: problem (default).
@@ -176,6 +178,10 @@ pr-check
   --approved         A person approved the changes that need a person, such
                      as with a map-approved label.
   --body-file <file> The pull request's description, or - for stdin.
+  --draft <true|false>
+                     Whether the pull request is a draft. Only false checks
+                     the Review section, so a draft is never warned.
+  --strict           Exit 1 on warnings too.
 
 history
   Reads the map's Git history and writes when each story was added, each

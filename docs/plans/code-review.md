@@ -72,7 +72,7 @@ A **Review a code change** section in the [engineering overview](../ENGINEERING-
 
 A serious defect gets a regression test the first time it is found. A lower-impact problem that recurs gets a lint rule, a test or an API change the second time, as [item 10](#10-share-one-regular-expression-escape-helper) does for escaping.
 
-Until item 6 lands, the review asks questions 1 to 3 and 5 only.
+Item 6 (ESM-183) added question 4, so the review now asks all five.
 
 ## 5. Review each PR's diff before it is ready, and pilot the step
 
@@ -172,9 +172,11 @@ Ten PRs run the review step from item 5 before ready. Each row records the revie
 | 1 | #190 | ESM-175: Keep export file names fast on crafted titles | Yes: `/code-review`, medium, at `65e9ca3` | None | 2: the slug can still end in a hyphen or dot after the 80-character cut (pre-existing, and the fix had to keep the output the same), and the 100 ms timing limit could flake (nit, with a margin of about 250 times) | None so far | Not recorded separately: the PR's token count was taken before the review | merged |
 | 2 | #193 | ESM-187: Share one regular-expression escape helper | Yes: `/code-review 193`, medium, at `af854b7` | 4: a near-miss property, because the "nothing else" property rarely tested anything (test coverage); a token count taken before the review; a doubled blank line; a wrong count of replaced copies in a comment | None | None so far | Review time and tokens not recorded separately. The whole PR took 3,497,422 tokens ($1.49) | merged |
 | 3 | #192 | ESM-178: Run CodeQL's quality queries | Yes: `/code-review 192`, medium, at `1adba42`, still valid after merging main | 2: a comment that overstated what `readTextFileWithin` guarantees, and a misplaced import | 1: `findStoryTests` reads test files for a map with no stories, where it used to only stat them, which isn't worth a second `stat` | None so far in its own change. The new query suite found 11 alerts in existing code: 7 fixed in the PR, 4 left to dismiss | Review time and tokens not recorded separately. The whole PR took 4,479,167 tokens ($1.81) | merged |
-| 4 | #194 | ESM-179, ESM-182: Review each PR against its story before it is ready | Yes: `/code-review 194`, medium, at `4490930` | 3 nits: the ready rule and commits after the review, the both-`AGENTS.md` check for a repository-only rule, and this row's PR number | 1 nit: whether `origin/main...HEAD` is a valid target, kept as the plan specifies | | Not recorded separately | in progress |
-| 5 | #197 | ESM-176: Lint the code with Biome in CI | Yes: `/code-review 197`, medium, at `994c354` | 1 nit: the test that every rule turned off has a reason could borrow a neighbouring rule's comment (test coverage) | None | | Not recorded separately | in progress |
-| 6 to 10 | | | | | | | | |
+| 4 | #194 | ESM-179, ESM-182: Review each PR against its story before it is ready | Yes: `/code-review 194`, medium, at `4490930` | 3 nits: the ready rule and commits after the review, the both-`AGENTS.md` check for a repository-only rule, and this row's PR number | 1 nit: whether `origin/main...HEAD` is a valid target, kept as the plan specifies | None so far | Not recorded separately | merged |
+| 5 | #196 | ESM-183: Record architecture decisions in plans and PRs | Yes: `/code-review 196`, medium, at `9fc3f61`, with the fixes re-read at `a4cee95` | 5: a definition of consequential decisions so broad that the plans applied it inconsistently; a permalink answer that contradicted the boundary; an "Agreed by" that read as the agent agreeing; a revisit trigger that missed the format changes; an irrelevant boundary cited | None | | Not recorded separately | ready |
+| 6 | #195 | ESM-182: Warn when a ready PR has no review recorded | Yes: `/code-review 195`, medium, at `ecccf7f` | 3 nits: the warning pinned to line 1 of the map, placeholder values such as `pending` counting as a review, and no test of the repository's workflow | 1 nit: a `### Review` heading anywhere, or in a code block, counts as the section, as for Tokens used, which shares the reader | | Not recorded separately | ready |
+| 7 | #197 | ESM-176: Lint the code with Biome in CI | Yes: `/code-review 197`, medium, at `994c354` | 1 nit: the test that every rule turned off has a reason could borrow a neighbouring rule's comment (test coverage) | None | | Not recorded separately | in progress |
+| 8 to 10 | | | | | | | | |
 
 From row 2 on, a PR records its review in the template's **Review** section, and its time and tokens when the tool reports them. "Defects found later" counts problems in the PR's own change found after it was marked ready: by CodeQL, CI, a person or a later story.
 
