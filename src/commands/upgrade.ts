@@ -355,6 +355,8 @@ export function upgradeApplyText(result: UpgradeApplyResult, diff = false): stri
   }
   if (result.modeRecorded) lines.push("", `${result.written ? "Recorded" : "Records"} ${result.modeRecorded} mode in settings.upgrade, so the review does not ask again.`);
   if (result.architectureDecisionsRecorded) lines.push("", `${architectureNote(result)} To keep them as notices, run story-map settings --architecture-decisions recommended --write.`);
+  const notRecorded = result.changes.find(change => change.setting && change.action === "keep");
+  if (notRecorded) lines.push("", `Architecture decisions: ${escapeText(notRecorded.change)}.`);
   if (result.questions.length) {
     lines.push("", "To ask the person, and record only their answer:", "");
     for (const question of result.questions) lines.push(`- ${question.question} Answer with ${question.option}. See ${question.link}`);

@@ -32,7 +32,8 @@ const version = storyMapVersion.replaceAll(".", "\\.");
 const run = (root, ...args) => spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: "utf8" });
 const read = (root, path) => readFile(join(root, path), "utf8");
 const byPart = report => Object.fromEntries(report.parts.map(part => [part.part, part]));
-const byChange = result => Object.fromEntries(result.changes.map(change => [change.part, change]));
+// ESM-186's settings change shares the agents part's ID, so it is left out here.
+const byChange = result => Object.fromEntries(result.changes.filter(change => !change.setting).map(change => [change.part, change]));
 const marker = id => `<!-- rule: ${id} -->\n`;
 const replaceRule = (text, id, replacement) => text.replace(new RegExp(`${marker(id)}[^\\n]+\\n`), replacement);
 const ruleText = (text, id) => new RegExp(`${marker(id)}([^\\n]+)\\n`).exec(text)[1];

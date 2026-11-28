@@ -66,6 +66,12 @@ export interface UpgradeChange {
   diff?: string;
   /** For a choice the person answered: the value recorded. */
   value?: unknown;
+  /**
+   * Set on the extra change for a setting the run records because of a part it applies,
+   * such as `architectureDecisions` when the `agents` part gains its rule. That change
+   * shares the part's ID, so tell the two apart by this, not by `part` alone.
+   */
+  setting?: "architectureDecisions";
 }
 
 /** A product choice still to make. Ask the person, and record only their answer. */
@@ -88,7 +94,8 @@ export interface UpgradeApplyResult {
   overview: UpgradeOverview;
   /**
    * One entry for each part, in the order of `upgradePartIds`, then one with the `agents`
-   * part's ID and the map's path when the run records `settings.architectureDecisions`.
+   * part's ID, the map's path and `setting: "architectureDecisions"` when the run adds the
+   * architecture rule: `record` when it records the setting, `keep` when the map has problems.
    */
   changes: UpgradeChange[];
   /** The product choices nobody has made, and the person has not answered. */
@@ -497,14 +504,19 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
   const adoptsArchitecture = agentsFile !== undefined && mapText !== undefined
     && asksForArchitectureDecisions(agentsFile.after) && !asksForArchitectureDecisions(agentsFile.before)
     && architectureDecisionsSetting(mapText) === undefined;
+  // The setting is recorded only in a map that is valid already, so a map with problems never stops the rest of the upgrade.
+  const architectureOperation = { op: "architecture-decisions", architectureDecisions: "required" } as StoryMapEditOperation;
+  const recordsArchitecture = adoptsArchitecture
+    && (await proposeStoryMapEdit(mapText!, [architectureOperation], { check: { root } }).then(edit => edit.valid, () => false));
   if (adoptsArchitecture) {
     changes.push({
       part: "agents",
+      setting: "architectureDecisions",
       title: "Architecture decisions",
       path: mapPath,
-      action: "record",
-      change: "record \"required\" in settings.architectureDecisions, so open plans without the section get warnings",
-      value: "required",
+      ...(recordsArchitecture
+        ? { action: "record" as const, change: "record \"required\" in settings.architectureDecisions, so open plans without the section get warnings", value: "required" }
+        : { action: "keep" as const, change: `not recorded: ${mapPath} has problems; fix them, then run story-map settings --architecture-decisions required --write` }),
     });
   }
 
@@ -513,7 +525,7 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
     ...(answers.plans === undefined ? [] : [{ op: "plans", plans: answers.plans } as StoryMapEditOperation]),
     ...(answers.storyIds === undefined ? [] : [{ op: "story-ids", storyIds: answers.storyIds } as StoryMapEditOperation]),
     ...(answers.upgrade === undefined ? [] : [{ op: "upgrade-mode", upgrade: answers.upgrade } as StoryMapEditOperation]),
-    ...(adoptsArchitecture ? [{ op: "architecture-decisions", architectureDecisions: "required" } as StoryMapEditOperation] : []),
+    ...(recordsArchitecture ? [architectureOperation] : []),
   ];
   let modeRecorded: UpgradeMode | undefined;
   if (operations.length) {
@@ -551,6 +563,6 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
     }
   }
 
-  const architectureDecisionsRecorded = adoptsArchitecture && planned.some(file => file.path === mapPath) ? "required" as const : undefined;
+  const architectureDecisionsRecorded = recordsArchitecture && planned.some(file => file.path === mapPath) ? "required" as const : undefined;
   return { mode, report, overview, changes, questions: asked, ...(modeRecorded ? { modeRecorded } : {}), ...(architectureDecisionsRecorded ? { architectureDecisionsRecorded } : {}), changed: planned.length > 0, written: !!options.write && planned.length > 0, files };
 }

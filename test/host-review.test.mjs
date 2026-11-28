@@ -217,3 +217,30 @@ test("ESM-186: the plan scaffold writes the section after the mockup, with every
     assert.deepEqual(planArchitectureProblems(one).map(problem => problem.kind), ["placeholder"], line);
   }
 });
+
+test("ESM-186: a host map with problems still gets the rest of the upgrade, and the setting is left for later", async t => {
+  const root = await host(t, fixture);
+  const map = await read(root, "product/story-map.yaml");
+  // A story in an activity the map does not have.
+  const broken = map.replace("stories: []", "stories:\n  - id: HOST-1\n    title: Find the first step\n    activity: nowhere\n    release: unassigned\n    status: planned\n");
+  await write(root, { "product/story-map.yaml": broken });
+
+  const applied = run(root, "upgrade", "--mode", "simple", "--write");
+  assert.equal(applied.status, 0, applied.stderr);
+  assert.match(await read(root, "AGENTS.md"), /<!-- rule: architecture-decisions -->/);
+  assert.equal(await read(root, "product/story-map.yaml"), broken, "the map is left as it was");
+  assert.doesNotMatch(applied.stdout, /Recorded required/);
+  assert.match(applied.stdout, /^Architecture decisions: not recorded: product\/story-map\.yaml has problems; fix them, then run story-map settings --architecture-decisions required --write\.$/m);
+
+  const result = await applyUpgrade({ root, mode: "simple" });
+  assert.equal(result.architectureDecisionsRecorded, undefined);
+  const before = await mkdtemp(join(tmpdir(), "story-map-hosts-"));
+  t.after(() => rm(before, { recursive: true, force: true }));
+  await cp(fixture, before, { recursive: true });
+  await write(before, { "product/story-map.yaml": broken });
+  const dry = await applyUpgrade({ root: before, mode: "simple" });
+  const setting = dry.changes.find(change => change.setting === "architectureDecisions");
+  assert.equal(setting.action, "keep");
+  assert.match(setting.change, /^not recorded: product\/story-map\.yaml has problems; fix them, then run story-map settings --architecture-decisions required --write$/);
+  assert.ok(!dry.files.includes("product/story-map.yaml"));
+});

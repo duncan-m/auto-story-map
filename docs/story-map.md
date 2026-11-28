@@ -1270,7 +1270,7 @@ Fix the findings that are real, and review again after any material change, such
 - Level: medium
 - Findings fixed: the slug could end in a hyphen after the cut, fixed in 4f2c1d0
 - Findings declined: the 100 ms limit could flake, but has a margin of about 250 times
-- Review cost: 1,204,331 tokens, $0.52, from story-map tokens BUILDER-102 --since 2026-11-20T10:42:00Z
+- Review cost: **1,204,331 tokens**, estimated $0.52 at API list prices as of 2026-11-03, on BUILDER-102 from 2026-11-20 10:42 to 2026-11-20 11:05 UTC, in 1 Claude Code session.
 ```
 
 For a person's review, write `person` as the level. If no review could be run, leave the pull request as a draft and say so in the section. With `--body-file` and `--draft false`, [`story-map pr-check`](#check-a-pull-request-in-ci) warns when a ready pull request has no Review section, or only the template's labels.
@@ -1282,7 +1282,7 @@ npx --no-install story-map tokens BUILDER-102 --since 2026-11-20T10:42:00Z
 npx --no-install story-map tokens BUILDER-102 --since 2026-11-20T10:42:00Z --until 2026-11-20T11:05:00Z
 ```
 
-`--since` counts from that time on, so it includes fixing the findings. Add `--until`, the time the review finished, to count the review alone, and say which in the section. Other agents record what their own tool reports, such as the counts before and after the review. When you cannot count it, say so instead of guessing. The story's **Tokens used** section still counts everything, the review included.
+With `--format markdown`, it prints the **Review cost** line as above, to put in place of the template's. `--since` counts from that time on, so it includes fixing the findings. Add `--until`, the time the review finished, to count the review alone, and say which in the section. Other agents record what their own tool reports, such as the counts before and after the review. When you cannot count it, say so instead of guessing. The story's **Tokens used** section still counts everything, the review included.
 
 **Collect the results from the pull requests.** Each pull request's Review section is the record, so there is no shared table to keep up to date, and no file that every pull request edits and conflicts on. To see how reviews went across a release, read the merged pull requests' descriptions, such as with `gh pr list --state merged --limit 30 --json number,title,body`, and compare their Review sections.
 
