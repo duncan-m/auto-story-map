@@ -5,7 +5,7 @@ import { releaseEstimatesText } from "./export.js";
 import { jobStepGaps, withoutFinalPunctuation } from "./personas.js";
 import { storyReadinessLabels, storyReadinessText } from "./readiness.js";
 import { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
-import { filterStoryMapActions, countStoryMapActions, storyMapActionItemTypes, storyMapActionKinds, type StoryMapAction, type StoryMapActionFilter, type StoryMapActionGroup } from "./actions.js";
+import { filterStoryMapActions, countStoryMapActions, storyMapActionItemTypes, type StoryMapAction, type StoryMapActionFilter, type StoryMapActionGroup } from "./actions.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryDependency, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
