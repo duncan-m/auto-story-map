@@ -66,6 +66,12 @@ export interface UpgradeChange {
   diff?: string;
   /** For a choice the person answered: the value recorded. */
   value?: unknown;
+  /**
+   * Set on the extra change for a setting the run records because of a part it applies,
+   * such as `architectureDecisions` when the `agents` part gains its rule. That change
+   * shares the part's ID, so tell the two apart by this, not by `part` alone.
+   */
+  setting?: "architectureDecisions";
 }
 
 /** A product choice still to make. Ask the person, and record only their answer. */
@@ -86,12 +92,22 @@ export interface UpgradeApplyResult {
   report: UpgradeReport;
   /** The overview of what is applied, in plain words. Show it to people as written. */
   overview: UpgradeOverview;
-  /** One entry for each part, in the order of `upgradePartIds`. */
+  /**
+   * One entry for each part, in the order of `upgradePartIds`, then one with the `agents`
+   * part's ID, the map's path and `setting: "architectureDecisions"` when the run adds the
+   * architecture rule: `record` when it records the setting, `keep` when the map has problems.
+   */
   changes: UpgradeChange[];
   /** The product choices nobody has made, and the person has not answered. */
   questions: UpgradeQuestion[];
   /** The mode recorded in the map's `settings.upgrade`, from `answers.upgrade`, when it changes. */
   modeRecorded?: UpgradeMode;
+  /**
+   * `required` when this run adds the `architecture-decisions` rule, or the skill's
+   * `skill-architecture-decisions`, to the `AGENTS.md` section and the map had no
+   * `settings.architectureDecisions`, so the person who accepts the rule also turns on its check.
+   */
+  architectureDecisionsRecorded?: "required";
   /** True when at least one file changes. */
   changed: boolean;
   /** True when the changes were written. */
@@ -150,9 +166,9 @@ const renderBlocks = (blocks: readonly AgentsSectionBlock[]) => `${blocks.map(re
  * section, so it stays where they put it.
  */
 export function mergeAgentsSection(hostBody: string, target: string, rules: readonly AgentsRuleReview[]): string {
-  const byId = new Map(rules.filter(rule => rule.id).map(rule => [rule.id!, rule]));
+  const byId = new Map(rules.flatMap(rule => (rule.id ? [[rule.id, rule] as const] : [])));
   const templateBlocks = agentsSectionBlocks(target);
-  const templateIds = new Set(templateBlocks.filter(block => block.id).map(block => block.id!));
+  const templateIds = new Set(templateBlocks.flatMap(block => (block.id ? [block.id] : [])));
   const templateHeadings = new Set(templateBlocks.filter(block => block.kind === "heading").map(block => block.text));
 
   // This version's blocks, with the host's text where it is kept.
@@ -164,8 +180,9 @@ export function mergeAgentsSection(hostBody: string, target: string, rules: read
     }
     const rule = block.id ? byId.get(block.id) : undefined;
     if (rule?.state === "removed") continue;
-    const kept = rule && rule.text !== undefined && rule.recommendation !== "replace" && rule.recommendation !== "add";
-    out.push({ block: kept ? { ...block, text: rule.text! } : block, anchor: block.id && `rule:${block.id}` });
+    const text = rule?.text;
+    const kept = text !== undefined && rule?.recommendation !== "replace" && rule?.recommendation !== "add";
+    out.push({ block: kept ? { ...block, text } : block, anchor: block.id && `rule:${block.id}` });
   }
 
   // The host's blocks this version does not have, each placed after the block it follows in the host's section.
@@ -198,7 +215,9 @@ export function mergeAgentsSection(hostBody: string, target: string, rules: read
 /** The indentation of the line `index` is on, and where that line starts. */
 function lineAt(text: string, index: number) {
   const start = text.lastIndexOf("\n", index - 1) + 1;
-  return { start, indent: /^[ \t]*/.exec(text.slice(start))![0] };
+  let end = start;
+  while (text[end] === " " || text[end] === "\t") end++;
+  return { start, indent: text.slice(start, end) };
 }
 
 /**
@@ -256,12 +275,15 @@ export function addWorkflowSteps(host: string, template: string, keys: readonly 
   const list = lists.find(runsValidate) ?? lists[0];
   if (!list) return undefined;
   const steps = templateSteps(template);
-  const added = keys.map(key => steps.get(key));
-  if (added.some(step => !step)) return undefined;
+  const added = keys.flatMap(key => {
+    const step = steps.get(key);
+    return step ? [step] : [];
+  });
+  if (added.length !== keys.length) return undefined;
 
   const items = list.items as { range?: [number, number, number] }[];
-  const first = items[0].range;
-  const last = items.at(-1)!.range;
+  const first = items.at(0)?.range;
+  const last = items.at(-1)?.range;
   if (!first || !last) return undefined;
   const { indent } = lineAt(host, first[0]);
   let at = host.indexOf("\n", last[1] - 1);
@@ -269,7 +291,7 @@ export function addWorkflowSteps(host: string, template: string, keys: readonly 
   const newline = host.includes("\r\n") ? "\r\n" : "\n";
   const lead = at === host.length && !host.endsWith("\n") ? newline : "";
   const text = [...new Set(added)]
-    .map(step => step!.text.split("\n").map(line => (line.startsWith(step!.indent) ? indent + line.slice(step!.indent.length) : line)).join("\n"))
+    .map(step => step.text.split("\n").map(line => (line.startsWith(step.indent) ? indent + line.slice(step.indent.length) : line)).join("\n"))
     .join("")
     .replace(/\n/g, newline);
   const result = host.slice(0, at) + lead + text + host.slice(at);
@@ -292,6 +314,25 @@ async function exists(path: string) {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** The rules that ask for architecture decisions, in the full section and the pointer to the skill. */
+const architectureRuleIds: ReadonlySet<string> = new Set(["architecture-decisions", "skill-architecture-decisions"]);
+
+/** True when the story map section of an `AGENTS.md` file has a rule asking for architecture decisions, by its marker. */
+function asksForArchitectureDecisions(text: string | undefined) {
+  const body = text === undefined ? undefined : setupBody("agents", text);
+  return body !== undefined && agentsSectionBlocks(body).some(block => block.kind === "rule" && block.id !== undefined && architectureRuleIds.has(block.id));
+}
+
+/** The map's `settings.architectureDecisions`, without validating the rest of the map. */
+function architectureDecisionsSetting(text: string): unknown {
+  try {
+    const map = parseDocument(text).toJS() as { settings?: { architectureDecisions?: unknown } } | null;
+    return map?.settings?.architectureDecisions;
+  } catch {
+    return undefined;
   }
 }
 
@@ -412,9 +453,15 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
       continue;
     }
 
+    // Every state from here on reads the host's copy, so a copy that has gone since the survey is kept as it is.
+    if (hostText === undefined) {
+      keep(part, `kept: ${part.path} could not be read`);
+      continue;
+    }
+
     // Replace: an unedited part in simple mode, or any part the person accepted in advanced mode.
     if (take || part.recommendation === "replace") {
-      const after = setupPart === "agents" ? replaceAgentsSection(hostText!, stamped("agents")) : stamped(setupPart);
+      const after = setupPart === "agents" ? replaceAgentsSection(hostText, stamped("agents")) : stamped(setupPart);
       if (after === undefined) {
         keep(part, "kept: the story map section's markers could not be read");
         continue;
@@ -426,16 +473,26 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
     }
 
     // Simple mode, edited parts: merge only what the host did not change.
-    if (setupPart === "agents" && part.recommendation === "review" && part.rules?.some(appliesRule)) {
-      const body = mergeAgentsSection(setupBody("agents", hostText!)!, templates.agents, part.rules);
-      const toReview = part.rules.filter(rule => rule.recommendation === "review").length;
+    const { rules } = part;
+    if (setupPart === "agents" && part.recommendation === "review" && rules?.some(appliesRule)) {
+      const hostBody = setupBody("agents", hostText);
       // With reworded rules still to review, the marker stays, so the review and the reminder still offer them.
-      const marker = /<!-- auto-story-map:start[^>]*-->/.exec(hostText!)![0];
+      const marker = /<!-- auto-story-map:start[^>]*-->/.exec(hostText)?.[0];
+      if (hostBody === undefined || marker === undefined) {
+        keep(part, "kept: the story map section's markers could not be read");
+        continue;
+      }
+      const body = mergeAgentsSection(hostBody, templates.agents, rules);
+      const toReview = rules.filter(rule => rule.recommendation === "review").length;
       const section = toReview
         ? `${marker}\n${body}<!-- auto-story-map:end -->`
         : stampSetupFile("agents", `<!-- auto-story-map:start -->\n${body}<!-- auto-story-map:end -->\n`, storyMapVersion, setupBodyHash(templates.agents));
-      const after = replaceAgentsSection(hostText!, section)!;
-      const count = (recommendation: string) => part.rules!.filter(rule => rule.recommendation === recommendation).length;
+      const after = replaceAgentsSection(hostText, section);
+      if (after === undefined) {
+        keep(part, "kept: the story map section's markers could not be read");
+        continue;
+      }
+      const count = (recommendation: string) => rules.filter(rule => rule.recommendation === recommendation).length;
       const words = [
         count("replace") && `update ${plural(count("replace"), "rule", "rules")}`,
         count("add") && `add ${plural(count("add"), "new rule", "new rules")}`,
@@ -448,7 +505,8 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
       continue;
     }
     if (setupPart === "workflow" && part.additions?.length) {
-      const merged = addWorkflowSteps(setupBody("workflow", hostText!)!, templates.workflow, part.additions);
+      const hostBody = setupBody("workflow", hostText);
+      const merged = hostBody === undefined ? undefined : addWorkflowSteps(hostBody, templates.workflow, part.additions);
       if (merged === undefined) {
         keep(part, `kept: add the ${part.additions.join(", ")} ${part.additions.length === 1 ? "step" : "steps"} by hand`);
         continue;
@@ -463,11 +521,34 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
     keep(part, part.recommendation === "review" ? "kept as you edited it; run story-map upgrade --diff to compare" : part.change);
   }
 
+  // Taking the architecture-decisions rule turns on its check, unless the map already says how strict it is.
+  // The rule is new in this version, so a section that lacked it before has not been asked.
+  const agentsFile = planned.find(file => file.path === "AGENTS.md");
+  const adoptsArchitecture = agentsFile !== undefined && mapText !== undefined
+    && asksForArchitectureDecisions(agentsFile.after) && !asksForArchitectureDecisions(agentsFile.before)
+    && architectureDecisionsSetting(mapText) === undefined;
+  // The setting is recorded only in a map that is valid already, so a map with problems never stops the rest of the upgrade.
+  const architectureOperation = { op: "architecture-decisions", architectureDecisions: "required" } as StoryMapEditOperation;
+  const recordsArchitecture = adoptsArchitecture && mapText !== undefined
+    && (await proposeStoryMapEdit(mapText, [architectureOperation], { check: { root } }).then(edit => edit.valid, () => false));
+  if (adoptsArchitecture) {
+    changes.push({
+      part: "agents",
+      setting: "architectureDecisions",
+      title: "Architecture decisions",
+      path: mapPath,
+      ...(recordsArchitecture
+        ? { action: "record" as const, change: "record \"required\" in settings.architectureDecisions, so open plans without the section get warnings", value: "required" }
+        : { action: "keep" as const, change: `not recorded: ${mapPath} has problems; fix them, then run story-map settings --architecture-decisions required --write` }),
+    });
+  }
+
   // Record the answers in the map, through the same checks as story-map settings.
   const operations: StoryMapEditOperation[] = [
     ...(answers.plans === undefined ? [] : [{ op: "plans", plans: answers.plans } as StoryMapEditOperation]),
     ...(answers.storyIds === undefined ? [] : [{ op: "story-ids", storyIds: answers.storyIds } as StoryMapEditOperation]),
     ...(answers.upgrade === undefined ? [] : [{ op: "upgrade-mode", upgrade: answers.upgrade } as StoryMapEditOperation]),
+    ...(recordsArchitecture ? [architectureOperation] : []),
   ];
   let modeRecorded: UpgradeMode | undefined;
   if (operations.length) {
@@ -505,5 +586,6 @@ export async function applyUpgrade(options: UpgradeApplyOptions = {}): Promise<U
     }
   }
 
-  return { mode, report, overview, changes, questions: asked, ...(modeRecorded ? { modeRecorded } : {}), changed: planned.length > 0, written: !!options.write && planned.length > 0, files };
+  const architectureDecisionsRecorded = recordsArchitecture && planned.some(file => file.path === mapPath) ? "required" as const : undefined;
+  return { mode, report, overview, changes, questions: asked, ...(modeRecorded ? { modeRecorded } : {}), ...(architectureDecisionsRecorded ? { architectureDecisionsRecorded } : {}), changed: planned.length > 0, written: !!options.write && planned.length > 0, files };
 }

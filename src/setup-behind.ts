@@ -88,9 +88,10 @@ export async function findSetupBehind(root: string, options: FindSetupBehindOpti
   for (const part of setupParts) {
     const path = setupPartPaths[part];
     const text = await readFile(join(root, path), "utf8").catch(() => undefined);
-    const version = text === undefined ? undefined : readSetupFileVersion(part, text, known);
+    if (text === undefined) continue;
+    const version = readSetupFileVersion(part, text, known);
     if (!version?.from || !isSetupPartBehind(version, current[part], options.packageVersion)) continue;
-    if (part === "workflow" && !version.unedited && await runsEveryStep(text!)) continue;
+    if (part === "workflow" && !version.unedited && await runsEveryStep(text)) continue;
     behind.push({ part, path, from: version.from });
   }
   return behind;

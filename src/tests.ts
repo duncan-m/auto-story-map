@@ -22,6 +22,7 @@ import {
   type StoryMapTests,
   type StoryTestEntry,
 } from "./tests-index.js";
+import { present } from "./present.js";
 
 /** A test or group whose name contains a story ID, as found in the source text. */
 export interface FoundStoryTest {
@@ -128,7 +129,9 @@ function decodeEscape(text: string, i: number): [string, number] {
     if (code <= 0x10ffff) return [String.fromCodePoint(code), i + 2 + hex[0].length];
   }
   // Any other escaped character stands for itself. Take a whole code point so a surrogate pair is not split.
-  const codePoint = String.fromCodePoint(text.codePointAt(i + 1)!);
+  const point = text.codePointAt(i + 1);
+  if (point === undefined) return ["", i + 1];
+  const codePoint = String.fromCodePoint(point);
   return [codePoint, i + 1 + codePoint.length];
 }
 
@@ -475,7 +478,7 @@ export function buildStoryMapTests(loaded: LoadedStoryMap, found: FoundStoryTest
     }
     if (!listed.length) continue;
     for (const id of listed) perStory.set(id, (perStory.get(id) ?? 0) + 1);
-    const entry: StoryTestEntry = { storyIds: listed, file: test.file, line: test.line, name: fitHistoryText(test.name, testNameMaxLength)!, kind: test.kind };
+    const entry: StoryTestEntry = { storyIds: listed, file: test.file, line: test.line, name: present(fitHistoryText(test.name, testNameMaxLength), `the name of the test at ${test.file}:${test.line}`), kind: test.kind };
     const inheritedIds = listed.filter(id => test.inheritedIds?.includes(id));
     if (inheritedIds.length) entry.inheritedIds = inheritedIds;
     tests.push(entry);

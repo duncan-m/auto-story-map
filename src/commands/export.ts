@@ -5,6 +5,7 @@ import { storyMapExportFormats } from "../export-response.js";
 import { storyMapToVsdx } from "../export-vsdx.js";
 import { getStoryMapForViewer } from "../view.js";
 import { ArgumentError, defineCommand, escapeText, loadInputsOrReport, loadMapOrReport, optionValue, writeOutput } from "./shared.js";
+import { present } from "../present.js";
 
 const exportFormats = storyMapExportFormats;
 
@@ -67,7 +68,8 @@ export default defineCommand({
     }
 
     // Whoever runs the CLI has the YAML file, so the export is always the internal view.
-    const view = getStoryMapForViewer(document, {}, { canViewInternal: () => true, ...inputs })!;
+    // A viewer is given, so there is always a view.
+    const view = present(getStoryMapForViewer(document, {}, { canViewInternal: () => true, ...inputs }), "the export's view of the map");
     const exportOptions = { collapsedReleases: options.collapsed, maxStories: options.maxStories ?? (options.format === "json" ? jsonDefaultMaxStories : defaultExportMaxStories) };
     const file = options.format === "csv" ? storyMapToCsv(view, exportOptions)
       : options.format === "json" ? storyMapToJson(view, exportOptions)

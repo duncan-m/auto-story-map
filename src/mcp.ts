@@ -201,8 +201,9 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
   }, run("releases", async args => {
     const view = await loadView(args);
     const known = new Set(view.releases.map(release => release.id));
-    const missing = (args.ids ?? []).filter(id => !known.has(id));
-    const chosen = args.ids?.length ? view.releases.filter(release => args.ids!.includes(release.id)) : view.releases;
+    const ids = args.ids ?? [];
+    const missing = ids.filter(id => !known.has(id));
+    const chosen = ids.length ? view.releases.filter(release => ids.includes(release.id)) : view.releases;
     return result("releases", { releases: chosen, ...(missing.length ? { missing } : {}) }, missing.length > 0 && !chosen.length);
   }));
 
@@ -299,9 +300,11 @@ export function createStoryMapMcpServer(options: StoryMapMcpServerOptions = {}):
     const scopes = [args.ids?.length ? 1 : 0, args.release !== undefined ? 1 : 0, args.activity !== undefined ? 1 : 0].reduce((a, b) => a + b, 0);
     if (scopes !== 1) return result("brief", { error: "Give exactly one of ids, release or activity." }, true);
     const view = await loadView(args);
+    // The check above means ids has at least one ID when there is no release or activity.
+    const ids = args.ids ?? [];
     const target: StoryMapBriefTarget = args.release !== undefined ? { release: args.release }
       : args.activity !== undefined ? { activity: args.activity }
-        : args.ids!.length === 1 ? { story: args.ids![0]! } : { stories: args.ids! };
+        : ids.length === 1 ? { story: ids[0] } : { stories: ids };
     const mapPath = args.map ?? defaultMap;
     const request: StoryMapBriefRequest = {
       ...target,

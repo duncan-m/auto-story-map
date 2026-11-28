@@ -18,6 +18,13 @@ export interface StoryTokenOptions {
   sessions?: readonly string[];
   /** Prices to estimate the cost with, by model ID. Defaults to `defaultTokenPrices`. Models not listed are reported as unpriced. */
   prices?: TokenPrices;
+  /**
+   * Count only the responses made at or after this time, such as when a review started, so a
+   * part of the work can be counted apart from the story's total. Responses with no time are left out.
+   */
+  since?: Date;
+  /** Count only the responses made at or before this time. Responses with no time are left out. */
+  until?: Date;
 }
 
 /** One model's API list prices, in US dollars per million tokens. */
@@ -106,6 +113,9 @@ export interface StoryTokenUsage extends TokenCounts {
   /** The first and last counted response. Absent when nothing was counted. */
   firstAt?: string;
   lastAt?: string;
+  /** The `since` and `until` the count was limited to, as ISO times, when given. */
+  since?: string;
+  until?: string;
 }
 
 /** The folder Claude Code writes its session logs to. */
@@ -152,7 +162,8 @@ const tokens = (value: unknown) => (typeof value === "number" && Number.isFinite
  * this machine. A response counts when it was made on a branch whose name
  * contains the story ID, on one of `branches`, or in one of `sessions`. Each
  * response is counted once: Claude Code writes a log line per content block,
- * each with the same usage. Subagent logs are read too.
+ * each with the same usage. Subagent logs are read too. With `since` or `until`,
+ * only the responses made in that range count, such as the review of a pull request.
  *
  * Reads the logs only. Nothing leaves the machine.
  */
@@ -161,6 +172,16 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
   const branches = new Set(options.branches ?? []);
   const sessions = new Set(options.sessions ?? []);
   const prices = options.prices ?? defaultTokenPrices;
+  for (const [name, time] of [["since", options.since], ["until", options.until]] as const) {
+    if (time !== undefined && Number.isNaN(time.getTime())) throw new RangeError(`${name} is not a valid time`);
+  }
+  const since = options.since?.getTime();
+  const until = options.until?.getTime();
+  const inRange = (at: string | undefined) => {
+    if (since === undefined && until === undefined) return true;
+    const time = at === undefined ? Number.NaN : Date.parse(at);
+    return !Number.isNaN(time) && (since === undefined || time >= since) && (until === undefined || time <= until);
+  };
   const responses = new Map<string, { counts: Counts; model?: string; fast: boolean; session?: string; branch?: string; at?: string }>();
 
   const files = await logFiles(logs);
@@ -180,6 +201,8 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
       const branch = typeof entry.gitBranch === "string" && entry.gitBranch ? entry.gitBranch : undefined;
       const matches = (session !== undefined && sessions.has(session)) || (branch !== undefined && (branches.has(branch) || branchNamesStory(branch, id)));
       if (!matches) continue;
+      const at = typeof entry.timestamp === "string" ? entry.timestamp : undefined;
+      if (!inRange(at)) continue;
       const key = [entry.message?.id, entry.requestId].filter(part => typeof part === "string").join("\u0000") || (typeof entry.uuid === "string" ? entry.uuid : line);
       const counts = {
         input: tokens(usage.input_tokens),
@@ -191,7 +214,6 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
       counts.cacheWrite1h = Math.min(counts.cacheWrite, tokens(usage.cache_creation?.ephemeral_1h_input_tokens));
       const model = typeof entry.message?.model === "string" && !entry.message.model.startsWith("<") ? entry.message.model : undefined;
       const fast = usage.speed === "fast";
-      const at = typeof entry.timestamp === "string" ? entry.timestamp : undefined;
       const seen = responses.get(key);
       if (seen) {
         // Repeated lines carry the same usage, or a later, larger count while streaming.
@@ -205,6 +227,8 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
   const result: StoryTokenUsage = {
     id, logs, files: files.length, total: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0, messages: responses.size, sessions: [], branches: [],
     cost: { usd: 0, unpricedTokens: 0, unpricedModels: [], models: [] },
+    ...(options.since ? { since: options.since.toISOString() } : {}),
+    ...(options.until ? { until: options.until.toISOString() } : {}),
   };
   const byModel = new Map<string, { model: string; total: number; usd?: number; fast?: boolean }>();
   let usd = 0;
@@ -226,7 +250,7 @@ export async function countStoryTokens(id: string, options: StoryTokenOptions = 
     row.total += total;
     if (price) {
       const cost = responseCost(response.counts, price, response.fast);
-      row.usd! += cost;
+      row.usd = (row.usd ?? 0) + cost;
       usd += cost;
     } else {
       result.cost.unpricedTokens += total;

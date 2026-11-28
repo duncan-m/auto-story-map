@@ -37,6 +37,8 @@ export const agentsRules = {
   "choose-delivery-plans": { form: "full", title: "Ask whether to use delivery plans", openings: ["If `settings.plans` is not set in `product/story-map.yaml`"], check: "choose-delivery-plans" },
   "write-delivery-plans": { form: "full", title: "Write a delivery plan", openings: ["When `settings.plans` names a folder"] },
   "link-mockups": { form: "full", title: "Link mockups and designs", openings: ["When a plan has a mockup"] },
+  "architecture-decisions": { form: "full", title: "Record architecture decisions", openings: ["Record the architecture decisions"] },
+  "write-story-summaries": { form: "full", title: "Write story summaries for people", openings: ["Write each story's title and summary"] },
   "update-map-in-pr": { form: "full", title: "Update the map in the same PR", openings: ["When a change affects a user journey"] },
   "audience-and-status": { form: "full", title: "Audience and delivery status", openings: ["Keep new stories internal by default"] },
   "release-notes-and-impact": { form: "full", title: "Release notes and impact", openings: ["Record each release’s notes"] },
@@ -48,8 +50,11 @@ export const agentsRules = {
   "validate-after-change": { form: "full", title: "Validate after every map change", openings: ["Run `npx --no-install story-map validate"] },
   "branch-and-title-names": { form: "full", title: "Name branches and pull requests", openings: ["Name each branch"] },
   "pr-diff-summary": { form: "full", title: "Map summary in the PR", openings: ["In the PR description"] },
+  "review-before-ready": { form: "full", title: "Review the diff before it is ready", openings: ["Review each pull request's diff"] },
   "skill-source-of-truth": { form: "skill", title: "The map is the source of truth, with the skill", openings: ["Treat [product/story-map.yaml]"] },
   "skill-short-rules": { form: "skill", title: "The short rules", openings: ["Never remove `draft` yourself", "If `settings.plans` is not set in the map"] },
+  "skill-architecture-decisions": { form: "skill", title: "Record architecture decisions, with the skill", openings: ["Answer the four architecture questions"] },
+  "skill-review-before-ready": { form: "skill", title: "Review the diff before it is ready, with the skill", openings: ["Before you mark a pull request ready"] },
 } as const satisfies Record<string, AgentsRuleInfo>;
 
 /** The stable ID of a rule in the `AGENTS.md` templates, such as `record-tokens`. */
@@ -91,7 +96,8 @@ export function agentsSectionBlocks(body: string): AgentsSectionBlock[] {
         pendingId = marker[1];
         lines.shift();
       } else if (lines[0].startsWith("#")) {
-        blocks.push({ kind: "heading", text: lines.shift()!.trim() });
+        blocks.push({ kind: "heading", text: lines[0].trim() });
+        lines.shift();
       } else {
         break;
       }

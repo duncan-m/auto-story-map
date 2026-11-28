@@ -7,7 +7,9 @@ import { storyReadinessLabels, storyReadinessText } from "./readiness.js";
 import { storyMapAnchorId, storyMapPermalink } from "./permalink.js";
 import { filterStoryMapActions, countStoryMapActions, storyMapActionItemTypes, type StoryMapAction, type StoryMapActionFilter, type StoryMapActionGroup } from "./actions.js";
 import type { ReleaseImpact, StoryMapJob } from "./schema.js";
+import { analyticsWindow, storyMapAnalytics, type AnalyticsMeasure, type AnalyticsMilestone, type AnalyticsPeriod, type AnalyticsTotals } from "./analytics.js";
 import { storyMapAuthor, storyMapCommit, storyMapLicense, storyMapRepositoryUrl, storyMapVersion } from "./version.js";
+import { present } from "./present.js";
 import type { InternalReleaseLabel, InternalStoryCard, PersonaJobLabel, PersonaLabel, ReleaseEstimates, StoryChangeEntry, StoryDependency, StoryHistoryEntry, StoryMapLabel, StoryMapRecentUpdates, StoryMapView, StoryTestLink } from "./view.js";
 
 /** Windows offered by the “Changed in” filter, in days. Matches `changedWithinOptions`. */
@@ -143,6 +145,8 @@ const personasMax = 12;
 
 interface DateSettings {
   now: Date;
+  /** The board's locale, or the default when the runtime does not recognise it. */
+  locale: string;
   date: Intl.DateTimeFormat;
   dateTime: Intl.DateTimeFormat;
   relative: Intl.RelativeTimeFormat;
@@ -185,6 +189,7 @@ function dateFormatters(locale: string, timeZone: string | undefined, now: Date)
   }
   return {
     now,
+    locale,
     date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone }),
     dateTime: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone }),
     relative: new Intl.RelativeTimeFormat(locale, { numeric: "auto" }),
@@ -632,9 +637,9 @@ function ChangesSection({ story, panelId, settings, links }: { story: InternalSt
 }
 
 function ChangeItem({ change, settings, links }: { change: StoryChangeEntry; settings: DateSettings; links: RepositoryLinker }) {
-  const pullRequest = change.pullRequest !== undefined;
-  const href = (pullRequest ? links.pullRequest(change.pullRequest!) : undefined) ?? links.commit(change.commit);
-  const label = pullRequest ? `#${change.pullRequest}` : shortHash(change.commit);
+  const pullRequest = change.pullRequest;
+  const href = (pullRequest !== undefined ? links.pullRequest(pullRequest) : undefined) ?? links.commit(change.commit);
+  const label = pullRequest !== undefined ? `#${change.pullRequest}` : shortHash(change.commit);
   const title = <>
     {pullRequest ? <span className="esm-change-number">{label}</span> : <code className="esm-commit-hash">{label}</code>}
     {" "}
@@ -900,7 +905,7 @@ function StoryDetail({ story, panelId, permalink, activityTitle, releaseTitle, i
           </span>
         </p>
       )}
-      {story.summary && <p className="esm-detail-summary">{story.summary}</p>}
+      {story.summary && <DetailSummary text={story.summary} />}
       <dl className="esm-detail-context">
         {personas.length > 0 && <>
           <dt>For</dt>
@@ -1336,6 +1341,17 @@ function releaseProgress(counts: Record<StoryStatus, number>) {
   return `${parts.filter(Boolean).join(", ")}.`;
 }
 
+/**
+ * A panel's summary. Each line of a summary written over several lines, as
+ * Write a story summary asks, is its own block with a little space above it,
+ * and a one-line summary is plain text as before.
+ */
+function DetailSummary({ text }: { text: string }) {
+  const lines = text.split("\n").map(line => line.trim()).filter(Boolean);
+  if (lines.length < 2) return <p className="esm-detail-summary">{text}</p>;
+  return <p className="esm-detail-summary">{lines.map((line, index) => <span className="esm-detail-summary-line" key={index}>{line}</span>)}</p>;
+}
+
 function paragraphs(text: string) {
   return text.split(/\n[ \t]*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
 }
@@ -1380,7 +1396,7 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
           <CloseButton panelId={panelId} />
         </div>
       </div>
-      {release.summary && <p className="esm-detail-summary">{release.summary}</p>}
+      {release.summary && <DetailSummary text={release.summary} />}
       {actions && <ItemActions groups={actions.groups} type="release" id={release.id} panelId={panelId} links={actions.links} tabHref={actions.tabHref} />}
       {release.notes && (
         <section className="esm-detail-section" aria-labelledby={`${panelId}-notes`}>
@@ -1416,7 +1432,7 @@ function ReleaseDetail({ release, panelId, permalink, stories, storyPanelIds, fi
             <ul className="esm-release-stories">
               {group.stories.map(story => (
                 <li key={story.id}>
-                  <button type="button" className="esm-release-story" aria-haspopup="dialog" {...popoverTarget(storyPanelIds.get(story)!)}>
+                  <button type="button" className="esm-release-story" aria-haspopup="dialog" {...popoverTarget(present(storyPanelIds.get(story), `the panel of story ${story.id}`))}>
                     <span className="esm-card-id">{story.id}</span>
                     <span>{story.title}</span>
                   </button>
@@ -1469,6 +1485,7 @@ function PersonaJob({ job, statementId, base }: { job: PersonaJobLabel; statemen
   const left = hiddenSummary(job.storyCounts);
   // Only the core job's gaps show here; the Personas tab shows every step.
   const gaps = job.core && coverage ? jobStepGaps(job) : 0;
+  const stepCount = job.steps?.length ?? 0;
   return (
     <li className={job.core ? "esm-job esm-job-core" : "esm-job"}>
       {job.core && <CoreJobLabel />}
@@ -1485,7 +1502,7 @@ function PersonaJob({ job, statementId, base }: { job: PersonaJobLabel; statemen
           </>
           : <span className="esm-job-gap">No stories yet</span>}
         {left && <span className="esm-job-left">{`${left} not counted`}</span>}
-        {gaps > 0 && <span className="esm-job-gap">{`${gaps} of ${job.steps!.length} ${job.steps!.length === 1 ? "step" : "steps"} ${gaps === 1 ? "has" : "have"} no stories`}</span>}
+        {gaps > 0 && <span className="esm-job-gap">{`${gaps} of ${stepCount} ${stepCount === 1 ? "step" : "steps"} ${gaps === 1 ? "has" : "have"} no stories`}</span>}
       </p>
     </li>
   );
@@ -1522,7 +1539,7 @@ function PersonaDetail({ persona, panelId, filter, preservedParams, openHref }: 
         </div>
         <CloseButton panelId={panelId} />
       </div>
-      {persona.summary && <p className="esm-detail-summary">{persona.summary}</p>}
+      {persona.summary && <DetailSummary text={persona.summary} />}
       {openHref
         ? <>
           {core
@@ -1729,21 +1746,20 @@ function JobLane({ job, laneId, base, editing }: { job: PersonaJobLabel; laneId:
       {steps.length > 0 && (
         <ol className="esm-job-steps" aria-label="Steps">
           {steps.map((step, index) => {
-            const gap = step.activity !== undefined && !step.activeStories;
-            const stepParams = base && step.activity !== undefined ? new URLSearchParams(base) : undefined;
-            stepParams?.append("job", job.id);
-            stepParams?.append("activity", step.activity!);
+            const { activity, activeStories } = step;
+            const gap = activity !== undefined && !activeStories;
+            const stepParams = base && activity !== undefined ? new URLSearchParams([...base, ["job", job.id], ["activity", activity]]) : undefined;
             return (
               <li className="esm-step-card" data-gap={gap ? "" : undefined} key={index}>
                 <span className="esm-step-title"><span className="esm-step-num" aria-hidden="true">{index + 1}</span>{step.title}</span>
                 {step.summary && <span className="esm-step-text">{step.summary}</span>}
-                {step.activity !== undefined && (
+                {activity !== undefined && (
                   <span className="esm-step-cov">
-                    {gap
+                    {!activeStories
                       ? <span className="esm-job-gap">No stories yet</span>
                       : stepParams
-                        ? <a href={`?${stepParams}`}>{storyCount(step.activeStories!)}</a>
-                        : <span>{storyCount(step.activeStories!)}</span>}
+                        ? <a href={`?${stepParams}`}>{storyCount(activeStories)}</a>
+                        : <span>{storyCount(activeStories)}</span>}
                   </span>
                 )}
               </li>
@@ -1822,7 +1838,7 @@ function PersonaContext({ persona, baseId, editing }: { persona: PersonaLabel; b
       title: "Success means",
       body: editing
         ? <InlineText as="p" editor={successEditor} field="success" label="Success means" max={successMax} multiline placeholder="Not set yet.">{context?.success ?? ""}</InlineText>
-        : <p>{context!.success}</p>,
+        : <p>{present(context, `the context of persona ${persona.id}`).success}</p>,
     },
     (context?.usesToday?.length || editing) && {
       key: "uses",
@@ -1880,11 +1896,11 @@ function personaPageHref(filter: NonNullable<StoryMapView["filter"]>, personaId:
 }
 
 /**
- * The Story map and Personas tabs, as links, so they work without JavaScript.
+ * The Story map, Personas and Analytics tabs, as links, so they work without JavaScript.
  * Each keeps the viewer's filters, so going back to the map keeps them.
  */
 function BoardTabs({ current, filter, preservedParams, stories, personas, actions }: {
-  current: "map" | "personas" | "actions";
+  current: "map" | "personas" | "actions" | "analytics";
   filter: NonNullable<StoryMapView["filter"]>;
   preservedParams?: Readonly<Record<string, string>>;
   stories: number;
@@ -1892,21 +1908,125 @@ function BoardTabs({ current, filter, preservedParams, stories, personas, action
   actions: number;
 }) {
   const params = boardParams(filter, preservedParams);
-  const personasParams = new URLSearchParams(params);
-  personasParams.set("view", "personas");
-  const tab = (page: "map" | "personas" | "actions", href: string, label: string, count: number, counted: string) => (
+  const pageHref = (page: "personas" | "analytics") => {
+    const copy = new URLSearchParams(params);
+    copy.set("view", page);
+    return `?${copy}`;
+  };
+  const tab = (page: "map" | "personas" | "actions" | "analytics", href: string, label: string, count?: number, counted?: string) => (
     <a className="esm-tab" href={href} aria-current={current === page ? "page" : undefined}>
       {label}
-      <span className="esm-tab-count"><span aria-hidden="true">{count}</span><span className="esm-visually-hidden">{`, ${counted}`}</span></span>
+      {count !== undefined && <span className="esm-tab-count"><span aria-hidden="true">{count}</span><span className="esm-visually-hidden">{`, ${counted}`}</span></span>}
     </a>
   );
   return (
     <nav className="esm-tabs" aria-label="Board views">
       {tab("map", `?${params}`, "Story map", stories, storyCount(stories))}
-      {tab("personas", `?${personasParams}`, "Personas", personas, plural(personas, "persona"))}
+      {tab("personas", pageHref("personas"), "Personas", personas, plural(personas, "persona"))}
       {tab("actions", actionsHref(filter, preservedParams), "Actions", actions, plural(actions, "action"))}
+      {tab("analytics", pageHref("analytics"), "Analytics")}
       <span className="esm-tabs-end">Internal only. Customers see the story map.</span>
     </nav>
+  );
+}
+
+const analyticsPeriodChoices: readonly [AnalyticsPeriod, string][] = [["day", "Day"], ["week", "Week"], ["month", "Month"]];
+const analyticsMilestoneChoices: readonly [AnalyticsMilestone, string][] = [["merged", "Merged"], ["shipped", "Shipped"]];
+const analyticsMeasureChoices: readonly [AnalyticsMeasure, string][] = [["stories", "Chart stories"], ["points", "Chart points"], ["tokens", "Chart tokens"], ["spend", "Chart spend"]];
+const analyticsWindowText: Readonly<Record<AnalyticsPeriod, string>> = {
+  day: `last ${analyticsWindow.day} days`,
+  week: `last ${analyticsWindow.week} weeks`,
+  month: `last ${analyticsWindow.month} months`,
+};
+const analyticsPeriodHeading: Readonly<Record<AnalyticsPeriod, string>> = { day: "Day (UTC)", week: "Week (UTC)", month: "Month (UTC)" };
+
+/** Number formats for the Analytics tab: points, compact tokens such as “109.7M”, and US dollars. */
+function analyticsFormats(locale: string) {
+  const points = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const tokens = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
+  const spend = new Intl.NumberFormat(locale, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" });
+  // Each period is a UTC day, week or month, so its labels are in UTC whatever the board's time zone.
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", timeZone: "UTC" });
+  const dayMonth = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" });
+  const fullDay = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  const shortMonth = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
+  const longMonth = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" });
+  // The history's dates are in UTC too, so they agree with the rows.
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
+  const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+  return {
+    date: (at: string) => date.format(new Date(at)),
+    dateTime: (at: string) => dateTime.format(new Date(at)),
+    points: (value: number) => points.format(value),
+    tokens: (value: number) => tokens.format(value),
+    spend: (value: number) => spend.format(value),
+    /** The bar chart's axis label, such as “Fri 20”, “23 Nov” or “Nov”. */
+    axis: (start: string, period: AnalyticsPeriod) => {
+      const date = new Date(start);
+      return period === "day" ? weekday.format(date) : period === "week" ? dayMonth.format(date) : shortMonth.format(date);
+    },
+    /** The table's row heading, such as “Fri 20 Nov”, “Week of 23 Nov” or “November 2026”. */
+    row: (start: string, period: AnalyticsPeriod) => {
+      const date = new Date(start);
+      return period === "day" ? fullDay.format(date) : period === "week" ? `Week of ${dayMonth.format(date)}` : longMonth.format(date);
+    },
+  };
+}
+
+type AnalyticsFormats = ReturnType<typeof analyticsFormats>;
+
+/** The value of one measure, or undefined when stories were completed but none has it recorded. */
+function analyticsValue(totals: AnalyticsTotals, measure: AnalyticsMeasure) {
+  if (measure === "stories") return totals.stories;
+  const [value, recorded] = measure === "points"
+    ? [totals.points, totals.estimated]
+    : measure === "tokens" ? [totals.tokens, totals.tokensRecorded] : [totals.spendUsd, totals.spendRecorded];
+  return totals.stories > 0 && recorded === 0 ? undefined : value;
+}
+
+function formatAnalyticsValue(value: number | undefined, measure: AnalyticsMeasure, formats: AnalyticsFormats) {
+  if (value === undefined) return "—";
+  return measure === "stories" ? String(value) : formats[measure](value);
+}
+
+/**
+ * One measure in the Analytics table: its total, or a dash when no story has it, with how many
+ * stories have it when that is not all of them. Missing values are never counted as zero.
+ * `coverage` false leaves out the count, for spend when tokens already show it.
+ */
+function AnalyticsCell({ totals, measure, formats, coverage = true }: { totals: AnalyticsTotals; measure: Exclude<AnalyticsMeasure, "stories">; formats: AnalyticsFormats; coverage?: boolean }) {
+  const recorded = measure === "points" ? totals.estimated : measure === "tokens" ? totals.tokensRecorded : totals.spendRecorded;
+  const value = analyticsValue(totals, measure);
+  const word = measure === "points" ? "estimated" : "recorded";
+  return (
+    <td>
+      {value === undefined
+        ? <><span aria-hidden="true">—</span>{!coverage && <span className="esm-visually-hidden">None recorded</span>}</>
+        : formatAnalyticsValue(value, measure, formats)}
+      {coverage && recorded < totals.stories && <span className="esm-analytics-cov">{`${recorded} of ${totals.stories} ${word}`}</span>}
+    </td>
+  );
+}
+
+/** The guide's section on the Analytics tab. */
+const analyticsGuide = `${storyMapRepositoryUrl}/blob/main/docs/story-map.md#see-delivery-totals`;
+
+/** The Analytics tab without a history file: how to add one, and nothing else. */
+function AnalyticsSetup({ baseId }: { baseId: string }) {
+  const titleId = `${baseId}-analytics-setup`;
+  return (
+    <article className="esm-persona-setup esm-analytics-setup" aria-labelledby={titleId}>
+      <h3 id={titleId}>No history yet</h3>
+      <p>The Analytics tab counts the stories, points, tokens and spend completed each day, week or month. It needs the map’s status history, which comes from Git, so there is nothing extra to record.</p>
+      <ol>
+        <li>
+          When the product is built, with the full Git history, run:
+          <pre><code>npx --no-install story-map history --out build/story-map-history.json</code></pre>
+        </li>
+        <li>Pass the file to the board: <code>story-map preview --history build/story-map-history.json</code>, or the <code>history</code> option of <code>getStoryMapPage</code> in your app.</li>
+      </ol>
+      <p><a href={analyticsGuide} {...newTab}>Read the guide to the Analytics tab<NewTabHint /></a></p>
+    </article>
   );
 }
 
@@ -1948,6 +2068,123 @@ function AgentIcon() {
     <svg className="esm-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="2.75" y="4.5" width="10.5" height="8.5" rx="2" /><path d="M8 2v2.5M6 8.5h.01M10 8.5h.01" />
     </svg>
+  );
+}
+
+/**
+ * The Analytics tab: the stories, points, tokens and spend completed in each UTC day, week or
+ * month, with totals for the window, a bar chart of one measure and the table as its accessible
+ * data. Its options are a form, so they work without JavaScript, and board.js applies them as soon
+ * as they change. Internal viewers only.
+ */
+function AnalyticsPage({ map, filter, preservedParams, settings, baseId }: {
+  map: Extract<StoryMapView, { audience: "internal" }>;
+  filter: NonNullable<StoryMapView["filter"]>;
+  preservedParams?: Readonly<Record<string, string>>;
+  settings: DateSettings;
+  baseId: string;
+}) {
+  const hintId = `${baseId}-analytics-hint`;
+  const { period, completed, chart } = filter.analytics ?? { period: "day", completed: "merged", chart: "stories" };
+  // The form keeps the board's other parameters, so the tabs still lead back to the same map.
+  const params = boardParams(filter, preservedParams);
+  params.set("view", "analytics");
+  const select = (name: string, label: string, value: string, choices: readonly (readonly [string, string])[]) => (
+    <select className="esm-select" name={name} aria-label={label} aria-describedby={hintId} defaultValue={value}>
+      {choices.map(([choice, text]) => <option key={choice} value={choice}>{text}</option>)}
+    </select>
+  );
+  const toolbar = (
+    <div className="esm-toolbar esm-analytics-toolbar">
+      <p className="esm-toolbar-label">Delivered<span className="esm-toolbar-count">{analyticsWindowText[period]}</span></p>
+      <form className="esm-filters" method="get" aria-label="Analytics options">
+        {[...params].map(([name, value], index) => <input key={`${name}-${index}`} type="hidden" name={name} value={value} />)}
+        <span className="esm-visually-hidden" id={hintId} data-esm-filter-hint="" />
+        {select("period", "Period", period, analyticsPeriodChoices)}
+        {select("completed", "Completed when", completed, analyticsMilestoneChoices)}
+        {select("chart", "Chart", chart, analyticsMeasureChoices)}
+        <button type="submit" className="esm-button esm-apply">Apply</button>
+      </form>
+    </div>
+  );
+  if (!map.history) return <>{toolbar}<AnalyticsSetup baseId={baseId} /></>;
+
+  const analytics = storyMapAnalytics({ stories: map.stories, history: map.history }, { period, milestone: completed, now: settings.now });
+  const formats = analyticsFormats(settings.locale);
+  const { totals, buckets } = analytics;
+  const values = buckets.map(bucket => analyticsValue(bucket, chart));
+  const highest = Math.max(0, ...values.map(value => value ?? 0));
+  const milestoneText = completed === "merged" ? "merged or shipped" : "shipped";
+  const known = analytics.knownFrom
+    ? `History known from ${formats.date(analytics.knownFrom)}${analytics.complete ? "" : ", from a shallow clone, so earlier changes are missing"}, up to ${formats.dateTime(analytics.generatedAt)} UTC. `
+    : "The history has no changes yet. ";
+  const undated = analytics.undated
+    ? ` ${plural(analytics.undated, "story", "stories")} ${milestoneText} ${analytics.undated === 1 ? "is" : "are"} not counted, because the history does not say when: ${analytics.undated === 1 ? "it was" : "they were"} complete before it starts, or became complete after it was made or in a version it could not read.`
+    : "";
+  // The spend column only counts its own coverage when it differs from the tokens column beside it.
+  const spendCoverage = (item: AnalyticsTotals) => item.spendDiffers > 0;
+  const partial = (recorded: number) => totals.stories > 0 && recorded < totals.stories;
+  const row = (item: AnalyticsTotals) => (
+    <>
+      <td>{item.stories}</td>
+      <AnalyticsCell totals={item} measure="points" formats={formats} />
+      <AnalyticsCell totals={item} measure="tokens" formats={formats} />
+      <AnalyticsCell totals={item} measure="spend" formats={formats} coverage={spendCoverage(item)} />
+    </>
+  );
+
+  return (
+    <>
+      {toolbar}
+      <div className="esm-analytics">
+        <p className="esm-analytics-coverage">
+          {known}Points, tokens and spend are each story’s values today, not when it was completed. Stories without an estimate or recorded tokens are left out of those totals, not counted as zero.{undated}
+        </p>
+        <dl className="esm-analytics-totals">
+          <div className="esm-analytics-total"><dt>Stories</dt><dd>{totals.stories}<small>{milestoneText}</small></dd></div>
+          <div className="esm-analytics-total">
+            <dt>Points</dt>
+            <dd>{formatAnalyticsValue(analyticsValue(totals, "points"), "points", formats)}{partial(totals.estimated) && <small>{`${totals.estimated} of ${storyCount(totals.stories)} estimated`}</small>}</dd>
+          </div>
+          <div className="esm-analytics-total">
+            <dt>Tokens</dt>
+            <dd>{formatAnalyticsValue(analyticsValue(totals, "tokens"), "tokens", formats)}{partial(totals.tokensRecorded) && <small>{`recorded for ${totals.tokensRecorded} of ${totals.stories}`}</small>}</dd>
+          </div>
+          <div className="esm-analytics-total">
+            <dt>Spend</dt>
+            <dd>{formatAnalyticsValue(analyticsValue(totals, "spend"), "spend", formats)}<small>{partial(totals.spendRecorded) ? `estimated, recorded for ${totals.spendRecorded} of ${totals.stories}` : "estimated, at API list prices"}</small></dd>
+          </div>
+        </dl>
+        {/* The table below holds the same numbers, so screen readers skip the chart. */}
+        <div className="esm-analytics-chart" aria-hidden="true" style={{ "--esm-analytics-columns": buckets.length } as CSSProperties}>
+          {buckets.map((bucket, index) => (
+            <div className="esm-analytics-bar" key={bucket.start}>
+              <span>{formatAnalyticsValue(values[index], chart, formats)}</span>
+              <span style={{ height: highest ? `${((values[index] ?? 0) / highest) * 100}%` : 0 }} />
+            </div>
+          ))}
+        </div>
+        <div className="esm-analytics-axis" aria-hidden="true" style={{ "--esm-analytics-columns": buckets.length } as CSSProperties}>
+          {buckets.map(bucket => <span key={bucket.start}>{formats.axis(bucket.start, period)}</span>)}
+        </div>
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: the table scrolls sideways, so keyboard users need to focus it to scroll it. */}
+        <div className="esm-analytics-scroll" role="region" tabIndex={0} aria-labelledby={`${baseId}-analytics-caption`}>
+          <table className="esm-analytics-table">
+            <caption className="esm-visually-hidden" id={`${baseId}-analytics-caption`}>{`Stories, points, tokens and spend ${milestoneText} each ${period}, ${analyticsWindowText[period]}`}</caption>
+            <thead><tr><th scope="col">{analyticsPeriodHeading[period]}</th><th scope="col">Stories</th><th scope="col">Points</th><th scope="col">Tokens</th><th scope="col">Spend</th></tr></thead>
+            <tbody>
+              {buckets.map(bucket => (
+                <tr key={bucket.start} className={bucket.stories ? undefined : "esm-empty"}>
+                  <th scope="row">{formats.row(bucket.start, period)}</th>
+                  {row(bucket)}
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr><th scope="row">{`${buckets.length} ${period}s`}</th>{row(totals)}</tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -2489,7 +2726,8 @@ function VersionFooter({ internal }: { internal: boolean }) {
 
 /** True when a filter narrows the board. Choosing every status shows every story, so it does not count. */
 function isFiltering(filter: StoryMapView["filter"]) {
-  const narrowsStatus = !!filter?.status && !storyStatuses.every(choice => filter.status!.includes(choice));
+  const statuses = filter?.status;
+  const narrowsStatus = !!statuses && !storyStatuses.every(choice => statuses.includes(choice));
   return !!(filter && (filter.query || narrowsStatus || filter.changedWithinDays || filter.persona?.length || filter.job?.length || filter.activity?.length));
 }
 
@@ -2714,8 +2952,17 @@ export function StoryMapBoard({
     activityTitles.has(story.activity) && releaseTitles.has(story.release)
   );
   const panelIds = new Map(placed.map((story, index) => [story, `${baseId}-story-${index}`]));
-  const panelIdsByStory = new Map(placed.map(story => [story.id, panelIds.get(story)!]));
+  const panelIdsByStory = new Map(placed.map((story, index) => [story.id, `${baseId}-story-${index}`]));
+  const panelIdOf = (story: InternalStoryCard) => present(panelIds.get(story), `the panel of story ${story.id}`);
   const internalReleases = map.audience === "internal" ? new Map(map.releases.map(release => [release.id, release])) : undefined;
+  const impactLine = (id: string) => {
+    const impact = internalReleases?.get(id)?.impact;
+    return impact?.length ? <ImpactLine impact={impact} /> : null;
+  };
+  const estimateLine = (id: string) => {
+    const estimates = internalReleases?.get(id)?.estimates;
+    return estimates ? <ReleaseEstimate estimates={estimates} /> : null;
+  };
   const lookup = personaLookup(map);
   const personaPanelIds = new Map([...lookup.personas.keys()].map((id, index) => [id, `${baseId}-persona-${index}`]));
   // Who each step of the journey serves, from the personas of its active stories, in map order.
@@ -2754,8 +3001,9 @@ export function StoryMapBoard({
   // A map without personas still gets it, showing how to add them.
   const personaList = [...lookup.personas.values()];
   const tabs = internal && map.filter ? map.filter : undefined;
-  const personasTab = !!tabs && tabs.view === "personas";
-  const actionsTab = !!tabs && tabs.view === "actions";
+  const personasTab = tabs !== undefined && tabs.view === "personas";
+  const analyticsTab = tabs !== undefined && tabs.view === "analytics";
+  const actionsTab = tabs !== undefined && tabs.view === "actions";
   // Hand-built views from before the Actions tab may have no actions.
   const actionGroups = map.audience === "internal" ? map.actions ?? [] : [];
   const mapPath = map.audience === "internal" ? map.mapPath : undefined;
@@ -2771,10 +3019,12 @@ export function StoryMapBoard({
   };
   const itemActionsHref = (id: string) => tabs && actionsHref(tabs, preservedParams, { item: id });
   // The story map's own parts are hidden on the other tabs.
-  const otherTab = personasTab || actionsTab;
+  const otherTab = personasTab || actionsTab || analyticsTab;
   // The panel a permalink opens, which board.js shows on load. Customers have no release panels, so their release links only scroll.
-  const linkedStory = !otherTab && map.filter?.story ? placed.find(story => story.id === map.filter!.story) : undefined;
-  const linkedReleaseIndex = !otherTab && internalReleases && showGrid && map.filter?.release ? releases.findIndex(release => release.id === map.filter!.release) : -1;
+  const linkedStoryId = map.filter?.story;
+  const linkedReleaseId = map.filter?.release;
+  const linkedStory = !otherTab && linkedStoryId ? placed.find(story => story.id === linkedStoryId) : undefined;
+  const linkedReleaseIndex = !otherTab && internalReleases && showGrid && linkedReleaseId ? releases.findIndex(release => release.id === linkedReleaseId) : -1;
   const openPanel = linkedStory ? panelIds.get(linkedStory) : linkedReleaseIndex >= 0 ? `${baseId}-release-${linkedReleaseIndex}` : undefined;
 
   return (
@@ -2792,7 +3042,7 @@ export function StoryMapBoard({
       <div className="esm-frame">
         {tabs && (
           <BoardTabs
-            current={personasTab ? "personas" : actionsTab ? "actions" : "map"}
+            current={personasTab ? "personas" : actionsTab ? "actions" : analyticsTab ? "analytics" : "map"}
             filter={tabs}
             preservedParams={preservedParams}
             stories={tabs.total}
@@ -2800,11 +3050,12 @@ export function StoryMapBoard({
             actions={countStoryMapActions(actionGroups)}
           />
         )}
-        {personasTab && <PersonasPage personas={personaList} filter={tabs!} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} />}
+        {personasTab && <PersonasPage personas={personaList} filter={tabs} preservedParams={preservedParams} baseId={baseId} editing={personaEditing} />}
+        {analyticsTab && map.audience === "internal" && <AnalyticsPage map={map} filter={tabs} preservedParams={preservedParams} settings={settings} baseId={baseId} />}
         {actionsTab && map.audience === "internal" && (
           <ActionsPage
             groups={actionGroups}
-            filter={tabs!}
+            filter={tabs}
             preservedParams={preservedParams}
             releases={map.releases}
             links={actionLinks}
@@ -2870,12 +3121,12 @@ export function StoryMapBoard({
                       </span>
                     </div>
                     {release.summary && <span className="esm-release-summary">{release.summary}</span>}
-                    {!!internalReleases?.get(release.id)?.impact?.length && <ImpactLine impact={internalReleases.get(release.id)!.impact!} />}
+                    {impactLine(release.id)}
                     {hideInactive && (activeCounts.get(release.id) ?? 0) !== (releaseCounts.get(release.id) ?? 0) ? <>
                       <span className="esm-release-count esm-count-active">{storyCount(activeCounts.get(release.id) ?? 0)}</span>
                       <span className="esm-release-count esm-count-all">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>
                     </> : <span className="esm-release-count">{storyCount(releaseCounts.get(release.id) ?? 0)}</span>}
-                    {internalReleases?.get(release.id)?.estimates && <ReleaseEstimate estimates={internalReleases.get(release.id)!.estimates!} />}
+                    {estimateLine(release.id)}
                   </div>
                   {map.activities.map(activity => {
                     const stories = cells.get(`${release.id}:${activity.id}`) ?? [];
@@ -2896,7 +3147,7 @@ export function StoryMapBoard({
                             aria-haspopup="dialog"
                             data-inactive={isActiveStatus(story.status) ? undefined : ""}
                             key={story.id}
-                            {...popoverTarget(panelIds.get(story)!)}
+                            {...popoverTarget(panelIdOf(story))}
                           >
                             {internal && <CardHead story={story} personas={labelsFor(story.personas, lookup)} />}
                             <span className="esm-card-title">{story.title}</span>
@@ -2924,10 +3175,10 @@ export function StoryMapBoard({
         <StoryDetail
           key={story.id}
           story={story}
-          panelId={panelIds.get(story)!}
+          panelId={panelIdOf(story)}
           permalink={permalink({ story: story.id })}
-          activityTitle={activityTitles.get(story.activity)!}
-          releaseTitle={releaseTitles.get(story.release)!}
+          activityTitle={present(activityTitles.get(story.activity), `the activity of story ${story.id}`)}
+          releaseTitle={present(releaseTitles.get(story.release), `the release of story ${story.id}`)}
           internal={internal}
           sourceBaseUrl={sourceBaseUrl}
           links={links}
@@ -2949,7 +3200,7 @@ export function StoryMapBoard({
         <PersonaDetail
           key={persona.id}
           persona={persona}
-          panelId={personaPanelIds.get(persona.id)!}
+          panelId={present(personaPanelIds.get(persona.id), `the panel of persona ${persona.id}`)}
           filter={map.filter}
           preservedParams={preservedParams}
           openHref={tabs && personaPageHref(tabs, persona.id, preservedParams)}
@@ -2958,7 +3209,7 @@ export function StoryMapBoard({
       {!otherTab && internalReleases && showGrid && releases.map((release, index) => (
         <ReleaseDetail
           key={release.id}
-          release={internalReleases.get(release.id)!}
+          release={present(internalReleases.get(release.id), `release ${release.id}`)}
           panelId={`${baseId}-release-${index}`}
           permalink={permalink({ release: release.id })}
           stories={placed.filter(story => story.release === release.id)}

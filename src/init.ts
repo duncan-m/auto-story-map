@@ -194,7 +194,9 @@ export function describeProduct(name: string) {
  * Sets up Auto Story Map in a host repository: a starter map, the story
  * map guide, the agent instructions, optionally as a skill, and a validation
  * workflow. Existing files
- * are never overwritten, so it is safe to run again. Each part except the map
+ * are never overwritten, so it is safe to run again. A starter map written with the
+ * agent rules or the skill sets `settings.architectureDecisions: required`, since the
+ * rules ask for architecture decisions. Each part except the map
  * and the skill records the package version and a hash of its template, so a
  * later review can tell the host's edits from the package's changes.
  */
@@ -210,7 +212,9 @@ export async function initStoryMap(root: string, options: InitOptions = {}): Pro
     steps.push({ path: mapPath, action: "skipped", reason: "already exists" });
   } else {
     const { id, title } = describeProduct(await productName(root));
-    const map = (await template("story-map.yaml")).replace("__ID__", id).replace("__TITLE__", title);
+    let map = (await template("story-map.yaml")).replace("__ID__", id).replace("__TITLE__", title);
+    // The rules ask for architecture decisions, so a new install that takes them checks open plans for them too.
+    if (wants("agents") || useSkill) map = map.replace("\nvisibility: internal\n", "\nvisibility: internal\nsettings:\n  architectureDecisions: required\n");
     await writeNew(realRoot, mapPath, map);
     steps.push({ path: mapPath, action: "created" });
   }

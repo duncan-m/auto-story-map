@@ -1,6 +1,6 @@
 # Plan: hand a story or release to a coding agent
 
-Status: proposed. The work is split across two releases of the map. Copying a brief and opening it in a web agent come first, to test how briefs work in practice. The command-line brief and starting a local agent follow once the format has settled.
+Status: merged. ESM-123, ESM-124, ESM-125 and ESM-144 shipped in 0.7.5, and ESM-126 merged in 0.7.10. ESM-127, starting a local agent, was cut. The work was split across two releases of the map, so that copying a brief and opening it in a web agent could test how briefs work in practice before the command-line brief.
 
 - **0.7.5: Evidence and claims for agents**: ESM-123, ESM-124, ESM-125 and ESM-144
 - **0.7.10: Agent briefs**: ESM-126 and ESM-127

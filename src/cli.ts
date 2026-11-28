@@ -41,7 +41,7 @@ const usage = `Usage:
   story-map claim [--format text|json] [--map <path>] [--remote <name>] [--store <dir>] --agent <name> [--ttl <duration>] [--branch <name>] [--renew | --take-over] <ID>
   story-map claims [--format text|json] [--remote <name>] [--store <dir>]
   story-map unclaim [--format text|json] [--remote <name>] [--store <dir>] [--agent <name>] <ID>
-  story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] [--prices <file>] <ID>
+  story-map tokens [--format text|markdown|json] [--map <path>] [--logs <path>] [--branch <name>] [--session <ID>] [--prices <file>] [--since <time>] [--until <time>] <ID>
   story-map edit <ID> [--status <status> [--reason <text>]] [--release <ID>] [--activity <ID>] [--title <text>] [--summary <text>] [--notes <text>] [--add-source <source>] [--remove-source <source>] [--add-job <ID>] [--remove-job <ID>] [--add-persona <ID>] [--remove-persona <ID>] [--add-dependency <ID>] [--remove-dependency <ID>] [--customer-title <text>] [--customer-summary <text>] [--priority must|should|could|none] [--tokens <n>] [--estimated-cost <usd>] [common edit options]
   story-map edit --from <edits.json> [common edit options]
   story-map add --title <text> --activity <ID> --release <ID> [--id <ID>] [--status <status> [--reason <text>]] [--summary <text>] [--notes <text>] [--source <source>] [--job <ID>] [--persona <ID>] [--dependency <ID>] [common edit options]
@@ -442,6 +442,11 @@ tokens
                      tokens, such as {"claude-opus-5-5": {"input": 4,
                      "output": 20, "cacheRead": 0.2}}. cacheWrite5m and
                      cacheWrite1h default to 1.25 and 2 times input.
+  --since <time>     Count only the responses made at or after this time,
+                     such as 2026-11-20T10:42:00Z, when a review started, to
+                     record the review's own cost. With --format markdown it
+                     prints a Review cost line for the Review section instead.
+  --until <time>     Count only the responses made at or before this time.
 
 edit
   Changes a story with named edits instead of editing the YAML by hand. By

@@ -2,11 +2,13 @@ import { getStoryMapActions, type StoryMapActionFilter, type StoryMapActionGroup
 import { storyMapBrief, type StoryMapBriefOptions } from "./brief.js";
 import { filterStoryMapView, readStoryMapFilters } from "./filter.js";
 import { jobStepCounter, personaColourCount, personaInitials, storyPersonaResolver } from "./personas.js";
+import type { AnalyticsMeasure, AnalyticsMilestone, AnalyticsPeriod } from "./analytics.js";
 import type { StoryChange, StoryHistoryEvent, StoryLastEdit, StoryMapHistory } from "./history.js";
 import { storyMapReadiness, type StoryReadiness } from "./readiness.js";
 import { defaultStalledAfterWeeks, loadStoryMap, type EstimatePoints, type StoryPriority, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapJobStep, type StoryMapPersonaContext } from "./schema.js";
 import type { StoryMapTests, StoryTestEntry } from "./tests-index.js";
 import { customerStatus, isActiveStatus, storyStatuses, type StoryStatus, type StoryStatusFilter } from "./status.js";
+import { present } from "./present.js";
 
 export interface StoryMapViewer {
   roles?: readonly string[];
@@ -221,11 +223,13 @@ export interface StoryMapFilterState {
   activity?: string[];
   /**
    * `personas` when the board shows the Personas tab, with the first of `persona` as its page, or the
-   * first persona when none is chosen. Internal views of maps with personas only.
+   * first persona when none is chosen. `analytics` when it shows the Analytics tab. Internal views only.
    */
-  view?: "personas" | "actions";
+  view?: "personas" | "actions" | "analytics";
   /** What the Actions tab narrows its list to, keeping only values the view has. Internal views only. */
   actions?: StoryMapActionFilter;
+  /** The Analytics tab's choices, with defaults filled in. Present with `view: "analytics"`. */
+  analytics?: { period: AnalyticsPeriod; completed: AnalyticsMilestone; chart: AnalyticsMeasure };
   /** The story a permalink opened, when it is in the view. It is kept whatever the other filters say. */
   story?: string;
   /** The release a permalink opened, when it is in the view. */
@@ -328,9 +332,10 @@ function storyDependencies(map: StoryMapDocument) {
   }
   return (story: StoryMapDocument["stories"][number]): { dependsOn?: StoryDependency[]; dependents?: StoryDependency[] } => {
     const dependsOn = (story.dependsOn ?? []).flatMap(id => byId.get(id) ?? []).map(summary);
+    const storyDependents = dependents.get(story.id);
     return {
       ...(dependsOn.length ? { dependsOn } : {}),
-      ...(dependents.has(story.id) ? { dependents: dependents.get(story.id)! } : {}),
+      ...(storyDependents ? { dependents: storyDependents } : {}),
     };
   };
 }
@@ -383,8 +388,10 @@ function summariseRecentUpdates(
     if (time >= since) counts.set(release, (counts.get(release) ?? 0) + 1);
   }
   const releases = map.releases
-    .filter(release => counts.has(release.id))
-    .map(release => ({ id: release.id, title: release.title, stories: counts.get(release.id)! }))
+    .flatMap(release => {
+      const stories = counts.get(release.id);
+      return stories === undefined ? [] : [{ id: release.id, title: release.title, stories }];
+    })
     .sort((a, b) => b.stories - a.stories);
   return { at: newest.at, ...(newest.by ? { by: newest.by } : {}), days: recentUpdateDays, releases };
 }
@@ -519,7 +526,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
         ...projectLabel(release),
         notes: release.notes,
         impact: release.impact?.map(item => ({ ...item })),
-        storyCounts: storyCounts.get(release.id)!,
+        storyCounts: present(storyCounts.get(release.id), `the story counts of ${release.id}`),
         ...releaseEstimates(estimates.get(release.id)),
       })),
       stories: map.stories.map(story => {
@@ -528,6 +535,12 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
         // older than the map, and the start date is unknown.
         const inProgressSince = story.status === "in-progress" && entries?.[0].to === "in-progress" ? entries[0].at : undefined;
         const stalled = !!inProgressSince && stalledAfterWeeks > 0 && Date.parse(inProgressSince) < stalledBefore;
+        const storyReadiness = readiness.get(story.id)?.readiness;
+        const lastEdit = lastEdits.get(story.id);
+        const tests = testsByStory.get(story.id);
+        const moreTests = moreTestsByStory.get(story.id);
+        const changes = changesByStory.get(story.id);
+        const storyMoreChanges = moreChanges.get(story.id);
         return {
           ...projectLabel(story),
           activity: story.activity,
@@ -539,19 +552,19 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
           ...(story.tokens !== undefined ? { tokens: story.tokens } : {}),
           ...(story.estimatedCostUsd !== undefined ? { estimatedCostUsd: story.estimatedCostUsd } : {}),
           ...dependencies(story),
-          ...(readiness.get(story.id)?.readiness ? { readiness: readiness.get(story.id)!.readiness } : {}),
+          ...(storyReadiness ? { readiness: storyReadiness } : {}),
           ...personaFields(resolvePersonas(story), story.jobs),
           updatedBy: story.updatedBy,
           notes: story.notes,
           sources: story.sources,
           ...(entries ? { lastChangedAt: entries[0].at, history: entries } : {}),
-          ...(lastEdits.has(story.id) ? { lastEdit: { ...lastEdits.get(story.id)! } } : {}),
+          ...(lastEdit !== undefined ? { lastEdit: { ...lastEdit } } : {}),
           ...(inProgressSince ? { inProgressSince } : {}),
           ...(stalled ? { stalled } : {}),
-          ...(testsByStory.has(story.id) ? { tests: testsByStory.get(story.id)! } : {}),
-          ...(moreTestsByStory.has(story.id) ? { moreTests: moreTestsByStory.get(story.id)! } : {}),
-          ...(changesByStory.has(story.id) ? { changes: changesByStory.get(story.id)! } : {}),
-          ...(moreChanges.has(story.id) ? { moreChanges: moreChanges.get(story.id)! } : {}),
+          ...(tests !== undefined ? { tests } : {}),
+          ...(moreTests !== undefined ? { moreTests } : {}),
+          ...(changes !== undefined ? { changes } : {}),
+          ...(storyMoreChanges !== undefined ? { moreChanges: storyMoreChanges } : {}),
         };
       }),
       ...(history ? { history: { generatedAt: history.generatedAt, complete: history.complete } } : {}),
@@ -630,7 +643,7 @@ export function getStoryMapForViewer<Viewer extends StoryMapViewer>(
 export interface StoryMapPageOptions<Viewer extends StoryMapViewer = StoryMapViewer> extends StoryMapAccessOptions<Viewer> {
   /**
    * The request's query parameters, such as `url.searchParams`. The `q`,
-   * `status`, `changed`, `persona`, `job` and `activity` filters, the `view`, and a permalink's `story` or `release` are read from them, and anything else is ignored.
+   * `status`, `changed`, `persona`, `job` and `activity` filters, the `view`, the Analytics tab's `period`, `completed` and `chart`, and a permalink's `story` or `release` are read from them, and anything else is ignored.
    */
   searchParams?: URLSearchParams;
 }

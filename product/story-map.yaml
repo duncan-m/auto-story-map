@@ -474,9 +474,12 @@ releases:
 
       First, ESM-180 and ESM-159 to ESM-161 from Rules as checks, the plan checks that help build every later release.
 
+      ESM-174, the Analytics tab spike, moved here from 0.8.3 to land early. The full delivery metrics stay in 0.8.3.
+
       Plan: docs/plans/0.8.0-agents-and-adoption.md
       Plan for host planning guidance (ESM-148 to ESM-153): docs/plans/host-planning-guidance.md
       Plan for Rules as checks (ESM-159 to ESM-165 and ESM-180): docs/plans/rules-as-checks.md
+      Plan for the Analytics tab spike (ESM-174): docs/plans/delivery-metrics.md#spike-show-delivery-totals-in-an-analytics-tab
     impact:
       - metric: Host plans that name what they build on and what they leave out
         expected: Plans written from the guide's structure, with builds-on, Not now and effort sections
@@ -544,7 +547,7 @@ releases:
     title: "0.7.11: Code review and architecture checks"
     summary: Each PR is reviewed against its story before it is ready, lint, coverage and CodeQL quality queries run in CI, and plans record their architecture decisions, with points for reviewing the architecture and refactoring.
     notes: |
-      Planning proposal only. Of the last 30 merged PRs none had an independent review, and CodeQL found escaping, sanitising or ReDoS problems in 5 of them after the push. ESM-187, ESM-178, ESM-176 and ESM-177 come first, alongside the story-first review (ESM-179) and a ten-PR pilot of the review step (ESM-182), then architecture decisions in plans (ESM-183), their check (ESM-184) and review points (ESM-185), and last offering both to hosts (ESM-186) once the pilot is done.
+      Each PR is now reviewed against its story before it is ready (ESM-179, ESM-182). Before this, none of the last 30 merged PRs had an independent review. In a ten-PR pilot, review fixed problems before ready in 9, so hosts are offered the step through the upgrade review (ESM-186). CI lints with Biome (ESM-176), has a coverage floor (ESM-177) and runs CodeQL's quality queries (ESM-178), and the code shares one escape helper (ESM-187). Plans and PRs record architecture decisions (ESM-183), checked by validate (ESM-184) and pr-check (ESM-188), with review points in the guide (ESM-185). A test stops complexity warnings growing (ESM-189). ESM-190 is still planned.
 
       Plan: docs/plans/code-review.md
     impact:
@@ -602,7 +605,7 @@ releases:
     summary: Git-native burn-up, burn-down, throughput, velocity and release progress without maintaining sprints.
     notes: |
       Planning proposal only. Calculated from the map and the history file from story-map history, with no new generated file; metrics remain internal.
-      Starts with a spike, ESM-174: an Analytics tab of stories, points, tokens and spend per day, week or month. The full metrics, ESM-130 to ESM-134, follow on from it.
+      Builds on a spike, ESM-174, which moved to 0.7.7: an Analytics tab of stories, points, tokens and spend per day, week or month. The full metrics, ESM-130 to ESM-134, follow on from it.
       Plan: docs/plans/delivery-metrics.md
       Mockup: docs/plans/delivery-metrics-mockup.html
     impact:
@@ -2218,16 +2221,23 @@ stories:
   - id: ESM-174
     title: Spike delivery totals in an Analytics tab
     activity: track
-    release: v0-8-3
-    status: planned
+    release: v0-7-7
+    status: merged
+    tokens: 37977477
+    estimatedCostUsd: 13.15
     jobs:
       - get-oriented
       - agree-first-release-plan
-    summary: A new internal Analytics tab shows stories, points, tokens and spend completed per day, week or month, from the map and the history file, with coverage for missing estimates and tokens.
-    notes: "Spike before the full 0.8.3 metrics: values are today's, not at the time, and it shows no scope change or remaining work. ESM-132, ESM-133 and ESM-134 follow on from it. Estimate not agreed yet."
+    summary: |-
+      Internal viewers get an Analytics tab on the board that shows the stories, points, tokens and spend completed each day, week or month.
+      It gives a first view of delivery pace and cost from the map and its history, before the full delivery metrics in 0.8.3.
+      It is done when the totals match the map and history, with missing estimates and tokens shown as coverage, never as zero.
+      It leaves out scope change, remaining work, burn charts and values at the time of completion.
+    notes: "Spike before the full 0.8.3 metrics, moved into 0.7.7 to land early: values are today's, not at the time, and it shows no scope change or remaining work. ESM-132, ESM-133 and ESM-134 follow on from it in 0.8.3. Estimate not agreed yet."
     sources:
       - docs/plans/delivery-metrics.md#spike-show-delivery-totals-in-an-analytics-tab
       - docs/plans/delivery-metrics.md#ui-mockup
+      - docs/story-map.md#see-delivery-totals
   - id: ESM-130
     title: Reconstruct delivery events from Git
     activity: track
@@ -2762,7 +2772,9 @@ stories:
     title: Offer the review step and architecture decisions to hosts
     activity: review
     release: v0-7-11
-    status: planned
+    status: merged
+    tokens: 34555173
+    estimatedCostUsd: 12.85
     jobs:
       - plan-and-build
       - keep-setup-current
@@ -2773,6 +2785,8 @@ stories:
     summary: The host templates, guide, plan scaffold and upgrade review offer the review step and architecture decisions to hosts, after the pilot.
     sources:
       - docs/plans/code-review.md#9-offer-the-review-step-and-architecture-decisions-to-hosts
+      - docs/story-map.md#review-a-change-before-it-is-ready
+      - docs/story-map.md#record-architecture-decisions
   - id: ESM-187
     title: Share one regular-expression escape helper
     activity: review
@@ -2787,8 +2801,83 @@ stories:
     summary: One escapeRegExp exported from src replaces the five copies, with a property test that escaped text matches itself literally.
     sources:
       - docs/plans/code-review.md#10-share-one-regular-expression-escape-helper
-  # Proposed visual slice editing and review (planning only)
   - id: ESM-188
+    title: Check the Architecture line in pull requests
+    activity: review
+    release: v0-7-11
+    status: merged
+    tokens: 8142115
+    estimatedCostUsd: 2.85
+    jobs:
+      - plan-and-build
+      - resolve-material-uncertainty
+    summary: "When a map requires architecture decisions, pr-check warns about a ready pull request whose description has no Architecture line, an empty one, or a None: answer with no reason."
+    sources:
+      - docs/plans/code-review.md#6-record-architecture-decisions-in-plans-and-prs
+  - id: ESM-189
+    title: Keep complexity warnings from growing
+    activity: review
+    release: v0-7-11
+    status: merged
+    jobs:
+      - plan-and-build
+    summary: A test fails when Biome reports more cognitive-complexity warnings than the agreed ceiling, so new code can't add them unnoticed while warnings still don't fail npm run lint.
+    sources:
+      - docs/plans/code-review.md#1-lint-the-code-with-biome-in-ci
+      - biome.jsonc
+  - id: ESM-190
+    title: Check for missing values instead of assuming they are there
+    activity: review
+    release: v0-7-11
+    status: merged
+    tokens: 16578886
+    estimatedCostUsd: 6.16
+    jobs:
+      - plan-and-build
+    summary: |-
+      When a map or a command's input lacks something the code expected, people see a clear message saying what is missing, not a confusing crash.
+      About 190 places in the code assume a value is there without checking. Each could fail on unusual input.
+      Done when: none of these assumptions is left, the lint rule that blocks new ones is on, and valid maps behave as before.
+      Not included: the two accessibility lint rules, which are off for lasting reasons.
+    sources:
+      - docs/plans/code-review.md#1-lint-the-code-with-biome-in-ci
+      - biome.jsonc
+  - id: ESM-191
+    title: Write story summaries people can read at a glance
+    activity: plan
+    release: v0-7-11
+    status: merged
+    tokens: 8371310
+    estimatedCostUsd: 2.47
+    jobs:
+      - update-the-map
+      - plan-and-build
+    summary: |-
+      People reading a story see what changes and for whom, why now, when it is done and what it leaves out, in short lines.
+      Agents write summaries in implementation terms today, because neither the guide nor AGENTS.md says how to write one.
+      Done when: the guide shows the four parts and where to break lines, both AGENTS.md files point to it, and the board keeps the line breaks.
+      Not included: a check that reports long lines.
+    sources:
+      - docs/story-map.md#write-a-story-summary
+  - id: ESM-192
+    title: Scroll the board with the page, not in a box of its own
+    activity: explore
+    release: v0-7-11
+    status: merged
+    tokens: 19799996
+    estimatedCostUsd: 7.01
+    jobs:
+      - get-oriented
+    summary: |-
+      People reading the board scroll only the page, with the activity titles at the top of the window and the release column on the left.
+      Today the grid scrolls in a box inside a page that also scrolls, so the mouse wheel switches between them part-way down.
+      Done when: the preview and example pages have one scroll bar each way, and the headings still stick.
+      Not included: keeping the title and toolbar in view when the board scrolls sideways.
+    sources:
+      - docs/plans/page-scroll-board.md#change
+      - docs/plans/page-scroll-board.md#ui-mockup
+  # Proposed visual slice editing and review (planning only)
+  - id: ESM-209
     title: Add, rename and move releases from the command line
     activity: plan
     release: v0-9-0
@@ -2798,210 +2887,270 @@ stories:
     jobs:
       - update-the-map
       - triage-backlog
-    summary: story-map release add, edit and move create a release, set its title and summary, and move it before or after another, printing the diff and validation as a dry run until --write, without changing release IDs.
+    summary: |-
+      Founders, PMs and agents can add, rename and move a release with one command, instead of editing the YAML by hand.
+      There is no command for releases today, and the board's slice edits need one to build on.
+      Done when a dry run shows the diff, --write saves it, and an edits file can mix release and story changes.
+      Not included: changing release IDs, deleting releases, or editing release notes and impact.
     sources:
       - docs/plans/visual-slice-editing.md#1-add-rename-and-move-releases-from-the-command-line
-  - id: ESM-189
+  - id: ESM-210
     title: Warn when a move puts a prerequisite in a later release
     activity: plan
     release: v0-9-0
     status: planned
     dependsOn:
       - ESM-142
-      - ESM-188
+      - ESM-209
     jobs:
       - triage-backlog
       - agree-first-release-plan
-    summary: For a proposed map, list each planned or in-progress story whose prerequisite now sits in a later release, or is blocked or cut, in every edit dry run and on the board, reusing ESM-142's risks.
+    summary: |-
+      When a change moves a story or release, the map says which stories would then wait on a prerequisite in a later release.
+      Today nobody sees this until someone traces the dependencies by hand.
+      Done when every edit dry run lists the risks it adds and resolves, and the board shows the same list.
+      Not included: blocking the change. It is a warning.
     sources:
       - docs/plans/visual-slice-editing.md#2-warn-when-a-move-puts-a-prerequisite-later
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-190
+  - id: ESM-211
     title: Collect board edits and review their Git diff before saving
     activity: review
     release: v0-9-0
     status: planned
     dependsOn:
       - ESM-112
-      - ESM-189
+      - ESM-210
     jobs:
       - triage-backlog
-    summary: A Pending changes tray holds the board's unsaved edits and shows their YAML line diff, the story-map diff summary and the prerequisites they put later, then saves on the local preview or copies the patch or the edits file.
+    summary: |-
+      Board edits wait in a Pending changes tray, with their Git diff and dependency warnings, until the founder or PM saves them.
+      Several moves then land as one reviewed change, instead of each one saving straight away.
+      Done when the tray lists, undoes and saves edits on the local preview, and copies them as a patch elsewhere.
+      Not included: saving on a deployed board.
     sources:
       - docs/plans/visual-slice-editing.md#3-collect-board-edits-and-review-their-diff
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-191
+  - id: ESM-212
     title: Create a release slice and set its outcome on the board
     activity: plan
     release: v0-9-0
     status: planned
     dependsOn:
-      - ESM-188
-      - ESM-190
+      - ESM-209
+      - ESM-211
     jobs:
       - triage-backlog
       - agree-first-release-plan
-    summary: A New release control between release rows asks for a title and an outcome, saved as the release summary, and adds the new release to the tray.
+    summary: |-
+      A founder or PM can add a release between two rows on the board, with a title and the outcome it delivers.
+      Planning a new slice today means writing YAML by hand.
+      Done when the new release appears in place, its outcome is saved as the release summary, and a clashing ID is refused.
+      Not included: release notes and impact, which stay in pull requests.
     sources:
       - docs/plans/visual-slice-editing.md#4-create-a-slice-and-set-its-outcome
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-192
+  - id: ESM-213
     title: Move a release row up or down on the board
     activity: plan
     release: v0-9-0
     status: planned
     dependsOn:
-      - ESM-188
-      - ESM-190
+      - ESM-209
+      - ESM-211
     jobs:
       - triage-backlog
-    summary: Drag a release row, or use Move up and Move down in its panel, to change the delivery order, with the prerequisites the move puts later shown before it joins the tray.
+    summary: |-
+      A founder or PM can drag a release row, or use Move up and Move down, to change the delivery order.
+      Reordering releases today means cutting and pasting blocks of YAML.
+      Done when the board shows the new order at once, the move joins the tray with its warnings, and keyboard users can move a release from its panel.
+      Not included: changing release IDs or numbers.
     sources:
       - docs/plans/visual-slice-editing.md#5-move-a-release-up-or-down
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-193
+  - id: ESM-214
     title: Move several stories to another release on the board
     activity: plan
     release: v0-9-0
     status: planned
     dependsOn:
-      - ESM-190
+      - ESM-211
     jobs:
       - triage-backlog
-    summary: Select several cards and choose Move to, which adds one batch of release changes to the tray, with the prerequisites it puts later.
+    summary: |-
+      A founder or PM can select several story cards and move them to another release in one step.
+      Moving a group of stories today takes one edit per story.
+      Done when selection works across the board, Move to adds one batch to the tray, and Undo removes it whole.
+      Not included: reordering stories within a release.
     sources:
       - docs/plans/visual-slice-editing.md#6-move-several-stories-to-another-release
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-194
+  - id: ESM-215
     title: Bring a prerequisite forward from a move warning
     activity: plan
     release: v0-9-0
     status: planned
     dependsOn:
-      - ESM-189
-      - ESM-190
+      - ESM-210
+      - ESM-211
     jobs:
       - triage-backlog
       - agree-first-release-plan
-    summary: A warning that a move puts a prerequisite later offers Bring forward, which moves that prerequisite and its own unfinished prerequisites into the dependent story's release, as more edits in the tray.
+    summary: |-
+      When a move leaves a prerequisite in a later release, the warning offers to bring it forward, with any of its own prerequisites that would also be late.
+      This fixes the plan in one step instead of hunting for each story.
+      Done when the tray lists the stories it will move first, and leaves merged, shipped, blocked and cut stories alone.
+      Not included: moving dependent stories back.
     sources:
       - docs/plans/visual-slice-editing.md#7-bring-a-prerequisite-forward
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-195
+  - id: ESM-216
     title: Offer to renumber release titles after a move
     activity: plan
     release: v0-9-0
     status: planned
     dependsOn:
-      - ESM-192
+      - ESM-213
     jobs:
       - triage-backlog
-    summary: When release titles start with a version, such as 0.8.1:, and a move puts them out of order, the tray offers Renumber titles, which changes only those prefixes and never a release ID.
+    summary: |-
+      After a move puts version-numbered release titles out of order, the tray offers to renumber them.
+      Titles such as 0.8.1 otherwise read out of order on the board after a reorder.
+      Done when the offer says how many titles change, lists each old and new number, and changes nothing else.
+      Not included: changing release IDs.
     sources:
       - docs/plans/visual-slice-editing.md#8-offer-to-renumber-release-titles
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-196
+  - id: ESM-217
     title: Compare the current and proposed release order
     activity: review
     release: v0-9-1
     status: planned
     dependsOn:
-      - ESM-189
-      - ESM-190
+      - ESM-210
+      - ESM-211
     jobs:
       - share-roadmap
       - agree-first-release-plan
-    summary: A Compare view shows the current and proposed release order side by side, marking moved stories and releases, new releases, and the dependencies the proposal breaks or fixes.
+    summary: |-
+      Founders, PMs and reviewers can see the current and proposed release order side by side, with what moved and which dependencies change.
+      Reviewers today read YAML diffs to understand a plan change.
+      Done when moved releases and stories are marked, the dependency risks added and resolved are listed, and stories open from the proposed map.
+      Not included: editing from the Compare view.
     sources:
       - docs/plans/visual-slice-editing.md#9-compare-the-current-and-proposed-release-order
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-197
+  - id: ESM-218
     title: Share a proposal as a private link
     activity: review
     release: v0-9-1
     status: planned
     dependsOn:
-      - ESM-196
+      - ESM-217
     jobs:
       - share-roadmap
       - agree-first-release-plan
-    summary: Copy link puts the tray's edits in the link's fragment, which the browser never sends to the server. Opening it on the signed-in internal board applies them to the current map and opens the Compare view.
+    summary: |-
+      A founder or PM can share a proposal as a link that other signed-in team members open in the Compare view.
+      Reviewers then need no checkout, and nothing is stored on a server.
+      Done when a link round-trips, says when the map has changed since, and shows nothing to customers or people who are not signed in.
+      Not included: links for people without an account.
     sources:
       - docs/plans/visual-slice-editing.md#10-share-a-proposal-as-a-private-link
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-198
+  - id: ESM-219
     title: Open a draft pull request from the board
     activity: review
     release: v0-9-1
     status: planned
     dependsOn:
       - ESM-144
-      - ESM-190
+      - ESM-211
     jobs:
       - triage-backlog
       - agree-first-release-plan
-    summary: Open draft PR hands the tray's edits to Claude Code on the web, with a brief to apply them with story-map edit, validate, and open a draft pull request with the diff summary and the proposal link.
+    summary: |-
+      A founder or PM can open a draft pull request for a proposal from the board, by handing it to Claude Code on the web.
+      People without a local checkout can then turn a proposal into a reviewed change.
+      Done when the hand-off applies the edits, validates the map and opens a draft PR with the diff summary and the proposal link.
+      Not included: the board writing to GitHub itself.
     sources:
       - docs/plans/visual-slice-editing.md#11-open-a-draft-pull-request-from-the-board
       - docs/plans/visual-slice-editing.md#ui-mockup
-  - id: ESM-199
+  - id: ESM-220
     title: Propose slice changes from the hosted board without a checkout
     activity: plan
     release: v0-9-1
     status: planned
     dependsOn:
-      - ESM-191
-      - ESM-192
-      - ESM-193
-      - ESM-194
-      - ESM-197
-      - ESM-198
+      - ESM-212
+      - ESM-213
+      - ESM-214
+      - ESM-215
+      - ESM-218
+      - ESM-219
     jobs:
       - agree-first-release-plan
       - triage-backlog
-    summary: "Signed-in internal viewers on a deployed board can use the slice edits and the tray. It never saves on the server: it shares a link or opens a draft pull request instead."
+    summary: |-
+      Signed-in founders and PMs can use the slice edits and the tray on the product's deployed board, not only on the local preview.
+      This is what lets a PM change the plan with no checkout.
+      Done when hosts turn it on with one option, customers never see it, and the deployed board shares a link or opens a draft PR but never saves.
+      Not included: saving on the server.
     sources:
       - docs/plans/visual-slice-editing.md#12-propose-slice-changes-from-the-hosted-board
-  - id: ESM-200
+  - id: ESM-221
     title: Comment on a release slice in a proposal
     activity: review
     release: icebox
     status: blocked
     statusReason: "Icebox: waits for a person to agree its architecture decision in docs/plans/visual-slice-editing.md before it is planned."
     dependsOn:
-      - ESM-197
+      - ESM-218
     jobs:
       - share-roadmap
       - agree-first-release-plan
-    summary: Reviewers add comments to a release in the Compare view, and see earlier comments there.
+    summary: |-
+      Reviewers can comment on a release in the Compare view and see earlier comments there.
+      Kept for later: it needs a GitHub identity for the board, or a new place to store comments, and that decision is not agreed.
+      Done when a comment stays with its release and its proposal.
+      Not included: comments on single stories.
     sources:
       - docs/plans/visual-slice-editing.md#13-comment-on-a-release-slice-in-a-proposal
-  - id: ESM-203
+  - id: ESM-222
     title: Open the draft pull request directly through a GitHub App
     activity: review
     release: icebox
     status: blocked
     statusReason: "Icebox: waits for a person to agree its architecture decision in docs/plans/visual-slice-editing.md before it is planned."
     dependsOn:
-      - ESM-198
+      - ESM-219
     jobs:
       - agree-first-release-plan
       - triage-backlog
-    summary: A GitHub App installed on the product's repository lets the host's server create a branch, commit the map and open the draft pull request when a signed-in founder or PM asks, with no agent hand-off.
+    summary: |-
+      Open draft PR creates the pull request in one step, through a GitHub App installed on the product's repository, with no agent hand-off.
+      Kept for later: it gives the deployed board write access to the repository, reversing the decision that the board is read-only.
+      Done when the server opens a draft PR as the app's bot, crediting the founder or PM.
+      Not included: merging, or pushing to the default branch.
     sources:
       - docs/plans/visual-slice-editing.md#14-open-the-draft-pull-request-through-a-github-app
-  - id: ESM-204
+  - id: ESM-223
     title: Open a live proposal from its pull request
     activity: review
     release: icebox
     status: blocked
     statusReason: "Icebox: waits for a person to agree its architecture decision in docs/plans/visual-slice-editing.md before it is planned."
     dependsOn:
-      - ESM-196
-      - ESM-203
+      - ESM-217
+      - ESM-222
     jobs:
       - share-roadmap
       - agree-first-release-plan
-    summary: A link such as ?proposal=<PR> reads the map from the pull request's branch, so the Compare view follows later commits to the proposal.
+    summary: |-
+      A link to a pull request shows its latest proposed map in the Compare view, so reviewers always see the current version.
+      Kept for later: it needs the server to read the repository, with the GitHub App or a read-only token.
+      Done when the view follows new commits to the pull request and ignores pull requests from forks.
+      Not included: editing the pull request from the board.
     sources:
       - docs/plans/visual-slice-editing.md#15-open-a-live-proposal-from-its-pull-request

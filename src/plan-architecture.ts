@@ -13,20 +13,20 @@ export const planArchitectureHeading = "Architecture decisions";
  * that still holds any of them, so the two must use the same text.
  */
 export const planArchitectureHints = [
-  "<!-- Where it runs: inside the existing package, CLI, board or CI workflow, or as its own service, worker or package. -->",
+  "<!-- Where it runs: inside the existing app, CLI or CI workflow, or as its own service, worker or package. -->",
   "<!-- Data and contracts: who consumes it upstream and downstream, and what changes for each. -->",
   "<!-- Boundaries: which security boundaries it touches, and which it stays out of. -->",
-  "<!-- Reversibility: how to undo it, including for hosts that have already upgraded. -->",
+  "<!-- Reversibility: how to undo it, including for people and systems that already depend on it. -->",
 ] as const;
 
 /** The plan statuses that mean the work is still open, so its decisions still matter. */
 const openStatuses: ReadonlySet<PlanStatusWord> = new Set(["proposed", "planned", "in progress"]);
 
 /** `None:` as the routine answer starts, optionally in bold, and not the end of another word. */
-const noneAnswer = /(?<![\p{L}\p{N}])None[*_]*\s*:/iu;
+export const noneAnswer = /(?<![\p{L}\p{N}])None[*_]*\s*:/iu;
 
 /** A reason after `because`: at least one word. */
-const becauseReason = /\bbecause\s+[*_]*[\p{L}\p{N}]/iu;
+export const becauseReason = /\bbecause\s+[*_]*[\p{L}\p{N}]/iu;
 
 /** What is wrong with a plan's architecture section, or undefined when it is fine. */
 export type PlanArchitectureProblem =
@@ -44,7 +44,7 @@ export function planArchitectureProblems(markdown: string): PlanArchitectureProb
   const headings = markdownHeadings(markdown);
   const index = headings.findIndex(heading => heading.level === 2 && heading.text.trim().toLowerCase() === planArchitectureHeading.toLowerCase());
   if (index < 0) return [{ kind: "missing" }];
-  const heading = headings[index]!;
+  const heading = headings[index];
   const next = headings.slice(index + 1).find(other => other.level <= heading.level);
   const lines = markdown.split(/\r?\n/);
   const end = next ? next.line - 1 : lines.length;

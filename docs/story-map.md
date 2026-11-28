@@ -279,6 +279,17 @@ Each file it replaces or adds records this version in its [marker](#what-the-set
 
 In code, `applyUpgrade({ root, map, mode, parts, answers, write })` does the same and returns the result. The interactive walk-through and [`init`](#choose-the-parts-at-install) build on it: in advanced mode, an empty `parts` keeps every part, as when the person takes none.
 
+## Upgrade to 0.7.11
+
+These steps work from 0.7.8 or later, which has the [upgrade review](#review-the-set-up-after-an-upgrade). Existing maps stay valid.
+
+1. From your host repo, run `npm install auto-story-map@0.7.11` and commit the dependency and lockfile changes together.
+2. Run `npx --no-install story-map upgrade`. It offers three new rules in the `AGENTS.md` section, `review-before-ready`, `architecture-decisions` and `write-story-summaries`, or `skill-review-before-ready` and `skill-architecture-decisions` when the rules are in the skill from `init --skill`, and the guide's new sections, [Review a change before it is ready](#review-a-change-before-it-is-ready), [Record architecture decisions](#record-architecture-decisions) and [Write a story summary](#write-a-story-summary). With `init --skill`, the new summary rule is in the skill. Simple mode adds the new rules even to an edited section, and keeps your own wording. In advanced mode, take the `agents` part.
+3. When the run adds the `architecture-decisions` rule and the map has no `settings.architectureDecisions`, it records `required`, so an open plan without a `## Architecture decisions` section gets a warning, which fails `validate --strict`. Before you merge the upgrade, add the section to each open plan, or keep the problems as notices with `npx --no-install story-map settings --architecture-decisions recommended --write`. `story-map diff` lists the setting under **Needs a person**, so a person agrees it. Hosts that keep the rule out see only [notices](#check-the-architecture-section-in-plans).
+4. `story-map plan` now scaffolds a `## Architecture decisions` section, with a hint for each question to replace.
+5. If your repository has a pull request template, add a **Review** section and an **Architecture** line to it, as in [Review a change before it is ready](#review-a-change-before-it-is-ready).
+6. Run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
+
 ## Upgrade to 0.7.7
 
 These steps work from 0.7.0 or later. Existing maps stay valid.
@@ -345,11 +356,39 @@ These steps work from 0.1.0 or 0.2.0. The YAML format is unchanged.
 | Work that stopped or was dropped | Set `status` to `blocked` or `cut` and explain why in `statusReason`. See [Blocked and cut stories](#blocked-and-cut-stories). |
 | How big a story is | Set its `estimate` in story points, once the team has agreed it. See [Estimate effort](#estimate-effort). |
 | What must land first | List the stories it depends on in its `dependsOn`. See [Record dependencies](#record-dependencies). |
+| What a story does for people | Its `title` and `summary`, in plain words. See [Write a story summary](#write-a-story-summary). |
 | Who a story is for | List the jobs to be done it serves in its `jobs`, or a persona in its `personas`. Add or reword personas and jobs in the map's `personas`. See [Personas and jobs to be done](#personas-and-jobs-to-be-done). |
 
 Use stable, unique IDs such as `BUILDER-102`. Keep the same ID when renaming or moving a story. A plan can refer to it as `BUILDER-102` and explain the implementation or acceptance criteria in its own words. Ordinary maintenance changes can leave the map alone.
 
 The [status history](#show-status-history) works out who last edited each story from Git, so `updatedBy` is optional. Set it to a display name only when the commit author is not the person to credit, such as an edit made on someone else’s behalf. An edit that sets `updatedBy` is credited to that name.
+
+### Write a story summary
+
+A story's `title` and `summary` are what most people read, in the story panel, in agent briefs and in `story-map story`. Write them for a teammate who doesn't know the code, such as a product manager, not for the person building it. The plan, linked from `sources`, holds how it is built.
+
+The title says what someone can do, or what changes, in plain words: "Check for missing values instead of assuming they are there", not "Turn on noNonNullAssertion".
+
+The summary answers four questions, in this order. Leave out a part that has nothing to say.
+
+1. **What changes, and for whom.** One sentence from the reader's side, without code names.
+2. **Why now.** The problem, or the evidence for it, so a reader can judge the story's priority without opening the plan.
+3. **Done when.** Two or three things someone can check. A reviewer starts from these, as [Review a change before it is ready](#review-a-change-before-it-is-ready) asks, and a [brief](#write-a-brief-for-an-agent) gives them to the agent.
+4. **Not included.** Anything a reader might expect that the story leaves out, so the work doesn't grow while it is built.
+
+Start a new line at least every 180 characters, and for each new long sentence, so the summary reads at a glance in the YAML, on the board and in the CLI. In YAML, write it as a block, with `summary: |` and the lines indented under it. The story panel and `story-map story` keep the line breaks. `story-map add --summary` and `edit --summary` take a value with line breaks, such as `$'First line.\nSecond line.'` in bash or zsh, and write the block for you.
+
+A summary has at most 500 characters, so keep the detail in the plan. Leave out what the map already holds, such as the status, release, estimate and personas. Customer-facing wording goes in `customer.summary`, written for that audience and approved separately.
+
+```yaml
+- id: BUILDER-102
+  title: Look up prices in the material catalogue
+  summary: |
+    Builders pick materials from the supplier catalogue when they price a quote, so each price is current without retyping it.
+    Builders retype prices from supplier sites today, and quotes go out with prices weeks out of date.
+    Done when: a quote line can take a catalogue item and its price, and shows the date the price was fetched.
+    Not included: ordering materials from the catalogue.
+```
 
 ### Change a story from the board
 
@@ -399,15 +438,37 @@ Follow this structure, so every plan reads the same and the map can link to its 
 3. **Numbered items in build order**, each a `## 1. Title` heading with its story ID beside it in the list at the top. Each story's `sources` link to its own item, and the heading gives that link a stable `#heading` target that `--check-sources` checks.
 4. **What it builds on**: the merged or shipped stories the work reuses, and the planned stories it overlaps, each with a link to its plan. Find them with `story-map stories --query <text> --status all` and `story-map story <ID>`. Reviewers then see what is new, and agents see what not to rebuild.
 5. **`## UI mockup`**, when the work adds or changes UI: an HTML mockup built on the product's real styles and markup, filled with stories from the map rather than placeholder text, a PNG of it embedded in the plan, and how to regenerate the image. Link it from each story it shows, as [Link mockups and designs](#link-mockups-and-designs) says. When there is no UI change, say so in a line.
-6. **`## Decisions to make`**: a table of open questions, each with a proposal, so a reviewer can agree or change it in one line.
-7. **`## Not now`**: what was considered and left out, and why, so nobody proposes it again without knowing.
-8. **`## Effort and release fit`**: a table of each story with its points, or “not agreed” when the team has not sized it, a total, and a sentence on which stories could move to another release. Never write an estimate the team has not agreed: see [Estimate effort](#estimate-effort).
+6. **`## Architecture decisions`**: where the work runs, who consumes it upstream and downstream, which security boundaries it touches and how to undo it, as [Record architecture decisions](#record-architecture-decisions) explains. Routine work answers in one line, with a real reason, and [`validate`](#check-the-architecture-section-in-plans) reports an open plan that leaves the section out or keeps the scaffold's hints.
+7. **`## Decisions to make`**: a table of open questions, each with a proposal, so a reviewer can agree or change it in one line.
+8. **`## Not now`**: what was considered and left out, and why, so nobody proposes it again without knowing.
+9. **`## Effort and release fit`**: a table of each story with its points, or “not agreed” when the team has not sized it, a total, and a sentence on which stories could move to another release. Never write an estimate the team has not agreed: see [Estimate effort](#estimate-effort).
 
 Once the plan is agreed, update the map in the same PR: find or add each story, put its plan section first in its `sources`, name the plan in the release `notes` when it covers the release, and run `npx --no-install story-map validate --check-sources product/story-map.yaml`.
 
+### Record architecture decisions
+
+Work bigger than a small fix records its architecture decisions, so a reviewer can see where it runs, who it affects and how to undo it before the code is written, and a person can agree the hard-to-undo ones in time. Answer four questions:
+
+1. **Where it runs.** Inside the existing app, CLI or CI workflow, or as its own service, worker or package.
+2. **Data and contracts.** Who consumes it upstream and downstream, and what changes for each: saved data and its format, APIs and their clients, files other tools read and output that scripts parse.
+3. **Boundaries.** Which security boundaries it touches, such as who can see or change what, and which it stays out of.
+4. **Reversibility.** How to undo it, including for people and systems that already depend on it.
+
+**Routine work** answers in one line, with a real reason: “None: keeps the existing design because it adds a flag to an existing command, with no new consumer.” “None: no change” is not a reason.
+
+**A consequential decision** adds a service, worker or package, a data store or a field in a saved format, or a public export or API, makes a breaking change to an existing contract, or changes a security boundary. Record each affected consumer and the consequence for it, the alternative considered and why it was not chosen, who agreed it, or “not yet”, and what would justify revisiting it. A person agrees it before its stories go `in-progress`. Until then, an agent writes it as a proposal, marked as one, and never writes that a person agreed a decision they did not.
+
+**Where the answers go.** When the work has a plan, in the plan's `## Architecture decisions` section, which [`story-map plan`](#scaffold-a-plan) scaffolds and [`validate` checks](#check-the-architecture-section-in-plans). When it has none, or the product sets `settings.plans: false`, on an **Architecture** line in the pull request description:
+
+```markdown
+Architecture: None: keeps the existing design because it fixes the wording of an error message.
+```
+
+Question 4 in [Review a change before it is ready](#review-a-change-before-it-is-ready) checks for a decision a change made without recording it. The example plan in the package, `node_modules/auto-story-map/docs/example-builder-estimate-plan.md`, has a filled-in section.
+
 ### Scaffold a plan
 
-`story-map plan` prints a plan skeleton for the stories given, in the order given, with the parts above filled in from the map: the status line, a numbered item for each story with its summary to rewrite, the stories it builds on and overlaps, chosen as a [brief](#write-a-brief-for-an-agent) chooses them, empty UI mockup, Decisions to make and Not now sections, and an effort table with the agreed estimates:
+`story-map plan` prints a plan skeleton for the stories given, in the order given, with the parts above filled in from the map: the status line, a numbered item for each story with its summary to rewrite, the stories it builds on and overlaps, chosen as a [brief](#write-a-brief-for-an-agent) chooses them, empty UI mockup, Architecture decisions, Decisions to make and Not now sections, and an effort table with the agreed estimates. The Architecture decisions section holds a hint for each of the [four questions](#record-architecture-decisions), such as `<!-- Where it runs: … -->`, which [`validate`](#check-the-architecture-section-in-plans) reports until you replace it with an answer:
 
 ```sh
 npx --no-install story-map plan BUILDER-102 BUILDER-103 > docs/plans/builder-workflow.md
@@ -467,7 +528,7 @@ settings:
 
 Review the architecture at four points, so a design decision is looked at when it is made rather than found later in the code:
 
-1. **Planning.** When a plan records its architecture decisions, it says where the work runs, who consumes it upstream and downstream, which security boundaries it touches and how to undo it. Routine work answers in a line, with a real reason. A consequential decision, such as a new service, a data store, a field in a saved format, a public export, a breaking contract change or a changed boundary, needs a person's agreement before its stories go `in-progress`.
+1. **Planning.** When a plan records its [architecture decisions](#record-architecture-decisions), it says where the work runs, who consumes it upstream and downstream, which security boundaries it touches and how to undo it. Routine work answers in a line, with a real reason. A consequential decision, such as a new service, a data store, a field in a saved format, a public export, a breaking contract change or a changed boundary, needs a person's agreement before its stories go `in-progress`.
 2. **Review.** When you review a change, ask whether it made an architecture decision that wasn't recorded. A boundary or consumer the plan didn't name sends the work back to the plan, to record the decision there. Work with no plan records it in the pull request description. A consequential decision found in review goes to a person before the pull request is ready.
 3. **Release planning.** Before a minor release's plan is agreed, look at the signals below for the modules and contracts its stories share. This is the point to decide whether a refactor story belongs in the release, rather than in the middle of a feature.
 4. **On a schedule.** A scheduled audit of the map against the code is planned as [ESM-109](https://github.com/duncan-m/auto-story-map/blob/main/docs/plans/0.4.0-enhancements.md#7-scheduled-map-audit).
@@ -864,7 +925,7 @@ In the view, internal maps with personas gain `personas`, each with its `initial
 
 ### Personas tab
 
-When the host uses [search and filters](#integrate-with-a-product), internal boards show **Story map** and **Personas** tabs at the top of the frame. They are links, `?view=personas` for the Personas tab, so they work without JavaScript, and each keeps the search and other filters, so going back to the map keeps them.
+When the host uses [search and filters](#integrate-with-a-product), internal boards show **Story map**, **Personas** and [**Analytics**](#see-delivery-totals) tabs at the top of the frame. They are links, `?view=personas` for the Personas tab, so they work without JavaScript, and each keeps the search and other filters, so going back to the map keeps them.
 
 When the map has no personas, the tab shows how to add them: an example `personas` list, how to tag stories with their jobs, and a link to this guide.
 
@@ -1105,6 +1166,7 @@ Every problem names the rule it breaks, so an agent or script can match it witho
 | `settings-changed` | needs a person | A map setting was changed. | [Changes that need a person](#changes-that-need-a-person) |
 | `missing-tokens-used` | pull request | A pull request marks a story merged, but its description has no Tokens used section that names it or says why there is no count. | [Record the tokens used on a story](#record-the-tokens-used-on-a-story) |
 | `missing-review` | pull request | A pull request is ready for review, but its description has no Review section that records a review. | [Check a pull request in CI](#check-a-pull-request-in-ci) |
+| `missing-architecture` | pull request | A pull request is ready for review in a map that requires architecture decisions, but its description has no Architecture line that answers them. | [Check a pull request in CI](#check-a-pull-request-in-ci) |
 
 A warning's rule is also its `kind`, which the [Actions tab](#see-what-the-map-is-waiting-for) groups by. `--strict` fails on every warning, whatever its rule. Validate never reports the **needs a person** rules: they compare two versions of the map, so [`story-map diff`](#changes-that-need-a-person) lists them. The **needs a person** and **pull request** rules are what [`story-map pr-check`](#check-a-pull-request-in-ci) reports.
 
@@ -1191,6 +1253,7 @@ In JSON, `needsPerson` lists them, each with `rule`, `itemType` (`story`, `activ
 - **Changes that need a person.** When any commit in the pull request that changes the map was written with an agent, each change listed under [Needs a person](#changes-that-need-a-person) is an error, with its rule, unless `--approved` is passed. A commit is an agent's when its author is in `--bot-names` or ends in `[bot]`, or when a `Co-Authored-By` trailer names a known agent: Claude, Codex, Copilot, Cursor, Devin, Gemini, Aider, Jules or OpenHands. Most agent commits are authored as a person, with a trailer, so the author alone would miss them. Merge commits are skipped, since they bring in work already on the base branch.
 - **Tokens used.** With `--body-file <file>`, or `--body-file -` for stdin, each story the pull request marks `merged` needs a **Tokens used** heading in the description whose text names the story, as the output of [`story-map tokens --format markdown`](#record-the-tokens-used-on-a-story) does. A section that names no story at all, such as one saying the agent's tool reports no count, explains the missing count for every story. HTML comments, such as the template's placeholder, do not count. Without `--body-file`, tokens are not checked, so a product that does not record tokens sees no token errors.
 - **Review.** With `--body-file` and `--draft false`, a pull request that is ready for review gets a `missing-review` warning when its description has no **Review** heading, or the section is empty. HTML comments, labels with nothing after them, such as `- Target:` or `- **Level:**`, and labels with only `pending`, `TBD` or `TODO` after them do not count, so a template left as it is counts as empty. Any other text counts, such as a sentence saying a person reviewed the diff. `--draft true` never warns, and without `--draft` the section is not checked, so a product that does not record reviews sees nothing. To check it in CI, pass `--draft "$DRAFT"` with `DRAFT: ${{ github.event.pull_request.draft }}`, and add `ready_for_review` and `converted_to_draft` to the workflow's `pull_request` types so marking a pull request ready checks it again.
+- **Architecture.** In a map with `settings.architectureDecisions: required`, the same ready pull request also gets a `missing-architecture` warning when its description has no **Architecture** line, such as `Architecture: None: keeps the existing design because it adds a flag to an existing command.`, when the line is empty, or when it answers `None:` with no reason after `because`. The answer runs to the end of its paragraph, so a reason that wraps onto the next line counts, and a line pointing to the plan's Architecture decisions section counts too. The line can be in a list item, a quote or bold, but a heading named Architecture doesn't count. HTML comments and code fences are ignored. A map that only recommends architecture decisions is not checked, as [Record architecture decisions](#record-architecture-decisions) explains.
 
 Problems are printed as `validate` prints them, with `--format text`, `github` or `json`, and each one links to the part of this guide that explains it. It exits 1 when there is an error, or a warning with `--strict`, and 2 for a bad option or Git reference. `--head <ref>` checks a range ending somewhere other than `HEAD`.
 
@@ -1210,6 +1273,50 @@ Check out with `fetch-depth: 0`, as for the diff summary, and add `edited`, `lab
 This is a guardrail for agents that follow their own attribution rules, not a security boundary: an agent can leave out the trailer, and a person still reviews the pull request. What it removes is the need to read the YAML diff for these changes.
 
 In code, `checkPullRequest({ diff, after, commits, botNames, approved, body, draft, strict })` returns the result, `commitAgent(commit, botNames)` says which agent wrote a commit, `tokensUsedSection(body)` returns the section's text, and `prCheckRules` lists the rules only `pr-check` reports.
+
+## Review a change before it is ready
+
+Agents write most changes, and often nobody else reads one before it merges. Review each pull request's diff before you mark it ready, so a problem is found while the work is still open. The `review-before-ready` rule in the `AGENTS.md` section asks agents to do it, and a person's review of the same diff counts too.
+
+**Give the review an explicit target**: the pull request by number once a draft exists, such as `/code-review 190` in Claude Code, or `origin/<base branch>...HEAD` before that. A review with no target can compare against the branch's upstream rather than the base branch, and miss commits already pushed. Other agents and review tools take a target too: give them the pull request or the range.
+
+**Start from the story**, then the product's own checks. Ask in this order:
+
+1. **What behaviour did the story promise?** Read its summary, its plan section and the other `sources`, with `story-map story <ID>`. A diff that is correct but does something else has not delivered the story.
+2. **What evidence shows it works?** Tests named with the story ID, as in [Link tests to stories](#link-tests-to-stories), a run of the command, or a screenshot. A claim in the pull request description is not evidence.
+3. **Which existing caller or saved input could break?** Saved data and files people already have, other services and scripts that read the output, and every caller of a changed function. Check what happens to input the change did not expect, such as text with HTML or regular-expression metacharacters.
+4. **Did it make an architecture decision that wasn't recorded?** Compare the diff with the four questions in [Record architecture decisions](#record-architecture-decisions). A boundary or consumer the plan or the **Architecture** line doesn't name goes back there, and a consequential decision goes to a person before the pull request is ready.
+5. **Then the product's own checks**, such as its security boundaries, its conventions and anything its engineering overview asks reviewers to look at.
+
+Fix the findings that are real, and review again after any material change, such as a fix with new code. A commit that only records tokens or edits the description needs no second review.
+
+**Record the review in the pull request description**, in a **Review** section:
+
+```markdown
+## Review
+
+- Target: /code-review 190
+- Commit reviewed: 65e9ca3
+- Level: medium
+- Findings fixed: the slug could end in a hyphen after the cut, fixed in 4f2c1d0
+- Findings declined: the 100 ms limit could flake, but has a margin of about 250 times
+- Review cost: **1,204,331 tokens**, estimated $0.52 at API list prices as of 2026-11-03, on BUILDER-102 from 2026-11-20 10:42 to 2026-11-20 11:05 UTC, in 1 Claude Code session.
+```
+
+For a person's review, write `person` as the level. If no review could be run, leave the pull request as a draft and say so in the section. With `--body-file` and `--draft false`, [`story-map pr-check`](#check-a-pull-request-in-ci) warns when a ready pull request has no Review section, or only the template's labels.
+
+**Record the review's own cost**, apart from the story's, so the team can tell whether review pays for itself. Note the time before the review starts, such as with `date -u +%Y-%m-%dT%H:%M:%SZ`, and afterwards count what was used since then. In Claude Code:
+
+```sh
+npx --no-install story-map tokens BUILDER-102 --since 2026-11-20T10:42:00Z
+npx --no-install story-map tokens BUILDER-102 --since 2026-11-20T10:42:00Z --until 2026-11-20T11:05:00Z
+```
+
+With `--format markdown`, it prints the **Review cost** line as above, to put in place of the template's. `--since` counts from that time on, so it includes fixing the findings. Add `--until`, the time the review finished, to count the review alone, and say which in the section. Other agents record what their own tool reports, such as the counts before and after the review. When you cannot count it, say so instead of guessing. The story's **Tokens used** section still counts everything, the review included.
+
+**Collect the results from the pull requests.** Each pull request's Review section is the record, so there is no shared table to keep up to date, and no file that every pull request edits and conflicts on. To see how reviews went across a release, read the merged pull requests' descriptions, such as with `gh pr list --state merged --limit 30 --json number,title,body`, and compare their Review sections.
+
+**Review does not replace CI.** A review reads the diff. It won't find timing or concurrency problems, such as two test files racing to rebuild a shared folder, or a dependency a scanner flags after the push. Keep the tests, `story-map validate` and your other checks running on every pull request: they are the backstop for what review misses.
 ## Read the map from the command line
 
 Read the map with `story-map story`, `stories` and `releases` instead of opening the YAML file. They print text for people, or JSON with `--format json` for agents and scripts. Reads are always the internal view, because whoever runs them has the file. Each takes `--map <path>`, which defaults to `product/story-map.yaml`, and the files from [`story-map history`](#show-status-history) and [`story-map tests`](#link-tests-to-stories) as `--history <file>` and `--tests-index <file>`, for dates, changes and tagged tests.
@@ -1423,6 +1530,36 @@ The build needs the full Git history. Many CI and hosting systems clone only the
 - Elsewhere, run `git fetch --unshallow` before the command, or generate the file in a step that has the full history and pass it into the build.
 
 The command stops with an explanation when the clone is shallow. Pass `--allow-shallow` to accept a partial history instead; changes before the clone’s oldest commit are then missing.
+
+## See delivery totals
+
+The internal board's **Analytics** tab shows how many stories, points, tokens and how much spend were completed each day, week or month, from the map and the [status history](#show-status-history) file. It is a link, `?view=analytics`, like the [other tabs](#personas-tab), and needs the host to use [search and filters](#integrate-with-a-product). Without a history file, the tab explains how to add one and shows nothing else.
+
+Three menus choose what it shows. They are a GET form, so they work without JavaScript, and `board.js` applies a choice as soon as it changes:
+
+- **Period**, `period=day`, `week` or `month`: the last 8 UTC days, the last 8 weeks starting on Monday, or the last 6 months, ending with the one that holds today. Each starts at midnight UTC, inclusive, and ends at the next one, exclusive. Periods with nothing completed stay in the table.
+- **Completed when**, `completed=merged` or `shipped`: `merged` counts stories that are merged or shipped, since shipping comes after merging, and `shipped` counts shipped stories only.
+- **Chart**, `chart=stories`, `points`, `tokens` or `spend`: the measure the bar chart shows. The table below it holds every measure, and is what screen readers read.
+
+A story counts in the period when its history last moved it into the milestone, or added it already there. A story that was reopened and completed again counts once, in the period of its latest completion, and a story that is no longer complete is not counted. Stories that were already complete in the history's first version of the map, or that became complete after the file was made, have no known completion time: the tab counts them separately and says so.
+
+The spike has limits, which the tab states:
+
+- Points, tokens and spend are each story's values in the map today, from its `estimate`, [`tokens` and `estimatedCostUsd`](#record-the-tokens-used-on-a-story), not their values when it was completed.
+- A story with no estimate or no tokens adds nothing to that total, and is never counted as zero. Each period shows how many of its stories have one, such as “1 of 3 estimated”, and a dash when none do.
+- It says when the history starts, and when the file was made from a shallow clone.
+- It shows no scope change, remaining work, burn charts or release filters. The [delivery metrics plan](plans/delivery-metrics.md) adds those.
+
+The tab counts every story, whatever the search and other filters say, and keeps them for the links back to the map. Customers never get it: `view=analytics` and its options change nothing for them, and their view never includes points, tokens or spend.
+
+The calculation is a pure function of the internal view, also exported for a host's own reports:
+
+```ts
+const view = getStoryMapForViewer(document, viewer, { canViewInternal, history });
+if (view?.audience === "internal" && view.history) {
+  const { buckets, totals, undated } = storyMapAnalytics(view, { period: "week", milestone: "merged" });
+}
+```
 
 ## Flag stalled stories
 
@@ -1645,8 +1782,8 @@ Pass `webAgents` to the board, and each **Share** menu gets an **Open in Claude*
 
 1. Package or install the library and commit the product’s map under `product/`. Include that directory in the server deployment, outside the static asset directory.
 2. In the product’s authenticated server route, read the YAML as UTF-8 and pass the text to `parseStoryMap`. Call `getStoryMapPage(document, viewer, { searchParams: url.searchParams })` with roles from the verified session. Pass `null` for a guest. A null result means no access: answer 401 for a guest and 403 for anyone else. By default, viewers whose roles include `engineer` or `super-admin` see the internal map. To use your own rule, pass `canViewInternal`, for example `getStoryMapPage(document, viewer, { canViewInternal: viewer => viewer.roles.includes("product"), searchParams: url.searchParams })`. The rule receives the viewer object you passed, so it can check permissions as well as roles. Only a return value of `true` grants the internal view.
-3. `getStoryMapPage` projects the map for the viewer and then applies the search and filters from `searchParams`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer ticks them in the status filter or passes `status=all`. The toolbar submits a GET form with `q`, `status`, `changed`, `persona`, `job` and `activity` parameters, where `status`, `persona`, `job` and `activity` repeat once per choice, such as `?status=planned&status=stalled`, to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs. On internal boards of maps with personas, `view=personas` opens the [Personas tab](#personas-tab) in place of the map, and `view=actions` the [Actions tab](#see-what-the-map-is-waiting-for), with its `action-kind`, `action-item-type`, `action-release`, `action-item` and `needs-person` filters, so the host must render the board for them as for any other filter. If you need the steps separately, `getStoryMapPage` is the same as `filterStoryMapView(getStoryMapForViewer(document, viewer, options), readStoryMapFilters(url.searchParams), { now })`. Always filter after projecting, never before.
-4. Render `StoryMapBoard` using the returned view and import `auto-story-map/styles.css` through the host’s CSS pipeline. Pass `sourceBaseUrl` if the map uses [repository-relative Markdown links](#link-an-engineering-overview). The board is light by default. Pass `theme="dark"` for a dark host, or `theme="auto"` to follow the viewer’s system setting. Colours are CSS custom properties on `.esm-board`, such as `--esm-accent`, so a host can override them. A footer under the board shows the running version of Auto Story Map and the short hash of the commit it was built from, its author and its licence. Internal viewers also get links to the commit, changelog, source code, licence and author. Pass `showVersion={false}` to remove it. Viewers can collapse a release lane to its title and story count with the chevron in its header, which needs no JavaScript but does need a browser that supports CSS `:has()`; other browsers show every lane open with no toggle. The grid scrolls in its own box, no taller than the window, so the activity titles and the release column stay in view. It leaves 7.5rem for the content below it. If the host has a fixed header or a taller footer, set the box’s height on `.esm-board`, such as `--esm-board-height: calc(100dvh - 12rem)`, or set it to `none` to scroll with the page as before. With `board.js`, below, each release’s name also stays beside its lane and the activity row shrinks to its titles. To apply filters as soon as a viewer changes them, also load the optional browser script: serve `node_modules/auto-story-map/dist/board.js` (exported as `auto-story-map/board.js`) with the host’s other static files and add `<script type="module" src="…/board.js"></script>` to the page. It hides **Apply**, applies a select as soon as it changes and a search when the viewer presses Enter, returns focus to the filter they used, and remembers which release lanes the viewer collapsed, adding them to the [export links](#download-from-the-board). Without it, the form works as before, and collapsed lanes open again when the page reloads. Use the same server-side projection and filters if adding a JSON endpoint.
+3. `getStoryMapPage` projects the map for the viewer and then applies the search and filters from `searchParams`, so a search only sees what the viewer may see. The board then shows a search box and status filter. Blocked and cut stories are hidden unless the viewer ticks them in the status filter or passes `status=all`. The toolbar submits a GET form with `q`, `status`, `changed`, `persona`, `job` and `activity` parameters, where `status`, `persona`, `job` and `activity` repeat once per choice, such as `?status=planned&status=stalled`, to the current page, so the host must pass the page’s query string through. Use the `preservedParams` prop to keep any other parameters the page needs. On internal boards of maps with personas, `view=personas` opens the [Personas tab](#personas-tab) in place of the map, `view=actions` the [Actions tab](#see-what-the-map-is-waiting-for), with its `action-kind`, `action-item-type`, `action-release`, `action-item` and `needs-person` filters, and `view=analytics` the [Analytics tab](#see-delivery-totals), with its `period`, `completed` and `chart` options, so the host must render the board for them as for any other filter. If you need the steps separately, `getStoryMapPage` is the same as `filterStoryMapView(getStoryMapForViewer(document, viewer, options), readStoryMapFilters(url.searchParams), { now })`. Always filter after projecting, never before.
+4. Render `StoryMapBoard` using the returned view and import `auto-story-map/styles.css` through the host’s CSS pipeline. Pass `sourceBaseUrl` if the map uses [repository-relative Markdown links](#link-an-engineering-overview). The board is light by default. Pass `theme="dark"` for a dark host, or `theme="auto"` to follow the viewer’s system setting. Colours are CSS custom properties on `.esm-board`, such as `--esm-accent`, so a host can override them. A footer under the board shows the running version of Auto Story Map and the short hash of the commit it was built from, its author and its licence. Internal viewers also get links to the commit, changelog, source code, licence and author. Pass `showVersion={false}` to remove it. Viewers can collapse a release lane to its title and story count with the chevron in its header, which needs no JavaScript but does need a browser that supports CSS `:has()`; other browsers show every lane open with no toggle. The board scrolls with the page, and the activity titles stick to the top of the window and the release column to its left. A board wider than the window scrolls the page sideways. The headings stick to the nearest parent that scrolls, so leave the board's parents at `overflow: visible`. If the host has a fixed header that would cover the titles, give the grid a box of its own on `.esm-board`, such as `--esm-board-height: calc(100dvh - 12rem)`, and load `board.js`, which reads it when the page loads. Without the variable, or set to `none`, the page scrolls. With `board.js`, below, each release’s name also stays beside its lane and the activity row shrinks to its titles. To apply filters as soon as a viewer changes them, also load the optional browser script: serve `node_modules/auto-story-map/dist/board.js` (exported as `auto-story-map/board.js`) with the host’s other static files and add `<script type="module" src="…/board.js"></script>` to the page. It hides **Apply**, applies a select as soon as it changes and a search when the viewer presses Enter, returns focus to the filter they used, and remembers which release lanes the viewer collapsed, adding them to the [export links](#download-from-the-board). Without it, the form works as before, and collapsed lanes open again when the page reloads. Use the same server-side projection and filters if adding a JSON endpoint.
 5. Send `storyMapResponseHeaders` with the page and endpoint, including error responses. They set `Cache-Control: private, no-store`, because the page differs per viewer, and `X-Content-Type-Options: nosniff`. Keep the raw YAML and parsed document on the server. The localhost demo’s role selector is for testing sample data.
 
 ```ts

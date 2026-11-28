@@ -133,7 +133,8 @@ function scanMarkdown(markdown: string) {
 
     const atx = atxHeading(line);
     const setext = /^\s{0,3}(=+|-+)\s*$/.exec(line);
-    if (atx !== undefined) addHeading(atx, /^\s{0,3}(#{1,6})/.exec(line)![1].length, index + 1);
+    const atxLevel = /^\s{0,3}(#{1,6})/.exec(line)?.[1].length;
+    if (atx !== undefined && atxLevel !== undefined) addHeading(atx, atxLevel, index + 1);
     else if (setext && index > 0 && lines[index - 1].trim() && !/^\s*([-*+]|\d+\.)\s/.test(lines[index - 1])) {
       addHeading(lines[index - 1], setext[1][0] === "=" ? 1 : 2, index);
     }
@@ -189,7 +190,9 @@ async function resolveInRepository(realRoot: string, path: string): Promise<Reso
   let segments = relative(realRoot, lexical).split(sep).filter(Boolean);
   let links = 0;
   while (segments.length) {
-    const next = join(current, segments.shift()!);
+    const [segment, ...rest] = segments;
+    segments = rest;
+    const next = join(current, segment);
     const info = await lstat(next).catch(() => null);
     if (!info) return { kind: "missing" };
     if (!info.isSymbolicLink()) {

@@ -138,7 +138,8 @@ function code(text: string): string {
 export function planSource(sources: readonly string[] | undefined): string | undefined {
   return sources?.find(source => {
     if (/\s/.test(source) || !/#./.test(source)) return false;
-    return /\.md$/i.test(source.split("#")[0]!.split("?")[0]!);
+    // split always returns at least one part, so the first is the path.
+    return /\.md$/i.test(source.split("#")[0].split("?")[0]);
   });
 }
 
@@ -325,7 +326,7 @@ function storyParts(view: InternalView, id: string, options: ResolvedOptions): B
 function releaseParts(view: InternalView, id: string, options: ResolvedOptions): BriefParts {
   const index = view.releases.findIndex(release => release.id === id);
   if (index < 0) throw new RangeError(`Release ${id} is not in the map.`);
-  const release = view.releases[index]!;
+  const release = view.releases[index];
   const before = view.releases[index - 1];
   const after = view.releases[index + 1];
   const activityOrder = new Map(view.activities.map((activity, position) => [activity.id, position]));
@@ -338,9 +339,9 @@ function releaseParts(view: InternalView, id: string, options: ResolvedOptions):
   const targets = stories.filter(story => story.status === "planned" || story.status === "in-progress");
   const built = [
     ...stories.filter(isBuilt).map(story => ({ story, where: "same release" })),
-    ...inRelease(before?.id).filter(isBuilt).map(story => ({ story, where: `release ${before!.id}` })),
+    ...(before ? inRelease(before.id).filter(isBuilt).map(story => ({ story, where: `release ${before.id}` })) : []),
   ];
-  const notYet = inRelease(after?.id).filter(story => story.status === "planned").map(story => ({ story, where: `release ${after!.id}` }));
+  const notYet = after ? inRelease(after.id).filter(story => story.status === "planned").map(story => ({ story, where: `release ${after.id}` })) : [];
 
   const example = targets[0]?.id ?? "<ID>";
   const branch = storyMapBriefBranch(release.id, release.title);
@@ -390,7 +391,7 @@ function manyDoneWhen(options: ResolvedOptions) {
 function storiesParts(view: InternalView, ids: readonly string[], options: ResolvedOptions): BriefParts {
   const unique = [...new Set(ids)];
   if (!unique.length) throw new RangeError("Name at least one story to brief.");
-  if (unique.length === 1) return storyParts(view, unique[0]!, options);
+  if (unique.length === 1) return storyParts(view, unique[0], options);
   const targets = unique.map(id => {
     const found = view.stories.find(candidate => candidate.id === id);
     if (!found) throw new RangeError(`Story ${id} is not in the map.`);
@@ -413,7 +414,8 @@ function storiesParts(view: InternalView, ids: readonly string[], options: Resol
       notYet.push({ story: candidate, where: `release ${candidate.release}` });
     }
   }
-  const first = targets[0]!;
+  // unique has at least two IDs here, and each found a story.
+  const first = targets[0];
   const branch = storyMapBriefBranch(first.id, first.title);
   const decisions = targetDecisions(view, targets);
   for (const story of [...targets].reverse()) {
@@ -527,7 +529,10 @@ function targetLines(view: InternalView, story: InternalStoryCard, full: boolean
   if (plan) lines.push(`  plan: ${safe(plan)}`);
   const others = (story.sources ?? []).filter(source => source !== plan);
   if (others.length) lines.push(`  sources: ${others.map(safe).join(", ")}`);
-  const who = (story.personas ?? []).map(id => `${safe(id)}${personas.get(id) ? ` (${safe(personas.get(id)!.title)})` : ""}`);
+  const who = (story.personas ?? []).map(id => {
+    const persona = personas.get(id);
+    return `${safe(id)}${persona ? ` (${safe(persona.title)})` : ""}`;
+  });
   const jobText = (story.jobs ?? []).map(id => `${safe(id)}${jobs.get(id)?.job.core ? " (core job)" : ""}`);
   if (who.length || jobText.length) {
     lines.push(`  ${[who.length ? `for: ${who.join(", ")}` : "", jobText.length ? `jobs: ${jobText.join(", ")}` : ""].filter(Boolean).join(" · ")}`);

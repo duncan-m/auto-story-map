@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
@@ -35,6 +36,12 @@ test("ESM-176: every rule turned off in biome.jsonc has a comment giving its rea
   }
 });
 
+test("ESM-190: an unchecked non-null assertion fails lint, and the two accessibility rules stay off", () => {
+  assert.match(config, /"noNonNullAssertion":\s*"error"/);
+  assert.match(config, /"useSemanticElements":\s*"off"/);
+  assert.match(config, /"useFocusableInteractive":\s*"off"/);
+});
+
 test("ESM-176: every biome-ignore comment gives its reason", async () => {
   const missing = [];
   for (const folder of ["src", "test", "scripts", "example"]) {
@@ -48,4 +55,24 @@ test("ESM-176: every biome-ignore comment gives its reason", async () => {
     }
   }
   assert.deepEqual(missing, []);
+});
+
+/**
+ * The most cognitive-complexity warnings Biome may report. Warnings don't fail `npm run lint`,
+ * so this ceiling stops new code adding them unnoticed. Lower it when a change removes some.
+ * Raise it only when a change can't reasonably split a function, and say why in the PR.
+ */
+const complexityCeiling = 140;
+
+test("ESM-189: Biome reports no more complexity warnings than the ceiling, and no other warnings", () => {
+  const biome = join(root, "node_modules", "@biomejs", "biome", "bin", "biome");
+  const run = spawnSync(process.execPath, [biome, "lint", "--reporter=json", "--max-diagnostics=none"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  assert.ok(!run.error && run.stdout.trim(), `Biome did not run: ${run.error?.message ?? run.stderr}`);
+  const report = JSON.parse(run.stdout);
+  const warnings = report.diagnostics.filter(diagnostic => diagnostic.severity === "warning");
+  const other = warnings.filter(diagnostic => diagnostic.category !== "lint/complexity/noExcessiveCognitiveComplexity");
+  assert.deepEqual(other.map(diagnostic => `${diagnostic.location.path}:${diagnostic.location.start.line} ${diagnostic.category}`), [], "only complexity is a warning; fix the others or make them errors");
+  const complexity = warnings.length - other.length;
+  assert.ok(complexity <= complexityCeiling, `Biome reports ${complexity} complexity warnings, over the ceiling of ${complexityCeiling}. Split the functions this change made more complex, which npx biome lint lists.`);
+  assert.equal(complexity, complexityCeiling, `Biome reports ${complexity} complexity warnings, under the ceiling of ${complexityCeiling}. Lower complexityCeiling in test/lint-config.test.mjs to ${complexity}.`);
 });

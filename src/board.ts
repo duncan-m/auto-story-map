@@ -18,6 +18,20 @@
  */
 
 const focusKey = "esm-filter-focus";
+
+/** The element of the board's own markup that `selector` names. A missing one is a bug in the board, not in the map. */
+function part<T extends Element = HTMLElement>(parent: ParentNode, selector: string): T {
+  const found = parent.querySelector<T>(selector);
+  if (!found) throw new Error(`Internal error: the board has no ${selector} element. Please report this as a bug in Auto Story Map.`);
+  return found;
+}
+
+/** The `data-` value of the board's own markup that `key` names. A missing one is a bug in the board, not in the map. */
+function dataOf(element: HTMLElement, key: string): string {
+  const value = element.dataset[key];
+  if (value === undefined) throw new Error(`Internal error: a board element has no data-${key} value. Please report this as a bug in Auto Story Map.`);
+  return value;
+}
 const enhanced = new WeakSet<HTMLFormElement>();
 
 function remember(name: string) {
@@ -154,10 +168,18 @@ export function enhanceStoryMapReleases(root: ParentNode = document) {
 
 const enhancedGrids = new WeakSet<Element>();
 
+/** True when the host gives the grid a height of its own with `--esm-board-height`, rather than leaving it out or setting `none`. */
+function hasBoardHeight(box: HTMLElement) {
+  if (typeof getComputedStyle === "undefined") return false;
+  const height = getComputedStyle(box).getPropertyValue("--esm-board-height").trim();
+  return height !== "" && height !== "none";
+}
+
 /**
  * Keeps the grid's headings in view. Measures the activity row and release column for CSS,
  * and sets `data-esm-stuck`, which shrinks the row to its titles, once the grid has scrolled
- * by the height that saves. Safe to call more than once.
+ * by the height that saves. The page scrolls the grid, unless the host sets `--esm-board-height`
+ * to a length, which gets `data-esm-scroll-box` and a scroll box of that height. Safe to call more than once.
  */
 export function enhanceStoryMapHeadings(root: ParentNode = document) {
   for (const box of root.querySelectorAll<HTMLElement>(".esm-scroll")) {
@@ -165,41 +187,57 @@ export function enhanceStoryMapHeadings(root: ParentNode = document) {
     const corner = box.querySelector<HTMLElement>(".esm-corner");
     if (!row || !corner || enhancedGrids.has(box)) continue;
     enhancedGrids.add(box);
-    const set = (name: string, pixels: number) => box.style.setProperty(name, `${pixels}px`);
-    let saved = 0;
-    const update = () => {
-      // Shrinking hides the persona avatars, so wait while one of them has focus.
-      const stuck = saved > 0 && box.scrollTop >= saved && !row.contains(document.activeElement);
-      if (box.hasAttribute("data-esm-stuck") !== stuck) box.toggleAttribute("data-esm-stuck", stuck);
-      set("--esm-activities-height", row.getBoundingClientRect().height);
-    };
-    const measure = () => {
-      box.removeAttribute("data-esm-stuck");
-      const full = row.getBoundingClientRect().height;
-      box.setAttribute("data-esm-stuck", "");
-      saved = full - row.getBoundingClientRect().height;
-      set("--esm-activities-saved", saved);
-      set("--esm-labels-width", corner.getBoundingClientRect().width);
-      update();
-    };
-    measure();
-    box.addEventListener("scroll", update, { passive: true });
-    row.addEventListener("focusout", () => requestAnimationFrame(update));
-    // Following a permalink scrolls the page as well as the grid, which can push the headings off the window.
-    const reveal = () => {
-      if (box.querySelector(":target") && row.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start" });
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("load", () => requestAnimationFrame(reveal));
-      window.addEventListener("hashchange", () => requestAnimationFrame(reveal));
-    }
-    if (typeof ResizeObserver === "undefined") continue;
-    // The row's height changes as it shrinks, so watch the box and a title, for new widths and text sizes.
-    const observer = new ResizeObserver(measure);
-    observer.observe(box);
-    const title = row.querySelector(".esm-activity-title");
-    if (title) observer.observe(title);
+    enhanceGridHeadings(box, row, corner);
   }
+}
+
+/** Measures one grid's headings, follows its scroll, in its own box or with the page, and watches its size. */
+function enhanceGridHeadings(box: HTMLElement, row: HTMLElement, corner: HTMLElement) {
+  const set = (name: string, pixels: number) => box.style.setProperty(name, `${pixels}px`);
+  const boxed = hasBoardHeight(box);
+  if (boxed) box.setAttribute("data-esm-scroll-box", "");
+  // How far the grid has scrolled under its headings: in its own box, or with the page.
+  const scrolled = () => (boxed ? box.scrollTop : -box.getBoundingClientRect().top);
+  let saved = 0;
+  const update = () => {
+    // Shrinking hides the persona avatars, so wait while one of them has focus.
+    const stuck = saved > 0 && scrolled() >= saved && !row.contains(document.activeElement);
+    if (box.hasAttribute("data-esm-stuck") !== stuck) box.toggleAttribute("data-esm-stuck", stuck);
+    set("--esm-activities-height", row.getBoundingClientRect().height);
+  };
+  const measure = () => {
+    box.removeAttribute("data-esm-stuck");
+    const full = row.getBoundingClientRect().height;
+    box.setAttribute("data-esm-stuck", "");
+    saved = full - row.getBoundingClientRect().height;
+    set("--esm-activities-saved", saved);
+    set("--esm-labels-width", corner.getBoundingClientRect().width);
+    update();
+  };
+  measure();
+  if (boxed) {
+    box.addEventListener("scroll", update, { passive: true });
+    revealGridAfterPermalink(box, row);
+  } else if (typeof window !== "undefined") {
+    window.addEventListener("scroll", update, { passive: true });
+  }
+  row.addEventListener("focusout", () => requestAnimationFrame(update));
+  if (typeof ResizeObserver === "undefined") return;
+  // The row's height changes as it shrinks, so watch the box and a title, for new widths and text sizes.
+  const observer = new ResizeObserver(measure);
+  observer.observe(box);
+  const title = row.querySelector(".esm-activity-title");
+  if (title) observer.observe(title);
+}
+
+/** Following a permalink scrolls the page as well as a boxed grid, which can push the headings off the window. */
+function revealGridAfterPermalink(box: HTMLElement, row: HTMLElement) {
+  if (typeof window === "undefined") return;
+  const reveal = () => {
+    if (box.querySelector(":target") && row.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start" });
+  };
+  window.addEventListener("load", () => requestAnimationFrame(reveal));
+  window.addEventListener("hashchange", () => requestAnimationFrame(reveal));
 }
 
 const enhancedMenus = new WeakSet<Element>();
@@ -650,7 +688,7 @@ const enhancedEditing = new WeakSet<Element>();
 /** The fields of a list form, such as Uses today, as one persona edit operation. */
 function formOperation(form: HTMLFormElement): Record<string, unknown> {
   const operation = targetOf(form);
-  const lists = new Set([...form.querySelectorAll<HTMLElement>("[data-esm-list]")].map(list => list.dataset.esmList!));
+  const lists = new Set([...form.querySelectorAll<HTMLElement>("[data-esm-list]")].map(list => dataOf(list, "esmList")));
   const data = new FormData(form);
   for (const name of new Set(data.keys())) {
     operation[name] = lists.has(name)
@@ -710,6 +748,8 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
     if (enhancedEditing.has(page)) continue;
     enhancedEditing.add(page);
     const { esmEditEndpoint: endpoint, esmEditToken: token, esmEditRevision: revision } = page.dataset;
+    // The selector above means every page has an endpoint.
+    if (endpoint === undefined) continue;
     const editorById = (id: string | undefined) => {
       const editor = id ? document.getElementById(id) : null;
       return editor && page.contains(editor) && editor.dataset.esmEdit ? editor : null;
@@ -724,7 +764,7 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
         const rows = initialRows.get(list);
         if (!rows) continue;
         for (const row of list.querySelectorAll(".esm-field-row")) row.remove();
-        const add = list.querySelector("[data-esm-add-row]")!;
+        const add = part(list, "[data-esm-add-row]");
         for (const row of rows) add.before(row.cloneNode(true));
       }
     };
@@ -805,7 +845,7 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
     };
 
     const fail = (editor: HTMLElement, message: string) => {
-      const error = editor.querySelector<HTMLElement>(".esm-form-error")!;
+      const error = part(editor, ".esm-form-error");
       error.textContent = message;
       error.hidden = false;
       for (const button of editor.querySelectorAll<HTMLButtonElement>(".esm-save, .esm-delete")) button.disabled = false;
@@ -922,7 +962,7 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
             return;
           }
           // Only fields that changed, so text the board shortens, such as an outcome's full stop, is kept.
-          if (value !== typed(field, field.dataset.esmOriginal ?? "")) operation[field.dataset.esmEditField!] = value;
+          if (value !== typed(field, field.dataset.esmOriginal ?? "")) operation[dataOf(field, "esmEditField")] = value;
         }
         if (Object.keys(operation).length === 1 + (operation.persona ? 1 : 0) + (operation.job ? 1 : 0)) {
           close(editor);
@@ -935,8 +975,8 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
     /** Posts one edit operation and reloads the tab, or shows why it failed in `editor`. */
     const post = (editor: HTMLElement, operation: Record<string, unknown>, next?: HTMLElement) => {
       for (const button of editor.querySelectorAll<HTMLButtonElement>(".esm-save, .esm-delete")) button.disabled = true;
-      editor.querySelector<HTMLElement>(".esm-form-error")!.hidden = true;
-      fetch(endpoint!, {
+      part(editor, ".esm-form-error").hidden = true;
+      fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Story-Map-Token": token ?? "" },
         body: JSON.stringify({ revision, operations: [operation] }),
@@ -980,40 +1020,42 @@ export function enhanceStoryMapPersonaEditing(root: ParentNode = document) {
         return;
       }
       const editor = target?.closest<HTMLElement>("[data-esm-edit]");
-      if (!editor) return;
-      if (target!.closest("[data-esm-edit-cancel]")) {
+      if (!target || !editor) return;
+      if (target.closest("[data-esm-edit-cancel]")) {
         close(editor);
         return;
       }
-      if (target!.closest("[data-esm-edit-save]")) {
+      if (target.closest("[data-esm-edit-save]")) {
         save(editor);
         return;
       }
-      const remove = target!.closest<HTMLElement>("[data-esm-delete]");
+      const remove = target.closest<HTMLElement>("[data-esm-delete]");
       if (remove) {
         confirmDelete(editor, remove);
         return;
       }
-      const list = target!.closest<HTMLElement>("[data-esm-list]");
-      if (list && target!.closest("[data-esm-add-row]")) {
+      const list = target.closest<HTMLElement>("[data-esm-list]");
+      if (list && target.closest("[data-esm-add-row]")) {
         const rows = list.querySelectorAll<HTMLElement>(".esm-field-row");
         if (!rows.length || rows.length >= Number(list.dataset.esmMaxItems || Infinity)) return;
         const row = rows[rows.length - 1].cloneNode(true) as HTMLElement;
-        row.querySelector("input")!.value = "";
-        list.querySelector("[data-esm-add-row]")!.before(row);
+        part<HTMLInputElement>(row, "input").value = "";
+        part(list, "[data-esm-add-row]").before(row);
         row.querySelector("input")?.focus();
         updateAddRow(list);
         return;
       }
-      if (list && target!.closest("[data-esm-remove-row]")) {
-        const row = target!.closest<HTMLElement>(".esm-field-row")!;
+      if (list && target.closest("[data-esm-remove-row]")) {
+        const row = target.closest<HTMLElement>(".esm-field-row");
+        if (!row) return;
         if (list.querySelectorAll(".esm-field-row").length > 1) {
           const next = row.nextElementSibling?.matches(".esm-field-row") ? row.nextElementSibling : row.previousElementSibling;
           row.remove();
           next?.querySelector("input")?.focus();
         } else {
-          row.querySelector("input")!.value = "";
-          row.querySelector("input")!.focus();
+          const input = part<HTMLInputElement>(row, "input");
+          input.value = "";
+          input.focus();
         }
         updateAddRow(list);
       }

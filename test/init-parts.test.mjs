@@ -102,14 +102,15 @@ test("ESM-171: init records only the answers the person gave, and asks the rest"
   assert.doesNotMatch(run.stdout, /^ask /m);
   assert.doesNotMatch(run.stdout, /Then ask me/);
   const map = parse(await readFile(join(root, "product/story-map.yaml"), "utf8"));
-  assert.deepEqual(map.settings, { plans: "docs/plans", storyIds: "lowest-free" });
+  // The starter map asks for architecture decisions, as its rules do (ESM-186).
+  assert.deepEqual(map.settings, { architectureDecisions: "required", plans: "docs/plans", storyIds: "lowest-free" });
   const validate = spawnSync(process.execPath, [cli, "validate", join(root, "product/story-map.yaml")], { encoding: "utf8" });
   assert.equal(validate.status, 0, validate.stderr);
 
   // Without answers, nothing is recorded, and both choices are left for the person.
   const plain = await host(t);
   assert.equal(init(plain, "--no-ci").status, 0);
-  assert.equal(parse(await readFile(join(plain, "product/story-map.yaml"), "utf8")).settings, undefined);
+  assert.deepEqual(parse(await readFile(join(plain, "product/story-map.yaml"), "utf8")).settings, { architectureDecisions: "required" });
 });
 
 test("ESM-171: init on a host that is already set up hands over to story-map upgrade and writes nothing", async t => {

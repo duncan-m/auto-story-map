@@ -25,10 +25,16 @@ When `settings.plans` names a folder, write a delivery plan there for work bigge
 <!-- rule: link-mockups -->
 When a plan has a mockup, screenshot or design, add its link to the `sources` of each story it shows, after the story’s plan section, and name it in the release `notes` when it covers the release. See [Link mockups and designs](docs/story-map.md#link-mockups-and-designs). Read a story’s `sources` to find its plan, mockups and other material before changing it.
 
+<!-- rule: architecture-decisions -->
+Record the architecture decisions of work bigger than a small fix, following [Record architecture decisions](docs/story-map.md#record-architecture-decisions). Answer the four architecture questions: where the work runs, who consumes it upstream and downstream, which security boundaries it touches, and how to undo it. Put the answers in the plan's `## Architecture decisions` section when the work has a plan, or on an **Architecture** line in the PR description when it has none. Routine work answers in one line with a real reason, such as “None: keeps the existing design because it adds a flag to an existing command.” A consequential decision, such as a new service, a data store, a field in a saved format, a public export, a breaking contract change or a changed security boundary, needs a person's agreement before its stories go `in-progress`. Write it as a proposal until then, and never write that a person agreed a decision they did not.
+
 ### Maintain the map
 
 <!-- rule: update-map-in-pr -->
 When a change affects a user journey, story scope, release assignment or delivery status, update the map in the same PR. Find existing IDs before creating stories, with `npx --no-install story-map stories --query <text> --status all` and `npx --no-install story-map story <ID>`, and reference those IDs in the delivery plan. When your team runs several agents on one map and claims stories, claim a story with `npx --no-install story-map claim <ID> --agent <name>` before you start it, and pick another story if it exits 3. See [Coordinate several agents](docs/story-map.md#coordinate-several-agents). Make the smallest map change that matches the agreed work. Prefer `npx --no-install story-map edit`, `add` and `release-impact` to editing the YAML by hand, and check the dry run before adding `--write`. The status history credits the commit author with each edit, or whoever merged it when the author is a bot. Set `updatedBy` only when neither is the person to credit, such as when you make an edit on someone else’s behalf, and use their display name.
+
+<!-- rule: write-story-summaries -->
+Write each story's title and summary for someone who doesn't know the code, following [Write a story summary](docs/story-map.md#write-a-story-summary): what changes and for whom, why now, when it is done and what it leaves out. Start a new line at least every 180 characters, and for each new long sentence. Keep how it is built in the plan.
 
 <!-- rule: audience-and-status -->
 Keep new stories internal by default. Add customer-facing copy only when the story is approved for that audience. Mark a story as `merged` when its work reaches the default branch, and as `shipped` when it is available to its intended users. If the product deploys every merge straight away, go straight to `shipped`. When work stops or is dropped, set the status to `blocked` or `cut` instead of deleting the story, and explain why in `statusReason`. If release assignment or availability is unclear, keep the existing value and flag the question in the PR.
@@ -61,4 +67,7 @@ Name each branch for the work it holds and include the story ID, such as `fix/bi
 
 <!-- rule: pr-diff-summary -->
 In the PR description, include the summary from `npx --no-install story-map diff origin/<base branch>`, and call out anything under **Customer-facing changes**.
+
+<!-- rule: review-before-ready -->
+Review each pull request's diff before you mark it ready, following [Review a change before it is ready](docs/story-map.md#review-a-change-before-it-is-ready), starting from what the story promised. Give the review an explicit target, the PR number or `origin/<base branch>...HEAD` before the PR exists, so it covers every commit: in Claude Code, run `/code-review <PR number>`. Fix the findings that are real, and review again after any material change. Record the review in the PR description's **Review** section: the target, the commit reviewed, the findings fixed and declined with a reason for each, and the review's own tokens and cost, apart from the story's. A person's review of the same diff also counts. If you cannot run a review, leave the PR as a draft and say so. The review does not replace CI, which still runs every test and check.
 <!-- auto-story-map:end -->

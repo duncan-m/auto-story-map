@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { planSource, storyNeighbours } from "./brief.js";
+import { planArchitectureHeading, planArchitectureHints } from "./plan-architecture.js";
 import { caughtUpStatus } from "./plan-status.js";
 import { slugify } from "./references.js";
 import type { InternalStoryCard, StoryMapView } from "./view.js";
@@ -34,7 +35,8 @@ const line = (text: string) => text.replace(/\s+/g, " ").trim();
  * Builds a delivery plan skeleton for the stories asked for, in the structure from
  * Write a delivery plan in the guide: a status line, a numbered item for each story,
  * the stories it builds on and overlaps (chosen as `storyMapBrief` chooses them), empty
- * UI mockup, Decisions to make and Not now sections, and an effort table with the
+ * UI mockup, Decisions to make and Not now sections, an Architecture decisions section
+ * holding the hints `checkPlanArchitecture` reports, and an effort table with the
  * agreed estimates. It reads the map only and never sets an estimate.
  *
  * Takes the unfiltered internal view from `getStoryMapForViewer`. Throws a `TypeError`
@@ -49,7 +51,8 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
   const releaseTitle = (id: string) => view.releases.find(release => release.id === id)?.title ?? id;
   const title = "release" in request
     ? releaseTitle(request.release)
-    : targets.length === 1 ? targets[0]!.title : releaseIds.length === 1 ? releaseTitle(releaseIds[0]!) : targets[0]!.title;
+    // pickTargets refuses a request with no stories, so there is a first target.
+    : targets.length === 1 ? targets[0].title : releaseIds.length === 1 ? releaseTitle(releaseIds[0]) : targets[0].title;
 
   const ids = targets.map(story => story.id);
   const releases = releaseIds.map(id => `**${line(releaseTitle(id))}**`);
@@ -62,8 +65,9 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
   const link = (story: InternalStoryCard) => {
     const source = planSource(story.sources);
     if (!source) return `**${story.id}**, ${line(story.title)}`;
+    // planSource only returns a source with a #heading, so it has a file and a fragment.
     const [file, fragment] = source.split("#", 2);
-    const target = /^[a-z][a-z0-9+.-]*:/i.test(file!) ? file! : posix.relative(folder, file!) || posix.basename(file!);
+    const target = /^[a-z][a-z0-9+.-]*:/i.test(file) ? file : posix.relative(folder, file) || posix.basename(file);
     return `**${story.id}**, [${line(story.title)}](${target}#${fragment})`;
   };
   const taken = new Set(ids);
@@ -114,6 +118,13 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
     "## UI mockup",
     "",
     "<!-- When the work adds or changes UI: an HTML mockup built on the product's real styles and markup, using stories from the map, a PNG of it, and how to regenerate the image. Link this section from each story it shows. Otherwise say there is no mockup, and why. -->",
+    "",
+    `## ${planArchitectureHeading}`,
+    "",
+    // The hints are the ones validate reports, so a section left as scaffolded is flagged until it is answered.
+    ...planArchitectureHints.map(hint => `- ${hint}`),
+    "",
+    "<!-- Routine work answers in one line instead, with a real reason: \"None: keeps the existing design because it adds a flag to an existing command.\" -->",
     "",
     "## Decisions to make",
     "",

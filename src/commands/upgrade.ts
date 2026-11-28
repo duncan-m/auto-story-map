@@ -55,7 +55,7 @@ function rulesText(part: UpgradePart, diff: boolean): string[] {
   if (diff) {
     for (const rule of shown) {
       if (rule.diff) lines.push("", `Rule ${escapeText(ruleName(rule))}, from yours to this version's:`, ...rule.diff.trimEnd().split("\n").map(escapeText));
-      else if (rule.state === "new") lines.push("", `Rule ${escapeText(ruleName(rule))}, new in this version:`, ...rule.template!.split("\n").map(line => `+${escapeText(line)}`));
+      else if (rule.state === "new" && rule.template !== undefined) lines.push("", `Rule ${escapeText(ruleName(rule))}, new in this version:`, ...rule.template.split("\n").map(line => `+${escapeText(line)}`));
     }
   }
   return lines;
@@ -77,7 +77,9 @@ export function upgradeText(report: UpgradeReport, diff = false): string {
   const withDiffs = report.parts.filter(part => part.diff);
   if (diff) {
     // A section compared rule by rule shows each rule's diff instead of the whole section's.
-    for (const part of withDiffs.filter(part => !part.rules)) lines.push("", `${escapeText(part.title)} (${escapeText(part.path)}), from yours to this version's:`, ...part.diff!.trimEnd().split("\n").map(escapeText));
+    for (const part of withDiffs) {
+      if (part.diff && !part.rules) lines.push("", `${escapeText(part.title)} (${escapeText(part.path)}), from yours to this version's:`, ...part.diff.trimEnd().split("\n").map(escapeText));
+    }
   } else if (withDiffs.length) {
     lines.push("", "Run again with --diff to see what differs, or --format json for each part's diff.");
   }
@@ -94,6 +96,11 @@ const inline = (text: string) => {
 const cell = (text: string) => text.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/[\r\n]+/g, " ");
 
 /** The report as Markdown for a pull request description: the overview, the table, and each diff in a closed details block. */
+/** A code fence longer than any run of backticks in `text`, so the text cannot close it. */
+function fenceFor(text: string) {
+  return "`".repeat(Math.max(3, ...[...text.matchAll(/`+/g)].map(match => match[0].length + 1)));
+}
+
 export function upgradeMarkdown(report: UpgradeReport): string {
   const [heading, ...overview] = upgradeOverviewLines(report.overview);
   const lines = [
@@ -107,25 +114,29 @@ export function upgradeMarkdown(report: UpgradeReport): string {
     "| --- | --- | --- |",
     ...report.parts.map((part: UpgradePart) => `| ${cell(part.title)} | ${cell(describeUpgradeState(part))} | ${cell(part.change)} |`),
   ];
-  for (const part of report.parts.filter(part => rulesToShow(part).length)) {
+  for (const part of report.parts) {
+    const { rules } = part;
     const shown = rulesToShow(part);
+    if (!rules || !shown.length) continue;
     lines.push(
       "",
-      `<details><summary>${cell(part.title)}, rule by rule: ${shown.length} of ${part.rules!.length} ${part.rules!.length === 1 ? "rule needs" : "rules need"} a look</summary>`,
+      `<details><summary>${cell(part.title)}, rule by rule: ${shown.length} of ${rules.length} ${rules.length === 1 ? "rule needs" : "rules need"} a look</summary>`,
       "",
       "| Rule | State | Change |",
       "| --- | --- | --- |",
       ...shown.map(rule => `| ${cell(ruleName(rule))} | ${cell(ruleStateWords[rule.state])} | ${cell(rule.change)} |`),
     );
-    for (const rule of shown.filter(rule => rule.diff)) {
-      const fence = "`".repeat(Math.max(3, ...[...rule.diff!.matchAll(/`+/g)].map(match => match[0].length + 1)));
-      lines.push("", `${cell(ruleName(rule))}, from yours to this version's:`, "", `${fence}diff`, rule.diff!.trimEnd(), fence);
+    for (const rule of shown) {
+      if (!rule.diff) continue;
+      const fence = fenceFor(rule.diff);
+      lines.push("", `${cell(ruleName(rule))}, from yours to this version's:`, "", `${fence}diff`, rule.diff.trimEnd(), fence);
     }
     lines.push("", "</details>");
   }
-  for (const part of report.parts.filter(part => part.diff && !part.rules)) {
-    const fence = "`".repeat(Math.max(3, ...[...part.diff!.matchAll(/`+/g)].map(match => match[0].length + 1)));
-    lines.push("", `<details><summary>${cell(part.title)}: from yours to this version's</summary>`, "", `${fence}diff`, part.diff!.trimEnd(), fence, "", "</details>");
+  for (const part of report.parts) {
+    if (!part.diff || part.rules) continue;
+    const fence = fenceFor(part.diff);
+    lines.push("", `<details><summary>${cell(part.title)}: from yours to this version's</summary>`, "", `${fence}diff`, part.diff.trimEnd(), fence, "", "</details>");
   }
   return `${lines.join("\n")}\n`;
 }
@@ -332,6 +343,10 @@ const changeWords: Record<UpgradeApplyResult["changes"][number]["action"], strin
   keep: "keep",
 };
 
+/** Why the review records `settings.architectureDecisions`, and what it does, in a sentence or two. */
+const architectureNote = (result: UpgradeApplyResult) =>
+  `${result.written ? "Recorded" : "Records"} required in settings.architectureDecisions, since the AGENTS.md section now asks for architecture decisions. Open plans without an Architecture decisions section get warnings, which fail validate --strict.`;
+
 /** What applying the review changes, as people read it at a terminal: the overview, the changes, then the questions. */
 export function upgradeApplyText(result: UpgradeApplyResult, diff = false): string {
   const shown = result.changes.filter(change => change.action !== "keep" && change.action !== "ask");
@@ -345,11 +360,14 @@ export function upgradeApplyText(result: UpgradeApplyResult, diff = false): stri
       `${pad("Part", widths[0])}  ${pad("Action", widths[1])}  Change`,
       ...rows.map(([title, action, change]) => `${pad(title, widths[0])}  ${pad(action, widths[1])}  ${change}`),
     );
-    if (diff) for (const change of shown.filter(change => change.diff)) lines.push("", `${escapeText(change.path)}:`, ...change.diff!.trimEnd().split("\n").map(escapeText));
+    if (diff) for (const change of shown) if (change.diff) lines.push("", `${escapeText(change.path)}:`, ...change.diff.trimEnd().split("\n").map(escapeText));
   } else {
     lines.push("Nothing to change.");
   }
   if (result.modeRecorded) lines.push("", `${result.written ? "Recorded" : "Records"} ${result.modeRecorded} mode in settings.upgrade, so the review does not ask again.`);
+  if (result.architectureDecisionsRecorded) lines.push("", `${architectureNote(result)} To keep them as notices, run story-map settings --architecture-decisions recommended --write.`);
+  const notRecorded = result.changes.find(change => change.setting && change.action === "keep");
+  if (notRecorded) lines.push("", `Architecture decisions: ${escapeText(notRecorded.change)}.`);
   if (result.questions.length) {
     lines.push("", "To ask the person, and record only their answer:", "");
     for (const question of result.questions) lines.push(`- ${question.question} Answer with ${question.option}. See ${question.link}`);
@@ -374,6 +392,7 @@ export function upgradeApplyMarkdown(result: UpgradeApplyResult): string {
     lines.push("", `### ${result.written ? "Changed" : "Changes"}`, "", "| Part | Action | Change |", "| --- | --- | --- |", ...shown.map(change => `| ${cell(change.title)} | ${cell(changeWords[change.action])} | ${cell(change.change)} |`));
   }
   if (result.modeRecorded) lines.push("", `${result.written ? "Recorded" : "Records"} ${result.modeRecorded} mode in \`settings.upgrade\`.`);
+  if (result.architectureDecisionsRecorded) lines.push("", `${inline(architectureNote(result))} To keep them as notices, run \`story-map settings --architecture-decisions recommended --write\`.`);
   if (result.questions.length) {
     lines.push("", "### To ask the person", "", ...result.questions.map(question => `- ${inline(question.question)} See ${inline(question.link)}`));
   }
