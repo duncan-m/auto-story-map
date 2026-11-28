@@ -197,7 +197,7 @@ These are proposals. Each is easy to change during review.
 
 | Question | Proposal |
 | --- | --- |
-| A. Releases | The ReDoS fix, ESM-175, goes in 0.7.9, which has merged but not shipped, so it goes out with the next tag. The review stories go in a new release, 0.7.11. It sits after 0.7.9 until #188 adds 0.7.10, then moves after it |
+| A. Releases | The ReDoS fix, ESM-175, goes in 0.7.9, which has merged but not shipped, so it goes out with the next tag. The review stories go in a new release, 0.7.11, after 0.7.10: Agent briefs |
 | B. When hosts get the review rule | After the pilot, and after item 6 has been used on a real change that affects hosts. Copied rule text is hard to take back |
 | C. Where agreed architecture decisions live | In the engineering overview's Runtime and architecture section. No ADR files, so there is one place to look |
 | D. How hosts adopt the architecture check | Through `settings.architectureDecisions: required`, set by the upgrade review when the person accepts it. Without it the check is a notice |

@@ -527,20 +527,8 @@ releases:
         expected: None, with the claim rules checked by a model-based test on every CI run
         solves: Two agents building the same story when they claim it at the same moment
         draft: true
-  - id: v0-7-11
-    title: "0.7.11: Code review and architecture checks"
-    summary: Each PR is reviewed against its story before it is ready, lint, coverage and CodeQL quality queries run in CI, and plans record their architecture decisions, with points for reviewing the architecture and refactoring.
-    notes: |
-      Planning proposal only. Of the last 30 merged PRs none had an independent review, and CodeQL found escaping, sanitising or ReDoS problems in 5 of them after the push. ESM-187, ESM-178, ESM-176 and ESM-177 come first, alongside the story-first review (ESM-179) and a ten-PR pilot of the review step (ESM-182), then architecture decisions in plans (ESM-183), their check (ESM-184) and review points (ESM-185), and last offering both to hosts (ESM-186) once the pilot is done. Placed after 0.7.9 because 0.7.10 (Agent briefs) is still an open PR; move it after 0.7.10 once that merges.
-
-      Plan: docs/plans/code-review.md
-    impact:
-      - metric: Defects found after a PR is marked ready, such as CodeQL alerts after the push
-        expected: Fewer than the 5 in the last 30 merged PRs, with each PR reviewed against its story before it is ready
-        solves: Escaping, sanitising and ReDoS problems that only CodeQL catches, after the push
-        draft: true
-  - id: v0-8-0
-    title: "0.8.0: Agent briefs"
+  - id: v0-7-10
+    title: "0.7.10: Agent briefs"
     summary: Agents and scripts print a brief for a story, release or activity with story-map brief.
     notes: |
       Builds on the briefs copied from the board in 0.7.5 and the MCP server in 0.7.6 (ESM-116), which gets a get_brief tool. Starting a local agent from the preview (ESM-127) was cut: Open in Claude Code (ESM-144) and Copy brief (ESM-124) already cover it.
@@ -550,6 +538,18 @@ releases:
       - metric: Steps to start a local agent on a story
         expected: One story-map brief command or get_brief call
         solves: Copying a brief from the board and pasting it into a terminal
+        draft: true
+  - id: v0-7-11
+    title: "0.7.11: Code review and architecture checks"
+    summary: Each PR is reviewed against its story before it is ready, lint, coverage and CodeQL quality queries run in CI, and plans record their architecture decisions, with points for reviewing the architecture and refactoring.
+    notes: |
+      Planning proposal only. Of the last 30 merged PRs none had an independent review, and CodeQL found escaping, sanitising or ReDoS problems in 5 of them after the push. ESM-187, ESM-178, ESM-176 and ESM-177 come first, alongside the story-first review (ESM-179) and a ten-PR pilot of the review step (ESM-182), then architecture decisions in plans (ESM-183), their check (ESM-184) and review points (ESM-185), and last offering both to hosts (ESM-186) once the pilot is done.
+
+      Plan: docs/plans/code-review.md
+    impact:
+      - metric: Defects found after a PR is marked ready, such as CodeQL alerts after the push
+        expected: Fewer than the 5 in the last 30 merged PRs, with each PR reviewed against its story before it is ready
+        solves: Escaping, sanitising and ReDoS problems that only CodeQL catches, after the push
         draft: true
   - id: v0-8-1
     title: "0.8.1: Dependency planning and graph"
@@ -2135,7 +2135,7 @@ stories:
   - id: ESM-126
     title: Write agent briefs from the command line
     activity: plan
-    release: v0-8-0
+    release: v0-7-10
     status: merged
     estimate: 3
     priority: must
@@ -2155,7 +2155,7 @@ stories:
   - id: ESM-127
     title: Start Claude Code or Codex on a brief from the local preview
     activity: plan
-    release: v0-8-0
+    release: v0-7-10
     status: cut
     statusReason: ESM-144 already starts Claude Code on the brief in the repository, and ESM-124 lets you copy the brief into a local claude or codex session. What is left, a local or Codex launch, is not worth 5 points or the open terminal spike in Decision B.
     estimate: 5
