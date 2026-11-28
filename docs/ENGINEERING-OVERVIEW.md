@@ -580,6 +580,8 @@ Review a change against its story before the repository's own checks. Whether yo
    - both `AGENTS.md` files, the root one and `templates/AGENTS.md`, when the guidance changes, unless it is for this repository only, as the review step is until ESM-186,
    - one change per PR that can be reverted on its own.
 
+Record the review in the pull request's **Review** section, as the root `AGENTS.md` says. The `Map rules` workflow, `.github/workflows/pr-check.yml`, runs [`pr-check`](story-map.md#check-a-pull-request-in-ci) with `--draft` set from the pull request, and again when it is marked ready or converted to a draft. A ready pull request whose Review section is missing, empty or only the template's labels and comments gets a `missing-review` warning on the PR (ESM-182). It is a warning, not an error, while the [pilot](plans/code-review.md#pilot) shows how often a section is empty for a good reason. A draft is never warned.
+
 Turn what reviews find into checks. A serious defect, such as a security boundary crossed or saved input lost, gets a regression test the first time it is found. A lower-impact problem that comes back gets a lint rule, a test or an API change the second time, so the next review does not have to find it again. The shared `escapeRegExp` helper (ESM-187) is the first example.
 
 ## Record architecture decisions
