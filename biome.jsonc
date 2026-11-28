@@ -16,10 +16,6 @@
         // A refactor signal for ESM-185, not a gate.
         "noExcessiveCognitiveComplexity": "warn"
       },
-      "style": {
-        // Off for now: 191 uses in src/, each after a check tsc cannot follow. Replacing them with real checks is ESM-190, not a lint fix.
-        "noNonNullAssertion": "off"
-      },
       "suspicious": {
         // Off: the code strips control characters from untrusted text on purpose, and the tests check that none reach the terminal.
         "noControlCharactersInRegex": "off",

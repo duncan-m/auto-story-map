@@ -3,6 +3,7 @@ import { Document, isMap, isSeq, parseDocument, type Node, type Pair, type YAMLM
 import { z } from "zod";
 import { checkStoryMap, type StoryMapCheckIssue, type StoryMapCheckOptions, type StoryMapCheckResult } from "./check.js";
 import { diffStoryMaps, formatStoryMapDiff, type StoryMapDiff } from "./diff.js";
+import { present } from "./present.js";
 import { closestIds } from "./read.js";
 import { parseStoryMap, personaJobsMaxItems, personasMaxItems, storyPriorities, type ReleaseImpact, type StoryMapDocument, type StoryMapJob, type StoryMapPersonaContext } from "./schema.js";
 import { storyStatuses } from "./status.js";
@@ -139,6 +140,11 @@ const contextKeyOrder = ["success", "usesToday", "constraints", "draft"];
 const jobKeyOrder = ["id", "situation", "motivation", "outcome", "draft", "steps"];
 
 type Raw = Record<string, unknown>;
+
+/** Where a node parsed from the map's text starts and ends. Only nodes made in code have no range. */
+function rangeOf(node: Node): [number, number, number] {
+  return present(node.range, "the position of a parsed YAML node");
+}
 type RawStory = Raw & { id: string; release?: string };
 
 // ---------------------------------------------------------------------------
@@ -199,21 +205,21 @@ class TextEditor {
   private setOnMap(item: YAMLMap, key: string, value: unknown, order: readonly string[]) {
     const pair = item.items.find(entry => (entry.key as { value?: unknown })?.value === key) as Pair<Node, Node> | undefined;
     if (pair) {
-      const start = lineStart(this.source, pair.key.range![0]);
-      const end = lineEnd(this.source, (pair.value?.range ?? pair.key.range!)[1]);
+      const start = lineStart(this.source, rangeOf(pair.key)[0]);
+      const end = lineEnd(this.source, (pair.value?.range ?? rangeOf(pair.key))[1]);
       if (value === undefined) {
         this.splice(start, end, "");
         return;
       }
-      this.splice(start, end, renderPair(key, value, columnOf(this.source, pair.key.range![0])));
+      this.splice(start, end, renderPair(key, value, columnOf(this.source, rangeOf(pair.key)[0])));
       return;
     }
     if (value === undefined) return;
     const rank = (name: string) => (order.includes(name) ? order.indexOf(name) : order.length);
     const pairs = item.items as Pair<Node, Node>[];
     const before = pairs.filter(entry => rank(String((entry.key as { value?: unknown }).value)) <= rank(key)).at(-1) ?? pairs[0];
-    const at = lineEnd(this.source, (before.value?.range ?? before.key.range!)[1]);
-    this.splice(at, at, renderPair(key, value, columnOf(this.source, pairs[0].key.range![0])));
+    const at = lineEnd(this.source, (before.value?.range ?? rangeOf(before.key))[1]);
+    this.splice(at, at, renderPair(key, value, columnOf(this.source, rangeOf(pairs[0].key)[0])));
   }
 
   /** Adds an item to the end of a list field, such as a story's sources, creating the field when it is missing. */
@@ -233,8 +239,8 @@ class TextEditor {
       return;
     }
     const last = seq.items.at(-1) as Node;
-    const at = lineEnd(this.source, last.range![1]);
-    this.splice(at, at, renderItem(item, columnOf(this.source, (seq.items[0] as Node).range![0]) - 2));
+    const at = lineEnd(this.source, rangeOf(last)[1]);
+    this.splice(at, at, renderItem(item, columnOf(this.source, rangeOf(seq.items[0] as Node)[0]) - 2));
   }
 
   /** Removes the item at `index` from a list field, or the whole field when it was the last item. */
@@ -254,7 +260,7 @@ class TextEditor {
       return;
     }
     const node = seq.items[index];
-    this.splice(lineStart(this.source, node.range![0]), lineEnd(this.source, node.range![1]), "");
+    this.splice(lineStart(this.source, rangeOf(node)[0]), lineEnd(this.source, rangeOf(node)[1]), "");
   }
 
   private mapAt(path: readonly (string | number)[]): YAMLMap {
@@ -269,11 +275,11 @@ class TextEditor {
     const seq = this.document().get("stories", true);
     if (!isSeq(seq) || !seq.items.length || seq.flow) throw new StoryMapEditError("The map has no stories list to add to. Add the first story by hand.");
     const items = seq.items as YAMLMap[];
-    const after = (afterId && items.find(item => item.get("id") === afterId)) || items.at(-1)!;
+    const after = (afterId && items.find(item => item.get("id") === afterId)) || items[items.length - 1];
     const firstKey = (items[0].items[0] as Pair<Node, Node>).key;
-    const indent = columnOf(this.source, firstKey.range![0]) - 2;
+    const indent = columnOf(this.source, rangeOf(firstKey)[0]) - 2;
     const lastPair = after.items.at(-1) as Pair<Node, Node>;
-    const at = lineEnd(this.source, (lastPair.value?.range ?? lastPair.key.range!)[1]);
+    const at = lineEnd(this.source, (lastPair.value?.range ?? rangeOf(lastPair.key))[1]);
     this.splice(at, at, renderItem(story, indent));
   }
 }
@@ -339,6 +345,16 @@ function unknownStory(id: string, stories: RawStory[], index: number): never {
 type RawPersona = Raw & { id: string; context?: Raw; jobs?: (Raw & { id: string })[] };
 type PersonaOperation = Extract<StoryMapEditOperation, { op: (typeof personaEditOperations)[number] }>;
 
+/** Where the job `id` sits: its persona's index, that persona's jobs and the job's index in them. */
+function findJob<P extends { jobs?: { id: string }[] }>(personas: readonly P[], id: string): { personaIndex: number; jobs: NonNullable<P["jobs"]>; jobIndex: number } | undefined {
+  for (const [personaIndex, persona] of personas.entries()) {
+    const jobs = persona.jobs;
+    const jobIndex = jobs ? jobs.findIndex(job => job.id === id) : -1;
+    if (jobs && jobIndex !== -1) return { personaIndex, jobs, jobIndex };
+  }
+  return undefined;
+}
+
 function unknownPersona(id: string, personas: RawPersona[], index: number | undefined, kind: "persona" | "job"): never {
   const ids = kind === "persona" ? personas.map(item => item.id) : personas.flatMap(item => (item.jobs ?? []).map(job => job.id));
   const suggestions = closestIds(id, ids);
@@ -395,19 +411,16 @@ function applyPersonaEdit(intended: Raw & { stories: RawStory[] }, editor: TextE
   }
 
   if (operation.op === "delete-job") {
-    const personaIndex = personas.findIndex(persona => persona.jobs?.some(job => job.id === operation.job));
-    if (personaIndex === -1) unknownPersona(operation.job, personas, index, "job");
-    const jobs = personas[personaIndex].jobs!;
-    const jobIndex = jobs.findIndex(job => job.id === operation.job);
+    const { personaIndex, jobs, jobIndex } = findJob(personas, operation.job) ?? unknownPersona(operation.job, personas, index, "job");
     jobs.splice(jobIndex, 1);
     if (!jobs.length) delete personas[personaIndex].jobs;
     editor.removeFromListAt(["personas", personaIndex], "jobs", jobIndex, personaKeyOrder);
     // Stories that served the job keep everything else, so none is lost.
     for (const story of intended.stories) {
       const list = story.jobs as string[] | undefined;
-      const at = list?.indexOf(operation.job) ?? -1;
-      if (at === -1) continue;
-      const rest = list!.filter((_, i) => i !== at);
+      const at = list ? list.indexOf(operation.job) : -1;
+      if (!list || at === -1) continue;
+      const rest = list.filter((_, i) => i !== at);
       if (rest.length) story.jobs = rest;
       else delete story.jobs;
       editor.removeFromList("stories", story.id, "jobs", at);
@@ -436,10 +449,8 @@ function applyPersonaEdit(intended: Raw & { stories: RawStory[] }, editor: TextE
   };
 
   if (operation.op === "set-job") {
-    const personaIndex = personas.findIndex(persona => persona.jobs?.some(job => job.id === operation.job));
-    if (personaIndex === -1) unknownPersona(operation.job, personas, index, "job");
-    const jobIndex = personas[personaIndex].jobs!.findIndex(job => job.id === operation.job);
-    const job = personas[personaIndex].jobs![jobIndex];
+    const { personaIndex, jobs, jobIndex } = findJob(personas, operation.job) ?? unknownPersona(operation.job, personas, index, "job");
+    const job = jobs[jobIndex];
     for (const key of ["situation", "motivation", "outcome"] as const) {
       if (operation[key] !== undefined) setAt(job, ["personas", personaIndex, "jobs", jobIndex], key, operation[key], jobKeyOrder);
     }
@@ -646,7 +657,7 @@ export async function proposeStoryMapEdit(source: string, operations: readonly S
 
   if (options.updatedBy) {
     for (const id of touched) {
-      const story = intended.stories.find(item => item.id === id)!;
+      const story = present(intended.stories.find(item => item.id === id), `story ${id}`);
       if (story.updatedBy === options.updatedBy) continue;
       story.updatedBy = options.updatedBy;
       editor.setField("stories", id, "updatedBy", options.updatedBy);
@@ -729,12 +740,10 @@ export async function proposeDraftConfirmation(source: string, target: StoryMapD
   const personas = before.personas ?? [];
   const drafts: StoryMapDraft[] = [];
   const named = (item: { id: string; title: string }) => ({ id: item.id, title: item.title });
-  const confirmJob = (personaIndex: number, jobIndex: number) => {
-    const persona = personas[personaIndex];
-    const job = persona.jobs![jobIndex];
+  const confirmJob = (personaIndex: number, jobIndex: number, job: StoryMapJob) => {
     if (!job.draft) return;
-    drafts.push({ kind: "job", persona: named(persona), job });
-    delete intended.personas![personaIndex].jobs![jobIndex].draft;
+    drafts.push({ kind: "job", persona: named(personas[personaIndex]), job });
+    delete present(intended.personas?.[personaIndex]?.jobs?.[jobIndex], `job ${job.id}`).draft;
     editor.setFieldAt(["personas", personaIndex, "jobs", jobIndex], "draft", undefined, jobKeyOrder);
   };
 
@@ -752,25 +761,25 @@ export async function proposeDraftConfirmation(source: string, target: StoryMapD
     const item = impact[target.impact - 1];
     if (item.draft) {
       drafts.push({ kind: "impact", release: named(release), position: target.impact, item });
-      delete intended.releases[releaseIndex].impact![target.impact - 1].draft;
+      delete present(intended.releases[releaseIndex].impact?.[target.impact - 1], `impact item ${target.impact} of ${release.id}`).draft;
       editor.setFieldAt(["releases", releaseIndex, "impact", target.impact - 1], "draft", undefined, []);
     }
   } else if ("allJobsOf" in target) {
     const personaIndex = personas.findIndex(persona => persona.id === target.allJobsOf);
     if (personaIndex === -1) unknownPersona(target.allJobsOf, intended.personas ?? [], undefined, "persona");
-    for (const jobIndex of personas[personaIndex].jobs?.keys() ?? []) confirmJob(personaIndex, jobIndex);
+    for (const [jobIndex, job] of (personas[personaIndex].jobs ?? []).entries()) confirmJob(personaIndex, jobIndex, job);
   } else {
-    const jobOwner = personas.findIndex(persona => persona.jobs?.some(job => job.id === target.id));
+    const jobOwner = findJob(personas, target.id);
     const personaIndex = personas.findIndex(persona => persona.id === target.id);
-    if (jobOwner !== -1 && personaIndex !== -1) {
+    if (jobOwner && personaIndex !== -1) {
       throw new StoryMapEditError(`${target.id} is both a job and a persona. Confirm the job by hand, or the persona's jobs with --all-in ${target.id}.`);
     }
-    if (jobOwner !== -1) confirmJob(jobOwner, personas[jobOwner].jobs!.findIndex(job => job.id === target.id));
+    if (jobOwner) confirmJob(jobOwner.personaIndex, jobOwner.jobIndex, jobOwner.jobs[jobOwner.jobIndex]);
     else if (personaIndex !== -1) {
       const persona = personas[personaIndex];
       if (persona.context?.draft) {
         drafts.push({ kind: "context", persona: named(persona), context: persona.context });
-        delete intended.personas![personaIndex].context!.draft;
+        delete present(intended.personas?.[personaIndex]?.context, `the context of ${persona.id}`).draft;
         editor.setFieldAt(["personas", personaIndex, "context"], "draft", undefined, contextKeyOrder);
       }
     } else {
