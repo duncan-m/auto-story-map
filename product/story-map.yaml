@@ -2719,7 +2719,7 @@ stories:
     title: Offer the review step and architecture decisions to hosts
     activity: review
     release: v0-7-11
-    status: planned
+    status: merged
     jobs:
       - plan-and-build
       - keep-setup-current
@@ -2730,6 +2730,8 @@ stories:
     summary: The host templates, guide, plan scaffold and upgrade review offer the review step and architecture decisions to hosts, after the pilot.
     sources:
       - docs/plans/code-review.md#9-offer-the-review-step-and-architecture-decisions-to-hosts
+      - docs/story-map.md#review-a-change-before-it-is-ready
+      - docs/story-map.md#record-architecture-decisions
   - id: ESM-187
     title: Share one regular-expression escape helper
     activity: review

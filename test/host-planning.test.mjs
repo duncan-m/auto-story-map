@@ -143,7 +143,8 @@ test("ESM-153: init asks about delivery plans until the map records the answer",
   assert.match(first.stdout, /Then ask me whether to use delivery plans and which story ID policy to use,\n {2}linking to the guide sections listed above, and record my answers with\n {2}`story-map settings`\./);
 
   const map = join(root, "product/story-map.yaml");
-  await writeFile(map, (await readFile(map, "utf8")).replace("visibility: internal\n", "visibility: internal\nsettings:\n  plans: false\n"));
+  // The starter map already has settings, from ESM-186's architectureDecisions.
+  await writeFile(map, (await readFile(map, "utf8")).replace("settings:\n", "settings:\n  plans: false\n"));
   // Run again, init hands over to the upgrade review, which reports the answer as chosen.
   const again = spawnSync(process.execPath, [cli, "init", "--no-ci", "--dir", root], { encoding: "utf8" });
   assert.doesNotMatch(again.stdout, /^ask +delivery plans/m);
@@ -263,13 +264,14 @@ test("ESM-152: the skill carries the planning rules in full, and the AGENTS.md p
   const { skillFile } = await import("../dist/init.js");
   const skill = await skillFile();
   assert.match(skill, /^description: .*planning work/m);
-  const detail = skill.slice(skill.indexOf("## Delivery plans in detail"), skill.indexOf("## Common commands"));
+  const start = skill.indexOf("## Delivery plans in detail");
+  const detail = skill.slice(start, skill.indexOf("\n## ", start + 1));
   assert.ok(detail.length > 100);
   assert.match(detail, /\*\*`settings\.plans` is left out\*\*/);
   assert.match(detail, /\*\*`settings\.plans` is `false`\*\*/);
   assert.match(detail, /\*\*`settings\.plans` names a folder\*\*/);
   assert.match(detail, /\(\.\.\/\.\.\/\.\.\/docs\/story-map\.md#choose-whether-to-use-delivery-plans\)/);
-  assert.equal(detail.match(/^\d\. /gm).length, 8, "every part of a plan, in order");
+  assert.equal(detail.match(/^\d\. /gm).length, 9, "every part of a plan, in order, with ESM-186's Architecture decisions");
   assert.match(skill, /npx --no-install story-map plan <ID\.\.\.>/);
   // The short rules from AGENTS.md are there too, so agents that read either get them.
   assert.match(skill, /## Plan the work\n\nIf `settings\.plans` is not set/);

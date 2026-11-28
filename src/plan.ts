@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { planSource, storyNeighbours } from "./brief.js";
+import { planArchitectureHeading, planArchitectureHints } from "./plan-architecture.js";
 import { caughtUpStatus } from "./plan-status.js";
 import { slugify } from "./references.js";
 import type { InternalStoryCard, StoryMapView } from "./view.js";
@@ -34,7 +35,8 @@ const line = (text: string) => text.replace(/\s+/g, " ").trim();
  * Builds a delivery plan skeleton for the stories asked for, in the structure from
  * Write a delivery plan in the guide: a status line, a numbered item for each story,
  * the stories it builds on and overlaps (chosen as `storyMapBrief` chooses them), empty
- * UI mockup, Decisions to make and Not now sections, and an effort table with the
+ * UI mockup, Decisions to make and Not now sections, an Architecture decisions section
+ * holding the hints `checkPlanArchitecture` reports, and an effort table with the
  * agreed estimates. It reads the map only and never sets an estimate.
  *
  * Takes the unfiltered internal view from `getStoryMapForViewer`. Throws a `TypeError`
@@ -114,6 +116,13 @@ export function storyMapPlan(view: StoryMapView, request: StoryMapPlanRequest, o
     "## UI mockup",
     "",
     "<!-- When the work adds or changes UI: an HTML mockup built on the product's real styles and markup, using stories from the map, a PNG of it, and how to regenerate the image. Link this section from each story it shows. Otherwise say there is no mockup, and why. -->",
+    "",
+    `## ${planArchitectureHeading}`,
+    "",
+    // The hints are the ones validate reports, so a section left as scaffolded is flagged until it is answered.
+    ...planArchitectureHints.map(hint => `- ${hint}`),
+    "",
+    "<!-- Routine work answers in one line instead, with a real reason: \"None: keeps the existing design because it adds a flag to an existing command.\" -->",
     "",
     "## Decisions to make",
     "",

@@ -38,3 +38,4 @@ Architecture: <!-- For work with no plan, following docs/ENGINEERING-OVERVIEW.md
 - Level: <!-- such as medium, or "person" for a person's review -->
 - Findings fixed: <!-- each finding and the commit that fixed it, or "None" -->
 - Findings declined: <!-- each finding and why it was not fixed, or "None" -->
+- Review cost: <!-- the review's own tokens and cost, apart from the story's: note the time before the review, then paste npx story-map tokens --format markdown --since <time> <ID>. Or say why there is no count -->
