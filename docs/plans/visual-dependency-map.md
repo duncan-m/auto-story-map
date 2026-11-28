@@ -106,6 +106,13 @@ Add each target's prerequisites and readiness to the `<target>` section of the h
 - Briefs stay compact: IDs, titles and statuses, not the prerequisites' summaries.
 - Tests named `ESM-143:` cover ready, waiting and at-risk targets and a release brief.
 
+**Brief fixes found when trying ESM-126.** Running `story-map brief` on this map turned up four more problems. They change the same brief code, so they are part of this story:
+- **Personas and jobs once.** `--full` prints each persona and job once, in a section of their own, and each target names them by ID. Today a release brief repeats a persona's full text under every story that serves it, which can double the brief's length.
+- **Related context.** `<context>` lists the stories the targets build on, such as their prerequisites and shipped stories in the same activities, instead of the stories in the releases either side. The "Not yet" list names only stories that touch the targets' activities or depend on them.
+- **Empty briefs.** A brief with no targets, such as an activity whose stories are all merged or shipped, prints one line saying there is nothing to build and exits with its own code. It suggests no branch, and JSON gives `branch: null` and empty sections. It does not print rules with `<ID>` placeholders or a done-when list.
+- **A narrower hint.** When `<context>` leaves stories out, its hint names a command that shows only those, such as `npx story-map stories --activity set-up --status all`, rather than the whole map.
+- Tests named `ESM-143:` cover each of these.
+
 ## 4. Explore dependencies as a graph
 
 **Story:** ESM-140 · depends on ESM-142 · activity `explore` · jobs `triage-backlog`, `plan-and-build`.
